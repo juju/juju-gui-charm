@@ -1,0 +1,10 @@
+description "Juju GUI"
+author "Juju GUI Peeps"
+
+start on runlevel [2345]
+stop on runlevel [!2345]
+
+setuid ubuntu
+env PYTHONPATH={juju_dir}:$PYTHONPATH
+exec /usr/bin/python {juju_dir}/improv.py -f {juju_dir}/sample.json &> \
+    /tmp/improv-agent.output

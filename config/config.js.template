@@ -1,0 +1,10 @@
+var juju_config = {
+  consoleEnabled: true,
+  serverRouting: false,
+  html5: true,
+  container: '#main',
+  viewContainer: '#main',
+  transitions: false,
+  charm_store_url: 'http://jujucharms.com/',
+  socket_url: '{ws_url}'
+};

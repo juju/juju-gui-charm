@@ -1,0 +1,71 @@
+#!/usr/bin/env python2
+
+import os
+import sys
+
+from helpers import (
+    log,
+    log_entry,
+    log_exit,
+    open_port,
+    service_control,
+    START,
+)
+from shelltoolbox import (
+    run,
+    su,
+)
+
+CURRENT_DIR = os.getcwd()
+JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
+JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
+
+
+def render_to_file(template, context, destination):
+    """Render the given *template* into *destination* using *context*.
+
+    The arguments *template* is the name of the template file that lives in
+    ``../config``.
+    The argument *destination* is a file path.
+    The argument *context* is a dict-like object.
+    """
+    template_path = os.path.join(__file__, '..', 'config', template)
+    contents = open(template_path).read()
+    with open(destination, 'w') as stream:
+        stream.write(contents.format(**context))
+
+
+def start_improv():
+    """Start a simulated juju environment using ``improv.py``."""
+    sys.path.insert(0, JUJU_DIR)
+    log('Retrieving websocket URL.')
+    ws_ip_address = run('ec2metadata', '--public-ipv4').strip()
+    ws_url = 'ws://{}:8081/ws'.format(ws_ip_address)
+    with su('root'):
+        run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
+    log('Setting up start up scripts.')
+    render_to_file(
+        'juju-api-improv.conf.template', {'juju_dir': JUJU_DIR},
+        '/etc/init/juju-api-improv.conf')
+    render_to_file(
+        'juju-gui.conf.template', {'juju_gui_dir': JUJU_GUI_DIR},
+        '/etc/init/juju-gui.conf')
+    log('Generating the Juju-GUI configuration file.')
+    render_to_file(
+        'config.js.template', {'ws_url': ws_url},
+        os.path.join(JUJU_GUI_DIR, 'app', 'config.js'))
+    log('Starting Juju-GUI.')
+    with su('root'):
+        service_control('juju-gui', START)
+        service_control('juju-api-improv', START)
+    log('Exposing services.')
+    open_port(8888)
+    open_port(8081)
+
+
+if __name__ == '__main__':
+    log_entry()
+    try:
+        start_improv()
+    finally:
+        log_exit()

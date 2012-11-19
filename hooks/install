@@ -7,9 +7,10 @@ from subprocess import check_call
 check_call(['apt-get', 'install', '-y', 'python-charmhelpers'])
 
 
-# These modules depend on shelltoolbox being installed so they must not be
-# imported until that package is available.
+# These modules depend on charmhelpers and shelltoolbox being installed so they
+# must not be imported until those packages are available.
 from helpers import (
+    log,
     log_entry,
     log_exit,
 )
@@ -24,8 +25,10 @@ from shelltoolbox import (
 
 def fetch():
     """Install required dependencies and retrieve Juju/Juju-GUI branches."""
+    log('Installing dependencies.')
     install_extra_repositories('ppa:chris-lea/node.js')
     apt_get_install('bzr', 'imagemagick', 'make', 'node', 'npm', 'zookeeper')
+    log('Retrieving source checkouts.')
     bzr_checkout = command('bzr', 'co', '--lightweight')
     bzr_checkout('lp:juju-gui', 'juju-gui')
     bzr_checkout('lp:~hazmat/juju/rapi-rollup', 'juju')
@@ -33,6 +36,7 @@ def fetch():
 
 def build():
     """Set up Juju-GUI."""
+    log('Building Juju-GUI.')
     with cd('juju-gui'):
         run('make', 'install')
 

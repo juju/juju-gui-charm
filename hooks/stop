@@ -1,0 +1,25 @@
+#!/usr/bin/env python2
+
+from helpers import (
+    log,
+    log_entry,
+    log_exit,
+    service_control,
+    STOP,
+)
+from shelltoolbox import su
+
+
+def stop():
+    """Stop the Juju API agent."""
+    log('Stopping Juju API agent.')
+    with su('root'):
+        service_control('juju-api-agent', STOP)
+
+
+if __name__ == '__main__':
+    log_entry()
+    try:
+        stop()
+    finally:
+        log_exit()
