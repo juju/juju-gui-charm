@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
 
-from helpers import (
+from charmhelpers import (
     log,
     log_entry,
     log_exit,

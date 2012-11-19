@@ -7,4 +7,4 @@ stop on runlevel [!2345]
 respawn
 
 setuid ubuntu
-exec node {juju_gui_dir}/server.js
+exec nodejs %(juju_gui_dir)s/server.js

@@ -3,7 +3,7 @@
 import os
 import sys
 
-from helpers import (
+from charmhelpers import (
     log,
     log_entry,
     log_exit,
@@ -29,17 +29,18 @@ def render_to_file(template, context, destination):
     The argument *destination* is a file path.
     The argument *context* is a dict-like object.
     """
-    template_path = os.path.join(__file__, '..', 'config', template)
+    template_path = os.path.join(
+        os.path.dirname(__file__), '..', 'config', template)
     contents = open(template_path).read()
     with open(destination, 'w') as stream:
-        stream.write(contents.format(**context))
+        stream.write(contents % context)
 
 
 def start_improv():
     """Start a simulated juju environment using ``improv.py``."""
     sys.path.insert(0, JUJU_DIR)
     log('Retrieving websocket URL.')
-    ws_ip_address = run('ec2metadata', '--public-ipv4').strip()
+    ws_ip_address = run('ec2metadata', '--local-ipv4').strip()
     ws_url = 'ws://{}:8081/ws'.format(ws_ip_address)
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
