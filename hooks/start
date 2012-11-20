@@ -10,6 +10,7 @@ from charmhelpers import (
     open_port,
     service_control,
     START,
+    unit_get,
 )
 from shelltoolbox import (
     run,
@@ -28,8 +29,7 @@ def start_improv():
     """Start a simulated juju environment using ``improv.py``."""
     sys.path.insert(0, JUJU_DIR)
     log('Retrieving websocket URL.')
-    ws_ip_address = run('ec2metadata', '--public-ipv4').strip()
-    ws_url = 'ws://{}:8081/ws'.format(ws_ip_address)
+    ws_url = 'ws://{0}:8081/ws'.format(unit_get('public-address'))
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
     log('Setting up start up scripts.')
