@@ -10,6 +10,7 @@ check_call(['apt-get', 'install', '-y', 'python-charmhelpers'])
 # These modules depend on charmhelpers and shelltoolbox being installed so they
 # must not be imported until those packages are available.
 from charmhelpers import (
+    get_config,
     log,
     log_entry,
     log_exit,
@@ -29,9 +30,10 @@ def fetch():
     install_extra_repositories('ppa:chris-lea/node.js')
     apt_get_install('bzr', 'imagemagick', 'make', 'nodejs', 'npm', 'zookeeper')
     log('Retrieving source checkouts.')
+    config = get_config()
     bzr_checkout = command('bzr', 'co', '--lightweight')
-    bzr_checkout('lp:juju-gui', 'juju-gui')
-    bzr_checkout('lp:~hazmat/juju/rapi-rollup', 'juju')
+    bzr_checkout(config['juju-gui-branch'], 'juju-gui')
+    bzr_checkout(config['juju-improv-branch'], 'juju')
 
 
 def build():
