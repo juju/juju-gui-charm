@@ -1,0 +1,22 @@
+#!/usr/bin/env python2
+
+import unittest
+
+
+class DeployTest(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    def test_improv(self):
+        self.assertTrue(True)
+
+    def test_failing(self):
+        self.assertTrue(False)
+
+
+if __name__ == '__main__':
+    unittest.main()
