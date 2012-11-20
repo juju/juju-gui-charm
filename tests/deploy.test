@@ -21,9 +21,6 @@ class DeployTest(unittest.TestCase):
             'watch', '--failfast', self.charm,
             '--state', 'started', '--open-port', self.port)
 
-    def tearDown(self):
-        juju('destroy-service', self.charm)
-
     def test_improv(self):
         # Ensure the Juju GUI and improv services are correctly set up.
         address = jitsu('get-service-info', self.charm, 'public-address')
