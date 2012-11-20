@@ -16,24 +16,12 @@ from shelltoolbox import (
     su,
 )
 
+from utils import render_to_file
+
+
 CURRENT_DIR = os.getcwd()
 JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
-
-
-def render_to_file(template, context, destination):
-    """Render the given *template* into *destination* using *context*.
-
-    The arguments *template* is the name of the template file that lives in
-    ``../config``.
-    The argument *destination* is a file path.
-    The argument *context* is a dict-like object.
-    """
-    template_path = os.path.join(
-        os.path.dirname(__file__), '..', 'config', template)
-    contents = open(template_path).read()
-    with open(destination, 'w') as stream:
-        stream.write(contents % context)
 
 
 def start_improv():

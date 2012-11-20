@@ -14,7 +14,8 @@ def stop():
     """Stop the Juju API agent."""
     log('Stopping Juju API agent.')
     with su('root'):
-        service_control('juju-api-agent', STOP)
+        service_control('juju-gui', STOP)
+        service_control('juju-api-improv', STOP)
 
 
 if __name__ == '__main__':

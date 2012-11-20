@@ -38,7 +38,7 @@ def build():
     """Set up Juju-GUI."""
     log('Building Juju-GUI.')
     with cd('juju-gui'):
-        run('make', 'install')
+        run('make')
 
 
 if __name__ == '__main__':
