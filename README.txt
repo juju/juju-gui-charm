@@ -37,7 +37,7 @@ Functional test setup
 At the time of this writing the Jitsu test command is not yet released.  To
 run it you must first install it locally (replace USER with your user name)::
 
-    sudo apt-get install autoconf libtool
+    sudo apt-get install autoconf libtool python-shelltoolbox
     bzr branch lp:~jimbaker/juju-jitsu/unit-test jitsu-unit-test
     cd jitsu-unit-test
     autoreconf
@@ -59,7 +59,7 @@ Running the functional tests
 
 Run the functional tests thusly::
 
-    ~/bin/jitsu test juju-gui --logdir /tmp
+    JUJU_REPOSITORY=/path/to/local/repo ~/bin/jitsu test juju-gui --logdir /tmp
 
 If Jitsu generates errors about not being able bootstrap::
 
