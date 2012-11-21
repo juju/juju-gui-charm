@@ -34,13 +34,15 @@ by the Jitsu test command.  All files in the tests directory which end with
 Functional test setup
 ~~~~~~~~~~~~~~~~~~~~~
 
-At the time of this writing the Jitsu test command is not yet released.  To
-run it you must first install it locally (replace USER with your user name)::
+At the time of this writing the Jitsu test command is not yet released.  To run
+it you must first install it locally.  The files may be installed globally, or
+into your home directory (as here)::
 
+    sudo apt-get install autoconf
     bzr branch lp:~jimbaker/juju-jitsu/unit-test jitsu-unit-test
     cd jitsu-unit-test
     autoreconf
-    ./configure --prefix=/home/USER
+    ./configure --prefix=$HOME
     make
     make install
 
@@ -56,9 +58,14 @@ Now you are ready to run the functional tests (see the next section).
 Running the functional tests
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Run the functional tests thusly::
+Jitsu requires the charm directory be named the same as the charm and it be the
+current working directory when the tests are run::
 
     ~/bin/jitsu test juju-gui --logdir /tmp
+
+If you are going to run the tests often, you probably want to set up LXC and
+run the tests locally by setting your default environment to a "local" one.
+Among other things you will need to install apt-cacher-ng and LXC to do so.
 
 If Jitsu generates errors about not being able bootstrap::
 

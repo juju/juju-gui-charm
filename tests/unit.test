@@ -1,6 +1,9 @@
 #!/usr/bin/env python2
 
-import unittest
+import os
 import sys
+import unittest
 
-sys.exit(unittest.TextTestRunner().run(unittest.TestLoader().discover('.')))
+runner = unittest.TextTestRunner()
+suite = unittest.TestLoader().discover(os.path.dirname(__file__))
+runner.run(suite)
