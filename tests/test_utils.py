@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 
 import os
-import sys
 import tempfile
 import unittest
 
@@ -28,4 +27,4 @@ class RenderToFileTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    sys.exit(unittest.main())
+    unittest.main(verbosity=2)

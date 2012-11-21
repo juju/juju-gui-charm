@@ -1,5 +1,6 @@
 #!/usr/bin/env python2
 
+import time
 import unittest
 import urllib2
 
@@ -8,6 +9,21 @@ from shelltoolbox import command
 
 jitsu = command('jitsu')
 juju = command('juju')
+
+
+def open_url(url):
+    """Return a file-like object representing the URL.
+
+    Retries several times before failing.
+    """
+    retries = 60
+    while retries:
+        try:
+            return urllib2.urlopen(url)
+        except urllib2.URLError as err:
+            retries -= 1
+            time.sleep(0.5)
+    raise err
 
 
 class DeployTest(unittest.TestCase):
@@ -26,14 +42,14 @@ class DeployTest(unittest.TestCase):
         address = jitsu('get-service-info', self.charm, 'public-address')
         hostname = address.strip().split(':')[1]
         url = 'http://{0}:{1}'.format(hostname, self.port)
-        response = urllib2.urlopen(url)
+        response = open_url(url)
         self.assertEqual(200, response.getcode())
         ws_url = 'http://{0}:8081/ws'.format(hostname)
         # A bad request status code here means the websocket resource is found.
         # It would take an actual websocket client to properly interact with
         # the websocket server.
         with self.assertRaises(urllib2.HTTPError) as context_manager:
-            urllib2.urlopen(ws_url)
+            open_url(ws_url)
         self.assertEqual(400, context_manager.exception.getcode())
 
 
