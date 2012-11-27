@@ -48,7 +48,9 @@ def start_improv():
         service_control('juju-gui', START)
         service_control('juju-api-improv', START)
     log('Exposing services.')
+    # Open the Juju GUI web server port.
     open_port(8888)
+    # Open the Juju websocket server port.
     open_port(8081)
 
 

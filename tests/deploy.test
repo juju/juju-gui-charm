@@ -14,7 +14,9 @@ juju = command('juju')
 def open_url(url):
     """Return a file-like object representing the URL.
 
-    Retries several times before failing.
+    Retries several times before failing, only catching URL errors because
+    we only need to make sure that the service is reachable, not that the
+    response is correct.
     """
     retries = 60
     while retries:

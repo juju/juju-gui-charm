@@ -52,6 +52,11 @@ directory named "juju-gui"::
 
     bzr branch lp:~juju-gui/charms/precise/juju-gui/trunk juju-gui
 
+The branch directory must be placed (or linked from) within a local charm
+repository. It consists of a directory, itself containing a number of
+directories, one for each distribution codename, e.g. ``precise``. In turn, the
+codename directories will contain the charm repositories.
+
 Now you are ready to run the functional tests (see the next section).
 
 
@@ -61,7 +66,7 @@ Running the functional tests
 Jitsu requires the charm directory be named the same as the charm and it be the
 current working directory when the tests are run::
 
-    JUJU_REPOSITORY=/path/to/local/repo ~/bin/jitsu test juju-gui --logdir /tmp
+    JUJU_REPOSITORY=/path/to/charm/repo ~/bin/jitsu test juju-gui --logdir /tmp
 
 If you are going to run the tests often, you probably want to set up LXC and
 run the tests locally by setting your default environment to a "local" one.
