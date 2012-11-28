@@ -1,0 +1,11 @@
+options:
+  juju-gui-branch:
+    description: |
+      The Juju GUI Bazaar branch containing the source code to be deployed.
+    type: string
+    default: lp:juju-gui
+  juju-improv-branch:
+    description: |
+      The Juju Bazaar branch containing the improv script.
+    type: string
+    default: lp:~hazmat/juju/rapi-rollup
