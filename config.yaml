@@ -6,6 +6,12 @@ options:
     default: lp:juju-gui
   juju-improv-branch:
     description: |
-      The Juju Bazaar branch containing the improv script.
+      The Juju Bazaar branch containing the improv script. This value is only
+      used if the staging option is set to True.
     type: string
     default: lp:~hazmat/juju/rapi-rollup
+  staging:
+    description: |
+      Connect the Juju GUI to the staging backend (i.e. the improv script).
+    type: boolean
+    default: False
