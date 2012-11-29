@@ -12,5 +12,5 @@ options:
   juju-gui-console-enabled:
     description:
       Whether or not the browser's console should be enabled.
-    type: string
-    default: 'false'
+    type: boolean
+    default: false

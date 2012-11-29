@@ -20,6 +20,8 @@ from shelltoolbox import (
 
 from utils import render_to_file
 
+import json
+
 
 CURRENT_DIR = os.getcwd()
 JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
@@ -46,7 +48,7 @@ def start_improv():
         'config.js.template', 
         {
             'ws_url': ws_url,
-            'console_enabled': config['juju-gui-console-enabled']
+            'console_enabled': json.dumps(config['juju-gui-console-enabled'])
         },
         os.path.join(JUJU_GUI_DIR, 'app', 'config.js'))
     log('Starting Juju-GUI.')
