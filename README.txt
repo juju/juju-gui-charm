@@ -38,7 +38,7 @@ At the time of this writing the Jitsu test command is not yet released.  To run
 it you must first install it locally.  The files may be installed globally, or
 into your home directory (as here)::
 
-    sudo apt-get install autoconf libtool python-shelltoolbox
+    sudo apt-get install autoconf libtool python-charmhelpers
     bzr branch lp:~jimbaker/juju-jitsu/unit-test jitsu-unit-test
     cd jitsu-unit-test
     autoreconf

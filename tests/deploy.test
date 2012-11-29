@@ -4,6 +4,7 @@ import time
 import unittest
 import urllib2
 
+from charmhelpers import make_charm_config_file
 from shelltoolbox import command
 
 
@@ -33,26 +34,69 @@ class DeployTest(unittest.TestCase):
     def setUp(self):
         self.charm = 'juju-gui'
         self.port = '8888'
-        juju('deploy', 'local:{0}'.format(self.charm))
+        self.services = ()
+
+    def tearDown(self):
+        # XXX 2012-11-29 frankban bug=872264:
+            # Just invoking ``juju destroy-service juju-gui`` here should
+            # execute the ``stop`` hook, tearing down all the services
+            # started by the charm in the machine. Right now this does not
+            # work, so the same behavior is accomplished keeping track of
+            # started services and manually stopping them here.
+        for service in self.services:
+            juju('ssh', self.charm, 'sudo', 'service', service, 'stop')
+
+    def deploy(self, config_path=None):
+        """Deploy and expose the Juju GUI charm. Return the service hostname.
+
+        Also wait until the service is started.
+        If *config_path* is provided, it will be used when deploying the charm.
+        """
+        args = ['deploy', 'local:{0}'.format(self.charm)]
+        if config_path is not None:
+            args.extend(['--config', config_path])
+        juju(*args)
         juju('expose', self.charm)
         jitsu(
             'watch', '--failfast', self.charm,
             '--state', 'started', '--open-port', self.port)
-
-    def test_improv(self):
-        # Ensure the Juju GUI and improv services are correctly set up.
         address = jitsu('get-service-info', self.charm, 'public-address')
-        hostname = address.strip().split(':')[1]
+        return address.strip().split(':')[1]
+
+    def check_services(self, hostname, ws_port=8081):
+        """Check the services are listening on their tcp ports."""
         url = 'http://{0}:{1}'.format(hostname, self.port)
         response = open_url(url)
         self.assertEqual(200, response.getcode())
-        ws_url = 'http://{0}:8081/ws'.format(hostname)
+        ws_url = 'http://{0}:{1}/ws'.format(hostname, ws_port)
         # A bad request status code here means the websocket resource is found.
         # It would take an actual websocket client to properly interact with
         # the websocket server.
         with self.assertRaises(urllib2.HTTPError) as context_manager:
             open_url(ws_url)
         self.assertEqual(400, context_manager.exception.getcode())
+
+    def test_api_agent(self):
+        # Ensure the Juju GUI and API agent services are correctly set up.
+        self.services = ('juju-api-agent', 'juju-gui')
+        hostname = self.deploy()
+        self.check_services(hostname)
+
+    def test_customized_api_port(self):
+        # It is possible to customize the port used by the websocket server.
+        self.services = ('juju-api-agent', 'juju-gui')
+        config = {self.charm: {'juju-api-port': 80}}
+        config_file = make_charm_config_file(config)
+        hostname = self.deploy(config_path=config_file.name)
+        self.check_services(hostname, ws_port=80)
+
+    def test_staging(self):
+        # Ensure the Juju GUI and improv services are correctly set up.
+        self.services = ('juju-api-improv', 'juju-gui')
+        config = {self.charm: {'staging': 'True'}}
+        config_file = make_charm_config_file(config)
+        hostname = self.deploy(config_path=config_file.name)
+        self.check_services(hostname)
 
 
 if __name__ == '__main__':
