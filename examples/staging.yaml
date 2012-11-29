@@ -1,2 +1,2 @@
 juju-gui:
-  staging:: True
+  staging: True
