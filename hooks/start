@@ -4,6 +4,7 @@ import os
 import sys
 
 from charmhelpers import (
+    get_config,
     log,
     log_entry,
     log_exit,
@@ -40,8 +41,13 @@ def start_improv():
         'juju-gui.conf.template', {'juju_gui_dir': JUJU_GUI_DIR},
         '/etc/init/juju-gui.conf')
     log('Generating the Juju-GUI configuration file.')
+    config = get_config()
     render_to_file(
-        'config.js.template', {'ws_url': ws_url},
+        'config.js.template', 
+        {
+            'ws_url': ws_url,
+            'console_enabled': config['juju-gui-console-enabled']
+        },
         os.path.join(JUJU_GUI_DIR, 'app', 'config.js'))
     log('Starting Juju-GUI.')
     with su('root'):
