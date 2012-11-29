@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 
 from charmhelpers import (
+    get_config,
     log,
     log_entry,
     log_exit,
@@ -12,10 +13,16 @@ from shelltoolbox import su
 
 def stop():
     """Stop the Juju API agent."""
-    log('Stopping Juju API agent.')
+    config = get_config()
     with su('root'):
+        log('Stopping Juju GUI.')
         service_control('juju-gui', STOP)
-        service_control('juju-api-improv', STOP)
+        if config.get('staging'):
+            log('Stopping improv.')
+            service_control('juju-api-improv', STOP)
+        else:
+            log('Stopping API agent.')
+            service_control('juju-api-agent', STOP)
 
 
 if __name__ == '__main__':
