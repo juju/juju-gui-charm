@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 
 import os
-import sys
 
 from charmhelpers import (
     get_config,
@@ -14,14 +13,14 @@ from charmhelpers import (
     unit_get,
 )
 from shelltoolbox import (
-    cd,
-    environ,
     run,
-    search_file,
     su,
 )
 
-from utils import render_to_file
+from utils import (
+    get_zookeeper_address,
+    render_to_file,
+)
 
 
 CURRENT_DIR = os.getcwd()
@@ -29,56 +28,74 @@ JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
 
 
-def start_improv():
-    """Start a simulated juju environment using ``improv.py``."""
-    log('Retrieving websocket URL.')
-    ws_url = 'ws://{0}:8081/ws'.format(unit_get('public-address'))
+def start_gui(juju_api_port):
+    """Set up and start the Juju GUI server."""
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
-    log('Setting up start up scripts.')
-    render_to_file(
-        'juju-api-improv.conf.template', {'juju_dir': JUJU_DIR},
-        '/etc/init/juju-api-improv.conf')
+    log('Setting up Juju GUI start up script.')
     render_to_file(
         'juju-gui.conf.template', {'juju_gui_dir': JUJU_GUI_DIR},
         '/etc/init/juju-gui.conf')
     log('Generating the Juju-GUI configuration file.')
+    context = {'address': unit_get('public-address'), 'port': juju_api_port}
     render_to_file(
-        'config.js.template', {'ws_url': ws_url},
+        'config.js.template', context,
         os.path.join(JUJU_GUI_DIR, 'app', 'config.js'))
     log('Starting Juju-GUI.')
     with su('root'):
         service_control('juju-gui', START)
+
+
+def start_improv(juju_api_port):
+    """Start a simulated juju environment using ``improv.py``."""
+    log('Setting up staging start up script.')
+    context = {'juju_dir': JUJU_DIR, 'port': juju_api_port}
+    render_to_file(
+        'juju-api-improv.conf.template', context,
+        '/etc/init/juju-api-improv.conf')
+    log('Starting improv.')
+    with su('root'):
         service_control('juju-api-improv', START)
+
+
+def start_agent(juju_api_port):
+    """Start the Juju agent and connect to the current environment."""
+    # Retrieve the Zookeeper address from the start up script.
+    unit_dir = os.path.realpath(os.path.join(CURRENT_DIR, '..'))
+    agent_file = '/etc/init/juju-{0}.conf'.format(os.path.basename(unit_dir))
+    zookeeper = get_zookeeper_address(agent_file)
+    log('Setting up API agent start up script.')
+    context = {
+        'juju_dir': JUJU_DIR,
+        'port': juju_api_port,
+        'zookeeper': zookeeper,
+    }
+    render_to_file(
+        'juju-api-agent.conf.template', context,
+        '/etc/init/juju-api-agent.conf')
+    log('Starting API agent.')
+    with su('root'):
+        service_control('juju-api-agent', START)
+
+
+def open_ports(juju_api_port):
+    """Expose Juju GUI web server and websocket server ports."""
     log('Exposing services.')
     # Open the Juju GUI web server port.
     open_port(8888)
     # Open the Juju websocket server port.
-    open_port(8081)
-
-
-def start_agent():
-    """Start the Juju agent and connect to the current environment."""
-    unit_dir = os.path.realpath(os.path.join(CURRENT_DIR, '..'))
-    agent_file = '/etc/init/juju-{0}.conf'.format(os.path.basename(unit_dir))
-    line = search_file('JUJU_ZOOKEEPER', agent_file).strip()
-    zookeeper_address = line.split('=')[1].strip('"')
-    with environ(JUJU_ZOOKEEPER=zookeeper_address):
-        with open('agent-startup-stderr.log', 'w') as output:
-            with cd(JUJU_DIR):
-                run('python', '-m', 'juju.agents.api',
-                    '--logfile', '/var/log/juju/api-agent.log',
-                    '--session-file', '/var/run/juju/api-agent.zksession',
-                    stdout=output, stderr=output)
+    open_port(juju_api_port)
 
 
 def main():
-    #sys.path.insert(0, JUJU_DIR)
     config = get_config()
+    juju_api_port = config['juju-api-port']
+    start_gui(juju_api_port)
     if config.get('staging'):
-        start_improv()
+        start_improv(juju_api_port)
     else:
-        start_agent()
+        start_agent(juju_api_port)
+    open_ports(juju_api_port)
 
 
 if __name__ == '__main__':

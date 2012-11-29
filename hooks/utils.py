@@ -2,6 +2,20 @@
 
 import os
 
+from shelltoolbox import search_file
+
+
+def get_zookeeper_address(agent_file):
+    """Retrieve the Zookeeper address contained in the given *agent_file*.
+
+    The *agent_file* is a path to a file containing a line similar to the
+    following::
+
+        env JUJU_ZOOKEEPER="address"
+    """
+    line = search_file('JUJU_ZOOKEEPER', agent_file).strip()
+    return line.split('=')[1].strip('"')
+
 
 def render_to_file(template, context, destination):
     """Render the given *template* into *destination* using *context*.
