@@ -4,12 +4,16 @@ options:
       The Juju GUI Bazaar branch containing the source code to be deployed.
     type: string
     default: lp:juju-gui
-  juju-improv-branch:
+  juju-api-branch:
     description: |
-      The Juju Bazaar branch containing the improv script. This value is only
-      used if the staging option is set to True.
+      The Juju API Bazaar branch (containing the improv script).
     type: string
     default: lp:~hazmat/juju/rapi-rollup
+  juju-api-port:
+    description: |
+      The port used by the websocket server.
+    type: int
+    default: 8081
   staging:
     description: |
       Connect the Juju GUI to the staging backend (i.e. the improv script).
