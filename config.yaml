@@ -19,3 +19,9 @@ options:
       Connect the Juju GUI to the staging backend (i.e. the improv script).
     type: boolean
     default: False
+  staging-environment:
+    description: |
+      The environment JSON export used by the staging server.
+      Possible values are 'sample' and 'large'.
+    type: string
+    default: sample

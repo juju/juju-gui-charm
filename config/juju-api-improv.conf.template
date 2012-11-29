@@ -8,4 +8,4 @@ setuid ubuntu
 env PYTHONPATH=%(juju_dir)s:$PYTHONPATH
 
 exec /usr/bin/python %(juju_dir)s/improv.py --port %(port)s \
-    -f %(juju_dir)s/sample.json &> /tmp/improv-agent.output
+    -f %(juju_dir)s/%(staging_env)s.json

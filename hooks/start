@@ -46,10 +46,14 @@ def start_gui(juju_api_port):
         service_control('juju-gui', START)
 
 
-def start_improv(juju_api_port):
+def start_improv(juju_api_port, staging_env):
     """Start a simulated juju environment using ``improv.py``."""
     log('Setting up staging start up script.')
-    context = {'juju_dir': JUJU_DIR, 'port': juju_api_port}
+    context = {
+        'juju_dir': JUJU_DIR,
+        'port': juju_api_port,
+        'staging_env': staging_env,
+    }
     render_to_file(
         'juju-api-improv.conf.template', context,
         '/etc/init/juju-api-improv.conf')
@@ -92,7 +96,7 @@ def main():
     juju_api_port = config['juju-api-port']
     start_gui(juju_api_port)
     if config.get('staging'):
-        start_improv(juju_api_port)
+        start_improv(juju_api_port, config['staging-environment'])
     else:
         start_agent(juju_api_port)
     open_ports(juju_api_port)
