@@ -1,5 +1,5 @@
 var juju_config = {
-  consoleEnabled: true,
+  consoleEnabled: %(console_enabled)s,
   serverRouting: false,
   html5: true,
   container: '#main',

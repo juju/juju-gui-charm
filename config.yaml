@@ -9,3 +9,8 @@ options:
       The Juju Bazaar branch containing the improv script.
     type: string
     default: lp:~hazmat/juju/rapi-rollup
+  juju-gui-console-enabled:
+    description:
+      Whether or not the browser's console should be enabled.
+    type: boolean
+    default: false
