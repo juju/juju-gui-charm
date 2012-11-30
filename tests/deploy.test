@@ -10,6 +10,7 @@ from shelltoolbox import command
 
 jitsu = command('jitsu')
 juju = command('juju')
+ssh = command('ssh')
 
 
 def open_url(url):
@@ -34,20 +35,23 @@ class DeployTest(unittest.TestCase):
     def setUp(self):
         self.charm = 'juju-gui'
         self.port = '8888'
-        self.services = ()
 
     def tearDown(self):
+        juju('destroy-service', self.charm)
+
+    def stop_services(self, hostname, services):
         # XXX 2012-11-29 frankban bug=872264:
-            # Just invoking ``juju destroy-service juju-gui`` here should
-            # execute the ``stop`` hook, tearing down all the services
+            # Just invoking ``juju destroy-service juju-gui`` in tearDown
+            # should execute the ``stop`` hook, stopping all the services
             # started by the charm in the machine. Right now this does not
             # work, so the same behavior is accomplished keeping track of
             # started services and manually stopping them here.
-        for service in self.services:
-            juju('ssh', self.charm, 'sudo', 'service', service, 'stop')
+        target = 'ubuntu@{0}'.format(hostname)
+        for service in services:
+            ssh(target, 'sudo', 'service', service, 'stop')
 
     def deploy(self, config_path=None):
-        """Deploy and expose the Juju GUI charm. Return the service hostname.
+        """Deploy and expose the Juju GUI charm. Return the service host name.
 
         Also wait until the service is started.
         If *config_path* is provided, it will be used when deploying the charm.
@@ -78,17 +82,21 @@ class DeployTest(unittest.TestCase):
 
     def test_api_agent(self):
         # Ensure the Juju GUI and API agent services are correctly set up.
-        self.services = ('juju-api-agent', 'juju-gui')
         hostname = self.deploy()
         self.check_services(hostname)
+        # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
+        self.addCleanup(
+            self.stop_services, hostname, ['juju-api-agent', 'juju-gui'])
 
     def test_customized_api_port(self):
         # It is possible to customize the port used by the websocket server.
-        self.services = ('juju-api-agent', 'juju-gui')
         config = {self.charm: {'juju-api-port': 80}}
         config_file = make_charm_config_file(config)
         hostname = self.deploy(config_path=config_file.name)
         self.check_services(hostname, ws_port=80)
+        # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
+        self.addCleanup(
+            self.stop_services, hostname, ['juju-api-agent', 'juju-gui'])
 
     def test_staging(self):
         # Ensure the Juju GUI and improv services are correctly set up.
@@ -97,6 +105,9 @@ class DeployTest(unittest.TestCase):
         config_file = make_charm_config_file(config)
         hostname = self.deploy(config_path=config_file.name)
         self.check_services(hostname)
+        # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
+        self.addCleanup(
+            self.stop_services, hostname, ['juju-api-improv', 'juju-gui'])
 
 
 if __name__ == '__main__':
