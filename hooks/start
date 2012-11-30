@@ -1,5 +1,6 @@
 #!/usr/bin/env python2
 
+import json
 import os
 
 from charmhelpers import (
@@ -22,13 +23,12 @@ from utils import (
     render_to_file,
 )
 
-
 CURRENT_DIR = os.getcwd()
 JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
 
 
-def start_gui(juju_api_port):
+def start_gui(juju_api_port, console_enabled):
     """Set up and start the Juju GUI server."""
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
@@ -37,7 +37,11 @@ def start_gui(juju_api_port):
         'juju-gui.conf.template', {'juju_gui_dir': JUJU_GUI_DIR},
         '/etc/init/juju-gui.conf')
     log('Generating the Juju-GUI configuration file.')
-    context = {'address': unit_get('public-address'), 'port': juju_api_port}
+    context = {
+        'address': unit_get('public-address'),
+        'console_enabled': json.dumps(console_enabled),
+        'port': juju_api_port,
+    }
     render_to_file(
         'config.js.template', context,
         os.path.join(JUJU_GUI_DIR, 'app', 'config.js'))
@@ -94,7 +98,7 @@ def open_ports(juju_api_port):
 def main():
     config = get_config()
     juju_api_port = config['juju-api-port']
-    start_gui(juju_api_port)
+    start_gui(juju_api_port, config['juju-gui-console-enabled'])
     if config.get('staging'):
         start_improv(juju_api_port, config['staging-environment'])
     else:

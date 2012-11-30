@@ -25,3 +25,8 @@ options:
       Possible values are 'sample' and 'large'.
     type: string
     default: sample
+  juju-gui-console-enabled:
+    description: |
+      Whether or not the browser's console should be enabled.
+    type: boolean
+    default: false
