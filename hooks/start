@@ -36,7 +36,7 @@ def start_gui(juju_api_port, console_enabled):
     render_to_file(
         'juju-gui.conf.template', {'juju_gui_dir': JUJU_GUI_DIR},
         '/etc/init/juju-gui.conf')
-    log('Generating the Juju-GUI configuration file.')
+    log('Generating the Juju GUI configuration file.')
     context = {
         'address': unit_get('public-address'),
         'console_enabled': json.dumps(console_enabled),
@@ -45,7 +45,7 @@ def start_gui(juju_api_port, console_enabled):
     render_to_file(
         'config.js.template', context,
         os.path.join(JUJU_GUI_DIR, 'app', 'config.js'))
-    log('Starting Juju-GUI.')
+    log('Starting Juju GUI.')
     with su('root'):
         service_control('juju-gui', START)
 

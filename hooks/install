@@ -25,7 +25,7 @@ from shelltoolbox import (
 
 
 def fetch(juju_gui_branch, juju_api_branch):
-    """Install required dependencies and retrieve Juju/Juju-GUI branches."""
+    """Install required dependencies and retrieve Juju/Juju GUI branches."""
     log('Installing dependencies.')
     install_extra_repositories('ppa:chris-lea/node.js')
     apt_get_install('bzr', 'imagemagick', 'make', 'nodejs', 'npm', 'zookeeper')
@@ -36,8 +36,8 @@ def fetch(juju_gui_branch, juju_api_branch):
 
 
 def build():
-    """Set up Juju-GUI."""
-    log('Building Juju-GUI.')
+    """Set up Juju GUI."""
+    log('Building Juju GUI.')
     with cd('juju-gui'):
         run('make')
 
