@@ -24,29 +24,33 @@ from shelltoolbox import (
 )
 
 
-def fetch():
-    """Install required dependencies and retrieve Juju/Juju-GUI branches."""
+def fetch(juju_gui_branch, juju_api_branch):
+    """Install required dependencies and retrieve Juju/Juju GUI branches."""
     log('Installing dependencies.')
     install_extra_repositories('ppa:chris-lea/node.js')
     apt_get_install('bzr', 'imagemagick', 'make', 'nodejs', 'npm', 'zookeeper')
     log('Retrieving source checkouts.')
-    config = get_config()
     bzr_checkout = command('bzr', 'co', '--lightweight')
-    bzr_checkout(config['juju-gui-branch'], 'juju-gui')
-    bzr_checkout(config['juju-improv-branch'], 'juju')
+    bzr_checkout(juju_gui_branch, 'juju-gui')
+    bzr_checkout(juju_api_branch, 'juju')
 
 
 def build():
-    """Set up Juju-GUI."""
-    log('Building Juju-GUI.')
+    """Set up Juju GUI."""
+    log('Building Juju GUI.')
     with cd('juju-gui'):
         run('make')
+
+
+def main():
+    config = get_config()
+    fetch(config['juju-gui-branch'], config['juju-api-branch'])
+    build()
 
 
 if __name__ == '__main__':
     log_entry()
     try:
-        fetch()
-        build()
+        main()
     finally:
         log_exit()

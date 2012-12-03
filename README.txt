@@ -38,7 +38,7 @@ At the time of this writing the Jitsu test command is not yet released.  To run
 it you must first install it locally.  The files may be installed globally, or
 into your home directory (as here)::
 
-    sudo apt-get install autoconf libtool python-shelltoolbox
+    sudo apt-get install autoconf libtool python-charmhelpers
     bzr branch lp:~jimbaker/juju-jitsu/unit-test jitsu-unit-test
     cd jitsu-unit-test
     autoreconf
@@ -66,15 +66,19 @@ Running the functional tests
 Jitsu requires the charm directory be named the same as the charm and it be the
 current working directory when the tests are run::
 
-    JUJU_REPOSITORY=/path/to/charm/repo ~/bin/jitsu test juju-gui --logdir /tmp
+    JUJU_REPOSITORY=/path/to/charm/repo ~/bin/jitsu test juju-gui \
+        --logdir /tmp --timeout 40m
+
+This command will bootstrap the default Juju environment specified in your
+``~/.juju/environments.yaml``.
 
 If you are going to run the tests often, you probably want to set up LXC and
 run the tests locally by setting your default environment to a "local" one.
 Among other things you will need to install apt-cacher-ng and LXC to do so.
 
 Unfortunately, currently running tests on a local environment is quite slow
-(with quantal host and precise container at least), so you may want to increase
-the ``jitsu test`` command timeout (e.g. passing ``--timeout 30m``).
+(with quantal host and precise container at least), so you may want to further
+increase the ``jitsu test`` command timeout.
 
 If Jitsu generates errors about not being able bootstrap::
 

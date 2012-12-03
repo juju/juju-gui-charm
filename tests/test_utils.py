@@ -4,7 +4,26 @@ import os
 import tempfile
 import unittest
 
-from utils import render_to_file
+from utils import (
+    get_zookeeper_address,
+    render_to_file,
+)
+
+
+class GetZookeeperAddressTest(unittest.TestCase):
+
+    def setUp(self):
+        self.zookeeper_address = 'example.com:2000'
+        contents = 'env JUJU_ZOOKEEPER="{0}"\n'.format(self.zookeeper_address)
+        with tempfile.NamedTemporaryFile(delete=False) as agent_file:
+            agent_file.write(contents)
+            self.agent_file_path = agent_file.name
+        self.addCleanup(os.remove, self.agent_file_path)
+
+    def test_get_zookeeper_address(self):
+        # Ensure the Zookeeper address is correctly retreived.
+        address = get_zookeeper_address(self.agent_file_path)
+        self.assertEqual(self.zookeeper_address, address)
 
 
 class RenderToFileTest(unittest.TestCase):
