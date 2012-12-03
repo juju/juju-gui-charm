@@ -1,4 +1,4 @@
-description "Juju API improv"
+description "Juju API staging"
 author "Canonical"
 
 start on runlevel [2345]

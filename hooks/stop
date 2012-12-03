@@ -18,7 +18,7 @@ def stop():
         log('Stopping Juju GUI.')
         service_control('juju-gui', STOP)
         if config.get('staging'):
-            log('Stopping improv.')
+            log('Stopping the staging backend.')
             service_control('juju-api-improv', STOP)
         else:
             log('Stopping API agent.')

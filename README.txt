@@ -69,6 +69,9 @@ current working directory when the tests are run::
     JUJU_REPOSITORY=/path/to/charm/repo ~/bin/jitsu test juju-gui \
         --logdir /tmp --timeout 40m
 
+This command will bootstrap the default Juju environment specified in your
+``~/.juju/environments.yaml``.
+
 If you are going to run the tests often, you probably want to set up LXC and
 run the tests locally by setting your default environment to a "local" one.
 Among other things you will need to install apt-cacher-ng and LXC to do so.

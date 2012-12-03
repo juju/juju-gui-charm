@@ -61,7 +61,7 @@ def start_improv(juju_api_port, staging_env):
     render_to_file(
         'juju-api-improv.conf.template', context,
         '/etc/init/juju-api-improv.conf')
-    log('Starting improv.')
+    log('Starting the staging backend.')
     with su('root'):
         service_control('juju-api-improv', START)
 

@@ -6,7 +6,7 @@ options:
     default: lp:juju-gui
   juju-api-branch:
     description: |
-      The Juju API Bazaar branch (containing the improv script).
+      The Juju API Bazaar branch (implementing the websocket server).
     type: string
     default: lp:~hazmat/juju/rapi-rollup
   juju-api-port:
@@ -16,12 +16,14 @@ options:
     default: 8080
   staging:
     description: |
-      Connect the Juju GUI to the staging backend (i.e. the improv script).
+      Connect the Juju GUI to the staging backend
+      (i.e. a simulated Juju environment).
     type: boolean
     default: False
   staging-environment:
     description: |
-      The environment JSON export used by the staging server.
+      The environment JSON export used by the staging server. This option can
+      be used to change the topology of the simulated Juju environment.
       Possible values are 'sample' and 'large'.
     type: string
     default: sample
