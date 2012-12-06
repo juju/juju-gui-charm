@@ -7,15 +7,13 @@ server {
 
     # Serve static assets.
     location ^~ /juju-ui/ {
-        expires max;
         root %(server_root)s;
     }
     location = /favicon.ico {
-        expires max;
+        expires 10d;
         root %(server_root)s;
     }
     location = /index.html {
-        expires max;
         root %(server_root)s;
     }
 
