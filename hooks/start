@@ -99,7 +99,7 @@ def open_ports(juju_api_port):
     """Expose Juju GUI web server and websocket server ports."""
     log('Exposing services.')
     # Open the Juju GUI web server port.
-    open_port(8888)
+    open_port(80)
     # Open the Juju websocket server port.
     open_port(juju_api_port)
 
