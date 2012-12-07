@@ -3,10 +3,7 @@
 import os
 import logging
 
-from shelltoolbox import (
-    search_file,
-    )
-
+from shelltoolbox import search_file
 from charmhelpers import get_config
 
 
@@ -57,4 +54,6 @@ def cmd_log(results):
         return
     if results_log is None:
         _setupLogging()
+    # Since 'results' may be multi-line output, start it on a separate line
+    # from the logger timestamp, etc.
     results_log.info('\n' + results)

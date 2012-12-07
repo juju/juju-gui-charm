@@ -51,7 +51,7 @@ class CmdLogTest(unittest.TestCase):
     def setUp(self):
         # Patch the charmhelpers 'command', which powers get_config.  The
         # result of this is the mock_config dictionary will be returned.
-        # The monkey patch is undone at the end of the test.
+        # The monkey patch is undone in the tearDown.
         self.command = charmhelpers.command
         fd, self.log_file_name = tempfile.mkstemp()
         os.close(fd)
