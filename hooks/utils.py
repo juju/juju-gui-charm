@@ -1,8 +1,13 @@
 """Juju GUI charm utilities."""
 
 import os
+import logging
 
-from shelltoolbox import search_file
+from shelltoolbox import (
+    search_file,
+    )
+
+from charmhelpers import get_config
 
 
 def get_zookeeper_address(agent_file_path):
@@ -30,3 +35,26 @@ def render_to_file(template, context, destination):
     contents = open(template_path).read()
     with open(destination, 'w') as stream:
         stream.write(contents % context)
+
+
+results_log = None
+
+def _setupLogging():
+    global results_log
+    if results_log is not None:
+        return
+    config = get_config()
+    logging.basicConfig(
+        filename=config['command-log-file'],
+        level=logging.INFO,
+        format="%(asctime)s: %(name)s@%(levelname)s %(message)s")
+    results_log = logging.getLogger('juju-gui')
+
+
+def cmd_log(results):
+    global results_log
+    if not results:
+        return
+    if results_log is None:
+        _setupLogging()
+    results_log.info('\n' + results)

@@ -1,7 +1,12 @@
 #!/usr/bin/env python2
+#-*- python -*-
 
-from subprocess import check_call
-
+import os.path
+from subprocess import (
+    CalledProcessError,
+    check_call,
+    )
+import tempfile
 
 # python-shelltoolbox is installed as a dependency of python-charmhelpers.
 check_call(['apt-get', 'install', '-y', 'python-charmhelpers'])
@@ -23,34 +28,45 @@ from shelltoolbox import (
     run,
 )
 
+from utils import cmd_log
+
 
 def fetch(juju_gui_branch, juju_api_branch):
     """Install required dependencies and retrieve Juju/Juju GUI branches."""
     log('Installing dependencies.')
-    install_extra_repositories('ppa:chris-lea/node.js')
-    apt_get_install('bzr', 'imagemagick', 'make', 'nodejs', 'npm', 'zookeeper')
+    cmd_log(install_extra_repositories('ppa:chris-lea/node.js'))
+    cmd_log(
+        apt_get_install('bzr', 'imagemagick', 'make',
+                        'nodejs', 'npm', 'zookeeper'))
     log('Retrieving source checkouts.')
     bzr_checkout = command('bzr', 'co', '--lightweight')
-    bzr_checkout(juju_gui_branch, 'juju-gui')
-    bzr_checkout(juju_api_branch, 'juju')
+    cmd_log(bzr_checkout(juju_gui_branch, 'juju-gui'))
+    cmd_log(bzr_checkout(juju_api_branch, 'juju'))
 
 
-def build():
+def build(logpath):
     """Set up Juju GUI."""
     log('Building Juju GUI.')
     with cd('juju-gui'):
-        run('make')
+        logdir = os.path.dirname(logpath)
+        fd, name = tempfile.mkstemp(prefix='make-', dir=logdir)
+        log('Output from "make" sent to', name)
+        run('make', stdout=fd, stderr=fd)
 
 
 def main():
     config = get_config()
     fetch(config['juju-gui-branch'], config['juju-api-branch'])
-    build()
+    build(config['command-log-file'])
 
 
 if __name__ == '__main__':
     log_entry()
     try:
         main()
+    except CalledProcessError as e:
+        log('Exception caught:')
+        log(e.output)
+        raise
     finally:
         log_exit()
