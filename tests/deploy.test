@@ -35,7 +35,7 @@ class DeployTest(unittest.TestCase):
 
     def setUp(self):
         self.charm = 'juju-gui'
-        self.port = '8888'
+        self.port = '80'
 
     def tearDown(self):
         juju('destroy-service', self.charm)

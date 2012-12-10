@@ -37,7 +37,7 @@ def fetch(juju_gui_branch, juju_api_branch):
     cmd_log(install_extra_repositories('ppa:chris-lea/node.js'))
     cmd_log(
         apt_get_install('bzr', 'imagemagick', 'make',
-                        'nodejs', 'npm', 'zookeeper'))
+                        'nodejs', 'npm', 'zookeeper', 'nginx'))
     log('Retrieving source checkouts.')
     bzr_checkout = command('bzr', 'co', '--lightweight')
     cmd_log(bzr_checkout(juju_gui_branch, 'juju-gui'))
@@ -45,13 +45,19 @@ def fetch(juju_gui_branch, juju_api_branch):
 
 
 def build(logpath):
-    """Set up Juju GUI."""
+    """Set up Juju GUI and nginx."""
     log('Building Juju GUI.')
     with cd('juju-gui'):
         logdir = os.path.dirname(logpath)
         fd, name = tempfile.mkstemp(prefix='make-', dir=logdir)
         log('Output from "make" sent to', name)
         run('make', stdout=fd, stderr=fd)
+    log('Setting up nginx.')
+    cmd_log(run('rm', '/etc/nginx/sites-enabled/default'))
+    cmd_log(run('touch', '/etc/nginx/sites-available/juju-gui'))
+    cmd_log(run('chown', 'ubuntu:', '/etc/nginx/sites-available/juju-gui'))
+    cmd_log(run('ln', '-s', '/etc/nginx/sites-available/juju-gui',
+        '/etc/nginx/sites-enabled/juju-gui'))
 
 
 def main():
