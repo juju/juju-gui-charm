@@ -2,7 +2,7 @@
 #-*- python -*-
 
 from charmhelpers import (
-	get_config,
+    get_config,
     log,
     log_entry,
     log_exit,
