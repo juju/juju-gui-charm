@@ -32,6 +32,8 @@ def start_gui(juju_api_port, console_enabled, staging):
     """Set up and start the Juju GUI server."""
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
+    build_dir = JUJU_GUI_DIR + '/build-'
+    build_dir += 'debug' if staging else 'prod'
     log('Setting up Juju GUI start up script.')
     render_to_file(
         'juju-gui.conf.template', {'juju_gui_dir': JUJU_GUI_DIR},
@@ -44,10 +46,8 @@ def start_gui(juju_api_port, console_enabled, staging):
     }
     render_to_file(
         'config.js.template', context,
-        os.path.join(JUJU_GUI_DIR, 'app', 'config.js'))
+        os.path.join(build_dir, 'juju-ui', 'assets', 'config.js'))
     log('Generating the nginx site configuration file.')
-    build_dir = JUJU_GUI_DIR + '/build-'
-    build_dir += staging and 'debug' or 'prod'
     context = {
         'server_root': build_dir
     }
