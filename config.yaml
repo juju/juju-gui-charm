@@ -29,6 +29,13 @@ options:
     default: sample
   juju-gui-console-enabled:
     description: |
-      Whether or not the browser's console should be enabled.
+      Whether or not the console should be enabled for the browser.
     type: boolean
     default: false
+  command-log-file:
+    description: |
+      The log file where stdout and stderr should be sent for all
+      commands that are run by charm hooks.
+    type: string
+    default: /var/log/juju/juju-gui.log
+

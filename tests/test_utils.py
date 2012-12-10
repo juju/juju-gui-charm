@@ -3,8 +3,11 @@
 import os
 import tempfile
 import unittest
+import charmhelpers
+from simplejson import dumps
 
 from utils import (
+    cmd_log,
     get_zookeeper_address,
     render_to_file,
 )
@@ -43,6 +46,25 @@ class RenderToFileTest(unittest.TestCase):
         render_to_file(self.template_path, context, self.destination_file.name)
         expected = self.template_contents % context
         self.assertEqual(expected, self.destination_file.read())
+
+class CmdLogTest(unittest.TestCase):
+    def setUp(self):
+        # Patch the charmhelpers 'command', which powers get_config.  The
+        # result of this is the mock_config dictionary will be returned.
+        # The monkey patch is undone in the tearDown.
+        self.command = charmhelpers.command
+        fd, self.log_file_name = tempfile.mkstemp()
+        os.close(fd)
+        mock_config = {'command-log-file': self.log_file_name}
+        charmhelpers.command = lambda *args: lambda: dumps(mock_config)
+
+    def tearDown(self):
+        charmhelpers.command = self.command
+
+    def test_contents_logged(self):
+        cmd_log('foo')
+        line = open(self.log_file_name, 'r').read()
+        self.assertTrue(line.endswith(': juju-gui@INFO \nfoo\n'))
 
 
 if __name__ == '__main__':
