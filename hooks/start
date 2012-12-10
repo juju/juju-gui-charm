@@ -28,10 +28,12 @@ JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
 
 
-def start_gui(juju_api_port, console_enabled):
+def start_gui(juju_api_port, console_enabled, staging):
     """Set up and start the Juju GUI server."""
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
+    build_dir = JUJU_GUI_DIR + '/build-'
+    build_dir += 'debug' if staging else 'prod'
     log('Setting up Juju GUI start up script.')
     render_to_file(
         'juju-gui.conf.template', {'juju_gui_dir': JUJU_GUI_DIR},
@@ -44,7 +46,14 @@ def start_gui(juju_api_port, console_enabled):
     }
     render_to_file(
         'config.js.template', context,
-        os.path.join(JUJU_GUI_DIR, 'app', 'config.js'))
+        os.path.join(build_dir, 'juju-ui', 'assets', 'config.js'))
+    log('Generating the nginx site configuration file.')
+    context = {
+        'server_root': build_dir
+    }
+    render_to_file(
+        'nginx.conf.template', context,
+        '/etc/nginx/sites-available/juju-gui')
     log('Starting Juju GUI.')
     with su('root'):
         service_control('juju-gui', START)
@@ -90,7 +99,7 @@ def open_ports(juju_api_port):
     """Expose Juju GUI web server and websocket server ports."""
     log('Exposing services.')
     # Open the Juju GUI web server port.
-    open_port(8888)
+    open_port(80)
     # Open the Juju websocket server port.
     open_port(juju_api_port)
 
@@ -98,7 +107,8 @@ def open_ports(juju_api_port):
 def main():
     config = get_config()
     juju_api_port = config['juju-api-port']
-    start_gui(juju_api_port, config['juju-gui-console-enabled'])
+    start_gui(juju_api_port, config['juju-gui-console-enabled'],
+              config.get('staging'))
     if config.get('staging'):
         start_improv(juju_api_port, config['staging-environment'])
     else:

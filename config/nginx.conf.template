@@ -1,0 +1,24 @@
+server {
+    listen 80;
+    server_name _;
+    root %(server_root)s;
+
+    index index.html;
+
+    # Serve static assets.
+    location ^~ /juju-ui/ {
+        root %(server_root)s;
+    }
+    location = /favicon.ico {
+        expires 10d;
+        root %(server_root)s;
+    }
+    location = /index.html {
+        root %(server_root)s;
+    }
+
+    # Fall through to the single-page app for all other URLs.
+    location ~ / {
+        rewrite .* /index.html last;
+    }
+}

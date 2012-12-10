@@ -28,7 +28,8 @@ def fetch(juju_gui_branch, juju_api_branch):
     """Install required dependencies and retrieve Juju/Juju GUI branches."""
     log('Installing dependencies.')
     install_extra_repositories('ppa:chris-lea/node.js')
-    apt_get_install('bzr', 'imagemagick', 'make', 'nodejs', 'npm', 'zookeeper')
+    apt_get_install('bzr', 'imagemagick', 'make', 'nodejs', 'npm', 'zookeeper',
+                    'nginx')
     log('Retrieving source checkouts.')
     bzr_checkout = command('bzr', 'co', '--lightweight')
     bzr_checkout(juju_gui_branch, 'juju-gui')
@@ -36,10 +37,16 @@ def fetch(juju_gui_branch, juju_api_branch):
 
 
 def build():
-    """Set up Juju GUI."""
+    """Set up Juju GUI and nginx."""
     log('Building Juju GUI.')
     with cd('juju-gui'):
         run('make')
+    log('Setting up nginx.')
+    run('rm', '/etc/nginx/sites-enabled/default')
+    run('touch', '/etc/nginx/sites-available/juju-gui')
+    run('chown', 'ubuntu:', '/etc/nginx/sites-available/juju-gui')
+    run('ln', '-s', '/etc/nginx/sites-available/juju-gui',
+        '/etc/nginx/sites-enabled/juju-gui')
 
 
 def main():
