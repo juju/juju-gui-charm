@@ -22,6 +22,7 @@ from shelltoolbox import (
 from utils import (
     get_zookeeper_address,
     render_to_file,
+    start_improv,
 )
 
 CURRENT_DIR = os.getcwd()
@@ -58,22 +59,6 @@ def start_gui(juju_api_port, console_enabled, staging):
     log('Starting Juju GUI.')
     with su('root'):
         service_control('juju-gui', START)
-
-
-def start_improv(juju_api_port, staging_env):
-    """Start a simulated juju environment using ``improv.py``."""
-    log('Setting up staging start up script.')
-    context = {
-        'juju_dir': JUJU_DIR,
-        'port': juju_api_port,
-        'staging_env': staging_env,
-    }
-    render_to_file(
-        'juju-api-improv.conf.template', context,
-        '/etc/init/juju-api-improv.conf')
-    log('Starting the staging backend.')
-    with su('root'):
-        service_control('juju-api-improv', START)
 
 
 def start_agent(juju_api_port):

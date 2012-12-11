@@ -1,0 +1,74 @@
+#!/usr/bin/env python2
+# -*- python -*-
+
+# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+from subprocess import CalledProcessError
+
+from charmhelpers import (
+    get_config,
+    log,
+    log_entry,
+    log_exit,
+)
+from shelltoolbox import DictDiffer
+
+from utils import (
+    cmd_log,
+    start_improv,
+    )
+
+def handle_config_changes(config, diff):
+    log('Updating configuration.')
+
+    staging = config.get('staging')
+    staging_environment = config.get('staging-environment')
+    juju_api_port = config.get('juju-api-port')
+
+    added_or_changed = diff.added_or_changed
+
+    # Handle changes to the improv server configuration.
+    if staging:
+        staging_properties = set(
+            ['staging', 'staging-environment', 'juju-api-port'])
+        if bool(added_or_changed & staging_properties):
+            log('Starting or restarting improv')
+            start_improv(juju_api_port, staging_environment)
+    else:
+        # If 'staging' transitions to False we need to stop the backend, though it
+        # isn't terribly important.
+        if 'staging' in added_or_changed:
+            pass # XXX: Stop the server.
+
+    # Handle changes to the juju-gui configuration.
+    gui_properties = set(['juju-gui-console-enabled', 'juju-api-port', 'staging'])
+    if bool(added_or_changed & gui_properties):
+        start_gui(juju_api_port, config.get('juju-gui-console-enabled'), staging)
+
+
+def main():
+    config = get_config()
+    if not check_config(config):
+        log("Configuration not valid.")
+        sys.exit(1)
+    prev_config = config_json.get()
+    diff = DictDiffer(config, prev_config)
+
+    if not diff.modified:
+        log("No configuration changes, exiting.")
+        sys.exit(0)
+
+
+
+
+if __name__ == '__main__':
+    log_entry()
+    try:
+        main()
+    except CalledProcessError as e:
+        log('Exception caught:')
+        log(e.output)
+        raise
+    finally:
+        log_exit()

@@ -57,3 +57,18 @@ def cmd_log(results):
     # Since 'results' may be multi-line output, start it on a separate line
     # from the logger timestamp, etc.
     results_log.info('\n' + results)
+
+def start_improv(juju_api_port, staging_env):
+    """Start a simulated juju environment using ``improv.py``."""
+    log('Setting up staging start up script.')
+    context = {
+        'juju_dir': JUJU_DIR,
+        'port': juju_api_port,
+        'staging_env': staging_env,
+    }
+    render_to_file(
+        'juju-api-improv.conf.template', context,
+        '/etc/init/juju-api-improv.conf')
+    log('Starting the staging backend.')
+    with su('root'):
+        service_control('juju-api-improv', START)
