@@ -132,7 +132,8 @@ class DeployToTest(DeployTestMixin, unittest.TestCase):
         return address.strip().split(':')[1]
 
     def test_api_agent(self):
-        # Ensure the Juju GUI and API agent services are correctly set up.
+        # Ensure the Juju GUI and API agent services are correctly set up in
+        # the Juju bootstrap node.
         hostname = self.deploy_to()
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
