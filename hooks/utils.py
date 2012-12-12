@@ -1,10 +1,28 @@
 """Juju GUI charm utilities."""
 
+
+__all__ = [
+    'cmd_log',
+    'get_zookeeper_address',
+    'render_to_file',
+    'start_improv',
+    'stop',
+    ]
+
 import os
 import logging
 
-from shelltoolbox import search_file
-from charmhelpers import get_config
+from shelltoolbox import (
+    search_file,
+    su,
+    )
+from charmhelpers import (
+    get_config,
+    log,
+    service_control,
+    START,
+    STOP,
+)
 
 
 def get_zookeeper_address(agent_file_path):
@@ -58,17 +76,33 @@ def cmd_log(results):
     # from the logger timestamp, etc.
     results_log.info('\n' + results)
 
-def start_improv(juju_api_port, staging_env):
+def start_improv(juju_api_port, staging_env, config_path=None):
     """Start a simulated juju environment using ``improv.py``."""
     log('Setting up staging start up script.')
+    if config_path is None:
+        config_path = '/etc/init/juju-api-improv.conf'
+
     context = {
-        'juju_dir': JUJU_DIR,
+        'juju_dir': os.path.join(os.getcwd(), 'juju'),
         'port': juju_api_port,
         'staging_env': staging_env,
     }
     render_to_file(
         'juju-api-improv.conf.template', context,
-        '/etc/init/juju-api-improv.conf')
+        config_path)
     log('Starting the staging backend.')
     with su('root'):
         service_control('juju-api-improv', START)
+
+def stop():
+    """Stop the Juju API agent."""
+    config = get_config()
+    with su('root'):
+        log('Stopping Juju GUI.')
+        service_control('juju-gui', STOP)
+        if config.get('staging'):
+            log('Stopping the staging backend.')
+            service_control('juju-api-improv', STOP)
+        else:
+            log('Stopping API agent.')
+            service_control('juju-api-agent', STOP)

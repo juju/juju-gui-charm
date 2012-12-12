@@ -1,5 +1,6 @@
 #!/usr/bin/env python2
 
+from contextlib import contextmanager
 import os
 import tempfile
 import unittest
@@ -10,8 +11,10 @@ from utils import (
     cmd_log,
     get_zookeeper_address,
     render_to_file,
+    start_improv
 )
-
+# Import the whole utils package for monkey patching.
+import utils
 
 class GetZookeeperAddressTest(unittest.TestCase):
 
@@ -66,6 +69,51 @@ class CmdLogTest(unittest.TestCase):
         line = open(self.log_file_name, 'r').read()
         self.assertTrue(line.endswith(': juju-gui@INFO \nfoo\n'))
 
+
+class StartImprovTest(unittest.TestCase):
+
+    def setUp(self):
+        self.service_name = None
+        self.action = None
+        self.svc_ctl_called = False
+        # Monkey patches.
+        def service_control_mock(service_name, action):
+            self.svc_ctl_called = True
+            self.service_name = service_name
+            self.action = action
+        def noop(*args):
+            pass
+        @contextmanager
+        def su(user):
+            yield None
+
+        self.functions = dict(
+            service_control=(utils.service_control, service_control_mock),
+            log=(utils.log, noop),
+            su=(utils.su, su),
+            )
+        # Apply the patches.
+        for fn,fcns in self.functions.items():
+            setattr(utils, fn, fcns[1])
+
+        self.destination_file = tempfile.NamedTemporaryFile()
+        self.addCleanup(self.destination_file.close)
+
+        def tearDown(self):
+            # Undo all of the monkey patching.
+            for fn,fcns in self.functions.items():
+                setattr(utils, fn, fcns[0])
+
+    def test_start(self):
+        port = '1234'
+        staging_env = 'large'
+        start_improv(port, staging_env, self.destination_file.name)
+        conf = self.destination_file.read()
+        self.assertTrue('--port %s' % port in conf)
+        self.assertTrue(staging_env + '.json' in conf)
+        self.assertTrue(self.svc_ctl_called)
+        self.assertEqual(self.service_name, 'juju-api-improv')
+        self.assertEqual(self.action, charmhelpers.START)
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
