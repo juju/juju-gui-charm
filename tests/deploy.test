@@ -94,13 +94,13 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
 
     def test_customized_api_port(self):
         # It is possible to customize the port used by the websocket server.
-        config = {self.charm: {'juju-api-port': 80}}
+        config = {self.charm: {'juju-api-port': 8081}}
         config_file = make_charm_config_file(config)
         hostname = self.deploy(config_path=config_file.name)
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
             self.stop_services, hostname, ['juju-api-agent', 'juju-gui'])
-        self.check_services(hostname, ws_port=80)
+        self.check_services(hostname, ws_port=8081)
 
     def test_staging(self):
         # Ensure the Juju GUI and improv services are correctly set up.
