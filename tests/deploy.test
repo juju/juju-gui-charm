@@ -31,7 +31,7 @@ def open_url(url):
     raise err
 
 
-class DeployTest(unittest.TestCase):
+class DeployTestMixin(object):
 
     def setUp(self):
         self.charm = 'juju-gui'
@@ -51,6 +51,22 @@ class DeployTest(unittest.TestCase):
         for service in services:
             ssh(target, 'sudo', 'service', service, 'stop')
 
+    def check_services(self, hostname, ws_port=8080):
+        """Check the services are listening on their tcp ports."""
+        url = 'http://{0}:{1}'.format(hostname, self.port)
+        response = open_url(url)
+        self.assertEqual(200, response.getcode())
+        ws_url = 'http://{0}:{1}/ws'.format(hostname, ws_port)
+        # A bad request status code here means the websocket resource is found.
+        # It would take an actual websocket client to properly interact with
+        # the websocket server.
+        with self.assertRaises(urllib2.HTTPError) as context_manager:
+            open_url(ws_url)
+        self.assertEqual(400, context_manager.exception.getcode())
+
+
+class DeployTest(DeployTestMixin, unittest.TestCase):
+
     def deploy(self, config_path=None):
         """Deploy and expose the Juju GUI charm. Return the service host name.
 
@@ -67,19 +83,6 @@ class DeployTest(unittest.TestCase):
             '--state', 'started', '--open-port', self.port)
         address = jitsu('get-service-info', self.charm, 'public-address')
         return address.strip().split(':')[1]
-
-    def check_services(self, hostname, ws_port=8080):
-        """Check the services are listening on their tcp ports."""
-        url = 'http://{0}:{1}'.format(hostname, self.port)
-        response = open_url(url)
-        self.assertEqual(200, response.getcode())
-        ws_url = 'http://{0}:{1}/ws'.format(hostname, ws_port)
-        # A bad request status code here means the websocket resource is found.
-        # It would take an actual websocket client to properly interact with
-        # the websocket server.
-        with self.assertRaises(urllib2.HTTPError) as context_manager:
-            open_url(ws_url)
-        self.assertEqual(400, context_manager.exception.getcode())
 
     def test_api_agent(self):
         # Ensure the Juju GUI and API agent services are correctly set up.
@@ -108,6 +111,32 @@ class DeployTest(unittest.TestCase):
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
             self.stop_services, hostname, ['juju-api-improv', 'juju-gui'])
+        self.check_services(hostname)
+
+
+class DeployToTest(DeployTestMixin, unittest.TestCase):
+
+    def deploy_to(self):
+        """Deploy the Juju GUI charm in the Juju bootstrap node.
+
+        Expose it and return the service host name.
+        Also wait until the service is started.
+        """
+        # The id of the bootstrap node is 0 (the first node started by Juju).
+        jitsu('deploy-to', '0', 'local:{0}'.format(self.charm))
+        juju('expose', self.charm)
+        jitsu(
+            'watch', '--failfast', self.charm,
+            '--state', 'started', '--open-port', self.port)
+        address = jitsu('get-service-info', self.charm, 'public-address')
+        return address.strip().split(':')[1]
+
+    def test_api_agent(self):
+        # Ensure the Juju GUI and API agent services are correctly set up.
+        hostname = self.deploy_to()
+        # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
+        self.addCleanup(
+            self.stop_services, hostname, ['juju-api-agent', 'juju-gui'])
         self.check_services(hostname)
 
 
