@@ -18,10 +18,13 @@ charm repository::
 
   $ ln -s /path/to/charm/checkout/ /path/to/charm/repo/juju-gui
 
+Deploying parameters may be configured by creating a configuration file in
+YAML format. A synopsis of the available options is found in ``config.yaml``.
+
 Finally, run the following commands::
 
   $ juju bootstrap
-  $ juju deploy juju-gui
+  $ juju deploy --config config.yaml juju-gui
   $ juju expose
 
 It will take a while, run ``juju status`` until the unit machine is active.
