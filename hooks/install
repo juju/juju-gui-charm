@@ -23,26 +23,23 @@ from charmhelpers import (
 from shelltoolbox import (
     apt_get_install,
     cd,
-    command,
     install_extra_repositories,
     run,
 )
 
-from utils import cmd_log
+from utils import (
+    cmd_log,
+    config_json,
+    fetch,
+    )
 
 
-def fetch(juju_gui_branch, juju_api_branch):
-    """Install required dependencies and retrieve Juju/Juju GUI branches."""
+def get_dependencies():
     log('Installing dependencies.')
     cmd_log(install_extra_repositories('ppa:chris-lea/node.js'))
     cmd_log(
         apt_get_install('bzr', 'imagemagick', 'make',
                         'nodejs', 'npm', 'zookeeper', 'nginx'))
-    log('Retrieving source checkouts.')
-    bzr_checkout = command('bzr', 'co', '--lightweight')
-    cmd_log(bzr_checkout(juju_gui_branch, 'juju-gui'))
-    cmd_log(bzr_checkout(juju_api_branch, 'juju'))
-
 
 def build(logpath):
     """Set up Juju GUI and nginx."""
@@ -62,9 +59,10 @@ def build(logpath):
 
 def main():
     config = get_config()
+    get_dependencies()
     fetch(config['juju-gui-branch'], config['juju-api-branch'])
     build(config['command-log-file'])
-
+    config_json.set(config)
 
 if __name__ == '__main__':
     log_entry()

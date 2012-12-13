@@ -11,7 +11,8 @@ from utils import (
     cmd_log,
     get_zookeeper_address,
     render_to_file,
-    start_improv
+    start_improv,
+    stop,
 )
 # Import the whole utils package for monkey patching.
 import utils
@@ -70,17 +71,18 @@ class CmdLogTest(unittest.TestCase):
         self.assertTrue(line.endswith(': juju-gui@INFO \nfoo\n'))
 
 
-class StartImprovTest(unittest.TestCase):
+class StartStopTest(unittest.TestCase):
 
     def setUp(self):
-        self.service_name = None
-        self.action = None
-        self.svc_ctl_called = False
+        self.service_names = []
+        self.actions = []
+        self.svc_ctl_call_count = 0
         # Monkey patches.
+        self.command = charmhelpers.command
         def service_control_mock(service_name, action):
-            self.svc_ctl_called = True
-            self.service_name = service_name
-            self.action = action
+            self.svc_ctl_call_count += 1
+            self.service_names.append(service_name)
+            self.actions.append(action)
         def noop(*args):
             pass
         @contextmanager
@@ -103,17 +105,36 @@ class StartImprovTest(unittest.TestCase):
             # Undo all of the monkey patching.
             for fn,fcns in self.functions.items():
                 setattr(utils, fn, fcns[0])
+            charmhelpers.command = self.command
 
-    def test_start(self):
+    def test_start_improv(self):
         port = '1234'
         staging_env = 'large'
         start_improv(port, staging_env, self.destination_file.name)
         conf = self.destination_file.read()
         self.assertTrue('--port %s' % port in conf)
         self.assertTrue(staging_env + '.json' in conf)
-        self.assertTrue(self.svc_ctl_called)
-        self.assertEqual(self.service_name, 'juju-api-improv')
-        self.assertEqual(self.action, charmhelpers.START)
+        self.assertEqual(self.svc_ctl_call_count, 1)
+        self.assertEqual(self.service_names, ['juju-api-improv'])
+        self.assertEqual(self.actions, [charmhelpers.START])
+
+    def test_stop_staging(self):
+        mock_config = {'staging': True}
+        charmhelpers.command = lambda *args: lambda: dumps(mock_config)
+        stop()
+        self.assertEqual(self.svc_ctl_call_count, 2)
+        self.assertEqual(self.service_names, ['juju-gui', 'juju-api-improv'])
+        self.assertEqual(self.actions, [charmhelpers.STOP, charmhelpers.STOP])
+
+    def test_stop_production(self):
+        mock_config = {'staging': False}
+        charmhelpers.command = lambda *args: lambda: dumps(mock_config)
+        stop()
+        self.assertEqual(self.svc_ctl_call_count, 2)
+        self.assertEqual(self.service_names, ['juju-gui', 'juju-api-agent'])
+        self.assertEqual(self.actions, [charmhelpers.STOP, charmhelpers.STOP])
+
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

@@ -4,6 +4,7 @@
 # Copyright 2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from shutil import rmtree
 from subprocess import CalledProcessError
 
 from charmhelpers import (
@@ -11,35 +12,84 @@ from charmhelpers import (
     log,
     log_entry,
     log_exit,
+    service_control,
+    START,
+    STOP,
 )
 from shelltoolbox import DictDiffer
 
 from utils import (
+    AGENT,
     cmd_log,
+    config_json,
+    GUI,
+    IMPROV,
+    start_agent,
     start_improv,
+    stop,
     )
 
+
 def handle_config_changes(config, diff):
+    # Handle all configuration file changes.
     log('Updating configuration.')
 
     staging = config.get('staging')
     staging_environment = config.get('staging-environment')
     juju_api_port = config.get('juju-api-port')
-
     added_or_changed = diff.added_or_changed
+
+    # Fetch new branches?
+    gui_branch = None
+    api_branch = None
+    if 'juju-gui-branch' in added_or_changed:
+        rmtree('juju-gui')
+        gui_branch = config['juju-gui-branch']
+    if 'juju-api-branch' in added_or_changed:
+        rmtree('juju')
+        api_branch = config['juju-api-branch']
+    if gui_branch or api_branch:
+        fetch(gui_branch, api_branch)
+        build(config['command-log-file'])
+        if gui_branch:
+            service_control(GUI, STOP)
+            start_gui(juju_api_port, config['juju-gui-console-enabled'],
+              config.get('staging'))
+
 
     # Handle changes to the improv server configuration.
     if staging:
         staging_properties = set(
             ['staging', 'staging-environment', 'juju-api-port'])
         if bool(added_or_changed & staging_properties):
+            if 'staging' in added_or_changed:
+                # 'staging' went from False to True, so the agent server is
+                # running and must be stopped.
+                current_api = AGENT
+            else:
+                # Only staging parameters changed, so the existing staging
+                # server must be stopped and later restarted.
+                current_api = IMPROV
+            log('Stopping %s.' % current_api)
+            service_control(current_api, STOP)
+
+            # Now the improv server can be cleanly started.
             log('Starting or restarting improv')
             start_improv(juju_api_port, staging_environment)
     else:
-        # If 'staging' transitions to False we need to stop the backend, though it
-        # isn't terribly important.
-        if 'staging' in added_or_changed:
-            pass # XXX: Stop the server.
+        agent_properties = set(
+            ['juju-api-port', 'staging'])
+        if bool(added_or_changed & agent_properties):
+            if 'staging' in added_or_changed:
+                # If 'staging' transitions to False we need to stop the backend
+                # and start the agent.
+                current_api = IMPROV
+            else:
+                # The agent is still running but the configuration has been
+                # updated -- bounce it.
+                current_api = AGENT
+            service_control(current_api, STOP)
+            start_agent(juju_api_port)
 
     # Handle changes to the juju-gui configuration.
     gui_properties = set(['juju-gui-console-enabled', 'juju-api-port', 'staging'])
@@ -59,7 +109,7 @@ def main():
         log("No configuration changes, exiting.")
         sys.exit(0)
 
-
+    config_json.set(config)
 
 
 if __name__ == '__main__':
