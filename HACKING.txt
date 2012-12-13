@@ -9,7 +9,7 @@ Testing
 There are two types of tests for the charm: unit tests and functional tests.
 
 
-Unit tests
+Unit Tests
 ----------
 
 The unit tests do not require a functional Juju environment, and can be run
@@ -21,7 +21,7 @@ Unit tests should be created in the "tests" subdirectory and be named in the
 customary way (i.e., "test_*.py").
 
 
-Functional tests
+Functional Tests
 ----------------
 
 Running the functional tests requires a Juju testing environment as provided
@@ -29,7 +29,7 @@ by the Jitsu test command.  All files in the tests directory which end with
 ".test" will be run in a Juju Jitsu test environment.
 
 
-Functional test setup
+Functional Test Setup
 ~~~~~~~~~~~~~~~~~~~~~
 
 At the time of this writing the Jitsu test command is not yet released.  To run
@@ -58,7 +58,7 @@ codename directories will contain the charm repositories.
 Now you are ready to run the functional tests (see the next section).
 
 
-Running the functional tests
+Running the Functional Tests
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Jitsu requires the charm directory be named the same as the charm and it be the
