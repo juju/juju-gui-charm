@@ -51,17 +51,13 @@ def handle_config_changes(config, diff):
     if gui_branch or api_branch:
         fetch(gui_branch, api_branch)
         build(config['command-log-file'])
-        if gui_branch:
-            service_control(GUI, STOP)
-            start_gui(juju_api_port, config['juju-gui-console-enabled'],
-              config.get('staging'))
-
+        # Restarting of the gui and api services is handled below.
 
     # Handle changes to the improv server configuration.
     if staging:
         staging_properties = set(
             ['staging', 'staging-environment', 'juju-api-port'])
-        if bool(added_or_changed & staging_properties):
+        if bool(added_or_changed & staging_properties) or api_branch is not None:
             if 'staging' in added_or_changed:
                 # 'staging' went from False to True, so the agent server is
                 # running and must be stopped.
@@ -79,7 +75,7 @@ def handle_config_changes(config, diff):
     else:
         agent_properties = set(
             ['juju-api-port', 'staging'])
-        if bool(added_or_changed & agent_properties):
+        if bool(added_or_changed & agent_properties) or api_branch is not None:
             if 'staging' in added_or_changed:
                 # If 'staging' transitions to False we need to stop the backend
                 # and start the agent.
@@ -93,7 +89,8 @@ def handle_config_changes(config, diff):
 
     # Handle changes to the juju-gui configuration.
     gui_properties = set(['juju-gui-console-enabled', 'juju-api-port', 'staging'])
-    if bool(added_or_changed & gui_properties):
+    if bool(added_or_changed & gui_properties) or gui_branch is not None:
+        service_control(GUI, STOP)
         start_gui(juju_api_port, config.get('juju-gui-console-enabled'), staging)
 
 
@@ -108,7 +105,7 @@ def main():
     if not diff.modified:
         log("No configuration changes, exiting.")
         sys.exit(0)
-
+    handle_config_changes(config, diff)
     config_json.set(config)
 
 
