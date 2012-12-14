@@ -34,7 +34,8 @@ and then run the usual bootstrap command.
 
   $ juju bootstrap
 
-Next, you simply need to deploy the charm and expose it.
+Next, you simply need to deploy the charm and expose it.  (See also `Deploying
+with Jitsu`_ below, for another option.)
 
   $ juju deploy cs:~juju-gui/precise/juju-gui
   $ juju expose juju-gui
@@ -73,6 +74,24 @@ when run withing the charm, the GUI appears to not be connecting properly to
 Juju.  Until the charm works with QA'd releases rather than branches (soon!),
 be prepared for unpleasant surprises like this.
 
+
+Deploying with Jitsu
+--------------------
+
+The instructions above cause you to use a separate machine to work with the
+GUI.  If you'd like to reduce your machine footprint (and perhaps your costs),
+you can colocate the GUI with the Juju bootstrap node.  This approach will
+change in the future (probably with the Juju shipped with Ubuntu 13.04), so be
+warned.
+
+For now, though, install Jitsu...::
+
+  $ sudo apt-get install juju-jitsu
+
+...and then replace "juju deploy cs:~juju-gui/precise/juju-gui" from the
+previous instructions with this::
+
+  $ jitsu deploy-to 0 cs:~juju-gui/precise/juju-gui
 
 Contacting the Developers
 =========================
