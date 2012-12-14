@@ -32,10 +32,14 @@ You need a configured and bootstrapped Juju environment: see the Juju docs
 about `getting started <https://juju.ubuntu.com/docs/getting-started.html>`_,
 and then run the usual bootstrap command.
 
+::
+
   $ juju bootstrap
 
 Next, you simply need to deploy the charm and expose it.  (See also `Deploying
 with Jitsu`_ below, for another option.)
+
+::
 
   $ juju deploy cs:~juju-gui/precise/juju-gui
   $ juju expose juju-gui
@@ -44,26 +48,26 @@ Finally, you need to identify the GUI's URL--sadly, the most annoying part of
 the process at the moment.  Right now (see the warning section above about not
 yet working with GUI releases) it can take an excessive amount of time for the
 GUI to be built and to start--20 minutes or more.  This command will let you
-see when it is ready to go by giving you regular status updates.
+see when it is ready to go by giving you regular status updates::
 
   $ watch juju status
 
 Eventually, after many minutes, at the end of the status you will hopefully see
-something that looks like this:
+something that looks like this::
 
-services:
-  juju-gui:
-    charm: cs:~juju-gui/precise/juju-gui-7
-    exposed: true
-    relations: {}
-    units:
-      juju-gui/0:
-        agent-state: started
-        machine: 1
-        open-ports:
-        - 80/tcp
-        - 8080/tcp
-        public-address: ec2-204-236-250-8.compute-1.amazonaws.com
+  services:
+    juju-gui:
+      charm: cs:~juju-gui/precise/juju-gui-7
+      exposed: true
+      relations: {}
+      units:
+        juju-gui/0:
+          agent-state: started
+          machine: 1
+          open-ports:
+          - 80/tcp
+          - 8080/tcp
+          public-address: ec2-204-236-250-8.compute-1.amazonaws.com
 
 That tells me I can go to the public-address in my browser
 (http://ec2-204-236-250-8.compute-1.amazonaws.com/ in this example), and start
@@ -84,7 +88,9 @@ you can colocate the GUI with the Juju bootstrap node.  This approach will
 change in the future (probably with the Juju shipped with Ubuntu 13.04), so be
 warned.
 
-For now, though, install Jitsu...::
+For now, though, install Jitsu...
+
+::
 
   $ sudo apt-get install juju-jitsu
 
