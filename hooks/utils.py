@@ -14,11 +14,13 @@ __all__ = [
     'stop',
     ]
 
+import json
 import os
 import logging
 
 from shelltoolbox import (
     command,
+    run,
     search_file,
     Serializer,
     su,
@@ -29,6 +31,7 @@ from charmhelpers import (
     service_control,
     START,
     STOP,
+    unit_get,
 )
 
 AGENT = 'juju-api-agent'
@@ -152,8 +155,10 @@ def fetch(juju_gui_branch, juju_api_branch):
     log('Retrieving source checkouts.')
     bzr_checkout = command('bzr', 'co', '--lightweight')
     if juju_gui_branch is not None:
+        cmd_log(run('rm', '-rf', 'juju-gui'))
         cmd_log(bzr_checkout(juju_gui_branch, 'juju-gui'))
     if juju_api_branch is not None:
+        cmd_log(run('rm', '-rf', 'juju'))
         cmd_log(bzr_checkout(juju_api_branch, 'juju'))
 
 

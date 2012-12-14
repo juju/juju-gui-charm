@@ -50,7 +50,7 @@ def build(logpath):
         log('Output from "make" sent to', name)
         run('make', stdout=fd, stderr=fd)
     log('Setting up nginx.')
-    cmd_log(run('rm', '/etc/nginx/sites-enabled/default'))
+    cmd_log(run('rm', '-rf', '/etc/nginx/sites-enabled/default'))
     cmd_log(run('touch', '/etc/nginx/sites-available/juju-gui'))
     cmd_log(run('chown', 'ubuntu:', '/etc/nginx/sites-available/juju-gui'))
     cmd_log(run('ln', '-s', '/etc/nginx/sites-available/juju-gui',
