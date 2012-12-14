@@ -101,9 +101,9 @@ OpenStack; but we will periodically check the tests in LXC environments
 because it would be great to be able to use it.  If you do want to use LXC,
 you will need to install the apt-cacher-ng and lxc packages.
 
-Unfortunately, currently running tests on a local environment is quite slow
-(with quantal host and precise container at least), so you may want to further
-increase the ``jitsu test`` command timeout.
+Currently running tests on a local environment is quite slow (with quantal
+host and precise container at least), so you may want to further increase the
+``jitsu test`` command timeout.
 
 If Jitsu generates errors about not being able to bootstrap...::
 

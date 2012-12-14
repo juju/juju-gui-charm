@@ -70,7 +70,7 @@ That tells me I can go to the public-address in my browser
 configuring the rest of Juju with the GUI.  You should see something similar.
 
 Again, until we switch to releases, the charm is fragile.  As I write this,
-when run withing the charm, the GUI appears to not be connecting properly to
+when run within the charm, the GUI appears to not be connecting properly to
 Juju.  Until the charm works with QA'd releases rather than branches (soon!),
 be prepared for unpleasant surprises like this.
 
