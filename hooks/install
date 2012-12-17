@@ -6,7 +6,6 @@ from subprocess import (
     CalledProcessError,
     check_call,
     )
-import tempfile
 
 # python-shelltoolbox is installed as a dependency of python-charmhelpers.
 check_call(['apt-get', 'install', '-y', 'python-charmhelpers'])
@@ -22,7 +21,6 @@ from charmhelpers import (
 )
 from shelltoolbox import (
     apt_get_install,
-    cd,
     install_extra_repositories,
     run,
 )

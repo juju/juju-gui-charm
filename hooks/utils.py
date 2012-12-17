@@ -18,8 +18,10 @@ __all__ = [
 import json
 import os
 import logging
+import tempfile
 
 from shelltoolbox import (
+    cd,
     command,
     run,
     search_file,

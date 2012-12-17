@@ -48,11 +48,11 @@ def handle_config_changes(config, diff):
     gui_branch = None
     api_branch = None
     if 'juju-gui-branch' in added_or_changed:
-        if os.path.exists('juju-gui')
+        if os.path.exists('juju-gui'):
             rmtree('juju-gui')
         gui_branch = config['juju-gui-branch']
     if 'juju-api-branch' in added_or_changed:
-        if os.path.exists('juju')
+        if os.path.exists('juju'):
             rmtree('juju')
         api_branch = config['juju-api-branch']
     if gui_branch or api_branch:
