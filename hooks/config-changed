@@ -18,7 +18,10 @@ from charmhelpers import (
     START,
     STOP,
 )
-from shelltoolbox import DictDiffer
+from shelltoolbox import (
+    DictDiffer,
+    su,
+    )
 
 from utils import (
     AGENT,
@@ -97,7 +100,9 @@ def handle_config_changes(config, diff):
     # Handle changes to the juju-gui configuration.
     gui_properties = set(['juju-gui-console-enabled', 'juju-api-port', 'staging'])
     if bool(added_or_changed & gui_properties) or gui_branch is not None:
-        service_control(GUI, STOP)
+        with su('root'):
+            service_control('nginx', STOP)
+            service_control(GUI, STOP)
         start_gui(juju_api_port, config.get('juju-gui-console-enabled'), staging)
 
 
