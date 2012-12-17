@@ -3,6 +3,7 @@
 
 __all__ = [
     'AGENT',
+    'build',
     'cmd_log',
     'get_zookeeper_address',
     'GUI',
@@ -194,3 +195,19 @@ def fetch(juju_gui_branch, juju_api_branch):
     if juju_api_branch is not None:
         cmd_log(run('rm', '-rf', 'juju'))
         cmd_log(bzr_checkout(juju_api_branch, 'juju'))
+
+
+def build(logpath):
+    """Set up Juju GUI and nginx."""
+    log('Building Juju GUI.')
+    with cd('juju-gui'):
+        logdir = os.path.dirname(logpath)
+        fd, name = tempfile.mkstemp(prefix='make-', dir=logdir)
+        log('Output from "make" sent to', name)
+        run('make', stdout=fd, stderr=fd)
+    log('Setting up nginx.')
+    cmd_log(run('rm', '-rf', '/etc/nginx/sites-enabled/default'))
+    cmd_log(run('touch', '/etc/nginx/sites-available/juju-gui'))
+    cmd_log(run('chown', 'ubuntu:', '/etc/nginx/sites-available/juju-gui'))
+    cmd_log(run('ln', '-s', '/etc/nginx/sites-available/juju-gui',
+        '/etc/nginx/sites-enabled/juju-gui'))

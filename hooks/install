@@ -28,6 +28,7 @@ from shelltoolbox import (
 )
 
 from utils import (
+    build,
     cmd_log,
     config_json,
     fetch,
@@ -40,22 +41,6 @@ def get_dependencies():
     cmd_log(
         apt_get_install('bzr', 'imagemagick', 'make',
                         'nodejs', 'npm', 'zookeeper', 'nginx'))
-
-def build(logpath):
-    """Set up Juju GUI and nginx."""
-    log('Building Juju GUI.')
-    with cd('juju-gui'):
-        logdir = os.path.dirname(logpath)
-        fd, name = tempfile.mkstemp(prefix='make-', dir=logdir)
-        log('Output from "make" sent to', name)
-        run('make', stdout=fd, stderr=fd)
-    log('Setting up nginx.')
-    cmd_log(run('rm', '-rf', '/etc/nginx/sites-enabled/default'))
-    cmd_log(run('touch', '/etc/nginx/sites-available/juju-gui'))
-    cmd_log(run('chown', 'ubuntu:', '/etc/nginx/sites-available/juju-gui'))
-    cmd_log(run('ln', '-s', '/etc/nginx/sites-available/juju-gui',
-        '/etc/nginx/sites-enabled/juju-gui'))
-
 
 def main():
     config = get_config()
