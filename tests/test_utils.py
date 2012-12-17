@@ -11,6 +11,8 @@ from utils import (
     cmd_log,
     get_zookeeper_address,
     render_to_file,
+    start_agent,
+    start_gui,
     start_improv,
     stop,
 )
@@ -77,6 +79,7 @@ class StartStopTest(unittest.TestCase):
         self.service_names = []
         self.actions = []
         self.svc_ctl_call_count = 0
+        self.fake_zk_address = '192.168.5.26'
         # Monkey patches.
         self.command = charmhelpers.command
         def service_control_mock(service_name, action):
@@ -88,11 +91,15 @@ class StartStopTest(unittest.TestCase):
         @contextmanager
         def su(user):
             yield None
-
+        def get_zookeeper_address_mock(fp):
+            return self.fake_zk_address
         self.functions = dict(
             service_control=(utils.service_control, service_control_mock),
             log=(utils.log, noop),
             su=(utils.su, su),
+            run=(utils.run, noop),
+            unit_get=(utils.unit_get, noop),
+            get_zookeeper_address=(utils.get_zookeeper_address, get_zookeeper_address_mock)
             )
         # Apply the patches.
         for fn,fcns in self.functions.items():
@@ -116,6 +123,32 @@ class StartStopTest(unittest.TestCase):
         self.assertTrue(staging_env + '.json' in conf)
         self.assertEqual(self.svc_ctl_call_count, 1)
         self.assertEqual(self.service_names, ['juju-api-improv'])
+        self.assertEqual(self.actions, [charmhelpers.START])
+
+    def test_start_agent(self):
+        port = '1234'
+        start_agent(port, self.destination_file.name)
+        conf = self.destination_file.read()
+        self.assertTrue('--port %s' % port in conf)
+        self.assertTrue('JUJU_ZOOKEEPER=%s' % self.fake_zk_address in conf)
+        self.assertEqual(self.svc_ctl_call_count, 1)
+        self.assertEqual(self.service_names, ['juju-api-agent'])
+        self.assertEqual(self.actions, [charmhelpers.START])
+
+    def test_start_gui(self):
+        port = '1234'
+        nginx_file = tempfile.NamedTemporaryFile()
+        self.addCleanup(nginx_file.close)
+        config_js_file = tempfile.NamedTemporaryFile()
+        self.addCleanup(config_js_file.close)
+        start_gui(port, False, True, self.destination_file.name,
+                  nginx_file.name, config_js_file.name)
+        conf = self.destination_file.read()
+        self.assertTrue('exec service nginx start' in conf)
+        nginx_conf = nginx_file.read()
+        self.assertTrue('juju-gui/build-debug' in nginx_conf)
+        self.assertEqual(self.svc_ctl_call_count, 1)
+        self.assertEqual(self.service_names, ['juju-gui'])
         self.assertEqual(self.actions, [charmhelpers.START])
 
     def test_stop_staging(self):

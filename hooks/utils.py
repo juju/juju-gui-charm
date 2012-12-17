@@ -98,12 +98,10 @@ JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
 
 
-def start_improv(juju_api_port, staging_env, config_path=None):
+def start_improv(juju_api_port, staging_env,
+                 config_path='/etc/init/juju-api-improv.conf'):
     """Start a simulated juju environment using ``improv.py``."""
     log('Setting up staging start up script.')
-    if config_path is None:
-        config_path = '/etc/init/juju-api-improv.conf'
-
     context = {
         'juju_dir': JUJU_DIR,
         'port': juju_api_port,
@@ -116,7 +114,8 @@ def start_improv(juju_api_port, staging_env, config_path=None):
     with su('root'):
         service_control(IMPROV, START)
 
-def start_agent(juju_api_port):
+
+def start_agent(juju_api_port, config_path='/etc/init/juju-api-agent.conf'):
     """Start the Juju agent and connect to the current environment."""
     # Retrieve the Zookeeper address from the start up script.
     unit_dir = os.path.realpath(os.path.join(CURRENT_DIR, '..'))
@@ -130,10 +129,45 @@ def start_agent(juju_api_port):
     }
     render_to_file(
         'juju-api-agent.conf.template', context,
-        '/etc/init/juju-api-agent.conf')
+        config_path)
     log('Starting API agent.')
     with su('root'):
         service_control(AGENT, START)
+
+
+def start_gui(juju_api_port, console_enabled, staging,
+              config_path='/etc/init/juju-gui.conf',
+              nginx_path='/etc/nginx/sites-available/juju-gui',
+              config_js_path=None):
+    """Set up and start the Juju GUI server."""
+    with su('root'):
+        run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
+    build_dir = JUJU_GUI_DIR + '/build-'
+    build_dir += 'debug' if staging else 'prod'
+    log('Setting up Juju GUI start up script.')
+    render_to_file(
+        'juju-gui.conf.template', {}, config_path)
+    log('Generating the Juju GUI configuration file.')
+    context = {
+        'address': unit_get('public-address'),
+        'console_enabled': json.dumps(console_enabled),
+        'port': juju_api_port,
+    }
+    if config_js_path is None:
+        config_js_path = os.path.join(
+            build_dir, 'juju-ui', 'assets', 'config.js')
+    render_to_file(
+        'config.js.template', context,
+        config_js_path)
+    log('Generating the nginx site configuration file.')
+    context = {
+        'server_root': build_dir
+    }
+    render_to_file(
+        'nginx.conf.template', context, nginx_path)
+    log('Starting Juju GUI.')
+    with su('root'):
+        service_control(GUI, START)
 
 
 def stop():
@@ -160,34 +194,3 @@ def fetch(juju_gui_branch, juju_api_branch):
     if juju_api_branch is not None:
         cmd_log(run('rm', '-rf', 'juju'))
         cmd_log(bzr_checkout(juju_api_branch, 'juju'))
-
-
-def start_gui(juju_api_port, console_enabled, staging):
-    """Set up and start the Juju GUI server."""
-    with su('root'):
-        run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
-    build_dir = JUJU_GUI_DIR + '/build-'
-    build_dir += 'debug' if staging else 'prod'
-    log('Setting up Juju GUI start up script.')
-    render_to_file(
-        'juju-gui.conf.template', {'juju_gui_dir': JUJU_GUI_DIR},
-        '/etc/init/juju-gui.conf')
-    log('Generating the Juju GUI configuration file.')
-    context = {
-        'address': unit_get('public-address'),
-        'console_enabled': json.dumps(console_enabled),
-        'port': juju_api_port,
-    }
-    render_to_file(
-        'config.js.template', context,
-        os.path.join(build_dir, 'juju-ui', 'assets', 'config.js'))
-    log('Generating the nginx site configuration file.')
-    context = {
-        'server_root': build_dir
-    }
-    render_to_file(
-        'nginx.conf.template', context,
-        '/etc/nginx/sites-available/juju-gui')
-    log('Starting Juju GUI.')
-    with su('root'):
-        service_control(GUI, START)
