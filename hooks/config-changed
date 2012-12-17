@@ -22,6 +22,7 @@ from shelltoolbox import DictDiffer
 
 from utils import (
     AGENT,
+    build,
     cmd_log,
     config_json,
     fetch,
