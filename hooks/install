@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- python -*-
 
-import os.path
+import os
 from subprocess import (
     CalledProcessError,
     check_call,
@@ -39,6 +39,11 @@ def get_dependencies():
     cmd_log(
         apt_get_install('bzr', 'imagemagick', 'make',
                         'nodejs', 'npm', 'zookeeper', 'nginx'))
+    log('Retrieving source checkouts.')
+    bzr_checkout = command('bzr', 'co', '--lightweight')
+    cmd_log(bzr_checkout(juju_gui_branch, 'juju-gui'))
+    cmd_log(bzr_checkout(juju_api_branch, 'juju'))
+
 
 def main():
     config = get_config()

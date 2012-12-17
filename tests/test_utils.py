@@ -53,6 +53,7 @@ class RenderToFileTest(unittest.TestCase):
         expected = self.template_contents % context
         self.assertEqual(expected, self.destination_file.read())
 
+
 class CmdLogTest(unittest.TestCase):
     def setUp(self):
         # Patch the charmhelpers 'command', which powers get_config.  The

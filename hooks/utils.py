@@ -210,8 +210,13 @@ def build(logpath):
         log('Output from "make" sent to', name)
         run('make', stdout=fd, stderr=fd)
     log('Setting up nginx.')
-    cmd_log(run('rm', '-rf', '/etc/nginx/sites-enabled/default'))
-    cmd_log(run('touch', '/etc/nginx/sites-available/juju-gui'))
-    cmd_log(run('chown', 'ubuntu:', '/etc/nginx/sites-available/juju-gui'))
-    cmd_log(run('ln', '-s', '/etc/nginx/sites-available/juju-gui',
-        '/etc/nginx/sites-enabled/juju-gui'))
+    nginx_default_site = '/etc/nginx/sites-enabled/default'
+    juju_gui_site = '/etc/nginx/sites-available/juju-gui'
+    if os.path.exists(nginx_default_site):
+        os.remove(nginx_default_site)
+    if not os.path.exists(juju_gui_site):
+        cmd_log(run('touch', juju_gui_site))
+        cmd_log(run('chown', 'ubuntu:', juju_gui_site))
+        cmd_log(
+            run('ln', '-s', juju_gui_site,
+                '/etc/nginx/sites-enabled/juju-gui'))

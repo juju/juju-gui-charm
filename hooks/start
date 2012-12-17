@@ -39,9 +39,9 @@ def open_ports(juju_api_port):
 def main():
     config = get_config()
     juju_api_port = config['juju-api-port']
-    start_gui(juju_api_port, config['juju-gui-console-enabled'],
-              config.get('staging'))
-    if config.get('staging'):
+    staging = config.get('staging')
+    start_gui(juju_api_port, config['juju-gui-console-enabled'], staging)
+    if staging:
         start_improv(juju_api_port, config['staging-environment'])
     else:
         start_agent(juju_api_port)

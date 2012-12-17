@@ -1,7 +1,24 @@
 description "Juju GUI"
 author "Canonical"
+# Original author: George Shammas <georgyo@gmail.com>.
+# See http://wiki.nginx.org/Upstart.
 
-start on runlevel [2345]
+start on (filesystem and net-device-up IFACE=lo)
 stop on runlevel [!2345]
 
-exec service nginx start
+env DAEMON=/usr/sbin/nginx
+env PID=/var/run/nginx.pid
+
+expect fork
+respawn
+respawn limit 10 5
+
+pre-start script
+    # Test configuration, exit if errors are found.
+    $DAEMON -t
+    if [ $? -ne 0 ]
+        then exit $?
+    fi
+end script
+
+exec $DAEMON
