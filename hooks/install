@@ -46,8 +46,10 @@ def get_dependencies():
 def main():
     config = get_config()
     get_dependencies()
-    fetch(config['juju-gui-source'], config['juju-api-branch'])
-    build(config['command-log-file'])
+    release_tarball = fetch(
+        config['juju-gui-source'], config['juju-api-branch'],
+        config['command-log-file'])
+    build(release_tarball)
     config_json.set(config)
 
 

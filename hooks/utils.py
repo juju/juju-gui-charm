@@ -247,8 +247,8 @@ def stop():
             service_control(AGENT, STOP)
 
 
-def fetch(juju_gui_source, juju_api_branch):
-    """Install required dependencies and retrieve Juju/Juju GUI branches."""
+def fetch(juju_gui_source, juju_api_branch, logpath):
+    """Retrieve the Juju branch and the Juju GUI release/branch."""
     bzr_checkout = command('bzr', 'co', '--lightweight')
     # Retrieve a Juju GUI release.
     origin, version_or_branch = parse_source(juju_gui_source)
@@ -260,7 +260,11 @@ def fetch(juju_gui_source, juju_api_branch):
             cmd_log(run('rm', '-rf', juju_gui_source_dir))
             cmd_log(bzr_checkout(version_or_branch, juju_gui_source_dir))
         log('Preparing a Juju GUI release.')
-        cmd_log(run('make', '-c', juju_gui_source_dir, 'distfile'))
+        logdir = os.path.dirname(logpath)
+        fd, name = tempfile.mkstemp(prefix='make-distfile-', dir=logdir)
+        log('Output from "make distfile" sent to', name)
+        run('make', '-c', juju_gui_source_dir, 'distfile',
+            stdout=fd, stderr=fd)
         releases_dir = os.path.join(juju_gui_source_dir, 'releases')
         release_tarball = os.path.join(
             releases_dir, os.listdir(releases_dir)[0])
@@ -272,6 +276,16 @@ def fetch(juju_gui_source, juju_api_branch):
         file_url = get_release_file_url(project, origin, version_or_branch)
         release_tarball = os.path.join(CURRENT_DIR, 'release.tgz')
         cmd_log(run('curl', '-o', release_tarball, file_url))
+    # Retrieve Juju API source checkout.
+    if juju_api_branch is not None:
+        log('Retrieving Juju API source checkout.')
+        cmd_log(run('rm', '-rf', JUJU_DIR))
+        cmd_log(bzr_checkout(juju_api_branch, JUJU_DIR))
+    return release_tarball
+
+
+def build(release_tarball):
+    """Set up Juju GUI and nginx."""
     # Uncompress the release tarball.
     log('Installing Juju GUI.')
     release_dir = os.path.join(CURRENT_DIR, 'release')
@@ -282,21 +296,6 @@ def fetch(juju_gui_source, juju_api_branch):
     # Link the Juju GUI dir to the contents of the release tarball.
     source_dir = os.path.join(release_dir, os.listdir(release_dir)[0])
     cmd_log(run('ln', '-sf', source_dir, JUJU_GUI_DIR))
-    # Retrieve Juju API source checkout.
-    if juju_api_branch is not None:
-        log('Retrieving Juju API source checkout.')
-        cmd_log(run('rm', '-rf', JUJU_DIR))
-        cmd_log(bzr_checkout(juju_api_branch, JUJU_DIR))
-
-
-def build(logpath):
-    """Set up Juju GUI and nginx."""
-    log('Building Juju GUI.')
-    with cd('juju-gui'):
-        logdir = os.path.dirname(logpath)
-        fd, name = tempfile.mkstemp(prefix='make-', dir=logdir)
-        log('Output from "make" sent to', name)
-        run('make', stdout=fd, stderr=fd)
     log('Setting up nginx.')
     nginx_default_site = '/etc/nginx/sites-enabled/default'
     juju_gui_site = '/etc/nginx/sites-available/juju-gui'
