@@ -35,7 +35,7 @@ class DeployTestMixin(object):
 
     def setUp(self):
         self.charm = 'juju-gui'
-        self.port = '80'
+        self.port = '443'
 
     def tearDown(self):
         juju('destroy-service', self.charm)

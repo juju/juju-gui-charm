@@ -57,7 +57,7 @@ something that looks like this:
             agent-state: started
             machine: 1
             open-ports:
-            - 80/tcp
+            - 443/tcp
             - 8080/tcp
             public-address: ec2-204-236-250-8.compute-1.amazonaws.com
 
