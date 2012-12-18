@@ -19,6 +19,7 @@ from utils import (
 # Import the whole utils package for monkey patching.
 import utils
 
+
 class GetZookeeperAddressTest(unittest.TestCase):
 
     def setUp(self):
@@ -83,37 +84,43 @@ class StartStopTest(unittest.TestCase):
         self.fake_zk_address = '192.168.5.26'
         # Monkey patches.
         self.command = charmhelpers.command
+
         def service_control_mock(service_name, action):
             self.svc_ctl_call_count += 1
             self.service_names.append(service_name)
             self.actions.append(action)
+
         def noop(*args):
             pass
+
         @contextmanager
         def su(user):
             yield None
+
         def get_zookeeper_address_mock(fp):
             return self.fake_zk_address
+
         self.functions = dict(
             service_control=(utils.service_control, service_control_mock),
             log=(utils.log, noop),
             su=(utils.su, su),
             run=(utils.run, noop),
             unit_get=(utils.unit_get, noop),
-            get_zookeeper_address=(utils.get_zookeeper_address, get_zookeeper_address_mock)
+            get_zookeeper_address=(
+                utils.get_zookeeper_address, get_zookeeper_address_mock)
             )
         # Apply the patches.
-        for fn,fcns in self.functions.items():
+        for fn, fcns in self.functions.items():
             setattr(utils, fn, fcns[1])
 
         self.destination_file = tempfile.NamedTemporaryFile()
         self.addCleanup(self.destination_file.close)
 
-        def tearDown(self):
-            # Undo all of the monkey patching.
-            for fn,fcns in self.functions.items():
-                setattr(utils, fn, fcns[0])
-            charmhelpers.command = self.command
+    def tearDown(self):
+        # Undo all of the monkey patching.
+        for fn, fcns in self.functions.items():
+            setattr(utils, fn, fcns[0])
+        charmhelpers.command = self.command
 
     def test_start_improv(self):
         port = '1234'
@@ -167,7 +174,6 @@ class StartStopTest(unittest.TestCase):
         self.assertEqual(self.svc_ctl_call_count, 2)
         self.assertEqual(self.service_names, ['juju-gui', 'juju-api-agent'])
         self.assertEqual(self.actions, [charmhelpers.STOP, charmhelpers.STOP])
-
 
 
 if __name__ == '__main__':

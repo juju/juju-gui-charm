@@ -1,6 +1,5 @@
 """Juju GUI charm utilities."""
 
-
 __all__ = [
     'AGENT',
     'build',
@@ -37,9 +36,13 @@ from charmhelpers import (
     unit_get,
 )
 
+
 AGENT = 'juju-api-agent'
 IMPROV = 'juju-api-improv'
 GUI = 'juju-gui'
+CURRENT_DIR = os.getcwd()
+JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
+JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
 
 # Store the configuration from on invocation to the next.
 config_json = Serializer('/tmp/config.json')
@@ -74,6 +77,7 @@ def render_to_file(template, context, destination):
 
 results_log = None
 
+
 def _setupLogging():
     global results_log
     if results_log is not None:
@@ -95,10 +99,6 @@ def cmd_log(results):
     # Since 'results' may be multi-line output, start it on a separate line
     # from the logger timestamp, etc.
     results_log.info('\n' + results)
-
-CURRENT_DIR = os.getcwd()
-JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
-JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
 
 
 def start_improv(juju_api_port, staging_env,
