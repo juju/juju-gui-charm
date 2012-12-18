@@ -4,9 +4,10 @@
 from charmhelpers import (
     log_entry,
     log_exit,
-    stop,
 )
+
 from utils import stop
+
 
 if __name__ == '__main__':
     log_entry()

@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 # -*- python -*-
 
-import os
 from subprocess import (
     CalledProcessError,
     check_call,
@@ -22,7 +21,6 @@ from charmhelpers import (
 from shelltoolbox import (
     apt_get_install,
     install_extra_repositories,
-    run,
 )
 
 from utils import (
@@ -33,16 +31,14 @@ from utils import (
     )
 
 
+DEB_DEPENDENCIES = (
+    'bzr', 'imagemagick', 'make', 'nginx', 'nodejs', 'npm', 'zookeeper')
+
+
 def get_dependencies():
     log('Installing dependencies.')
     cmd_log(install_extra_repositories('ppa:chris-lea/node.js'))
-    cmd_log(
-        apt_get_install('bzr', 'imagemagick', 'make',
-                        'nodejs', 'npm', 'zookeeper', 'nginx'))
-    log('Retrieving source checkouts.')
-    bzr_checkout = command('bzr', 'co', '--lightweight')
-    cmd_log(bzr_checkout(juju_gui_branch, 'juju-gui'))
-    cmd_log(bzr_checkout(juju_api_branch, 'juju'))
+    cmd_log(apt_get_install(*DEB_DEPENDENCIES))
 
 
 def main():
@@ -51,6 +47,7 @@ def main():
     fetch(config['juju-gui-branch'], config['juju-api-branch'])
     build(config['command-log-file'])
     config_json.set(config)
+
 
 if __name__ == '__main__':
     log_entry()

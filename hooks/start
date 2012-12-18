@@ -1,26 +1,15 @@
 #!/usr/bin/env python2
 #-*- python -*-
 
-import os
-
 from charmhelpers import (
     get_config,
     log,
     log_entry,
     log_exit,
     open_port,
-    service_control,
-    START,
-)
-from shelltoolbox import (
-    run,
-    su,
 )
 
 from utils import (
-    get_zookeeper_address,
-    GUI,
-    render_to_file,
     start_agent,
     start_gui,
     start_improv,
