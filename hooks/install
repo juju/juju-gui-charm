@@ -38,7 +38,7 @@ DEB_DEPENDENCIES = (
 def get_dependencies():
     log('Installing dependencies.')
     cmd_log(install_extra_repositories('ppa:chris-lea/node.js'))
-    cmd_log(apt_get_install(DEB_DEPENDENCIES))
+    cmd_log(apt_get_install(*DEB_DEPENDENCIES))
 
 
 def main():
