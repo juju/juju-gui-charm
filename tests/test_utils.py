@@ -1,15 +1,18 @@
 #!/usr/bin/env python2
 
+from collections import namedtuple
 from contextlib import contextmanager
 import os
+from simplejson import dumps
 import tempfile
 import unittest
-import charmhelpers
-from simplejson import dumps
 
+import charmhelpers
 from utils import (
+    _get_by_attr,
     cmd_log,
     get_zookeeper_address,
+    parse_source,
     render_to_file,
     start_agent,
     start_gui,
@@ -18,6 +21,46 @@ from utils import (
 )
 # Import the whole utils package for monkey patching.
 import utils
+
+
+def make_collection(attr, values):
+    """Create a collection of objects having an attribute named *attr*.
+
+    The value of the *attr* attribute, for each instance, is taken from
+    the *values* sequence.
+    """
+    Item = namedtuple('Item', [attr])
+    return [Item(value) for value in values]
+
+
+class GetByAttrTest(unittest.TestCase):
+
+    attr = 'myattr'
+    collection = make_collection(attr, range(5))
+
+    def test_item_found(self):
+        # Ensure an object instance is correctly returned if found in
+        # the collection.
+        item = _get_by_attr(self.collection, self.attr, 3)
+        self.assertEqual(3, item.myattr)
+
+    def test_value_not_found(self):
+        # None is returned if the collection does not contain the requested
+        # item.
+        item = _get_by_attr(self.collection, self.attr, '__does_not_exist__')
+        self.assertIsNone(item)
+
+    def test_attr_not_found(self):
+        # An AttributeError is raised if items in collection does not have the
+        # required attribute.
+        with self.assertRaises(AttributeError):
+            _get_by_attr(self.collection, 'another_attr', 0)
+
+
+class GetReleaseFileUrlTest(unittest.TestCase):
+
+    # TODO.
+    pass
 
 
 class GetZookeeperAddressTest(unittest.TestCase):
@@ -34,6 +77,35 @@ class GetZookeeperAddressTest(unittest.TestCase):
         # Ensure the Zookeeper address is correctly retreived.
         address = get_zookeeper_address(self.agent_file_path)
         self.assertEqual(self.zookeeper_address, address)
+
+
+class ParseSourceTest(unittest.TestCase):
+
+    def test_latest_stable_release(self):
+        # Ensure the latest stable release is correctly parsed.
+        expected = ('stable', None)
+        self.assertTupleEqual(expected, parse_source('stable'))
+
+    def test_latest_trunk_release(self):
+        # Ensure the latest trunk release is correctly parsed.
+        expected = ('trunk', None)
+        self.assertTupleEqual(expected, parse_source('trunk'))
+
+    def test_stable_release(self):
+        # Ensure a specific stable release is correctly parsed.
+        expected = ('stable', '0.1.0')
+        self.assertTupleEqual(expected, parse_source('0.1.0'))
+
+    def test_trunk_release(self):
+        # Ensure a specific trunk release is correctly parsed.
+        expected = ('trunk', '0.1.0build1')
+        self.assertTupleEqual(expected, parse_source('0.1.0build1'))
+
+    def test_bzr_branch(self):
+        # Ensure a Bazaar branch is correctly parsed.
+        sources = ('lp:example', 'bzr+ssh://bazaar.launchpad.net/example')
+        for source in sources:
+            self.assertTupleEqual(('branch', source), parse_source(source))
 
 
 class RenderToFileTest(unittest.TestCase):
