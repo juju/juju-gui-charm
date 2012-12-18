@@ -110,14 +110,14 @@ class GetReleaseFileUrlTest(unittest.TestCase):
                         version='0.1.1',
                         files=(
                             FileStub('http://example.com/0.1.1.dmg'),
-                            FileStub('http://example.com/0.1.1.tar.gz'),
+                            FileStub('http://example.com/0.1.1.tgz'),
                         ),
                     ),
                     AttrDict(
                         version='0.1.0',
                         files=(
                             FileStub('http://example.com/0.1.0.dmg'),
-                            FileStub('http://example.com/0.1.0.tar.gz'),
+                            FileStub('http://example.com/0.1.0.tgz'),
                         ),
                     ),
                 ),
@@ -129,14 +129,14 @@ class GetReleaseFileUrlTest(unittest.TestCase):
                         version='0.1.1build1',
                         files=(
                             FileStub('http://example.com/0.1.1build1.dmg'),
-                            FileStub('http://example.com/0.1.1build1.tar.gz'),
+                            FileStub('http://example.com/0.1.1build1.tgz'),
                         ),
                     ),
                     AttrDict(
                         version='0.1.0build1',
                         files=(
                             FileStub('http://example.com/0.1.0build1.dmg'),
-                            FileStub('http://example.com/0.1.0build1.tar.gz'),
+                            FileStub('http://example.com/0.1.0build1.tgz'),
                         ),
                     ),
                 ),
@@ -147,24 +147,24 @@ class GetReleaseFileUrlTest(unittest.TestCase):
     def test_latest_stable_release(self):
         # Ensure the correct URL is returned for the latest stable release.
         url = get_release_file_url(self.project, 'stable', None)
-        self.assertEqual('http://example.com/0.1.1.tar.gz', url)
+        self.assertEqual('http://example.com/0.1.1.tgz', url)
 
     def test_latest_trunk_release(self):
         # Ensure the correct URL is returned for the latest trunk release.
         url = get_release_file_url(self.project, 'trunk', None)
-        self.assertEqual('http://example.com/0.1.1build1.tar.gz', url)
+        self.assertEqual('http://example.com/0.1.1build1.tgz', url)
 
     def test_specific_stable_release(self):
         # Ensure the correct URL is returned for a specific version of the
         # stable release.
         url = get_release_file_url(self.project, 'stable', '0.1.0')
-        self.assertEqual('http://example.com/0.1.0.tar.gz', url)
+        self.assertEqual('http://example.com/0.1.0.tgz', url)
 
     def test_specific_trunk_release(self):
         # Ensure the correct URL is returned for a specific version of the
         # trunk release.
         url = get_release_file_url(self.project, 'trunk', '0.1.0build1')
-        self.assertEqual('http://example.com/0.1.0build1.tar.gz', url)
+        self.assertEqual('http://example.com/0.1.0build1.tgz', url)
 
     def test_series_not_found(self):
         # A ValueError is raised if the series cannot be found.

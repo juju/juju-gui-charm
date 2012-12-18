@@ -19,6 +19,7 @@ import os
 import logging
 import tempfile
 
+from launchpadlib.launchpad import Launchpad
 from shelltoolbox import (
     cd,
     command,
@@ -79,7 +80,7 @@ def get_release_file_url(project, series_name, release_version):
         release = _get_by_attr(releases, 'version', release_version)
         if not release:
             raise ValueError('%r: release not found' % release_version)
-    files = [i for i in release.files if str(i).endswith('.tar.gz')]
+    files = [i for i in release.files if str(i).endswith('.tgz')]
     if not files:
         raise ValueError('%r: file not found' % release_version)
     return files[0].file_link
@@ -246,16 +247,46 @@ def stop():
             service_control(AGENT, STOP)
 
 
-def fetch(juju_gui_branch, juju_api_branch):
+def fetch(juju_gui_source, juju_api_branch):
     """Install required dependencies and retrieve Juju/Juju GUI branches."""
-    log('Retrieving source checkouts.')
     bzr_checkout = command('bzr', 'co', '--lightweight')
-    if juju_gui_branch is not None:
-        cmd_log(run('rm', '-rf', 'juju-gui'))
-        cmd_log(bzr_checkout(juju_gui_branch, 'juju-gui'))
+    # Retrieve a Juju GUI release.
+    origin, version_or_branch = parse_source(juju_gui_source)
+    if origin == 'branch':
+        # Create a release starting from a branch.
+        juju_gui_source_dir = os.path.join(CURRENT_DIR, 'juju-gui-source')
+        if juju_gui_source is not None:
+            log('Retrieving Juju GUI source checkouts.')
+            cmd_log(run('rm', '-rf', juju_gui_source_dir))
+            cmd_log(bzr_checkout(version_or_branch, juju_gui_source_dir))
+        log('Preparing a Juju GUI release.')
+        cmd_log(run('make', '-c', juju_gui_source_dir, 'distfile'))
+        releases_dir = os.path.join(juju_gui_source_dir, 'releases')
+        release_tarball = os.path.join(
+            releases_dir, os.listdir(releases_dir)[0])
+    else:
+        # Retrieve a release from Launchpad.
+        log('Retrieving Juju GUI release.')
+        launchpad = Launchpad.login_anonymously('Juju GUI charm', 'production')
+        project = launchpad.projects['juju-gui']
+        file_url = get_release_file_url(project, origin, version_or_branch)
+        release_tarball = os.path.join(CURRENT_DIR, 'release.tgz')
+        cmd_log(run('curl', '-o', release_tarball, file_url))
+    # Uncompress the release tarball.
+    log('Installing Juju GUI.')
+    release_dir = os.path.join(CURRENT_DIR, 'release')
+    cmd_log(run('rm', '-rf', release_dir))
+    os.mkdir(release_dir)
+    uncompress = command('tar', '-x', '-z', '-C', release_dir, '-f')
+    cmd_log(uncompress(release_tarball))
+    # Link the Juju GUI dir to the contents of the release tarball.
+    source_dir = os.path.join(release_dir, os.listdir(release_dir)[0])
+    cmd_log(run('ln', '-sf', source_dir, JUJU_GUI_DIR))
+    # Retrieve Juju API source checkout.
     if juju_api_branch is not None:
-        cmd_log(run('rm', '-rf', 'juju'))
-        cmd_log(bzr_checkout(juju_api_branch, 'juju'))
+        log('Retrieving Juju API source checkout.')
+        cmd_log(run('rm', '-rf', JUJU_DIR))
+        cmd_log(bzr_checkout(juju_api_branch, JUJU_DIR))
 
 
 def build(logpath):
