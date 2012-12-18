@@ -26,7 +26,8 @@ from utils import (
     AGENT,
     build,
     config_json,
-    fetch,
+    fetch_api,
+    fetch_gui,
     GUI,
     IMPROV,
     start_agent,
@@ -44,20 +45,17 @@ def handle_config_changes(config, diff):
     juju_api_port = config.get('juju-api-port')
     added_or_changed = diff.added_or_changed
 
-    # Fetch new branches?
-    gui_branch = None
+    # Fetch new sources?
+    gui_source = None
     api_branch = None
-    if 'juju-gui-branch' in added_or_changed:
-        if os.path.exists('juju-gui'):
-            rmtree('juju-gui')
-        gui_branch = config['juju-gui-branch']
+    if 'juju-gui-source' in added_or_changed:
+        gui_source = config['juju-gui-branch']
     if 'juju-api-branch' in added_or_changed:
-        if os.path.exists('juju'):
-            rmtree('juju')
         api_branch = config['juju-api-branch']
-    if gui_branch or api_branch:
-        fetch(gui_branch, api_branch)
-        build(config['command-log-file'])
+    if gui_source or api_branch:
+        release_tarball = fetch_gui(gui_source, config['command-log-file'])
+        fetch_api(api_branch)
+        build(release_tarball)
         # Restarting of the gui and api services is handled below.
 
     # Handle changes to the improv server configuration.
