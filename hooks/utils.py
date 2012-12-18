@@ -224,7 +224,7 @@ def build(logpath, ssl_cert_path):
     # Generate the nginx SSL certificates, if needed.
     pem_path = os.path.join(ssl_cert_path, 'server.pem')
     key_path = os.path.join(ssl_cert_path, 'server.key')
-    if not (os.path.exists(pem_path) and os.path.exists(pem_path)):
+    if not (os.path.exists(pem_path) and os.path.exists(key_path)):
         os.mkdirs(ssl_cert_path)
         # Create the server private key.
         cmd_log(run('openssl', 'genrsa', '-des3', '-out', key_path, '1024'))
