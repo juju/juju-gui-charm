@@ -48,6 +48,44 @@ JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
 config_json = Serializer('/tmp/config.json')
 
 
+def _get_by_attr(collection, attr, value):
+    """Return the first item in collection having attr == value.
+
+    Return None if the item is not found.
+    """
+    for item in collection:
+        if getattr(item, attr) == value:
+            return item
+
+
+def get_release_file_url(project, series_name, release_version):
+    """Return the URL of the release file hosted in Launchpad.
+
+    The returned URL points to a release file for the given project, series
+    name and release version.
+    The argument *project* is a project object as returned by launchpadlib.
+    The arguments *series_name* and *release_version* are strings. If
+    *release_version* is None, the URL of the latest release will be returned.
+    """
+    series = _get_by_attr(project.series, 'name', series_name)
+    if series is None:
+        raise ValueError('Series %r not found' % series_name)
+    releases = list(series.releases)
+    if not releases:
+        raise ValueError('Series %r does not contain releases' % series_name)
+    if release_version is None:
+        release = releases[0]
+    else:
+        release = _get_by_attr(releases, 'version', release_version)
+        if not release:
+            raise ValueError('Release %r not found' % release_version)
+    files = [i for i in release.files if str(i).endswith('.tar.gz')]
+    if not files:
+        raise ValueError(
+            'Release %r does not contain tarballs' % release_version)
+    return files[0].file_link
+
+
 def get_zookeeper_address(agent_file_path):
     """Retrieve the Zookeeper address contained in the given *agent_file_path*.
 
@@ -58,6 +96,26 @@ def get_zookeeper_address(agent_file_path):
     """
     line = search_file('JUJU_ZOOKEEPER', agent_file_path).strip()
     return line.split('=')[1].strip('"')
+
+
+def parse_source(source):
+    """Parse the ``juju-gui-source`` option.
+
+    Return a tuple of two elements representing info on how to deploy Juju GUI.
+    Examples:
+       - ('stable', None): latest stable release;
+       - ('stable', '0.1.0'): stable release v0.1.0;
+       - ('trunk', None): latest trunk release;
+       - ('trunk', '0.1.0build1'): trunk release v0.1.0build1;
+       - ('branch', 'lp:juju-gui'): release is made from a branch.
+    """
+    if source in ('stable', 'trunk'):
+        return source, None
+    if source.startswith('lp:') or source.startswith('bzr'):
+        return 'branch', source
+    if 'build' in source:
+        return 'trunk', source
+    return 'stable', source
 
 
 def render_to_file(template, context, destination):
