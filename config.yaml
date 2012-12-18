@@ -38,4 +38,8 @@ options:
       commands that are run by charm hooks.
     type: string
     default: /var/log/juju/juju-gui.log
-
+  ssl-cert-path:
+    description: |
+      The path to the directory where the SSL certificates are stored.
+    type: string
+    default: /etc/ssl/private/juju-gui

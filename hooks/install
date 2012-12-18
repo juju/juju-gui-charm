@@ -32,7 +32,8 @@ from utils import (
 
 
 DEB_DEPENDENCIES = (
-    'bzr', 'imagemagick', 'make', 'nginx', 'nodejs', 'npm', 'zookeeper')
+    'bzr', 'imagemagick', 'make', 'nginx', 'nodejs', 'npm', 'openssl',
+    'zookeeper')
 
 
 def get_dependencies():
@@ -45,7 +46,7 @@ def main():
     config = get_config()
     get_dependencies()
     fetch(config['juju-gui-branch'], config['juju-api-branch'])
-    build(config['command-log-file'])
+    build(config['command-log-file'], config['ssl-cert-path'])
     config_json.set(config)
 
 

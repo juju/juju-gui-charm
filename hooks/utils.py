@@ -17,6 +17,7 @@ __all__ = [
 import json
 import os
 import logging
+import shutil
 import tempfile
 
 from shelltoolbox import (
@@ -201,7 +202,7 @@ def fetch(juju_gui_branch, juju_api_branch):
         cmd_log(bzr_checkout(juju_api_branch, 'juju'))
 
 
-def build(logpath):
+def build(logpath, ssl_cert_path):
     """Set up Juju GUI and nginx."""
     log('Building Juju GUI.')
     with cd('juju-gui'):
@@ -220,3 +221,21 @@ def build(logpath):
         cmd_log(
             run('ln', '-s', juju_gui_site,
                 '/etc/nginx/sites-enabled/juju-gui'))
+    # Generate the nginx SSL certificates, if needed.
+    pem_path = os.path.join(ssl_cert_path, 'server.pem')
+    key_path = os.path.join(ssl_cert_path, 'server.key')
+    if not (os.path.exists(pem_path) and os.path.exists(pem_path)):
+        os.mkdirs(ssl_cert_path)
+        # Create the server private key.
+        cmd_log(run('openssl', 'genrsa', '-des3', '-out', key_path, '1024'))
+        # Create the Certificate Signing Request.
+        csr_path = os.path.join(ssl_cert_path, 'server.csr')
+        cmd_log(run('openssl', 'req', '-new', '-key', key_path, '-out',
+            csr_path))
+        # Avoid passphrase request at nginx startup.
+        orig_key_path = os.path.join(ssl_cert_path, 'server.key.orig')
+        shutil.copyfile(key_path, orig_key_path)
+        cmd_log(run('openssl', 'rsa', '-in', orig_key_path, '-out', key_path))
+        # Sign the certificate using the private key and the CSR.
+        cmd_log(run('openssl', 'x509', '-req', '-days', '365', '-in',
+            csr_path, '-signkey', key_path, '-out', pem_path))
