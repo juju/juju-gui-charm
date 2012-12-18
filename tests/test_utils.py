@@ -1,6 +1,5 @@
 #!/usr/bin/env python2
 
-from collections import namedtuple
 from contextlib import contextmanager
 import os
 from simplejson import dumps
@@ -11,6 +10,7 @@ import charmhelpers
 from utils import (
     _get_by_attr,
     cmd_log,
+    get_release_file_url,
     get_zookeeper_address,
     parse_source,
     render_to_file,
@@ -23,14 +23,46 @@ from utils import (
 import utils
 
 
+class AttrDict(dict):
+    """A dict with the ability to access keys as attributes."""
+
+    def __getattr__(self, attr):
+        if attr in self:
+            return self[attr]
+        raise AttributeError
+
+
+class AttrDictTest(unittest.TestCase):
+
+    def test_key_as_attribute(self):
+        # Ensure attributes can be used to retrieve dict values.
+        attr_dict = AttrDict(myattr='myvalue')
+        self.assertEqual('myvalue', attr_dict.myattr)
+
+    def test_attribute_not_found(self):
+        # An AttributeError is raised if the dict does not contain an attribute
+        # corresponding to an existent key.
+        with self.assertRaises(AttributeError):
+            AttrDict().myattr
+
+
 def make_collection(attr, values):
     """Create a collection of objects having an attribute named *attr*.
 
     The value of the *attr* attribute, for each instance, is taken from
     the *values* sequence.
     """
-    Item = namedtuple('Item', [attr])
-    return [Item(value) for value in values]
+    return [AttrDict({attr: value}) for value in values]
+
+
+class MakeCollectionTest(unittest.TestCase):
+
+    def test_factory(self):
+        # Ensure the factory return the expected object instances.
+        instances = make_collection('myattr', range(5))
+        self.assertEqual(5, len(instances))
+        for num, instance in enumerate(instances):
+            self.assertEqual(num, instance.myattr)
 
 
 class GetByAttrTest(unittest.TestCase):
@@ -57,10 +89,115 @@ class GetByAttrTest(unittest.TestCase):
             _get_by_attr(self.collection, 'another_attr', 0)
 
 
+class FileStub(object):
+    """Simulates a Launchpad hosted file returned by launchpadlib."""
+
+    def __init__(self, file_link):
+        self.file_link = file_link
+
+    def __str__(self):
+        return self.file_link
+
+
 class GetReleaseFileUrlTest(unittest.TestCase):
 
-    # TODO.
-    pass
+    project = AttrDict(
+        series=(
+            AttrDict(
+                name='stable',
+                releases=(
+                    AttrDict(
+                        version='0.1.1',
+                        files=(
+                            FileStub('http://example.com/0.1.1.dmg'),
+                            FileStub('http://example.com/0.1.1.tar.gz'),
+                        ),
+                    ),
+                    AttrDict(
+                        version='0.1.0',
+                        files=(
+                            FileStub('http://example.com/0.1.0.dmg'),
+                            FileStub('http://example.com/0.1.0.tar.gz'),
+                        ),
+                    ),
+                ),
+            ),
+            AttrDict(
+                name='trunk',
+                releases=(
+                    AttrDict(
+                        version='0.1.1build1',
+                        files=(
+                            FileStub('http://example.com/0.1.1build1.dmg'),
+                            FileStub('http://example.com/0.1.1build1.tar.gz'),
+                        ),
+                    ),
+                    AttrDict(
+                        version='0.1.0build1',
+                        files=(
+                            FileStub('http://example.com/0.1.0build1.dmg'),
+                            FileStub('http://example.com/0.1.0build1.tar.gz'),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    def test_latest_stable_release(self):
+        # Ensure the correct URL is returned for the latest stable release.
+        url = get_release_file_url(self.project, 'stable', None)
+        self.assertEqual('http://example.com/0.1.1.tar.gz', url)
+
+    def test_latest_trunk_release(self):
+        # Ensure the correct URL is returned for the latest trunk release.
+        url = get_release_file_url(self.project, 'trunk', None)
+        self.assertEqual('http://example.com/0.1.1build1.tar.gz', url)
+
+    def test_specific_stable_release(self):
+        # Ensure the correct URL is returned for a specific version of the
+        # stable release.
+        url = get_release_file_url(self.project, 'stable', '0.1.0')
+        self.assertEqual('http://example.com/0.1.0.tar.gz', url)
+
+    def test_specific_trunk_release(self):
+        # Ensure the correct URL is returned for a specific version of the
+        # trunk release.
+        url = get_release_file_url(self.project, 'trunk', '0.1.0build1')
+        self.assertEqual('http://example.com/0.1.0build1.tar.gz', url)
+
+    def test_series_not_found(self):
+        # A ValueError is raised if the series cannot be found.
+        with self.assertRaises(ValueError) as cm:
+            get_release_file_url(self.project, 'unstable', None)
+        self.assertIn('series not found', str(cm.exception))
+
+    def test_no_releases(self):
+        # A ValueError is raised if the series does not contain releases.
+        project = AttrDict(series=[AttrDict(name='stable', releases=[])])
+        with self.assertRaises(ValueError) as cm:
+            get_release_file_url(project, 'stable', None)
+        self.assertIn('series does not contain releases', str(cm.exception))
+
+    def test_release_not_found(self):
+        # A ValueError is raised if the release cannot be found.
+        with self.assertRaises(ValueError) as cm:
+            get_release_file_url(self.project, 'stable', '2.0')
+        self.assertIn('release not found', str(cm.exception))
+
+    def test_file_not_found(self):
+        # A ValueError is raised if the hosted file cannot be found.
+        project = AttrDict(
+            series=[
+                AttrDict(
+                    name='stable',
+                    releases=[AttrDict(version='0.1.0', files=[])],
+                ),
+            ],
+        )
+        with self.assertRaises(ValueError) as cm:
+            get_release_file_url(project, 'stable', None)
+        self.assertIn('file not found', str(cm.exception))
 
 
 class GetZookeeperAddressTest(unittest.TestCase):

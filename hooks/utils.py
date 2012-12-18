@@ -69,20 +69,19 @@ def get_release_file_url(project, series_name, release_version):
     """
     series = _get_by_attr(project.series, 'name', series_name)
     if series is None:
-        raise ValueError('Series %r not found' % series_name)
+        raise ValueError('%r: series not found' % series_name)
     releases = list(series.releases)
     if not releases:
-        raise ValueError('Series %r does not contain releases' % series_name)
+        raise ValueError('%r: series does not contain releases' % series_name)
     if release_version is None:
         release = releases[0]
     else:
         release = _get_by_attr(releases, 'version', release_version)
         if not release:
-            raise ValueError('Release %r not found' % release_version)
+            raise ValueError('%r: release not found' % release_version)
     files = [i for i in release.files if str(i).endswith('.tar.gz')]
     if not files:
-        raise ValueError(
-            'Release %r does not contain tarballs' % release_version)
+        raise ValueError('%r: file not found' % release_version)
     return files[0].file_link
 
 
