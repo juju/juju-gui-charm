@@ -1,5 +1,6 @@
 #!/usr/bin/env python2
 
+from contextlib import contextmanager
 import os
 import tempfile
 import unittest
@@ -10,7 +11,13 @@ from utils import (
     cmd_log,
     get_zookeeper_address,
     render_to_file,
+    start_agent,
+    start_gui,
+    start_improv,
+    stop,
 )
+# Import the whole utils package for monkey patching.
+import utils
 
 
 class GetZookeeperAddressTest(unittest.TestCase):
@@ -66,6 +73,107 @@ class CmdLogTest(unittest.TestCase):
         cmd_log('foo')
         line = open(self.log_file_name, 'r').read()
         self.assertTrue(line.endswith(': juju-gui@INFO \nfoo\n'))
+
+
+class StartStopTest(unittest.TestCase):
+
+    def setUp(self):
+        self.service_names = []
+        self.actions = []
+        self.svc_ctl_call_count = 0
+        self.fake_zk_address = '192.168.5.26'
+        # Monkey patches.
+        self.command = charmhelpers.command
+
+        def service_control_mock(service_name, action):
+            self.svc_ctl_call_count += 1
+            self.service_names.append(service_name)
+            self.actions.append(action)
+
+        def noop(*args):
+            pass
+
+        @contextmanager
+        def su(user):
+            yield None
+
+        def get_zookeeper_address_mock(fp):
+            return self.fake_zk_address
+
+        self.functions = dict(
+            service_control=(utils.service_control, service_control_mock),
+            log=(utils.log, noop),
+            su=(utils.su, su),
+            run=(utils.run, noop),
+            unit_get=(utils.unit_get, noop),
+            get_zookeeper_address=(
+                utils.get_zookeeper_address, get_zookeeper_address_mock)
+            )
+        # Apply the patches.
+        for fn, fcns in self.functions.items():
+            setattr(utils, fn, fcns[1])
+
+        self.destination_file = tempfile.NamedTemporaryFile()
+        self.addCleanup(self.destination_file.close)
+
+    def tearDown(self):
+        # Undo all of the monkey patching.
+        for fn, fcns in self.functions.items():
+            setattr(utils, fn, fcns[0])
+        charmhelpers.command = self.command
+
+    def test_start_improv(self):
+        port = '1234'
+        staging_env = 'large'
+        start_improv(port, staging_env, self.destination_file.name)
+        conf = self.destination_file.read()
+        self.assertTrue('--port %s' % port in conf)
+        self.assertTrue(staging_env + '.json' in conf)
+        self.assertEqual(self.svc_ctl_call_count, 1)
+        self.assertEqual(self.service_names, ['juju-api-improv'])
+        self.assertEqual(self.actions, [charmhelpers.START])
+
+    def test_start_agent(self):
+        port = '1234'
+        start_agent(port, self.destination_file.name)
+        conf = self.destination_file.read()
+        self.assertTrue('--port %s' % port in conf)
+        self.assertTrue('JUJU_ZOOKEEPER=%s' % self.fake_zk_address in conf)
+        self.assertEqual(self.svc_ctl_call_count, 1)
+        self.assertEqual(self.service_names, ['juju-api-agent'])
+        self.assertEqual(self.actions, [charmhelpers.START])
+
+    def test_start_gui(self):
+        port = '1234'
+        nginx_file = tempfile.NamedTemporaryFile()
+        self.addCleanup(nginx_file.close)
+        config_js_file = tempfile.NamedTemporaryFile()
+        self.addCleanup(config_js_file.close)
+        start_gui(port, False, True, self.destination_file.name,
+                  nginx_file.name, config_js_file.name)
+        conf = self.destination_file.read()
+        self.assertTrue('/usr/sbin/nginx' in conf)
+        nginx_conf = nginx_file.read()
+        self.assertTrue('juju-gui/build-debug' in nginx_conf)
+        self.assertEqual(self.svc_ctl_call_count, 2)
+        self.assertEqual(self.service_names, ['nginx', 'juju-gui'])
+        self.assertEqual(self.actions, [charmhelpers.STOP, charmhelpers.START])
+
+    def test_stop_staging(self):
+        mock_config = {'staging': True}
+        charmhelpers.command = lambda *args: lambda: dumps(mock_config)
+        stop()
+        self.assertEqual(self.svc_ctl_call_count, 2)
+        self.assertEqual(self.service_names, ['juju-gui', 'juju-api-improv'])
+        self.assertEqual(self.actions, [charmhelpers.STOP, charmhelpers.STOP])
+
+    def test_stop_production(self):
+        mock_config = {'staging': False}
+        charmhelpers.command = lambda *args: lambda: dumps(mock_config)
+        stop()
+        self.assertEqual(self.svc_ctl_call_count, 2)
+        self.assertEqual(self.service_names, ['juju-gui', 'juju-api-agent'])
+        self.assertEqual(self.actions, [charmhelpers.STOP, charmhelpers.STOP])
 
 
 if __name__ == '__main__':

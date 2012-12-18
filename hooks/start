@@ -1,99 +1,19 @@
 #!/usr/bin/env python2
 #-*- python -*-
 
-import json
-import os
-
 from charmhelpers import (
     get_config,
     log,
     log_entry,
     log_exit,
     open_port,
-    service_control,
-    START,
-    unit_get,
-)
-from shelltoolbox import (
-    run,
-    su,
 )
 
 from utils import (
-    get_zookeeper_address,
-    render_to_file,
+    start_agent,
+    start_gui,
+    start_improv,
 )
-
-CURRENT_DIR = os.getcwd()
-JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
-JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
-
-
-def start_gui(juju_api_port, console_enabled, staging):
-    """Set up and start the Juju GUI server."""
-    with su('root'):
-        run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
-    build_dir = JUJU_GUI_DIR + '/build-'
-    build_dir += 'debug' if staging else 'prod'
-    log('Setting up Juju GUI start up script.')
-    render_to_file(
-        'juju-gui.conf.template', {'juju_gui_dir': JUJU_GUI_DIR},
-        '/etc/init/juju-gui.conf')
-    log('Generating the Juju GUI configuration file.')
-    context = {
-        'address': unit_get('public-address'),
-        'console_enabled': json.dumps(console_enabled),
-        'port': juju_api_port,
-    }
-    render_to_file(
-        'config.js.template', context,
-        os.path.join(build_dir, 'juju-ui', 'assets', 'config.js'))
-    log('Generating the nginx site configuration file.')
-    context = {
-        'server_root': build_dir
-    }
-    render_to_file(
-        'nginx.conf.template', context,
-        '/etc/nginx/sites-available/juju-gui')
-    log('Starting Juju GUI.')
-    with su('root'):
-        service_control('juju-gui', START)
-
-
-def start_improv(juju_api_port, staging_env):
-    """Start a simulated juju environment using ``improv.py``."""
-    log('Setting up staging start up script.')
-    context = {
-        'juju_dir': JUJU_DIR,
-        'port': juju_api_port,
-        'staging_env': staging_env,
-    }
-    render_to_file(
-        'juju-api-improv.conf.template', context,
-        '/etc/init/juju-api-improv.conf')
-    log('Starting the staging backend.')
-    with su('root'):
-        service_control('juju-api-improv', START)
-
-
-def start_agent(juju_api_port):
-    """Start the Juju agent and connect to the current environment."""
-    # Retrieve the Zookeeper address from the start up script.
-    unit_dir = os.path.realpath(os.path.join(CURRENT_DIR, '..'))
-    agent_file = '/etc/init/juju-{0}.conf'.format(os.path.basename(unit_dir))
-    zookeeper = get_zookeeper_address(agent_file)
-    log('Setting up API agent start up script.')
-    context = {
-        'juju_dir': JUJU_DIR,
-        'port': juju_api_port,
-        'zookeeper': zookeeper,
-    }
-    render_to_file(
-        'juju-api-agent.conf.template', context,
-        '/etc/init/juju-api-agent.conf')
-    log('Starting API agent.')
-    with su('root'):
-        service_control('juju-api-agent', START)
 
 
 def open_ports(juju_api_port):
