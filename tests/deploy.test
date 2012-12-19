@@ -104,13 +104,22 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
 
     def test_staging(self):
         # Ensure the Juju GUI and improv services are correctly set up.
-        self.services = ('juju-api-improv', 'juju-gui')
         config = {self.charm: {'staging': 'True'}}
         config_file = make_charm_config_file(config)
         hostname = self.deploy(config_path=config_file.name)
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
             self.stop_services, hostname, ['juju-api-improv', 'juju-gui'])
+        self.check_services(hostname)
+
+    def test_branch_source(self):
+        # Ensure the Juju GUI is correctly deployed from a Bazaar branch.
+        config = {self.charm: {'juju-gui-source': 'lp:juju-gui'}}
+        config_file = make_charm_config_file(config)
+        hostname = self.deploy(config_path=config_file.name)
+        # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
+        self.addCleanup(
+            self.stop_services, hostname, ['juju-api-agent', 'juju-gui'])
         self.check_services(hostname)
 
 
