@@ -48,6 +48,8 @@ JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
 # Store the configuration from on invocation to the next.
 config_json = Serializer('/tmp/config.json')
 
+# bzr checkout command.
+bzr_checkout = command('bzr', 'co', '--lightweight')
 
 def _get_by_attr(collection, attr, value):
     """Return the first item in collection having attr == value.
@@ -247,18 +249,16 @@ def stop():
             service_control(AGENT, STOP)
 
 
-def fetch(juju_gui_source, juju_api_branch, logpath):
-    """Retrieve the Juju branch and the Juju GUI release/branch."""
-    bzr_checkout = command('bzr', 'co', '--lightweight')
+def fetch_gui(juju_gui_source, logpath):
+    """Retrieve the Juju GUI release/branch."""
     # Retrieve a Juju GUI release.
     origin, version_or_branch = parse_source(juju_gui_source)
     if origin == 'branch':
         # Create a release starting from a branch.
         juju_gui_source_dir = os.path.join(CURRENT_DIR, 'juju-gui-source')
-        if juju_gui_source is not None:
-            log('Retrieving Juju GUI source checkouts.')
-            cmd_log(run('rm', '-rf', juju_gui_source_dir))
-            cmd_log(bzr_checkout(version_or_branch, juju_gui_source_dir))
+        log('Retrieving Juju GUI source checkouts.')
+        cmd_log(run('rm', '-rf', juju_gui_source_dir))
+        cmd_log(bzr_checkout(version_or_branch, juju_gui_source_dir))
         log('Preparing a Juju GUI release.')
         logdir = os.path.dirname(logpath)
         fd, name = tempfile.mkstemp(prefix='make-distfile-', dir=logdir)
@@ -276,12 +276,16 @@ def fetch(juju_gui_source, juju_api_branch, logpath):
         file_url = get_release_file_url(project, origin, version_or_branch)
         release_tarball = os.path.join(CURRENT_DIR, 'release.tgz')
         cmd_log(run('curl', '-o', release_tarball, file_url))
+    return release_tarball
+
+
+def fetch_api(juju_api_branch):
+    """Retrieve the Juju branch."""
     # Retrieve Juju API source checkout.
     if juju_api_branch is not None:
         log('Retrieving Juju API source checkout.')
         cmd_log(run('rm', '-rf', JUJU_DIR))
         cmd_log(bzr_checkout(juju_api_branch, JUJU_DIR))
-    return release_tarball
 
 
 def build(release_tarball):
