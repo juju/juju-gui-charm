@@ -237,8 +237,7 @@ def start_gui(juju_api_port, console_enabled, staging,
     render_to_file('nginx.conf.template', context, nginx_path)
     log('Starting Juju GUI.')
     with su('root'):
-        # Stop nginx so it will restart cleanly with the gui.
-        service_control('nginx', STOP)
+        # Start the Juju GUI.
         service_control(GUI, START)
 
 

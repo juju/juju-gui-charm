@@ -393,17 +393,13 @@ class StartStopTest(unittest.TestCase):
         self.assertEqual(self.actions, [charmhelpers.STOP, charmhelpers.START])
 
     def test_stop_staging(self):
-        mock_config = {'staging': True}
-        charmhelpers.command = lambda *args: lambda: dumps(mock_config)
-        stop()
+        stop(True)
         self.assertEqual(self.svc_ctl_call_count, 2)
         self.assertEqual(self.service_names, ['juju-gui', 'juju-api-improv'])
         self.assertEqual(self.actions, [charmhelpers.STOP, charmhelpers.STOP])
 
     def test_stop_production(self):
-        mock_config = {'staging': False}
-        charmhelpers.command = lambda *args: lambda: dumps(mock_config)
-        stop()
+        stop(False)
         self.assertEqual(self.svc_ctl_call_count, 2)
         self.assertEqual(self.service_names, ['juju-gui', 'juju-api-agent'])
         self.assertEqual(self.actions, [charmhelpers.STOP, charmhelpers.STOP])
