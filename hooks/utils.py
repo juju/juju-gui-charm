@@ -123,7 +123,7 @@ def parse_source(source):
        - ('stable', None): latest stable release;
        - ('stable', '0.1.0'): stable release v0.1.0;
        - ('trunk', None): latest trunk release;
-       - ('trunk', '0.1.0build1'): trunk release v0.1.0build1;
+       - ('trunk', '0.1.0+build.1'): trunk release v0.1.0 bzr revision 1;
        - ('branch', 'lp:juju-gui'): release is made from a branch.
     """
     if source in ('stable', 'trunk'):

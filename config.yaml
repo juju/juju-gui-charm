@@ -6,8 +6,8 @@ options:
       - 'trunk': the latest trunk release will be deployed;
       - a stable version (e.g '0.1.0'): the specified stable version will be
         deployed;
-      - a trunk version (e.g '0.1.0build1'): the specified trunk version will
-        be deployed;
+      - a trunk version (e.g '0.1.0+build.1'): the specified trunk version
+        will be deployed;
       - a Bazaar branch (e.g. 'lp:juju-gui'): a release will be created and
         deployed from the specified Bazaar branch.
     type: string
