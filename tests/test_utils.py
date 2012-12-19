@@ -264,7 +264,7 @@ class ParseSourceTest(unittest.TestCase):
 
     def test_bzr_branch(self):
         # Ensure a Bazaar branch is correctly parsed.
-        sources = ('lp:example', 'bzr+ssh://bazaar.launchpad.net/example')
+        sources = ('lp:example', 'http://bazaar.launchpad.net/example')
         for source in sources:
             self.assertTupleEqual(('branch', source), parse_source(source))
 

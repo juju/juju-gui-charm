@@ -128,7 +128,7 @@ def parse_source(source):
     """
     if source in ('stable', 'trunk'):
         return source, None
-    if source.startswith('lp:') or source.startswith('bzr'):
+    if source.startswith('lp:') or source.startswith('http://'):
         return 'branch', source
     if 'build' in source:
         return 'trunk', source
