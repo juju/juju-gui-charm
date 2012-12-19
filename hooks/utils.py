@@ -280,7 +280,7 @@ def fetch_gui(juju_gui_source, logpath):
         project = launchpad.projects['juju-gui']
         file_url = get_release_file_url(project, origin, version_or_branch)
         release_tarball = os.path.join(CURRENT_DIR, 'release.tgz')
-        cmd_log(run('curl', '-o', release_tarball, file_url))
+        cmd_log(run('curl', '-L', '-o', release_tarball, file_url))
     return release_tarball
 
 
