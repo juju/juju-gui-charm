@@ -388,9 +388,9 @@ class StartStopTest(unittest.TestCase):
         self.assertTrue('/usr/sbin/nginx' in conf)
         nginx_conf = nginx_file.read()
         self.assertTrue('juju-gui/build-debug' in nginx_conf)
-        self.assertEqual(self.svc_ctl_call_count, 2)
-        self.assertEqual(self.service_names, ['nginx', 'juju-gui'])
-        self.assertEqual(self.actions, [charmhelpers.STOP, charmhelpers.START])
+        self.assertEqual(self.svc_ctl_call_count, 1)
+        self.assertEqual(self.service_names, ['juju-gui'])
+        self.assertEqual(self.actions, [charmhelpers.START])
 
     def test_stop_staging(self):
         stop(True)
