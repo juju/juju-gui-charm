@@ -269,7 +269,7 @@ def fetch_gui(juju_gui_source, logpath):
         fd, name = tempfile.mkstemp(prefix='make-distfile-', dir=logdir)
         log('Output from "make distfile" sent to', name)
         with environ(NO_BZR='1'):
-            run('make', '-c', juju_gui_source_dir, 'distfile',
+            run('make', '-C', juju_gui_source_dir, 'distfile',
                 stdout=fd, stderr=fd)
         release_tarball = first_path_in_dir(
             os.path.join(juju_gui_source_dir, 'releases'))
