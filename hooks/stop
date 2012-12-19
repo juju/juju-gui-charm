@@ -2,6 +2,7 @@
 #-*- python -*-
 
 from charmhelpers import (
+    get_config,
     log_entry,
     log_exit,
 )
@@ -9,9 +10,14 @@ from charmhelpers import (
 from utils import stop
 
 
+def main():
+    config = get_config()
+    stop(config.get('staging'))
+
+
 if __name__ == '__main__':
     log_entry()
     try:
-        stop()
+        main()
     finally:
         log_exit()

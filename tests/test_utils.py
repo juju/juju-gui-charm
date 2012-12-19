@@ -2,6 +2,7 @@
 
 from contextlib import contextmanager
 import os
+import shutil
 from simplejson import dumps
 import tempfile
 import unittest
@@ -10,6 +11,7 @@ import charmhelpers
 from utils import (
     _get_by_attr,
     cmd_log,
+    first_path_in_dir,
     get_release_file_url,
     get_zookeeper_address,
     parse_source,
@@ -44,6 +46,28 @@ class AttrDictTest(unittest.TestCase):
         # corresponding to an existent key.
         with self.assertRaises(AttributeError):
             AttrDict().myattr
+
+
+class FirstPathInDirTest(unittest.TestCase):
+
+    def setUp(self):
+        self.directory = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.directory)
+        self.path = os.path.join(self.directory, 'file_or_dir')
+
+    def test_file_path(self):
+        # Ensure the full path of a file is correctly returned.
+        open(self.path, 'w').close()
+        self.assertEqual(self.path, first_path_in_dir(self.directory))
+
+    def test_directory_path(self):
+        # Ensure the full path of a directory is correctly returned.
+        os.mkdir(self.path)
+        self.assertEqual(self.path, first_path_in_dir(self.directory))
+
+    def test_empty_directory(self):
+        # An IndexError is raised if the directory is empty.
+        self.assertRaises(IndexError, first_path_in_dir, self.directory)
 
 
 def make_collection(attr, values):

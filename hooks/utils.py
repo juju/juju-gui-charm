@@ -2,17 +2,27 @@
 
 __all__ = [
     'AGENT',
-    'build',
+    'bzr_checkout',
     'cmd_log',
+    'CURRENT_DIR',
+    'fetch_api',
+    'fetch_gui',
+    'first_path_in_dir',
+    'get_release_file_url',
     'get_zookeeper_address',
     'GUI',
     'IMPROV',
+    'JUJU_DIR',
+    'JUJU_GUI_DIR',
+    'parse_source',
     'render_to_file',
+    'setup_api',
+    'setup_gui',
     'start_agent',
     'start_gui',
     'start_improv',
     'stop',
-    ]
+]
 
 import json
 import os
@@ -21,13 +31,13 @@ import tempfile
 
 from launchpadlib.launchpad import Launchpad
 from shelltoolbox import (
-    cd,
     command,
+    environ,
     run,
     search_file,
     Serializer,
     su,
-    )
+)
 from charmhelpers import (
     get_config,
     log,
@@ -47,9 +57,14 @@ JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
 
 # Store the configuration from on invocation to the next.
 config_json = Serializer('/tmp/config.json')
-
-# bzr checkout command.
+# Bazaar checkout command.
 bzr_checkout = command('bzr', 'co', '--lightweight')
+
+
+def first_path_in_dir(directory):
+    """Return the full path of the first file/dir in *directory*."""
+    return os.path.join(directory, os.listdir(directory)[0])
+
 
 def _get_by_attr(collection, attr, value):
     """Return the first item in collection having attr == value.
@@ -170,9 +185,7 @@ def start_improv(juju_api_port, staging_env,
         'port': juju_api_port,
         'staging_env': staging_env,
     }
-    render_to_file(
-        'juju-api-improv.conf.template', context,
-        config_path)
+    render_to_file('juju-api-improv.conf.template', context, config_path)
     log('Starting the staging backend.')
     with su('root'):
         service_control(IMPROV, START)
@@ -190,9 +203,7 @@ def start_agent(juju_api_port, config_path='/etc/init/juju-api-agent.conf'):
         'port': juju_api_port,
         'zookeeper': zookeeper,
     }
-    render_to_file(
-        'juju-api-agent.conf.template', context,
-        config_path)
+    render_to_file('juju-api-agent.conf.template', context, config_path)
     log('Starting API agent.')
     with su('root'):
         service_control(AGENT, START)
@@ -208,8 +219,7 @@ def start_gui(juju_api_port, console_enabled, staging,
     build_dir = JUJU_GUI_DIR + '/build-'
     build_dir += 'debug' if staging else 'prod'
     log('Setting up Juju GUI start up script.')
-    render_to_file(
-        'juju-gui.conf.template', {}, config_path)
+    render_to_file('juju-gui.conf.template', {}, config_path)
     log('Generating the Juju GUI configuration file.')
     context = {
         'address': unit_get('public-address'),
@@ -219,15 +229,12 @@ def start_gui(juju_api_port, console_enabled, staging,
     if config_js_path is None:
         config_js_path = os.path.join(
             build_dir, 'juju-ui', 'assets', 'config.js')
-    render_to_file(
-        'config.js.template', context,
-        config_js_path)
+    render_to_file('config.js.template', context, config_js_path)
     log('Generating the nginx site configuration file.')
     context = {
         'server_root': build_dir
     }
-    render_to_file(
-        'nginx.conf.template', context, nginx_path)
+    render_to_file('nginx.conf.template', context, nginx_path)
     log('Starting Juju GUI.')
     with su('root'):
         # Stop nginx so it will restart cleanly with the gui.
@@ -235,13 +242,12 @@ def start_gui(juju_api_port, console_enabled, staging,
         service_control(GUI, START)
 
 
-def stop():
+def stop(staging):
     """Stop the Juju API agent."""
-    config = get_config()
     with su('root'):
         log('Stopping Juju GUI.')
         service_control(GUI, STOP)
-        if config.get('staging'):
+        if staging:
             log('Stopping the staging backend.')
             service_control(IMPROV, STOP)
         else:
@@ -263,11 +269,11 @@ def fetch_gui(juju_gui_source, logpath):
         logdir = os.path.dirname(logpath)
         fd, name = tempfile.mkstemp(prefix='make-distfile-', dir=logdir)
         log('Output from "make distfile" sent to', name)
-        run('make', '-c', juju_gui_source_dir, 'distfile',
-            stdout=fd, stderr=fd)
-        releases_dir = os.path.join(juju_gui_source_dir, 'releases')
-        release_tarball = os.path.join(
-            releases_dir, os.listdir(releases_dir)[0])
+        with environ(NO_BZR='1'):
+            run('make', '-c', juju_gui_source_dir, 'distfile',
+                stdout=fd, stderr=fd)
+        release_tarball = first_path_in_dir(
+            os.path.join(juju_gui_source_dir, 'releases'))
     else:
         # Retrieve a release from Launchpad.
         log('Retrieving Juju GUI release.')
@@ -282,14 +288,13 @@ def fetch_gui(juju_gui_source, logpath):
 def fetch_api(juju_api_branch):
     """Retrieve the Juju branch."""
     # Retrieve Juju API source checkout.
-    if juju_api_branch is not None:
-        log('Retrieving Juju API source checkout.')
-        cmd_log(run('rm', '-rf', JUJU_DIR))
-        cmd_log(bzr_checkout(juju_api_branch, JUJU_DIR))
+    log('Retrieving Juju API source checkout.')
+    cmd_log(run('rm', '-rf', JUJU_DIR))
+    cmd_log(bzr_checkout(juju_api_branch, JUJU_DIR))
 
 
-def build(release_tarball):
-    """Set up Juju GUI and nginx."""
+def setup_gui(release_tarball):
+    """Set up Juju GUI."""
     # Uncompress the release tarball.
     log('Installing Juju GUI.')
     release_dir = os.path.join(CURRENT_DIR, 'release')
@@ -298,8 +303,11 @@ def build(release_tarball):
     uncompress = command('tar', '-x', '-z', '-C', release_dir, '-f')
     cmd_log(uncompress(release_tarball))
     # Link the Juju GUI dir to the contents of the release tarball.
-    source_dir = os.path.join(release_dir, os.listdir(release_dir)[0])
-    cmd_log(run('ln', '-sf', source_dir, JUJU_GUI_DIR))
+    cmd_log(run('ln', '-sf', first_path_in_dir(release_dir), JUJU_GUI_DIR))
+
+
+def setup_api():
+    """Set up nginx."""
     log('Setting up nginx.')
     nginx_default_site = '/etc/nginx/sites-enabled/default'
     juju_gui_site = '/etc/nginx/sites-available/juju-gui'
