@@ -43,11 +43,13 @@ def handle_config_changes(config, diff):
     juju_api_port = config.get('juju-api-port')
     staging = config.get('staging')
 
+    # The juju_gui_source_changed and juju_api_branch_changed variables
+    # control whether we restart the GUI and the API, respectively, at the
+    # end of the function.
     juju_gui_source_changed = False
     juju_api_branch_changed = False
 
     # Fetch new sources?
-    # Restarting of the gui and api services is handled below.
     if 'juju-gui-source' in added_or_changed:
         juju_gui_source_changed = True
         release_tarball = fetch_gui(
