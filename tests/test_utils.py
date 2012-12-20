@@ -2,14 +2,19 @@
 
 from contextlib import contextmanager
 import os
+import shutil
+from simplejson import dumps
 import tempfile
 import unittest
-import charmhelpers
-from simplejson import dumps
 
+import charmhelpers
 from utils import (
+    _get_by_attr,
     cmd_log,
+    first_path_in_dir,
+    get_release_file_url,
     get_zookeeper_address,
+    parse_source,
     render_to_file,
     start_agent,
     start_gui,
@@ -18,6 +23,205 @@ from utils import (
 )
 # Import the whole utils package for monkey patching.
 import utils
+
+
+class AttrDict(dict):
+    """A dict with the ability to access keys as attributes."""
+
+    def __getattr__(self, attr):
+        if attr in self:
+            return self[attr]
+        raise AttributeError
+
+
+class AttrDictTest(unittest.TestCase):
+
+    def test_key_as_attribute(self):
+        # Ensure attributes can be used to retrieve dict values.
+        attr_dict = AttrDict(myattr='myvalue')
+        self.assertEqual('myvalue', attr_dict.myattr)
+
+    def test_attribute_not_found(self):
+        # An AttributeError is raised if the dict does not contain an attribute
+        # corresponding to an existent key.
+        with self.assertRaises(AttributeError):
+            AttrDict().myattr
+
+
+class FirstPathInDirTest(unittest.TestCase):
+
+    def setUp(self):
+        self.directory = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.directory)
+        self.path = os.path.join(self.directory, 'file_or_dir')
+
+    def test_file_path(self):
+        # Ensure the full path of a file is correctly returned.
+        open(self.path, 'w').close()
+        self.assertEqual(self.path, first_path_in_dir(self.directory))
+
+    def test_directory_path(self):
+        # Ensure the full path of a directory is correctly returned.
+        os.mkdir(self.path)
+        self.assertEqual(self.path, first_path_in_dir(self.directory))
+
+    def test_empty_directory(self):
+        # An IndexError is raised if the directory is empty.
+        self.assertRaises(IndexError, first_path_in_dir, self.directory)
+
+
+def make_collection(attr, values):
+    """Create a collection of objects having an attribute named *attr*.
+
+    The value of the *attr* attribute, for each instance, is taken from
+    the *values* sequence.
+    """
+    return [AttrDict({attr: value}) for value in values]
+
+
+class MakeCollectionTest(unittest.TestCase):
+
+    def test_factory(self):
+        # Ensure the factory returns the expected object instances.
+        instances = make_collection('myattr', range(5))
+        self.assertEqual(5, len(instances))
+        for num, instance in enumerate(instances):
+            self.assertEqual(num, instance.myattr)
+
+
+class GetByAttrTest(unittest.TestCase):
+
+    attr = 'myattr'
+    collection = make_collection(attr, range(5))
+
+    def test_item_found(self):
+        # Ensure an object instance is correctly returned if found in
+        # the collection.
+        item = _get_by_attr(self.collection, self.attr, 3)
+        self.assertEqual(3, item.myattr)
+
+    def test_value_not_found(self):
+        # None is returned if the collection does not contain the requested
+        # item.
+        item = _get_by_attr(self.collection, self.attr, '__does_not_exist__')
+        self.assertIsNone(item)
+
+    def test_attr_not_found(self):
+        # An AttributeError is raised if items in collection does not have the
+        # required attribute.
+        with self.assertRaises(AttributeError):
+            _get_by_attr(self.collection, 'another_attr', 0)
+
+
+class FileStub(object):
+    """Simulate a Launchpad hosted file returned by launchpadlib."""
+
+    def __init__(self, file_link):
+        self.file_link = file_link
+
+    def __str__(self):
+        return self.file_link
+
+
+class GetReleaseFileUrlTest(unittest.TestCase):
+
+    project = AttrDict(
+        series=(
+            AttrDict(
+                name='stable',
+                releases=(
+                    AttrDict(
+                        version='0.1.1',
+                        files=(
+                            FileStub('http://example.com/0.1.1.dmg'),
+                            FileStub('http://example.com/0.1.1.tgz'),
+                        ),
+                    ),
+                    AttrDict(
+                        version='0.1.0',
+                        files=(
+                            FileStub('http://example.com/0.1.0.dmg'),
+                            FileStub('http://example.com/0.1.0.tgz'),
+                        ),
+                    ),
+                ),
+            ),
+            AttrDict(
+                name='trunk',
+                releases=(
+                    AttrDict(
+                        version='0.1.1+build.1',
+                        files=(
+                            FileStub('http://example.com/0.1.1+build.1.dmg'),
+                            FileStub('http://example.com/0.1.1+build.1.tgz'),
+                        ),
+                    ),
+                    AttrDict(
+                        version='0.1.0+build.1',
+                        files=(
+                            FileStub('http://example.com/0.1.0+build.1.dmg'),
+                            FileStub('http://example.com/0.1.0+build.1.tgz'),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    def test_latest_stable_release(self):
+        # Ensure the correct URL is returned for the latest stable release.
+        url = get_release_file_url(self.project, 'stable', None)
+        self.assertEqual('http://example.com/0.1.1.tgz', url)
+
+    def test_latest_trunk_release(self):
+        # Ensure the correct URL is returned for the latest trunk release.
+        url = get_release_file_url(self.project, 'trunk', None)
+        self.assertEqual('http://example.com/0.1.1+build.1.tgz', url)
+
+    def test_specific_stable_release(self):
+        # Ensure the correct URL is returned for a specific version of the
+        # stable release.
+        url = get_release_file_url(self.project, 'stable', '0.1.0')
+        self.assertEqual('http://example.com/0.1.0.tgz', url)
+
+    def test_specific_trunk_release(self):
+        # Ensure the correct URL is returned for a specific version of the
+        # trunk release.
+        url = get_release_file_url(self.project, 'trunk', '0.1.0+build.1')
+        self.assertEqual('http://example.com/0.1.0+build.1.tgz', url)
+
+    def test_series_not_found(self):
+        # A ValueError is raised if the series cannot be found.
+        with self.assertRaises(ValueError) as cm:
+            get_release_file_url(self.project, 'unstable', None)
+        self.assertIn('series not found', str(cm.exception))
+
+    def test_no_releases(self):
+        # A ValueError is raised if the series does not contain releases.
+        project = AttrDict(series=[AttrDict(name='stable', releases=[])])
+        with self.assertRaises(ValueError) as cm:
+            get_release_file_url(project, 'stable', None)
+        self.assertIn('series does not contain releases', str(cm.exception))
+
+    def test_release_not_found(self):
+        # A ValueError is raised if the release cannot be found.
+        with self.assertRaises(ValueError) as cm:
+            get_release_file_url(self.project, 'stable', '2.0')
+        self.assertIn('release not found', str(cm.exception))
+
+    def test_file_not_found(self):
+        # A ValueError is raised if the hosted file cannot be found.
+        project = AttrDict(
+            series=[
+                AttrDict(
+                    name='stable',
+                    releases=[AttrDict(version='0.1.0', files=[])],
+                ),
+            ],
+        )
+        with self.assertRaises(ValueError) as cm:
+            get_release_file_url(project, 'stable', None)
+        self.assertIn('file not found', str(cm.exception))
 
 
 class GetZookeeperAddressTest(unittest.TestCase):
@@ -34,6 +238,35 @@ class GetZookeeperAddressTest(unittest.TestCase):
         # Ensure the Zookeeper address is correctly retreived.
         address = get_zookeeper_address(self.agent_file_path)
         self.assertEqual(self.zookeeper_address, address)
+
+
+class ParseSourceTest(unittest.TestCase):
+
+    def test_latest_stable_release(self):
+        # Ensure the latest stable release is correctly parsed.
+        expected = ('stable', None)
+        self.assertTupleEqual(expected, parse_source('stable'))
+
+    def test_latest_trunk_release(self):
+        # Ensure the latest trunk release is correctly parsed.
+        expected = ('trunk', None)
+        self.assertTupleEqual(expected, parse_source('trunk'))
+
+    def test_stable_release(self):
+        # Ensure a specific stable release is correctly parsed.
+        expected = ('stable', '0.1.0')
+        self.assertTupleEqual(expected, parse_source('0.1.0'))
+
+    def test_trunk_release(self):
+        # Ensure a specific trunk release is correctly parsed.
+        expected = ('trunk', '0.1.0+build.1')
+        self.assertTupleEqual(expected, parse_source('0.1.0+build.1'))
+
+    def test_bzr_branch(self):
+        # Ensure a Bazaar branch is correctly parsed.
+        sources = ('lp:example', 'http://bazaar.launchpad.net/example')
+        for source in sources:
+            self.assertTupleEqual(('branch', source), parse_source(source))
 
 
 class RenderToFileTest(unittest.TestCase):
@@ -155,22 +388,18 @@ class StartStopTest(unittest.TestCase):
         self.assertTrue('/usr/sbin/nginx' in conf)
         nginx_conf = nginx_file.read()
         self.assertTrue('juju-gui/build-debug' in nginx_conf)
-        self.assertEqual(self.svc_ctl_call_count, 2)
-        self.assertEqual(self.service_names, ['nginx', 'juju-gui'])
-        self.assertEqual(self.actions, [charmhelpers.STOP, charmhelpers.START])
+        self.assertEqual(self.svc_ctl_call_count, 1)
+        self.assertEqual(self.service_names, ['juju-gui'])
+        self.assertEqual(self.actions, [charmhelpers.START])
 
     def test_stop_staging(self):
-        mock_config = {'staging': True}
-        charmhelpers.command = lambda *args: lambda: dumps(mock_config)
-        stop()
+        stop(True)
         self.assertEqual(self.svc_ctl_call_count, 2)
         self.assertEqual(self.service_names, ['juju-gui', 'juju-api-improv'])
         self.assertEqual(self.actions, [charmhelpers.STOP, charmhelpers.STOP])
 
     def test_stop_production(self):
-        mock_config = {'staging': False}
-        charmhelpers.command = lambda *args: lambda: dumps(mock_config)
-        stop()
+        stop(False)
         self.assertEqual(self.svc_ctl_call_count, 2)
         self.assertEqual(self.service_names, ['juju-gui', 'juju-api-agent'])
         self.assertEqual(self.actions, [charmhelpers.STOP, charmhelpers.STOP])

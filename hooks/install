@@ -4,7 +4,7 @@
 from subprocess import (
     CalledProcessError,
     check_call,
-    )
+)
 
 # python-shelltoolbox is installed as a dependency of python-charmhelpers.
 check_call(['apt-get', 'install', '-y', 'python-charmhelpers'])
@@ -24,16 +24,19 @@ from shelltoolbox import (
 )
 
 from utils import (
-    build,
     cmd_log,
     config_json,
-    fetch,
-    )
+    fetch_api,
+    fetch_gui,
+    setup_gui,
+    setup_nginx,
+)
 
 
 DEB_DEPENDENCIES = (
     'bzr', 'imagemagick', 'make', 'nginx', 'nodejs', 'npm', 'openssl',
-    'zookeeper')
+    'python-launchpadlib', 'zookeeper',
+)
 
 
 def get_dependencies():
@@ -45,8 +48,11 @@ def get_dependencies():
 def main():
     config = get_config()
     get_dependencies()
-    fetch(config['juju-gui-branch'], config['juju-api-branch'])
-    build(config['command-log-file'], config['ssl-cert-path'])
+    release_tarball = fetch_gui(
+        config['juju-gui-source'], config['command-log-file'])
+    setup_gui(release_tarball)
+    setup_nginx(config['ssl-cert-path'])
+    fetch_api(config['juju-api-branch'])
     config_json.set(config)
 
 

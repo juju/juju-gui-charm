@@ -4,8 +4,6 @@
 # Copyright 2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-import os.path
-from shutil import rmtree
 from subprocess import CalledProcessError
 import sys
 
@@ -24,11 +22,13 @@ from shelltoolbox import (
 
 from utils import (
     AGENT,
-    build,
     config_json,
-    fetch,
+    fetch_api,
+    fetch_gui,
     GUI,
     IMPROV,
+    setup_gui,
+    setup_nginx,
     start_agent,
     start_gui,
     start_improv,
@@ -39,33 +39,33 @@ def handle_config_changes(config, diff):
     # Handle all configuration file changes.
     log('Updating configuration.')
 
-    staging = config.get('staging')
-    staging_environment = config.get('staging-environment')
-    juju_api_port = config.get('juju-api-port')
     added_or_changed = diff.added_or_changed
+    juju_api_port = config.get('juju-api-port')
+    staging = config.get('staging')
 
-    # Fetch new branches?
-    gui_branch = None
-    api_branch = None
-    if 'juju-gui-branch' in added_or_changed:
-        if os.path.exists('juju-gui'):
-            rmtree('juju-gui')
-        gui_branch = config['juju-gui-branch']
+    # The juju_gui_source_changed and juju_api_branch_changed variables
+    # control whether we restart the GUI and the API, respectively, at the
+    # end of the function.
+    juju_gui_source_changed = False
+    juju_api_branch_changed = False
+
+    # Fetch new sources?
+    if 'juju-gui-source' in added_or_changed:
+        juju_gui_source_changed = True
+        release_tarball = fetch_gui(
+            config['juju-gui-source'], config['command-log-file'])
+        setup_gui(release_tarball)
+        setup_nginx(config['ssl-cert-path'])
     if 'juju-api-branch' in added_or_changed:
-        if os.path.exists('juju'):
-            rmtree('juju')
-        api_branch = config['juju-api-branch']
-    if gui_branch or api_branch:
-        fetch(gui_branch, api_branch)
-        build(config['command-log-file'], config['ssl-cert-path'])
-        # Restarting of the gui and api services is handled below.
+        juju_api_branch_changed = True
+        fetch_api(config['juju-api-branch'])
 
     # Handle changes to the improv server configuration.
     if staging:
         staging_properties = set(
             ['staging', 'staging-environment', 'juju-api-port'])
         staging_changed = added_or_changed & staging_properties
-        if staging_changed or (api_branch is not None):
+        if staging_changed or juju_api_branch_changed:
             if 'staging' in added_or_changed:
                 # 'staging' went from False to True, so the agent server is
                 # running and must be stopped.
@@ -76,14 +76,13 @@ def handle_config_changes(config, diff):
                 current_api = IMPROV
             log('Stopping %s.' % current_api)
             service_control(current_api, STOP)
-
             # Now the improv server can be cleanly started.
-            log('Starting or restarting improv')
-            start_improv(juju_api_port, staging_environment)
+            log('Starting or restarting staging.')
+            start_improv(juju_api_port, config.get('staging-environment'))
     else:
         agent_properties = set(['juju-api-port', 'staging'])
         agent_changed = added_or_changed & agent_properties
-        if agent_changed or (api_branch is not None):
+        if agent_changed or juju_api_branch_changed:
             if 'staging' in added_or_changed:
                 # If 'staging' transitions to False we need to stop the backend
                 # and start the agent.
@@ -93,15 +92,15 @@ def handle_config_changes(config, diff):
                 # updated -- bounce it.
                 current_api = AGENT
             service_control(current_api, STOP)
+            log('Starting or restarting Juju API agent.')
             start_agent(juju_api_port)
 
     # Handle changes to the juju-gui configuration.
     gui_properties = set(
         ['juju-gui-console-enabled', 'juju-api-port', 'staging'])
     gui_changed = added_or_changed & gui_properties
-    if gui_changed or (gui_branch is not None):
+    if gui_changed or juju_gui_source_changed:
         with su('root'):
-            service_control('nginx', STOP)
             service_control(GUI, STOP)
         console_enabled = config.get('juju-gui-console-enabled')
         start_gui(juju_api_port, console_enabled, staging)
