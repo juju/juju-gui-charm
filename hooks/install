@@ -28,8 +28,8 @@ from utils import (
     config_json,
     fetch_api,
     fetch_gui,
-    setup_api,
     setup_gui,
+    setup_nginx,
 )
 
 
@@ -51,8 +51,8 @@ def main():
     release_tarball = fetch_gui(
         config['juju-gui-source'], config['command-log-file'])
     setup_gui(release_tarball)
+    setup_nginx()
     fetch_api(config['juju-api-branch'])
-    setup_api()
     config_json.set(config)
 
 

@@ -114,7 +114,7 @@ class GetByAttrTest(unittest.TestCase):
 
 
 class FileStub(object):
-    """Simulates a Launchpad hosted file returned by launchpadlib."""
+    """Simulate a Launchpad hosted file returned by launchpadlib."""
 
     def __init__(self, file_link):
         self.file_link = file_link

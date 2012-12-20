@@ -16,8 +16,8 @@ __all__ = [
     'JUJU_GUI_DIR',
     'parse_source',
     'render_to_file',
-    'setup_api',
     'setup_gui',
+    'setup_nginx',
     'start_agent',
     'start_gui',
     'start_improv',
@@ -306,7 +306,7 @@ def setup_gui(release_tarball):
     cmd_log(run('ln', '-sf', first_path_in_dir(release_dir), JUJU_GUI_DIR))
 
 
-def setup_api():
+def setup_nginx():
     """Set up nginx."""
     log('Setting up nginx.')
     nginx_default_site = '/etc/nginx/sites-enabled/default'
