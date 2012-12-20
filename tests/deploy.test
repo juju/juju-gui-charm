@@ -53,7 +53,7 @@ class DeployTestMixin(object):
 
     def check_services(self, hostname, ws_port=8080):
         """Check the services are listening on their tcp ports."""
-        url = 'http://{0}:{1}'.format(hostname, self.port)
+        url = 'https://{0}:{1}'.format(hostname, self.port)
         response = open_url(url)
         self.assertEqual(200, response.getcode())
         ws_url = 'http://{0}:{1}/ws'.format(hostname, ws_port)
