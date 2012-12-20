@@ -17,11 +17,13 @@ __all__ = [
 import json
 import os
 import logging
+import shutil
 import tempfile
 
 from shelltoolbox import (
     cd,
     command,
+    environ,
     run,
     search_file,
     Serializer,
@@ -201,14 +203,15 @@ def fetch(juju_gui_branch, juju_api_branch):
         cmd_log(bzr_checkout(juju_api_branch, 'juju'))
 
 
-def build(logpath):
+def build(logpath, ssl_cert_path):
     """Set up Juju GUI and nginx."""
     log('Building Juju GUI.')
-    with cd('juju-gui'):
-        logdir = os.path.dirname(logpath)
-        fd, name = tempfile.mkstemp(prefix='make-', dir=logdir)
-        log('Output from "make" sent to', name)
-        run('make', stdout=fd, stderr=fd)
+    with environ(NO_BZR='1'):
+        with cd('juju-gui'):
+            logdir = os.path.dirname(logpath)
+            fd, name = tempfile.mkstemp(prefix='make-', dir=logdir)
+            log('Output from "make" sent to', name)
+            run('make', stdout=fd, stderr=fd)
     log('Setting up nginx.')
     nginx_default_site = '/etc/nginx/sites-enabled/default'
     juju_gui_site = '/etc/nginx/sites-available/juju-gui'
@@ -220,3 +223,16 @@ def build(logpath):
         cmd_log(
             run('ln', '-s', juju_gui_site,
                 '/etc/nginx/sites-enabled/juju-gui'))
+    # Generate the nginx SSL certificates, if needed.
+    pem_path = os.path.join(ssl_cert_path, 'server.pem')
+    key_path = os.path.join(ssl_cert_path, 'server.key')
+    if not (os.path.exists(pem_path) and os.path.exists(key_path)):
+        if not os.path.exists(ssl_cert_path):
+            os.makedirs(ssl_cert_path)
+        # See http://superuser.com/questions/226192/openssl-without-prompt
+        cmd_log(run(
+            'openssl', 'req', '-new', '-newkey', 'rsa:4096',
+            '-days', '365', '-nodes', '-x509', '-subj',
+            # These are arbitrary test values for the certificate.
+            '/C=GB/ST=Juju/L=GUI/O=Ubuntu/CN=juju.ubuntu.com',
+            '-keyout', key_path, '-out', pem_path))

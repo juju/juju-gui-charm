@@ -57,7 +57,7 @@ def handle_config_changes(config, diff):
         api_branch = config['juju-api-branch']
     if gui_branch or api_branch:
         fetch(gui_branch, api_branch)
-        build(config['command-log-file'])
+        build(config['command-log-file'], config['ssl-cert-path'])
         # Restarting of the gui and api services is handled below.
 
     # Handle changes to the improv server configuration.
