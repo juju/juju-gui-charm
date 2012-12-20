@@ -82,7 +82,7 @@ def make_collection(attr, values):
 class MakeCollectionTest(unittest.TestCase):
 
     def test_factory(self):
-        # Ensure the factory return the expected object instances.
+        # Ensure the factory returns the expected object instances.
         instances = make_collection('myattr', range(5))
         self.assertEqual(5, len(instances))
         for num, instance in enumerate(instances):
