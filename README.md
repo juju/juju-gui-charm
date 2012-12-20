@@ -58,12 +58,14 @@ something that looks like this:
             machine: 1
             open-ports:
             - 80/tcp
+            - 443/tcp
             - 8080/tcp
             public-address: ec2-204-236-250-8.compute-1.amazonaws.com
 
-That tells me I can go to the public-address in my browser
-(http://ec2-204-236-250-8.compute-1.amazonaws.com/ in this example), and start
+That tells me I can go to the public-address in my browser via HTTPS
+(https://ec2-204-236-250-8.compute-1.amazonaws.com/ in this example), and start
 configuring the rest of Juju with the GUI.  You should see something similar.
+(Accessing the GUI via HTTP will redirect to using HTTPS anyway.)
 
 Again, until we switch to releases, the charm is fragile.  As I write this,
 when run within the charm, the GUI appears to not be connecting properly to

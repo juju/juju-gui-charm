@@ -27,6 +27,7 @@ __all__ = [
 import json
 import os
 import logging
+import shutil
 import tempfile
 
 from launchpadlib.launchpad import Launchpad
@@ -306,7 +307,7 @@ def setup_gui(release_tarball):
     cmd_log(run('ln', '-sf', first_path_in_dir(release_dir), JUJU_GUI_DIR))
 
 
-def setup_nginx():
+def setup_nginx(ssl_cert_path):
     """Set up nginx."""
     log('Setting up nginx.')
     nginx_default_site = '/etc/nginx/sites-enabled/default'
@@ -319,3 +320,16 @@ def setup_nginx():
         cmd_log(
             run('ln', '-s', juju_gui_site,
                 '/etc/nginx/sites-enabled/juju-gui'))
+    # Generate the nginx SSL certificates, if needed.
+    pem_path = os.path.join(ssl_cert_path, 'server.pem')
+    key_path = os.path.join(ssl_cert_path, 'server.key')
+    if not (os.path.exists(pem_path) and os.path.exists(key_path)):
+        if not os.path.exists(ssl_cert_path):
+            os.makedirs(ssl_cert_path)
+        # See http://superuser.com/questions/226192/openssl-without-prompt
+        cmd_log(run(
+            'openssl', 'req', '-new', '-newkey', 'rsa:4096',
+            '-days', '365', '-nodes', '-x509', '-subj',
+            # These are arbitrary test values for the certificate.
+            '/C=GB/ST=Juju/L=GUI/O=Ubuntu/CN=juju.ubuntu.com',
+            '-keyout', key_path, '-out', pem_path))

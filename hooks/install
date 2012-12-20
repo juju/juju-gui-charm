@@ -34,7 +34,7 @@ from utils import (
 
 
 DEB_DEPENDENCIES = (
-    'bzr', 'imagemagick', 'make', 'nginx', 'nodejs', 'npm',
+    'bzr', 'imagemagick', 'make', 'nginx', 'nodejs', 'npm', 'openssl',
     'python-launchpadlib', 'zookeeper',
 )
 
@@ -51,7 +51,7 @@ def main():
     release_tarball = fetch_gui(
         config['juju-gui-source'], config['command-log-file'])
     setup_gui(release_tarball)
-    setup_nginx()
+    setup_nginx(config['ssl-cert-path'])
     fetch_api(config['juju-api-branch'])
     config_json.set(config)
 

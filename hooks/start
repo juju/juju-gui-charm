@@ -19,8 +19,9 @@ from utils import (
 def open_ports(juju_api_port):
     """Expose Juju GUI web server and websocket server ports."""
     log('Exposing services.')
-    # Open the Juju GUI web server port.
+    # Open the Juju GUI web server HTTP and HTTPS ports.
     open_port(80)
+    open_port(443)
     # Open the Juju websocket server port.
     open_port(juju_api_port)
 

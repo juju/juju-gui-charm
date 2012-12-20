@@ -47,7 +47,8 @@ directory named "juju-gui":
 The branch directory must be placed (or linked from) within a local charm
 repository. It consists of a directory, itself containing a number of
 directories, one for each distribution codename, e.g. `precise`. In turn, the
-codename directories will contain the charm repositories.
+codename directories will contain the charm directories. Therefore, you
+should put your charm in a path like this: `[REPO]/precise/juju-gui`.
 
 Now you are ready to run the functional tests (see the next section).
 
@@ -101,3 +102,50 @@ If Jitsu generates errors about not being able to bootstrap...
 
 ...or if it hangs, then you may need to bootstrap the environment yourself and
 pass the --no-bootstrap switch to Jitsu.
+
+## Running the Charm From Development ##
+
+If you have set up your environment to run functional tests, you also have set
+it up to run your local development charm.  Developing and debugging with this
+is much easier than trying to develop and debug with the tests, unfortunately.
+
+To get started, first, simply do a `juju bootstrap`.  Using a non-LXC
+environment probably will reduce frustrations.  Then, deploy your charm like
+this (again, assuming you have set up your repo the way the functional tests
+need them, as described above).
+
+    juju deploy --repository=/path/to/charm/repo local:precise/juju-gui
+    juju expose juju-gui
+
+Now you are working with a test run, as described in
+https://juju.ubuntu.com/docs/write-charm.html#test-run .  The
+`juju debug-hooks` command, described in the same web page, is by far your
+most powerful tool to debug.
+
+When something goes wrong, on your local machine run
+`juju debug-hooks juju-gui/0` or similar.  This will initially put you on the
+unit that has the problem.  You can look at what is going on in
+/var/log/juju/units/[NAME OF UNIT].  There is a charm.log file to investigate,
+and a charm directory which contains the charm.  The charm directory contains
+the juju-gui and juju directories, so everything you need is there.
+
+If juju recognized an error (for instance, the unit is in an "install-error"
+state) then you can do more.  In another terminal on your local machine, run
+`juju resolved --retry`.  Then return to the debug-hooks terminal.  You will
+see that your exploration work has been replaced, and you are simply in the
+charms directory.  At the bottom of the terminal, you will see "install" as
+part of the data that the debug-hooks machinery (via byobu) shows you.  You
+are now responsible for running the install hook.  For instance, in this case,
+you would run
+
+    $ ./hooks/install
+
+You can then watch what is going on.  If something goes wrong, fix it and try
+it again.  Juju will not treat the hook as complete until you end the session
+(e.g. CTRL-D).  At that point, Juju will treat the hook as successful, and
+move on to the next stage.  Since you are in debug-hooks mode still, you will
+be responsible for running that hook too!  Look at the bottom of the terminal
+to see what hook you are supposed to run.
+
+All of this is described in more detail on the Juju site: this is an
+introduction to the process.

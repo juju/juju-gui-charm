@@ -55,7 +55,7 @@ def handle_config_changes(config, diff):
         release_tarball = fetch_gui(
             config['juju-gui-source'], config['command-log-file'])
         setup_gui(release_tarball)
-        setup_nginx()
+        setup_nginx(config['ssl-cert-path'])
     if 'juju-api-branch' in added_or_changed:
         juju_api_branch_changed = True
         fetch_api(config['juju-api-branch'])
