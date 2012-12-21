@@ -406,12 +406,15 @@ class StartStopTest(unittest.TestCase):
         self.addCleanup(nginx_file.close)
         config_js_file = tempfile.NamedTemporaryFile()
         self.addCleanup(config_js_file.close)
-        start_gui(port, False, True, self.destination_file.name,
-                  nginx_file.name, config_js_file.name)
+        start_gui(
+            port, False, True, '/tmp/certificates/',
+            self.destination_file.name, nginx_file.name, config_js_file.name)
         conf = self.destination_file.read()
         self.assertTrue('/usr/sbin/nginx' in conf)
         nginx_conf = nginx_file.read()
         self.assertTrue('juju-gui/build-debug' in nginx_conf)
+        self.assertIn('/tmp/certificates/server.pem', nginx_conf)
+        self.assertIn('/tmp/certificates/server.key', nginx_conf)
         self.assertEqual(self.svc_ctl_call_count, 1)
         self.assertEqual(self.service_names, ['juju-gui'])
         self.assertEqual(self.actions, [charmhelpers.START])
