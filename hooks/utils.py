@@ -27,7 +27,6 @@ __all__ = [
 import json
 import os
 import logging
-import shutil
 import tempfile
 
 from launchpadlib.launchpad import Launchpad
@@ -178,6 +177,7 @@ def cmd_log(results):
 
 
 def start_improv(juju_api_port, staging_env,
+                 ssl_cert_path='/etc/ssl/private/juju-gui/',
                  config_path='/etc/init/juju-api-improv.conf'):
     """Start a simulated juju environment using ``improv.py``."""
     log('Setting up staging start up script.')
@@ -185,6 +185,7 @@ def start_improv(juju_api_port, staging_env,
         'juju_dir': JUJU_DIR,
         'port': juju_api_port,
         'staging_env': staging_env,
+        'keys': ssl_cert_path,
     }
     render_to_file('juju-api-improv.conf.template', context, config_path)
     log('Starting the staging backend.')
@@ -192,7 +193,8 @@ def start_improv(juju_api_port, staging_env,
         service_control(IMPROV, START)
 
 
-def start_agent(juju_api_port, config_path='/etc/init/juju-api-agent.conf'):
+def start_agent(juju_api_port, ssl_cert_path='/etc/ssl/private/juju-gui/',
+                config_path='/etc/init/juju-api-agent.conf'):
     """Start the Juju agent and connect to the current environment."""
     # Retrieve the Zookeeper address from the start up script.
     unit_dir = os.path.realpath(os.path.join(CURRENT_DIR, '..'))
@@ -203,6 +205,7 @@ def start_agent(juju_api_port, config_path='/etc/init/juju-api-agent.conf'):
         'juju_dir': JUJU_DIR,
         'port': juju_api_port,
         'zookeeper': zookeeper,
+        'keys': ssl_cert_path,
     }
     render_to_file('juju-api-agent.conf.template', context, config_path)
     log('Starting API agent.')
@@ -321,9 +324,9 @@ def setup_nginx(ssl_cert_path):
             run('ln', '-s', juju_gui_site,
                 '/etc/nginx/sites-enabled/juju-gui'))
     # Generate the nginx SSL certificates, if needed.
-    pem_path = os.path.join(ssl_cert_path, 'server.pem')
-    key_path = os.path.join(ssl_cert_path, 'server.key')
-    if not (os.path.exists(pem_path) and os.path.exists(key_path)):
+    crt_path = os.path.join(ssl_cert_path, 'juju.crt')
+    key_path = os.path.join(ssl_cert_path, 'juju.key')
+    if not (os.path.exists(crt_path) and os.path.exists(key_path)):
         if not os.path.exists(ssl_cert_path):
             os.makedirs(ssl_cert_path)
         # See http://superuser.com/questions/226192/openssl-without-prompt
@@ -332,4 +335,4 @@ def setup_nginx(ssl_cert_path):
             '-days', '365', '-nodes', '-x509', '-subj',
             # These are arbitrary test values for the certificate.
             '/C=GB/ST=Juju/L=GUI/O=Ubuntu/CN=juju.ubuntu.com',
-            '-keyout', key_path, '-out', pem_path))
+            '-keyout', key_path, '-out', crt_path))

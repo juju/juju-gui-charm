@@ -33,9 +33,10 @@ def main():
     staging = config.get('staging')
     start_gui(juju_api_port, config['juju-gui-console-enabled'], staging)
     if staging:
-        start_improv(juju_api_port, config['staging-environment'])
+        start_improv(juju_api_port, ssl_cert_path=config['ssl-cert-path'],
+            config_path=config['staging-environment'])
     else:
-        start_agent(juju_api_port)
+        start_agent(juju_api_port, ssl_cert_path=config['ssl-cert-path'])
     open_ports(juju_api_port)
 
 

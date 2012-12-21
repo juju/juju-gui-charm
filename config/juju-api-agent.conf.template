@@ -10,4 +10,5 @@ env JUJU_ZOOKEEPER=%(zookeeper)s
 # Use --nodaemon so that upstart can correctly retrieve the process ID.
 exec /usr/bin/python -m juju.agents.api --nodaemon --port %(port)s \
     --logfile /var/log/juju/api-agent.log \
-    --session-file /var/run/juju/api-agent.zksession
+    --session-file /var/run/juju/api-agent.zksession \
+    --keys %(keys)s
