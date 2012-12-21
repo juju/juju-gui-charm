@@ -114,7 +114,7 @@ environment probably will reduce frustrations.  Then, deploy your charm like
 this (again, assuming you have set up your repo the way the functional tests
 need them, as described above).
 
-    juju deploy --repository=/path/to/charm/repo local:precise/juju-gui
+    juju deploy --repository=/path/to/charm/repo --upgrade local:precise/juju-gui
     juju expose juju-gui
 
 Now you are working with a test run, as described in

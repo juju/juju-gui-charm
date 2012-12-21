@@ -50,4 +50,4 @@ options:
     description: |
       The path to the directory where the SSL certificates are stored.
     type: string
-    default: /etc/ssl/private/juju-gui
+    default: /etc/ssl/private/juju-gui/
