@@ -16,6 +16,7 @@ __all__ = [
     'JUJU_GUI_DIR',
     'parse_source',
     'render_to_file',
+    'save_or_create_certificates',
     'setup_gui',
     'setup_nginx',
     'start_agent',
@@ -27,7 +28,6 @@ __all__ = [
 import json
 import os
 import logging
-import shutil
 import tempfile
 
 from launchpadlib.launchpad import Launchpad
@@ -307,7 +307,7 @@ def setup_gui(release_tarball):
     cmd_log(run('ln', '-sf', first_path_in_dir(release_dir), JUJU_GUI_DIR))
 
 
-def setup_nginx(ssl_cert_path):
+def setup_nginx():
     """Set up nginx."""
     log('Setting up nginx.')
     nginx_default_site = '/etc/nginx/sites-enabled/default'
@@ -320,12 +320,27 @@ def setup_nginx(ssl_cert_path):
         cmd_log(
             run('ln', '-s', juju_gui_site,
                 '/etc/nginx/sites-enabled/juju-gui'))
-    # Generate the nginx SSL certificates, if needed.
+
+
+def save_or_create_certificates(
+        ssl_cert_path, ssl_cert_contents, ssl_key_contents):
+    """Generate the SSL certificates.
+
+    If both *ssl_cert_contents* and *ssl_key_contents* are provided, use them
+    as certificates; otherwise, generate them.
+    """
     pem_path = os.path.join(ssl_cert_path, 'server.pem')
     key_path = os.path.join(ssl_cert_path, 'server.key')
-    if not (os.path.exists(pem_path) and os.path.exists(key_path)):
-        if not os.path.exists(ssl_cert_path):
-            os.makedirs(ssl_cert_path)
+    if not os.path.exists(ssl_cert_path):
+        os.makedirs(ssl_cert_path)
+    if ssl_cert_contents and ssl_key_contents:
+        # Save the provided certificates.
+        with open(pem_path, 'w') as cert_file:
+            cert_file.write(ssl_cert_contents)
+        with open(key_path, 'w') as key_file:
+            key_file.write(ssl_key_contents)
+    else:
+        # Generate certificates.
         # See http://superuser.com/questions/226192/openssl-without-prompt
         cmd_log(run(
             'openssl', 'req', '-new', '-newkey', 'rsa:4096',

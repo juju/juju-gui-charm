@@ -16,6 +16,7 @@ from utils import (
     get_zookeeper_address,
     parse_source,
     render_to_file,
+    save_or_create_certificates,
     start_agent,
     start_gui,
     start_improv,
@@ -286,6 +287,29 @@ class RenderToFileTest(unittest.TestCase):
         render_to_file(self.template_path, context, self.destination_file.name)
         expected = self.template_contents % context
         self.assertEqual(expected, self.destination_file.read())
+
+
+class SaveOrCreateCertificatesTest(unittest.TestCase):
+
+    def setUp(self):
+        base_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, base_dir)
+        self.cert_path = os.path.join(base_dir, 'certificates')
+        self.cert_file = os.path.join(self.cert_path, 'server.pem')
+        self.key_file = os.path.join(self.cert_path, 'server.key')
+
+    def test_generation(self):
+        """Ensure certificates are correctly generated."""
+        save_or_create_certificates(
+            self.cert_path, 'some ignored contents', None)
+        self.assertIn('CERTIFICATE', open(self.cert_file).read())
+        self.assertIn('PRIVATE KEY', open(self.key_file).read())
+
+    def test_provided_certificates(self):
+        # Ensure files are correctly saved if their contents are provided.
+        save_or_create_certificates(self.cert_path, 'mycert', 'mykey')
+        self.assertIn('mycert', open(self.cert_file).read())
+        self.assertIn('mykey', open(self.key_file).read())
 
 
 class CmdLogTest(unittest.TestCase):
