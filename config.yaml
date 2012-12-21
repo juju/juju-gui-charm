@@ -51,3 +51,15 @@ options:
       The path to the directory where the SSL certificates are stored.
     type: string
     default: /etc/ssl/private/juju-gui
+  ssl-cert-contents:
+    description: |
+      The contents of the certificate file to be used in TLS connections to
+      the GUI. Both ssl-cert-contents and ssl-key-contents must be provided.
+      If not, cetificates will be automatically generated.
+    type: string
+  ssl-key-contents:
+    description: |
+      The contents of the key file to be used in TLS connections to the GUI.
+      Both ssl-cert-contents and ssl-key-contents must be provided.
+      If not, cetificates will be automatically generated.
+    type: string
