@@ -28,6 +28,7 @@ from utils import (
     config_json,
     fetch_api,
     fetch_gui,
+    save_or_create_certificates,
     setup_gui,
     setup_nginx,
 )
@@ -51,7 +52,10 @@ def main():
     release_tarball = fetch_gui(
         config['juju-gui-source'], config['command-log-file'])
     setup_gui(release_tarball)
-    setup_nginx(config['ssl-cert-path'])
+    setup_nginx()
+    save_or_create_certificates(
+        config['ssl-cert-path'], config.get('ssl-cert-contents'),
+        config.get('ssl-key-contents'))
     fetch_api(config['juju-api-branch'])
     config_json.set(config)
 
