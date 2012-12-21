@@ -55,6 +55,7 @@ GUI = 'juju-gui'
 CURRENT_DIR = os.getcwd()
 JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
+JUJU_GUI_SITE = '/etc/nginx/sites-available/juju-gui'
 
 # Store the configuration from on invocation to the next.
 config_json = Serializer('/tmp/config.json')
@@ -210,9 +211,9 @@ def start_agent(juju_api_port, config_path='/etc/init/juju-api-agent.conf'):
         service_control(AGENT, START)
 
 
-def start_gui(juju_api_port, console_enabled, staging,
+def start_gui(juju_api_port, console_enabled, staging, ssl_cert_path,
               config_path='/etc/init/juju-gui.conf',
-              nginx_path='/etc/nginx/sites-available/juju-gui',
+              nginx_path=JUJU_GUI_SITE,
               config_js_path=None):
     """Set up and start the Juju GUI server."""
     with su('root'):
@@ -233,7 +234,8 @@ def start_gui(juju_api_port, console_enabled, staging,
     render_to_file('config.js.template', context, config_js_path)
     log('Generating the nginx site configuration file.')
     context = {
-        'server_root': build_dir
+        'server_root': build_dir,
+        'ssl_cert_path': ssl_cert_path.rstrip('/'),
     }
     render_to_file('nginx.conf.template', context, nginx_path)
     log('Starting Juju GUI.')
@@ -311,14 +313,13 @@ def setup_nginx():
     """Set up nginx."""
     log('Setting up nginx.')
     nginx_default_site = '/etc/nginx/sites-enabled/default'
-    juju_gui_site = '/etc/nginx/sites-available/juju-gui'
     if os.path.exists(nginx_default_site):
         os.remove(nginx_default_site)
-    if not os.path.exists(juju_gui_site):
-        cmd_log(run('touch', juju_gui_site))
-        cmd_log(run('chown', 'ubuntu:', juju_gui_site))
+    if not os.path.exists(JUJU_GUI_SITE):
+        cmd_log(run('touch', JUJU_GUI_SITE))
+        cmd_log(run('chown', 'ubuntu:', JUJU_GUI_SITE))
         cmd_log(
-            run('ln', '-s', juju_gui_site,
+            run('ln', '-s', JUJU_GUI_SITE,
                 '/etc/nginx/sites-enabled/juju-gui'))
 
 
