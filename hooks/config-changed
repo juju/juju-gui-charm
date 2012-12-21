@@ -61,7 +61,7 @@ def handle_config_changes(config, diff):
 
     # Handle changes to SSL certificates.
     ssl_properties = set(
-        'ssl-cert-path', 'ssl-cert-contents', 'ssl-key-contents')
+        ['ssl-cert-path', 'ssl-cert-contents', 'ssl-key-contents'])
     if added_or_changed & ssl_properties:
         save_or_create_certificates(
             config['ssl-cert-path'], config.get('ssl-cert-contents'),
