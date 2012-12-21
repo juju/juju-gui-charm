@@ -59,7 +59,7 @@ options:
     type: string
   ssl-key-contents:
     description: |
-      The contents of the key file to be used in SSL connections to the GUI.
-      Both ssl-cert-contents and ssl-key-contents must be provided.
+      The contents of the private key file to be used in SSL connections to
+      the GUI. Both ssl-cert-contents and ssl-key-contents must be provided.
       If not, cetificates will be automatically generated.
     type: string
