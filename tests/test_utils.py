@@ -16,6 +16,7 @@ from utils import (
     get_zookeeper_address,
     parse_source,
     render_to_file,
+    save_or_create_certificates,
     start_agent,
     start_gui,
     start_improv,
@@ -288,6 +289,29 @@ class RenderToFileTest(unittest.TestCase):
         self.assertEqual(expected, self.destination_file.read())
 
 
+class SaveOrCreateCertificatesTest(unittest.TestCase):
+
+    def setUp(self):
+        base_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, base_dir)
+        self.cert_path = os.path.join(base_dir, 'certificates')
+        self.cert_file = os.path.join(self.cert_path, 'server.pem')
+        self.key_file = os.path.join(self.cert_path, 'server.key')
+
+    def test_generation(self):
+        """Ensure certificates are correctly generated."""
+        save_or_create_certificates(
+            self.cert_path, 'some ignored contents', None)
+        self.assertIn('CERTIFICATE', open(self.cert_file).read())
+        self.assertIn('PRIVATE KEY', open(self.key_file).read())
+
+    def test_provided_certificates(self):
+        # Ensure files are correctly saved if their contents are provided.
+        save_or_create_certificates(self.cert_path, 'mycert', 'mykey')
+        self.assertIn('mycert', open(self.cert_file).read())
+        self.assertIn('mykey', open(self.key_file).read())
+
+
 class CmdLogTest(unittest.TestCase):
     def setUp(self):
         # Patch the charmhelpers 'command', which powers get_config.  The
@@ -382,12 +406,15 @@ class StartStopTest(unittest.TestCase):
         self.addCleanup(nginx_file.close)
         config_js_file = tempfile.NamedTemporaryFile()
         self.addCleanup(config_js_file.close)
-        start_gui(port, False, True, self.destination_file.name,
-                  nginx_file.name, config_js_file.name)
+        start_gui(
+            port, False, True, '/tmp/certificates/',
+            self.destination_file.name, nginx_file.name, config_js_file.name)
         conf = self.destination_file.read()
         self.assertTrue('/usr/sbin/nginx' in conf)
         nginx_conf = nginx_file.read()
         self.assertTrue('juju-gui/build-debug' in nginx_conf)
+        self.assertIn('/tmp/certificates/server.pem', nginx_conf)
+        self.assertIn('/tmp/certificates/server.key', nginx_conf)
         self.assertEqual(self.svc_ctl_call_count, 1)
         self.assertEqual(self.service_names, ['juju-gui'])
         self.assertEqual(self.actions, [charmhelpers.START])
