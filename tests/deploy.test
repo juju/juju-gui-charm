@@ -35,7 +35,7 @@ class DeployTestMixin(object):
 
     def setUp(self):
         self.charm = 'juju-gui'
-        self.port = '80'  # Set to 443 when TLS connections are re-enabled.
+        self.port = '443'
 
     def tearDown(self):
         juju('destroy-service', self.charm)
@@ -53,8 +53,7 @@ class DeployTestMixin(object):
 
     def check_services(self, hostname, ws_port=8080):
         """Check the services are listening on their tcp ports."""
-        # Use https below when TLS connections are re-enabled.
-        url = 'http://{0}:{1}'.format(hostname, self.port)
+        url = 'https://{0}:{1}'.format(hostname, self.port)
         response = open_url(url)
         self.assertEqual(200, response.getcode())
         ws_url = 'http://{0}:{1}/ws'.format(hostname, ws_port)
