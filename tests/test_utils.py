@@ -295,8 +295,8 @@ class SaveOrCreateCertificatesTest(unittest.TestCase):
         base_dir = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, base_dir)
         self.cert_path = os.path.join(base_dir, 'certificates')
-        self.cert_file = os.path.join(self.cert_path, 'server.pem')
-        self.key_file = os.path.join(self.cert_path, 'server.key')
+        self.cert_file = os.path.join(self.cert_path, 'juju.crt')
+        self.key_file = os.path.join(self.cert_path, 'juju.key')
 
     def test_generation(self):
         """Ensure certificates are correctly generated."""
@@ -417,8 +417,8 @@ class StartStopTest(unittest.TestCase):
         self.assertTrue('/usr/sbin/nginx' in conf)
         nginx_conf = nginx_file.read()
         self.assertTrue('juju-gui/build-debug' in nginx_conf)
-        self.assertIn('/tmp/certificates/server.pem', nginx_conf)
-        self.assertIn('/tmp/certificates/server.key', nginx_conf)
+        self.assertIn('/tmp/certificates/juju.crt', nginx_conf)
+        self.assertIn('/tmp/certificates/juju.key', nginx_conf)
         self.assertEqual(self.svc_ctl_call_count, 1)
         self.assertEqual(self.service_names, ['juju-gui'])
         self.assertEqual(self.actions, [charmhelpers.START])
