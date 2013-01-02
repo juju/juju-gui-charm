@@ -1,20 +1,16 @@
-# Uncomment to switch back to TLS connections.
-# server {
-#     listen 80;
-#     server_name _;
-#     return 301 https://$host$request_uri;
-# }
+server {
+    listen 80;
+    server_name _;
+    return 301 https://$host$request_uri;
+}
 
 server {
-    # Uncomment to switch back to TLS connections.
-    # listen 443 default_server ssl;
-    listen 80;  # Delete this line when TLS connections are re-enabled.
+    listen 443 default_server ssl;
     server_name _;
     root %(server_root)s;
     index index.html;
-    # Uncomment to switch back to TLS connections.
-    # ssl_certificate %(ssl_cert_path)s/server.pem;
-    # ssl_certificate_key %(ssl_cert_path)s/server.key;
+    ssl_certificate %(ssl_cert_path)s/server.pem;
+    ssl_certificate_key %(ssl_cert_path)s/server.key;
 
     # Serve static assets.
     location ^~ /juju-ui/ {

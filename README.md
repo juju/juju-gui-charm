@@ -58,9 +58,7 @@ something that looks like this:
             machine: 1
             open-ports:
             - 80/tcp
-            <!--- Uncomment when TLS connections are re-enabled.
             - 443/tcp
-            -->
             - 8080/tcp
             public-address: ec2-204-236-250-8.compute-1.amazonaws.com
 
