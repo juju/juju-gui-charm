@@ -13,8 +13,8 @@ server {
     root %(server_root)s;
     index index.html;
     # Uncomment to switch back to TLS connections.
-    # ssl_certificate /etc/ssl/private/juju-gui/juju.crt;
-    # ssl_certificate_key /etc/ssl/private/juju-gui/juju.key;
+    # ssl_certificate %(ssl_cert_path)s/juju.crt;
+    # ssl_certificate_key %(ssl_cert_path)s/juju.key;
 
     # Serve static assets.
     location ^~ /juju-ui/ {

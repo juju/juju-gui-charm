@@ -16,6 +16,7 @@ __all__ = [
     'JUJU_GUI_DIR',
     'parse_source',
     'render_to_file',
+    'save_or_create_certificates',
     'setup_gui',
     'setup_nginx',
     'start_agent',
@@ -54,6 +55,7 @@ GUI = 'juju-gui'
 CURRENT_DIR = os.getcwd()
 JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
+JUJU_GUI_SITE = '/etc/nginx/sites-available/juju-gui'
 
 # Store the configuration from on invocation to the next.
 config_json = Serializer('/tmp/config.json')
@@ -213,9 +215,9 @@ def start_agent(juju_api_port, ssl_cert_path='/etc/ssl/private/juju-gui/',
         service_control(AGENT, START)
 
 
-def start_gui(juju_api_port, console_enabled, staging,
+def start_gui(juju_api_port, console_enabled, staging, ssl_cert_path,
               config_path='/etc/init/juju-gui.conf',
-              nginx_path='/etc/nginx/sites-available/juju-gui',
+              nginx_path=JUJU_GUI_SITE,
               config_js_path=None):
     """Set up and start the Juju GUI server."""
     with su('root'):
@@ -236,7 +238,8 @@ def start_gui(juju_api_port, console_enabled, staging,
     render_to_file('config.js.template', context, config_js_path)
     log('Generating the nginx site configuration file.')
     context = {
-        'server_root': build_dir
+        'server_root': build_dir,
+        'ssl_cert_path': ssl_cert_path.rstrip('/'),
     }
     render_to_file('nginx.conf.template', context, nginx_path)
     log('Starting Juju GUI.')
@@ -310,25 +313,39 @@ def setup_gui(release_tarball):
     cmd_log(run('ln', '-sf', first_path_in_dir(release_dir), JUJU_GUI_DIR))
 
 
-def setup_nginx(ssl_cert_path):
+def setup_nginx():
     """Set up nginx."""
     log('Setting up nginx.')
     nginx_default_site = '/etc/nginx/sites-enabled/default'
-    juju_gui_site = '/etc/nginx/sites-available/juju-gui'
     if os.path.exists(nginx_default_site):
         os.remove(nginx_default_site)
-    if not os.path.exists(juju_gui_site):
-        cmd_log(run('touch', juju_gui_site))
-        cmd_log(run('chown', 'ubuntu:', juju_gui_site))
+    if not os.path.exists(JUJU_GUI_SITE):
+        cmd_log(run('touch', JUJU_GUI_SITE))
+        cmd_log(run('chown', 'ubuntu:', JUJU_GUI_SITE))
         cmd_log(
-            run('ln', '-s', juju_gui_site,
+            run('ln', '-s', JUJU_GUI_SITE,
                 '/etc/nginx/sites-enabled/juju-gui'))
-    # Generate the nginx SSL certificates, if needed.
+
+
+def save_or_create_certificates(
+        ssl_cert_path, ssl_cert_contents, ssl_key_contents):
+    """Generate the SSL certificates.
+
+    If both *ssl_cert_contents* and *ssl_key_contents* are provided, use them
+    as certificates; otherwise, generate them.
+    """
     crt_path = os.path.join(ssl_cert_path, 'juju.crt')
     key_path = os.path.join(ssl_cert_path, 'juju.key')
-    if not (os.path.exists(crt_path) and os.path.exists(key_path)):
-        if not os.path.exists(ssl_cert_path):
-            os.makedirs(ssl_cert_path)
+    if not os.path.exists(ssl_cert_path):
+        os.makedirs(ssl_cert_path)
+    if ssl_cert_contents and ssl_key_contents:
+        # Save the provided certificates.
+        with open(crt_path, 'w') as cert_file:
+            cert_file.write(ssl_cert_contents)
+        with open(key_path, 'w') as key_file:
+            key_file.write(ssl_key_contents)
+    else:
+        # Generate certificates.
         # See http://superuser.com/questions/226192/openssl-without-prompt
         cmd_log(run(
             'openssl', 'req', '-new', '-newkey', 'rsa:4096',
