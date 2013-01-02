@@ -6,5 +6,5 @@ var juju_config = {
   viewContainer: '#main',
   transitions: false,
   charm_store_url: 'http://jujucharms.com/',
-  socket_url: 'ws://%(address)s:%(port)s/ws'
+  socket_url: 'wss://%(address)s:%(port)s/ws'
 };
