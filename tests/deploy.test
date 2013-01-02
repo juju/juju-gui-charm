@@ -56,7 +56,7 @@ class DeployTestMixin(object):
         url = 'https://{0}:{1}'.format(hostname, self.port)
         response = open_url(url)
         self.assertEqual(200, response.getcode())
-        ws_url = 'http://{0}:{1}/ws'.format(hostname, ws_port)
+        ws_url = 'https://{0}:{1}/ws'.format(hostname, ws_port)
         # A bad request status code here means the websocket resource is found.
         # It would take an actual websocket client to properly interact with
         # the websocket server.
