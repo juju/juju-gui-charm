@@ -27,7 +27,7 @@ options:
       Connect the Juju GUI to the staging backend
       (i.e. a simulated Juju environment).
     type: boolean
-    default: False
+    default: false
   staging-environment:
     description: |
       The environment JSON export used by the staging server. This option can

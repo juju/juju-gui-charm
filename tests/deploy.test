@@ -104,7 +104,7 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
 
     def test_staging(self):
         # Ensure the Juju GUI and improv services are correctly set up.
-        config = {self.charm: {'staging': 'True'}}
+        config = {self.charm: {'staging': 'true'}}
         config_file = make_charm_config_file(config)
         hostname = self.deploy(config_path=config_file.name)
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
