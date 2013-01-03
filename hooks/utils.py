@@ -56,7 +56,7 @@ CURRENT_DIR = os.getcwd()
 JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
 JUJU_GUI_SITE = '/etc/nginx/sites-available/juju-gui'
-SSL_CERT_PATH = '/etc/ssl/private/juju-gui/'
+SSL_CERT_PATH = '/etc/ssl/juju-gui'
 
 # Store the configuration from on invocation to the next.
 config_json = Serializer('/tmp/config.json')

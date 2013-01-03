@@ -85,7 +85,10 @@ def handle_config_changes(config, diff):
             service_control(current_api, STOP)
             # Now the improv server can be cleanly started.
             log('Starting or restarting staging.')
-            start_improv(juju_api_port, config.get('staging-environment'))
+            start_improv(
+                juju_api_port,
+                staging_env=config['staging-environment'],
+                ssl_cert_path=config['ssl-cert-path'])
     else:
         agent_properties = set(['juju-api-port', 'staging'])
         agent_changed = added_or_changed & agent_properties
@@ -100,7 +103,9 @@ def handle_config_changes(config, diff):
                 current_api = AGENT
             service_control(current_api, STOP)
             log('Starting or restarting Juju API agent.')
-            start_agent(juju_api_port)
+            start_agent(
+                juju_api_port,
+                ssl_cert_path=config['ssl-cert-path'])
 
     # Handle changes to the juju-gui configuration.
     gui_properties = set(

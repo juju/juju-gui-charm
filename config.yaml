@@ -50,7 +50,7 @@ options:
     description: |
       The path to the directory where the SSL certificates are stored.
     type: string
-    default: /etc/ssl/private/juju-gui
+    default: /etc/ssl/juju-gui
   ssl-cert-contents:
     description: |
       The contents of the certificate file to be used in SSL connections to
