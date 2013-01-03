@@ -56,6 +56,7 @@ CURRENT_DIR = os.getcwd()
 JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
 JUJU_GUI_SITE = '/etc/nginx/sites-available/juju-gui'
+SSL_CERT_PATH = '/etc/ssl/private/juju-gui/'
 
 # Store the configuration from on invocation to the next.
 config_json = Serializer('/tmp/config.json')
@@ -179,7 +180,7 @@ def cmd_log(results):
 
 
 def start_improv(juju_api_port, staging_env,
-                 ssl_cert_path='/etc/ssl/private/juju-gui/',
+                 ssl_cert_path=SSL_CERT_PATH,
                  config_path='/etc/init/juju-api-improv.conf'):
     """Start a simulated juju environment using ``improv.py``."""
     log('Setting up staging start up script.')
@@ -195,7 +196,7 @@ def start_improv(juju_api_port, staging_env,
         service_control(IMPROV, START)
 
 
-def start_agent(juju_api_port, ssl_cert_path='/etc/ssl/private/juju-gui/',
+def start_agent(juju_api_port, ssl_cert_path=SSL_CERT_PATH,
                 config_path='/etc/init/juju-api-agent.conf'):
     """Start the Juju agent and connect to the current environment."""
     # Retrieve the Zookeeper address from the start up script.
@@ -215,7 +216,8 @@ def start_agent(juju_api_port, ssl_cert_path='/etc/ssl/private/juju-gui/',
         service_control(AGENT, START)
 
 
-def start_gui(juju_api_port, console_enabled, staging, ssl_cert_path,
+def start_gui(juju_api_port, console_enabled, staging,
+              ssl_cert_path=SSL_CERT_PATH,
               config_path='/etc/init/juju-gui.conf',
               nginx_path=JUJU_GUI_SITE,
               config_js_path=None):
