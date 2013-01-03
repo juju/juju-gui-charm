@@ -125,7 +125,7 @@ most powerful tool to debug.
 When something goes wrong, on your local machine run
 `juju debug-hooks juju-gui/0` or similar.  This will initially put you on the
 unit that has the problem.  You can look at what is going on in
-/var/log/juju/units/[NAME OF UNIT].  There is a charm.log file to investigate,
+/var/lib/juju/units/[NAME OF UNIT].  There is a charm.log file to investigate,
 and a charm directory which contains the charm.  The charm directory contains
 the juju-gui and juju directories, so everything you need is there.
 
