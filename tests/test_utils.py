@@ -295,8 +295,8 @@ class SaveOrCreateCertificatesTest(unittest.TestCase):
         base_dir = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, base_dir)
         self.cert_path = os.path.join(base_dir, 'certificates')
-        self.cert_file = os.path.join(self.cert_path, 'server.pem')
-        self.key_file = os.path.join(self.cert_path, 'server.key')
+        self.cert_file = os.path.join(self.cert_path, 'juju.crt')
+        self.key_file = os.path.join(self.cert_path, 'juju.key')
 
     def test_generation(self):
         """Ensure certificates are correctly generated."""
@@ -372,6 +372,7 @@ class StartStopTest(unittest.TestCase):
 
         self.destination_file = tempfile.NamedTemporaryFile()
         self.addCleanup(self.destination_file.close)
+        self.ssl_cert_path = 'ssl/cert/path'
 
     def tearDown(self):
         # Undo all of the monkey patching.
@@ -382,20 +383,23 @@ class StartStopTest(unittest.TestCase):
     def test_start_improv(self):
         port = '1234'
         staging_env = 'large'
-        start_improv(port, staging_env, self.destination_file.name)
+        start_improv(port, staging_env, self.ssl_cert_path,
+            self.destination_file.name)
         conf = self.destination_file.read()
         self.assertTrue('--port %s' % port in conf)
         self.assertTrue(staging_env + '.json' in conf)
+        self.assertTrue(self.ssl_cert_path in conf)
         self.assertEqual(self.svc_ctl_call_count, 1)
         self.assertEqual(self.service_names, ['juju-api-improv'])
         self.assertEqual(self.actions, [charmhelpers.START])
 
     def test_start_agent(self):
         port = '1234'
-        start_agent(port, self.destination_file.name)
+        start_agent(port, self.ssl_cert_path, self.destination_file.name)
         conf = self.destination_file.read()
         self.assertTrue('--port %s' % port in conf)
         self.assertTrue('JUJU_ZOOKEEPER=%s' % self.fake_zk_address in conf)
+        self.assertTrue(self.ssl_cert_path in conf)
         self.assertEqual(self.svc_ctl_call_count, 1)
         self.assertEqual(self.service_names, ['juju-api-agent'])
         self.assertEqual(self.actions, [charmhelpers.START])
@@ -413,8 +417,8 @@ class StartStopTest(unittest.TestCase):
         self.assertTrue('/usr/sbin/nginx' in conf)
         nginx_conf = nginx_file.read()
         self.assertTrue('juju-gui/build-debug' in nginx_conf)
-        self.assertIn('/tmp/certificates/server.pem', nginx_conf)
-        self.assertIn('/tmp/certificates/server.key', nginx_conf)
+        self.assertIn('/tmp/certificates/juju.crt', nginx_conf)
+        self.assertIn('/tmp/certificates/juju.key', nginx_conf)
         self.assertEqual(self.svc_ctl_call_count, 1)
         self.assertEqual(self.service_names, ['juju-gui'])
         self.assertEqual(self.actions, [charmhelpers.START])

@@ -178,7 +178,7 @@ def cmd_log(results):
     results_log.info('\n' + results)
 
 
-def start_improv(juju_api_port, staging_env,
+def start_improv(juju_api_port, staging_env, ssl_cert_path,
                  config_path='/etc/init/juju-api-improv.conf'):
     """Start a simulated juju environment using ``improv.py``."""
     log('Setting up staging start up script.')
@@ -186,6 +186,7 @@ def start_improv(juju_api_port, staging_env,
         'juju_dir': JUJU_DIR,
         'port': juju_api_port,
         'staging_env': staging_env,
+        'keys': ssl_cert_path,
     }
     render_to_file('juju-api-improv.conf.template', context, config_path)
     log('Starting the staging backend.')
@@ -193,7 +194,8 @@ def start_improv(juju_api_port, staging_env,
         service_control(IMPROV, START)
 
 
-def start_agent(juju_api_port, config_path='/etc/init/juju-api-agent.conf'):
+def start_agent(juju_api_port, ssl_cert_path,
+                config_path='/etc/init/juju-api-agent.conf'):
     """Start the Juju agent and connect to the current environment."""
     # Retrieve the Zookeeper address from the start up script.
     unit_dir = os.path.realpath(os.path.join(CURRENT_DIR, '..'))
@@ -204,6 +206,7 @@ def start_agent(juju_api_port, config_path='/etc/init/juju-api-agent.conf'):
         'juju_dir': JUJU_DIR,
         'port': juju_api_port,
         'zookeeper': zookeeper,
+        'keys': ssl_cert_path,
     }
     render_to_file('juju-api-agent.conf.template', context, config_path)
     log('Starting API agent.')
@@ -211,7 +214,7 @@ def start_agent(juju_api_port, config_path='/etc/init/juju-api-agent.conf'):
         service_control(AGENT, START)
 
 
-def start_gui(juju_api_port, console_enabled, staging, ssl_cert_path,
+def start_gui(juju_api_port, console_enabled, in_staging, ssl_cert_path,
               config_path='/etc/init/juju-gui.conf',
               nginx_path=JUJU_GUI_SITE,
               config_js_path=None):
@@ -219,7 +222,7 @@ def start_gui(juju_api_port, console_enabled, staging, ssl_cert_path,
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
     build_dir = JUJU_GUI_DIR + '/build-'
-    build_dir += 'debug' if staging else 'prod'
+    build_dir += 'debug' if in_staging else 'prod'
     log('Setting up Juju GUI start up script.')
     render_to_file('juju-gui.conf.template', {}, config_path)
     log('Generating the Juju GUI configuration file.')
@@ -244,12 +247,12 @@ def start_gui(juju_api_port, console_enabled, staging, ssl_cert_path,
         service_control(GUI, START)
 
 
-def stop(staging):
+def stop(in_staging):
     """Stop the Juju API agent."""
     with su('root'):
         log('Stopping Juju GUI.')
         service_control(GUI, STOP)
-        if staging:
+        if in_staging:
             log('Stopping the staging backend.')
             service_control(IMPROV, STOP)
         else:
@@ -330,13 +333,13 @@ def save_or_create_certificates(
     If both *ssl_cert_contents* and *ssl_key_contents* are provided, use them
     as certificates; otherwise, generate them.
     """
-    pem_path = os.path.join(ssl_cert_path, 'server.pem')
-    key_path = os.path.join(ssl_cert_path, 'server.key')
+    crt_path = os.path.join(ssl_cert_path, 'juju.crt')
+    key_path = os.path.join(ssl_cert_path, 'juju.key')
     if not os.path.exists(ssl_cert_path):
         os.makedirs(ssl_cert_path)
     if ssl_cert_contents and ssl_key_contents:
         # Save the provided certificates.
-        with open(pem_path, 'w') as cert_file:
+        with open(crt_path, 'w') as cert_file:
             cert_file.write(ssl_cert_contents)
         with open(key_path, 'w') as key_file:
             key_file.write(ssl_key_contents)
@@ -348,4 +351,4 @@ def save_or_create_certificates(
             '-days', '365', '-nodes', '-x509', '-subj',
             # These are arbitrary test values for the certificate.
             '/C=GB/ST=Juju/L=GUI/O=Ubuntu/CN=juju.ubuntu.com',
-            '-keyout', key_path, '-out', pem_path))
+            '-keyout', key_path, '-out', crt_path))

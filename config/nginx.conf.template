@@ -9,8 +9,8 @@ server {
     server_name _;
     root %(server_root)s;
     index index.html;
-    ssl_certificate %(ssl_cert_path)s/server.pem;
-    ssl_certificate_key %(ssl_cert_path)s/server.key;
+    ssl_certificate %(ssl_cert_path)s/juju.crt;
+    ssl_certificate_key %(ssl_cert_path)s/juju.key;
 
     # Serve static assets.
     location ^~ /juju-ui/ {
