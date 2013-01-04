@@ -56,7 +56,6 @@ CURRENT_DIR = os.getcwd()
 JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
 JUJU_GUI_SITE = '/etc/nginx/sites-available/juju-gui'
-SSL_CERT_PATH = '/etc/ssl/juju-gui'
 
 # Store the configuration from on invocation to the next.
 config_json = Serializer('/tmp/config.json')
@@ -179,8 +178,7 @@ def cmd_log(results):
     results_log.info('\n' + results)
 
 
-def start_improv(juju_api_port, staging_env,
-                 ssl_cert_path=SSL_CERT_PATH,
+def start_improv(juju_api_port, staging_env, ssl_cert_path,
                  config_path='/etc/init/juju-api-improv.conf'):
     """Start a simulated juju environment using ``improv.py``."""
     log('Setting up staging start up script.')
@@ -196,7 +194,7 @@ def start_improv(juju_api_port, staging_env,
         service_control(IMPROV, START)
 
 
-def start_agent(juju_api_port, ssl_cert_path=SSL_CERT_PATH,
+def start_agent(juju_api_port, ssl_cert_path,
                 config_path='/etc/init/juju-api-agent.conf'):
     """Start the Juju agent and connect to the current environment."""
     # Retrieve the Zookeeper address from the start up script.
@@ -216,8 +214,7 @@ def start_agent(juju_api_port, ssl_cert_path=SSL_CERT_PATH,
         service_control(AGENT, START)
 
 
-def start_gui(juju_api_port, console_enabled, staging,
-              ssl_cert_path=SSL_CERT_PATH,
+def start_gui(juju_api_port, console_enabled, in_staging, ssl_cert_path,
               config_path='/etc/init/juju-gui.conf',
               nginx_path=JUJU_GUI_SITE,
               config_js_path=None):
@@ -225,7 +222,7 @@ def start_gui(juju_api_port, console_enabled, staging,
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
     build_dir = JUJU_GUI_DIR + '/build-'
-    build_dir += 'debug' if staging else 'prod'
+    build_dir += 'debug' if in_staging else 'prod'
     log('Setting up Juju GUI start up script.')
     render_to_file('juju-gui.conf.template', {}, config_path)
     log('Generating the Juju GUI configuration file.')
@@ -250,12 +247,12 @@ def start_gui(juju_api_port, console_enabled, staging,
         service_control(GUI, START)
 
 
-def stop(staging):
+def stop(in_staging):
     """Stop the Juju API agent."""
     with su('root'):
         log('Stopping Juju GUI.')
         service_control(GUI, STOP)
-        if staging:
+        if in_staging:
             log('Stopping the staging backend.')
             service_control(IMPROV, STOP)
         else:
