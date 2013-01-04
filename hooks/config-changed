@@ -41,7 +41,7 @@ def handle_config_changes(config, diff):
 
     added_or_changed = diff.added_or_changed
     juju_api_port = config.get('juju-api-port')
-    staging = config.get('staging')
+    in_staging = config.get('staging')
 
     # The juju_gui_source_changed and juju_api_branch_changed variables
     # control whether we restart the GUI and the API, respectively, at the
@@ -69,7 +69,7 @@ def handle_config_changes(config, diff):
             config.get('ssl-key-contents'))
 
     # Handle changes to the improv server configuration.
-    if staging:
+    if in_staging:
         staging_properties = set(
             ['staging', 'staging-environment', 'juju-api-port'])
         staging_changed = added_or_changed & staging_properties
@@ -113,7 +113,7 @@ def handle_config_changes(config, diff):
             service_control(GUI, STOP)
         console_enabled = config.get('juju-gui-console-enabled')
         ssl_cert_path = config['ssl-cert-path']
-        start_gui(juju_api_port, console_enabled, staging, ssl_cert_path)
+        start_gui(juju_api_port, console_enabled, in_staging, ssl_cert_path)
 
 
 def main():
