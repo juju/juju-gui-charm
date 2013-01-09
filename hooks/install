@@ -6,6 +6,14 @@ from subprocess import (
     check_call,
 )
 
+# If the user's environment has "juju-origin: ppa" set, they will
+# automatically have access to python-charmhelpers and python-shelltoolbox.
+# However, we want to support environments that use the non-PPA environment as
+# well.  To do so, we need to install the Juju PPA, which we will do with a
+# couple of functions that are actually maintained in python-shelltoolbox.
+import bootstrap_utils
+bootstrap_utils.install_extra_repositories('ppa:juju/pkgs')
+
 # python-shelltoolbox is installed as a dependency of python-charmhelpers.
 check_call(['apt-get', 'install', '-y', 'python-charmhelpers'])
 
