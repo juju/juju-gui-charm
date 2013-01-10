@@ -30,13 +30,19 @@ this writing it is not yet released.  To run it you must first install it
 locally.  The files may be installed globally, or into your home directory (as
 here):
 
-    sudo apt-get install autoconf libtool python-charmhelpers python-selenium
+    sudo apt-get install autoconf libtool python-charmhelpers
     bzr branch lp:~jimbaker/juju-jitsu/unit-test jitsu-unit-test
     cd jitsu-unit-test
     autoreconf
     ./configure --prefix=$HOME
     make
     make install
+
+Functional tests make use of Selenium and xvfbwrapper. To install the latest
+version of these packages, as required by the test suite, you can use pip or
+easy_install, e.g.:
+
+    sudo pip install selenium xvfbwrapper
 
 The current incarnation of the Jitsu test command requires that the current
 directory name match the charm name, so you must check out the charm into a
