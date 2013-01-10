@@ -1,12 +1,14 @@
 #!/usr/bin/env python2
 #-*- python -*-
 
-import time
 import unittest
-import urllib2
+import urlparse
 
 from charmhelpers import make_charm_config_file
+from selenium.webdriver import Firefox
+from selenium.webdriver.support import ui
 from shelltoolbox import command
+from xvfbwrapper import Xvfb
 
 
 jitsu = command('jitsu')
@@ -14,24 +16,23 @@ juju = command('juju')
 ssh = command('ssh')
 
 
-def open_url(url):
-    """Return a file-like object representing the URL.
-
-    Retries several times before failing, only catching URL errors because
-    we only need to make sure that the service is reachable, not that the
-    response is correct.
-    """
-    retries = 60
-    while retries:
-        try:
-            return urllib2.urlopen(url)
-        except urllib2.URLError as err:
-            retries -= 1
-            time.sleep(0.5)
-    raise err
-
-
 class DeployTestMixin(object):
+
+    @classmethod
+    def setUpClass(cls):
+        # Perform all graphical operations in memory.
+        vdisplay = cls.vdisplay = Xvfb(width=1280, height=720)
+        vdisplay.start()
+        # Create a Selenium browser instance.
+        selenium = cls.selenium = Firefox()
+        cls.wait = ui.WebDriverWait(selenium, 30)
+        super(DeployTestMixin, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.selenium.quit()
+        cls.vdisplay.stop()
+        super(DeployTestMixin, cls).tearDownClass()
 
     def setUp(self):
         self.charm = 'juju-gui'
@@ -39,6 +40,30 @@ class DeployTestMixin(object):
 
     def tearDown(self):
         juju('destroy-service', self.charm)
+
+    def assertEnvironmentIsConnected(self):
+        """Assert the GUI environment is connected to the Juju API agent."""
+        def connected(driver):
+            return driver.execute_script('return app.env.get("connected");')
+        self.wait.until(connected, 'Environment not connected.')
+
+    def navigate_to(self, hostname, path='/'):
+        """Load a page using the current Selenium driver.
+
+        The page URL is calculated using the provided *hostname* and *path*.
+        """
+        base_url = 'https://{0}:{1}'.format(hostname, self.port)
+        self.selenium.get(urlparse.urljoin(base_url, path))
+
+    def get_service_names(self):
+        """Return the set of services' names displayed in the current page."""
+        def services_found(driver):
+            return driver.find_elements_by_css_selector('.service .name')
+        services = self.wait.until(services_found, 'Services not displayed.')
+        # XXX 2013-01-08 frankban bug=1090716:
+            # At least one service is always displayed because Juju GUI
+            # currently does not hide the Juju Gui charm.
+        return set([element.text for element in services])
 
     def stop_services(self, hostname, services):
         # XXX 2012-11-29 frankban bug=872264:
@@ -50,19 +75,6 @@ class DeployTestMixin(object):
         target = 'ubuntu@{0}'.format(hostname)
         for service in services:
             ssh(target, 'sudo', 'service', service, 'stop')
-
-    def check_services(self, hostname, ws_port=8080):
-        """Check the services are listening on their tcp ports."""
-        url = 'https://{0}:{1}'.format(hostname, self.port)
-        response = open_url(url)
-        self.assertEqual(200, response.getcode())
-        ws_url = 'https://{0}:{1}/ws'.format(hostname, ws_port)
-        # A bad request status code here means the websocket resource is found.
-        # It would take an actual websocket client to properly interact with
-        # the websocket server.
-        with self.assertRaises(urllib2.HTTPError) as context_manager:
-            open_url(ws_url)
-        self.assertEqual(400, context_manager.exception.getcode())
 
 
 class DeployTest(DeployTestMixin, unittest.TestCase):
@@ -90,17 +102,23 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
             self.stop_services, hostname, ['juju-api-agent', 'juju-gui'])
-        self.check_services(hostname)
+        self.navigate_to(hostname)
+        self.assertEnvironmentIsConnected()
 
     def test_customized_api_port(self):
         # It is possible to customize the port used by the websocket server.
-        config = {self.charm: {'juju-api-port': 8081}}
+        api_port = 8081
+        config = {self.charm: {'juju-api-port': api_port}}
         config_file = make_charm_config_file(config)
         hostname = self.deploy(config_path=config_file.name)
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
             self.stop_services, hostname, ['juju-api-agent', 'juju-gui'])
-        self.check_services(hostname, ws_port=8081)
+        self.navigate_to(hostname)
+        self.assertEnvironmentIsConnected()
+        ws_url = self.selenium.execute_script(
+            'return app.env.get("socket_url");')
+        self.assertIn(str(api_port), ws_url)
 
     def test_staging(self):
         # Ensure the Juju GUI and improv services are correctly set up.
@@ -110,7 +128,13 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
             self.stop_services, hostname, ['juju-api-improv', 'juju-gui'])
-        self.check_services(hostname)
+        self.navigate_to(hostname)
+        self.assertEnvironmentIsConnected()
+        # TODO: login.
+        # The staging environment contains five deployed services.
+        expected = set([
+            'haproxy', 'mediawiki', 'memcached', 'mysql', 'wordpress'])
+        self.assertSetEqual(expected, self.get_service_names())
 
     def test_branch_source(self):
         # Ensure the Juju GUI is correctly deployed from a Bazaar branch.
@@ -120,7 +144,8 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
             self.stop_services, hostname, ['juju-api-agent', 'juju-gui'])
-        self.check_services(hostname)
+        self.navigate_to(hostname)
+        self.assertEnvironmentIsConnected()
 
 
 class DeployToTest(DeployTestMixin, unittest.TestCase):
@@ -147,7 +172,8 @@ class DeployToTest(DeployTestMixin, unittest.TestCase):
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
             self.stop_services, hostname, ['juju-api-agent', 'juju-gui'])
-        self.check_services(hostname)
+        self.navigate_to(hostname)
+        self.assertEnvironmentIsConnected()
 
 
 if __name__ == '__main__':
