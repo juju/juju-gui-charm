@@ -19,25 +19,17 @@ ssh = command('ssh')
 
 class DeployTestMixin(object):
 
-    @classmethod
-    def setUpClass(cls):
-        # Perform all graphical operations in memory.
-        vdisplay = cls.vdisplay = Xvfb(width=1280, height=720)
-        vdisplay.start()
-        # Create a Selenium browser instance.
-        selenium = cls.selenium = Firefox()
-        cls.wait = ui.WebDriverWait(selenium, 20)
-        super(DeployTestMixin, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.selenium.quit()
-        cls.vdisplay.stop()
-        super(DeployTestMixin, cls).tearDownClass()
-
     def setUp(self):
         self.charm = 'juju-gui'
         self.port = '443'
+        # Perform all graphical operations in memory.
+        vdisplay = Xvfb(width=1280, height=720)
+        vdisplay.start()
+        self.addCleanup(vdisplay.stop)
+        # Create a Selenium browser instance.
+        selenium = self.selenium = Firefox()
+        self.addCleanup(selenium.quit)
+        self.wait = ui.WebDriverWait(selenium, 20)
 
     def tearDown(self):
         juju('destroy-service', self.charm)
@@ -52,9 +44,16 @@ class DeployTestMixin(object):
         """Load a page using the current Selenium driver.
 
         The page URL is calculated using the provided *hostname* and *path*.
+        Retry loading the page until the page is found or a timeout exception
+        is raised.
         """
         base_url = 'https://{0}:{1}'.format(hostname, self.port)
-        self.selenium.get(urlparse.urljoin(base_url, path))
+        url = urlparse.urljoin(base_url, path)
+
+        def page_ready(driver):
+            driver.get(url)
+            return driver.title == 'Juju Admin'
+        self.wait.until(page_ready, 'Juju GUI not found.')
 
     def login(self, password):
         """Log in to access the Juju GUI using the provided *password*."""
