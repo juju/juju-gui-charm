@@ -214,7 +214,8 @@ def start_agent(juju_api_port, ssl_cert_path,
         service_control(AGENT, START)
 
 
-def start_gui(juju_api_port, console_enabled, in_staging, ssl_cert_path,
+def start_gui(juju_api_port, console_enabled, login_help,
+              in_staging, ssl_cert_path,
               config_path='/etc/init/juju-gui.conf',
               nginx_path=JUJU_GUI_SITE,
               config_js_path=None):
@@ -230,6 +231,7 @@ def start_gui(juju_api_port, console_enabled, in_staging, ssl_cert_path,
         'address': unit_get('public-address'),
         'console_enabled': json.dumps(console_enabled),
         'port': juju_api_port,
+        'login_help': json.dumps(login_help),
     }
     if config_js_path is None:
         config_js_path = os.path.join(

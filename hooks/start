@@ -31,8 +31,8 @@ def main():
     juju_api_port = config['juju-api-port']
     staging = config.get('staging')
     start_gui(
-        juju_api_port, config['juju-gui-console-enabled'], staging,
-        config['ssl-cert-path'])
+        juju_api_port, config['juju-gui-console-enabled'],
+        config['login-help'], staging, config['ssl-cert-path'])
     if staging:
         start_improv(juju_api_port, config['staging-environment'],
                      config['ssl-cert-path'])
