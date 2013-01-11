@@ -4,9 +4,8 @@
 
 Hi.  Thanks for looking at the charm.  If you are interested in helping us
 develop, we'd love to hear from you.  Our developer-oriented discussions
-happen on freenode's IRC network in the #juju-gui channel, and you can also
+happen on Freenode's IRC network in the #juju-gui channel, and you can also
 join [the GUI developers mailing list](https://lists.ubuntu.com/mailman/listinfo/juju-gui).
-
 
 ## Getting Started ##
 
@@ -62,7 +61,6 @@ Now you are ready to run the functional tests (see the next section).
 
 There are two types of tests for the charm: unit tests and functional tests.
 
-
 ### Unit Tests ###
 
 The unit tests do not require a functional Juju environment, and can be run
@@ -72,7 +70,6 @@ with this command::
 
 Unit tests should be created in the "tests" subdirectory and be named in the
 customary way (i.e., "test_*.py").
-
 
 ### Functional Tests ###
 
@@ -111,17 +108,17 @@ Unfortunately, we have not found LXC-based Juju environments to be reliable
 for these tests.  At this time, we recommend using other environments, such as
 OpenStack; but we will periodically check the tests in LXC environments
 because it would be great to be able to use it.  If you do want to use LXC,
-you will need to install the apt-cacher-ng and lxc packages.
+you will need to install the `apt-cacher-ng` and `lxc` packages.
 
 Currently running tests on a local environment is quite slow (with quantal
 host and precise container at least), so you may want to further increase the
 `jitsu test` command timeout.
 
-If Jitsu generates errors about not being able to bootstrap...
+If Jitsu generates errors about not being able to bootstrap:
 
     CalledProcessError: Command '['juju', 'bootstrap']'...
 
-...or if it hangs, then you may need to bootstrap the environment yourself and
+or if it hangs, then you may need to bootstrap the environment yourself and
 pass the --no-bootstrap switch to Jitsu.
 
 ## Running the Charm From Development ##
@@ -139,16 +136,17 @@ need them, as described above).
     juju expose juju-gui
 
 Now you are working with a test run, as described in
-https://juju.ubuntu.com/docs/write-charm.html#test-run .  The
-`juju debug-hooks` command, described in the same web page, is by far your
-most powerful tool to debug.
+<https://juju.ubuntu.com/docs/write-charm.html#test-run>.  The
+`juju debug-hooks` command, described in the same web page, is your most
+powerful tool to debug.
 
 When something goes wrong, on your local machine run
 `juju debug-hooks juju-gui/0` or similar.  This will initially put you on the
 unit that has the problem.  You can look at what is going on in
-/var/lib/juju/units/[NAME OF UNIT].  There is a charm.log file to investigate,
-and a charm directory which contains the charm.  The charm directory contains
-the juju-gui and juju directories, so everything you need is there.
+`/var/lib/juju/units/[NAME OF UNIT]`.  There is a charm.log file to
+investigate, and a charm directory which contains the charm.  The charm
+directory contains the `juju-gui` and `juju` directories, so everything you
+need is there.
 
 If juju recognized an error (for instance, the unit is in an "install-error"
 state) then you can do more.  In another terminal on your local machine, run
@@ -159,7 +157,7 @@ part of the data that the debug-hooks machinery (via byobu) shows you.  You
 are now responsible for running the install hook.  For instance, in this case,
 you would run
 
-    $ ./hooks/install
+    ./hooks/install
 
 You can then watch what is going on.  If something goes wrong, fix it and try
 it again.  Juju will not treat the hook as complete until you end the session
