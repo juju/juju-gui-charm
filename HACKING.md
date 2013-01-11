@@ -94,12 +94,12 @@ Functional tests will deploy, by default, the latest stable release of Juju
 GUI.  However, it is possible to provide a different Juju GUI source by
 setting the environment variable `JUJU_GUI_SOURCE` while running tests, e.g.:
 
-    $ JUJU_GUI_SOURCE=lp:mybranch JUJU_REPOSITORY=/path/to/charm/repo \
+    JUJU_GUI_SOURCE=lp:mybranch JUJU_REPOSITORY=/path/to/charm/repo \
         ~/bin/jitsu test juju-gui ...
 
 To test a new trunk release:
 
-    $ JUJU_GUI_SOURCE=trunk JUJU_REPOSITORY=/path/to/charm/repo \
+    JUJU_GUI_SOURCE=trunk JUJU_REPOSITORY=/path/to/charm/repo \
         ~/bin/jitsu test juju-gui ...
 
 #### LXC ####
