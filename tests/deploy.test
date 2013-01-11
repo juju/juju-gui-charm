@@ -14,7 +14,7 @@ from xvfbwrapper import Xvfb
 
 
 JUJU_GUI_SOURCE = os.getenv('JUJU_GUI_SOURCE')
-JUJU_GUI_TEST_BRANCH = 'lp:~frankban/juju-gui/charm-tests-branch'
+JUJU_GUI_TEST_BRANCH = 'lp:~juju-gui/juju-gui/charm-tests-branch'
 STAGING_SERVICES = ('haproxy', 'mediawiki', 'memcached', 'mysql', 'wordpress')
 jitsu = command('jitsu')
 juju = command('juju')

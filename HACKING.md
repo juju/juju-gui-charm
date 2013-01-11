@@ -102,6 +102,9 @@ To test a new trunk release:
     JUJU_GUI_SOURCE=trunk JUJU_REPOSITORY=/path/to/charm/repo \
         ~/bin/jitsu test juju-gui ...
 
+This can be useful to verify that a given branch works with the charm, which is
+one of the tasks that release QA should include.
+
 #### LXC ####
 
 Unfortunately, we have not found LXC-based Juju environments to be reliable
