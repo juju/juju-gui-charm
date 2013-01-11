@@ -106,14 +106,16 @@ def handle_config_changes(config, diff):
 
     # Handle changes to the juju-gui configuration.
     gui_properties = set(
-        ['juju-gui-console-enabled', 'juju-api-port', 'staging'])
+        ['juju-gui-console-enabled', 'juju-api-port', 'staging', 'login-help'])
     gui_changed = added_or_changed & gui_properties
     if gui_changed or ssl_changed or juju_gui_source_changed:
         with su('root'):
             service_control(GUI, STOP)
         console_enabled = config.get('juju-gui-console-enabled')
         ssl_cert_path = config['ssl-cert-path']
-        start_gui(juju_api_port, console_enabled, in_staging, ssl_cert_path)
+        login_help = config['login-help']
+        start_gui(juju_api_port, console_enabled, login_help,
+                  in_staging, ssl_cert_path)
 
 
 def main():
