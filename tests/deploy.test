@@ -49,7 +49,7 @@ class DeployTestMixin(object):
 
         Return the created config file object.
 
-        The Juju GUI source can be provided setting the environment variable
+        The Juju GUI source can be provided by setting the environment variable
         *JUJU_GUI_SOURCE*. This is just a simple wrapper around
         ``charmhelpers.make_charm_config_file``.
         """

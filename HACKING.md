@@ -90,9 +90,9 @@ the current working directory when the tests are run:
 This command will bootstrap the default Juju environment specified in your
 `~/.juju/environments.yaml`.
 
-Functional tests will deploy, by default, the latest stable release of Juju
-GUI.  However, it is possible to provide a different Juju GUI source by
-setting the environment variable `JUJU_GUI_SOURCE` while running tests, e.g.:
+Functional tests deploy, by default, the latest stable release of Juju GUI.
+However, it is possible to provide a different Juju GUI source by setting the
+environment variable `JUJU_GUI_SOURCE` while running tests, e.g.:
 
     JUJU_GUI_SOURCE=lp:mybranch JUJU_REPOSITORY=/path/to/charm/repo \
         ~/bin/jitsu test juju-gui ...
