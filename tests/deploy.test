@@ -47,7 +47,8 @@ class DeployTestMixin(object):
     def make_config_file(self, options):
         """Create a charm config file adding, if required, the Juju GUI source.
 
-        This is just a simple wrapper around
+        The Juju GUI source can be provided setting the environment variable
+        *JUJU_GUI_SOURCE*. This is just a simple wrapper around
         ``charmhelpers.make_charm_config_file``.
         """
         if JUJU_GUI_SOURCE is not None:
