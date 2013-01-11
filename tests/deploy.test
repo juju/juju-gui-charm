@@ -12,6 +12,7 @@ from shelltoolbox import command
 from xvfbwrapper import Xvfb
 
 
+STAGING_SERVICES = ('haproxy', 'mediawiki', 'memcached', 'mysql', 'wordpress')
 jitsu = command('jitsu')
 juju = command('juju')
 ssh = command('ssh')
@@ -63,8 +64,8 @@ class DeployTestMixin(object):
             except exceptions.NoSuchElementException:
                 return False
         form = self.wait.until(form_displayed, 'Login form not found.')
-        password = form.find_element_by_css_selector('input[type=password]')
-        password.send_keys('admin')
+        passwd = form.find_element_by_css_selector('input[type=password]')
+        passwd.send_keys(password)
         submit = form.find_element_by_css_selector('input[type=submit]')
         submit.click()
 
@@ -143,9 +144,7 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         # Log in using the staging password.
         self.login('admin')
         # The staging environment contains five deployed services.
-        expected = set([
-            'haproxy', 'mediawiki', 'memcached', 'mysql', 'wordpress'])
-        self.assertSetEqual(expected, self.get_service_names())
+        self.assertSetEqual(set(STAGING_SERVICES), self.get_service_names())
 
     def test_branch_source(self):
         # Ensure the Juju GUI is correctly deployed from a Bazaar branch.
