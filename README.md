@@ -10,19 +10,19 @@ You need a configured and bootstrapped Juju environment: see the Juju docs
 about [getting started](https://juju.ubuntu.com/docs/getting-started.html),
 and then run the usual bootstrap command.
 
-    $ juju bootstrap
+    juju bootstrap
 
 Next, you simply need to deploy the charm and expose it.  (See also "Deploying
 with Jitsu" below, for another option.)
 
-    $ juju deploy cs:~juju-gui/precise/juju-gui
-    $ juju expose juju-gui
+    juju deploy cs:~juju-gui/precise/juju-gui
+    juju expose juju-gui
 
 Finally, you need to identify the GUI's URL. It can take a few minutes for the
 GUI to be built and to start; this command will let you see when it is ready
 to go by giving you regular status updates:
 
-    $ watch juju status
+    watch juju status
 
 Eventually, at the end of the status you will see something that looks like
 this:
@@ -61,12 +61,12 @@ warned.
 
 For now, though, install Jitsu...
 
-    $ sudo apt-get install juju-jitsu
+    sudo apt-get install juju-jitsu
 
 ...and then replace "juju deploy cs:~juju-gui/precise/juju-gui" from the
 previous instructions with this:
 
-    $ jitsu deploy-to 0 cs:~juju-gui/precise/juju-gui
+    jitsu deploy-to 0 cs:~juju-gui/precise/juju-gui
 
 ## Contacting the Developers ##
 

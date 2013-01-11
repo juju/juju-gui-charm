@@ -16,7 +16,7 @@ is an easy way to get started.
 
 You'll also need some dependencies and developer basics.
 
-    $ sudo apt-get install bzr autoconf libtool python-charmhelpers
+    sudo apt-get install bzr autoconf libtool python-charmhelpers
 
 Next, you need the bzr branch.  We work from
 [lp:~juju-gui/charms/precise/juju-gui/trunk](https://code.launchpad.net/~juju-gui/charms/precise/juju-gui/trunk).
@@ -29,25 +29,25 @@ this writing it is not yet released.  To run it you must first install it
 locally.  The files may be installed globally, or into your home directory (as
 here):
 
-    $ sudo apt-get install autoconf libtool python-charmhelpers
-    $ bzr branch lp:~jimbaker/juju-jitsu/unit-test jitsu-unit-test
-    $ cd jitsu-unit-test
-    $ autoreconf
-    $ ./configure --prefix=$HOME
-    $ make
-    $ make install
+    sudo apt-get install autoconf libtool python-charmhelpers
+    bzr branch lp:~jimbaker/juju-jitsu/unit-test jitsu-unit-test
+    cd jitsu-unit-test
+    autoreconf
+    ./configure --prefix=$HOME
+    make
+    make install
 
 Functional tests make use of Selenium and xvfbwrapper. To install the latest
 version of these packages, as required by the test suite, you can use pip or
 easy_install, e.g.:
 
-    $ sudo pip install selenium xvfbwrapper
+    sudo pip install selenium xvfbwrapper
 
 The current incarnation of the Jitsu test command requires that the current
 directory name match the charm name, so you must check out the charm into a
 directory named "juju-gui":
 
-    $ bzr branch lp:~juju-gui/charms/precise/juju-gui/trunk juju-gui
+    bzr branch lp:~juju-gui/charms/precise/juju-gui/trunk juju-gui
 
 The branch directory must be placed (or linked from) within a local charm
 repository. It consists of a directory, itself containing a number of
@@ -81,7 +81,7 @@ environment.
 Jitsu requires the charm directory to be named the same as the charm and to be
 the current working directory when the tests are run::
 
-    $ JUJU_REPOSITORY=/path/to/charm/repo ~/bin/jitsu test juju-gui \
+    JUJU_REPOSITORY=/path/to/charm/repo ~/bin/jitsu test juju-gui \
         --logdir /tmp --timeout 40m
 
 This command will bootstrap the default Juju environment specified in your
@@ -117,8 +117,8 @@ environment probably will reduce frustrations.  Then, deploy your charm like
 this (again, assuming you have set up your repo the way the functional tests
 need them, as described above).
 
-    $ juju deploy --repository=/path/to/charm/repo --upgrade local:precise/juju-gui
-    $ juju expose juju-gui
+    juju deploy --repository=/path/to/charm/repo --upgrade local:precise/juju-gui
+    juju expose juju-gui
 
 Now you are working with a test run, as described in
 <https://juju.ubuntu.com/docs/write-charm.html#test-run>.  The
@@ -142,7 +142,7 @@ part of the data that the debug-hooks machinery (via byobu) shows you.  You
 are now responsible for running the install hook.  For instance, in this case,
 you would run
 
-    $ ./hooks/install
+    ./hooks/install
 
 You can then watch what is going on.  If something goes wrong, fix it and try
 it again.  Juju will not treat the hook as complete until you end the session
