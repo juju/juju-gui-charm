@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 #-*- python -*-
 
+import os
 import unittest
 import urlparse
 
@@ -12,6 +13,8 @@ from shelltoolbox import command
 from xvfbwrapper import Xvfb
 
 
+JUJU_GUI_SOURCE = os.getenv('JUJU_GUI_SOURCE')
+JUJU_GUI_TEST_BRANCH = 'lp:~juju-gui/juju-gui/charm-tests-branch'
 STAGING_SERVICES = ('haproxy', 'mediawiki', 'memcached', 'mysql', 'wordpress')
 jitsu = command('jitsu')
 juju = command('juju')
@@ -40,6 +43,21 @@ class DeployTestMixin(object):
         def connected(driver):
             return driver.execute_script('return app.env.get("connected");')
         self.wait.until(connected, 'Environment not connected.')
+
+    def make_config_file(self, options=None):
+        """Create a charm config file adding, if required, the Juju GUI source.
+
+        Return the created config file object.
+
+        The Juju GUI source can be provided by setting the environment variable
+        *JUJU_GUI_SOURCE*. This is just a simple wrapper around
+        ``charmhelpers.make_charm_config_file``.
+        """
+        if options is None:
+            options = {}
+        if JUJU_GUI_SOURCE is not None:
+            options.setdefault('juju-gui-source', JUJU_GUI_SOURCE)
+        return make_charm_config_file({self.charm: options})
 
     def navigate_to(self, hostname, path='/'):
         """Load a page using the current Selenium driver.
@@ -90,16 +108,15 @@ class DeployTestMixin(object):
 
 class DeployTest(DeployTestMixin, unittest.TestCase):
 
-    def deploy(self, config_path=None):
+    def deploy(self, config=None):
         """Deploy and expose the Juju GUI charm. Return the service host name.
 
         Also wait until the service is started.
         If *config_path* is provided, it will be used when deploying the charm.
         """
-        args = ['deploy', 'local:{0}'.format(self.charm)]
-        if config_path is not None:
-            args.extend(['--config', config_path])
-        juju(*args)
+        config_file = self.make_config_file(config)
+        juju('deploy', 'local:{0}'.format(self.charm),
+             '--config', config_file.name)
         juju('expose', self.charm)
         jitsu(
             'watch', '--failfast', self.charm,
@@ -119,9 +136,7 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
     def test_customized_api_port(self):
         # It is possible to customize the port used by the websocket server.
         api_port = 8081
-        config = {self.charm: {'juju-api-port': api_port}}
-        config_file = make_charm_config_file(config)
-        hostname = self.deploy(config_path=config_file.name)
+        hostname = self.deploy({'juju-api-port': api_port})
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
             self.stop_services, hostname, ['juju-api-agent', 'juju-gui'])
@@ -133,9 +148,7 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
 
     def test_staging(self):
         # Ensure the Juju GUI and improv services are correctly set up.
-        config = {self.charm: {'staging': 'true'}}
-        config_file = make_charm_config_file(config)
-        hostname = self.deploy(config_path=config_file.name)
+        hostname = self.deploy({'staging': 'true'})
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
             self.stop_services, hostname, ['juju-api-improv', 'juju-gui'])
@@ -148,9 +161,7 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
 
     def test_branch_source(self):
         # Ensure the Juju GUI is correctly deployed from a Bazaar branch.
-        config = {self.charm: {'juju-gui-source': 'lp:juju-gui'}}
-        config_file = make_charm_config_file(config)
-        hostname = self.deploy(config_path=config_file.name)
+        hostname = self.deploy({'juju-gui-source': JUJU_GUI_TEST_BRANCH})
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
             self.stop_services, hostname, ['juju-api-agent', 'juju-gui'])
@@ -166,8 +177,10 @@ class DeployToTest(DeployTestMixin, unittest.TestCase):
         Expose it and return the service host name.
         Also wait until the service is started.
         """
+        config_file = self.make_config_file()
         # The id of the bootstrap node is 0 (the first node started by Juju).
-        jitsu('deploy-to', '0', 'local:{0}'.format(self.charm))
+        jitsu('deploy-to', '0', 'local:{0}'.format(self.charm),
+              '--config', config_file.name)
         juju('expose', self.charm)
         jitsu(
             'watch', '--failfast', self.charm,

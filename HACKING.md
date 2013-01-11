@@ -79,13 +79,28 @@ tests directory which end with ".test" will be run in a Juju Jitsu test
 environment.
 
 Jitsu requires the charm directory to be named the same as the charm and to be
-the current working directory when the tests are run::
+the current working directory when the tests are run:
 
     JUJU_REPOSITORY=/path/to/charm/repo ~/bin/jitsu test juju-gui \
         --logdir /tmp --timeout 40m
 
 This command will bootstrap the default Juju environment specified in your
 `~/.juju/environments.yaml`.
+
+Functional tests deploy, by default, the latest stable release of Juju GUI.
+However, it is possible to provide a different Juju GUI source by setting the
+environment variable `JUJU_GUI_SOURCE` while running tests, e.g.:
+
+    JUJU_GUI_SOURCE=lp:mybranch JUJU_REPOSITORY=/path/to/charm/repo \
+        ~/bin/jitsu test juju-gui ...
+
+To test a new trunk release:
+
+    JUJU_GUI_SOURCE=trunk JUJU_REPOSITORY=/path/to/charm/repo \
+        ~/bin/jitsu test juju-gui ...
+
+This can be useful to verify that a given branch works with the charm, which is
+one of the tasks that release QA should include.
 
 #### LXC ####
 

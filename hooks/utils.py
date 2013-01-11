@@ -269,7 +269,7 @@ def fetch_gui(juju_gui_source, logpath):
     if origin == 'branch':
         # Create a release starting from a branch.
         juju_gui_source_dir = os.path.join(CURRENT_DIR, 'juju-gui-source')
-        log('Retrieving Juju GUI source checkouts.')
+        log('Retrieving Juju GUI source checkout from %s.' % version_or_branch)
         cmd_log(run('rm', '-rf', juju_gui_source_dir))
         cmd_log(bzr_checkout(version_or_branch, juju_gui_source_dir))
         log('Preparing a Juju GUI release.')
