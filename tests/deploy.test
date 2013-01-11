@@ -14,6 +14,7 @@ from xvfbwrapper import Xvfb
 
 
 JUJU_GUI_SOURCE = os.getenv('JUJU_GUI_SOURCE')
+JUJU_GUI_TEST_BRANCH = 'lp:~frankban/juju-gui/charm-tests-branch'
 jitsu = command('jitsu')
 juju = command('juju')
 ssh = command('ssh')
@@ -159,7 +160,8 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
 
     def test_branch_source(self):
         # Ensure the Juju GUI is correctly deployed from a Bazaar branch.
-        config_file = self.make_config_file({'juju-gui-source': 'lp:juju-gui'})
+        config_file = self.make_config_file(
+            {'juju-gui-source': JUJU_GUI_TEST_BRANCH})
         hostname = self.deploy(config_path=config_file.name)
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
