@@ -4,9 +4,8 @@
 
 Hi.  Thanks for looking at the charm.  If you are interested in helping us
 develop, we'd love to hear from you.  Our developer-oriented discussions
-happen on freenode's IRC network in the #juju-gui channel, and you can also
+happen on Freenode's IRC network in the #juju-gui channel, and you can also
 join [the GUI developers mailing list](https://lists.ubuntu.com/mailman/listinfo/juju-gui).
-
 
 ## Getting Started ##
 
@@ -17,7 +16,7 @@ is an easy way to get started.
 
 You'll also need some dependencies and developer basics.
 
-    sudo apt-get install bzr autoconf libtool python-charmhelpers
+    $ sudo apt-get install bzr autoconf libtool python-charmhelpers
 
 Next, you need the bzr branch.  We work from
 [lp:~juju-gui/charms/precise/juju-gui/trunk](https://code.launchpad.net/~juju-gui/charms/precise/juju-gui/trunk).
@@ -30,25 +29,25 @@ this writing it is not yet released.  To run it you must first install it
 locally.  The files may be installed globally, or into your home directory (as
 here):
 
-    sudo apt-get install autoconf libtool python-charmhelpers
-    bzr branch lp:~jimbaker/juju-jitsu/unit-test jitsu-unit-test
-    cd jitsu-unit-test
-    autoreconf
-    ./configure --prefix=$HOME
-    make
-    make install
+    $ sudo apt-get install autoconf libtool python-charmhelpers
+    $ bzr branch lp:~jimbaker/juju-jitsu/unit-test jitsu-unit-test
+    $ cd jitsu-unit-test
+    $ autoreconf
+    $ ./configure --prefix=$HOME
+    $ make
+    $ make install
 
 Functional tests make use of Selenium and xvfbwrapper. To install the latest
 version of these packages, as required by the test suite, you can use pip or
 easy_install, e.g.:
 
-    sudo pip install selenium xvfbwrapper
+    $ sudo pip install selenium xvfbwrapper
 
 The current incarnation of the Jitsu test command requires that the current
 directory name match the charm name, so you must check out the charm into a
 directory named "juju-gui":
 
-    bzr branch lp:~juju-gui/charms/precise/juju-gui/trunk juju-gui
+    $ bzr branch lp:~juju-gui/charms/precise/juju-gui/trunk juju-gui
 
 The branch directory must be placed (or linked from) within a local charm
 repository. It consists of a directory, itself containing a number of
@@ -62,7 +61,6 @@ Now you are ready to run the functional tests (see the next section).
 
 There are two types of tests for the charm: unit tests and functional tests.
 
-
 ### Unit Tests ###
 
 The unit tests do not require a functional Juju environment, and can be run
@@ -72,7 +70,6 @@ with this command::
 
 Unit tests should be created in the "tests" subdirectory and be named in the
 customary way (i.e., "test_*.py").
-
 
 ### Functional Tests ###
 
@@ -84,7 +81,7 @@ environment.
 Jitsu requires the charm directory to be named the same as the charm and to be
 the current working directory when the tests are run::
 
-    JUJU_REPOSITORY=/path/to/charm/repo ~/bin/jitsu test juju-gui \
+    $ JUJU_REPOSITORY=/path/to/charm/repo ~/bin/jitsu test juju-gui \
         --logdir /tmp --timeout 40m
 
 This command will bootstrap the default Juju environment specified in your
@@ -96,17 +93,17 @@ Unfortunately, we have not found LXC-based Juju environments to be reliable
 for these tests.  At this time, we recommend using other environments, such as
 OpenStack; but we will periodically check the tests in LXC environments
 because it would be great to be able to use it.  If you do want to use LXC,
-you will need to install the apt-cacher-ng and lxc packages.
+you will need to install the `apt-cacher-ng` and `lxc` packages.
 
 Currently running tests on a local environment is quite slow (with quantal
 host and precise container at least), so you may want to further increase the
 `jitsu test` command timeout.
 
-If Jitsu generates errors about not being able to bootstrap...
+If Jitsu generates errors about not being able to bootstrap:
 
     CalledProcessError: Command '['juju', 'bootstrap']'...
 
-...or if it hangs, then you may need to bootstrap the environment yourself and
+or if it hangs, then you may need to bootstrap the environment yourself and
 pass the --no-bootstrap switch to Jitsu.
 
 ## Running the Charm From Development ##
@@ -120,20 +117,21 @@ environment probably will reduce frustrations.  Then, deploy your charm like
 this (again, assuming you have set up your repo the way the functional tests
 need them, as described above).
 
-    juju deploy --repository=/path/to/charm/repo --upgrade local:precise/juju-gui
-    juju expose juju-gui
+    $ juju deploy --repository=/path/to/charm/repo --upgrade local:precise/juju-gui
+    $ juju expose juju-gui
 
 Now you are working with a test run, as described in
-https://juju.ubuntu.com/docs/write-charm.html#test-run .  The
-`juju debug-hooks` command, described in the same web page, is by far your
-most powerful tool to debug.
+<https://juju.ubuntu.com/docs/write-charm.html#test-run>.  The
+`juju debug-hooks` command, described in the same web page, is your most
+powerful tool to debug.
 
 When something goes wrong, on your local machine run
 `juju debug-hooks juju-gui/0` or similar.  This will initially put you on the
 unit that has the problem.  You can look at what is going on in
-/var/lib/juju/units/[NAME OF UNIT].  There is a charm.log file to investigate,
-and a charm directory which contains the charm.  The charm directory contains
-the juju-gui and juju directories, so everything you need is there.
+`/var/lib/juju/units/[NAME OF UNIT]`.  There is a charm.log file to
+investigate, and a charm directory which contains the charm.  The charm
+directory contains the `juju-gui` and `juju` directories, so everything you
+need is there.
 
 If juju recognized an error (for instance, the unit is in an "install-error"
 state) then you can do more.  In another terminal on your local machine, run
