@@ -411,10 +411,12 @@ class StartStopTest(unittest.TestCase):
         config_js_file = tempfile.NamedTemporaryFile()
         self.addCleanup(config_js_file.close)
         start_gui(
-            port, False, True, '/tmp/certificates/',
+            port, False, 'This is login help.', True, '/tmp/certificates/',
             self.destination_file.name, nginx_file.name, config_js_file.name)
         conf = self.destination_file.read()
         self.assertTrue('/usr/sbin/nginx' in conf)
+        js_conf = config_js_file.read()
+        self.assertIn('login_help: "This is login help."', js_conf)
         nginx_conf = nginx_file.read()
         self.assertTrue('juju-gui/build-debug' in nginx_conf)
         self.assertIn('/tmp/certificates/juju.crt', nginx_conf)

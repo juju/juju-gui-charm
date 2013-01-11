@@ -38,6 +38,12 @@ here):
     make
     make install
 
+Functional tests make use of Selenium and xvfbwrapper. To install the latest
+version of these packages, as required by the test suite, you can use pip or
+easy_install, e.g.:
+
+    sudo pip install selenium xvfbwrapper
+
 The current incarnation of the Jitsu test command requires that the current
 directory name match the charm name, so you must check out the charm into a
 directory named "juju-gui":
