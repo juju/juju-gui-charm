@@ -49,9 +49,9 @@ this:
 That tells me I can go to the public-address in my browser via HTTPS
 (https://ec2-204-236-250-8.compute-1.amazonaws.com/ in this example), and start
 configuring the rest of Juju with the GUI.  You should see something similar.
-(Accessing the GUI via HTTP will redirect to using HTTPS anyway.)
+(Accessing the GUI via HTTP will redirect to using HTTPS.)
 
-You wil see a login form with the username fixed to "admin". The password is
+You will see a login form with the username fixed to "admin". The password is
 the same as your Juju environment's `admin-secret`, found in
 `~/.juju/environments.yaml`.
 
