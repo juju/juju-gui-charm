@@ -73,9 +73,6 @@ class DeployTestMixin(object):
         def services_found(driver):
             return driver.find_elements_by_css_selector('.service .name')
         services = self.wait.until(services_found, 'Services not displayed.')
-        # XXX 2013-01-08 frankban bug=1090716:
-            # At least one service is always displayed because Juju GUI
-            # currently does not hide the Juju Gui charm.
         return set([element.text for element in services])
 
     def stop_services(self, hostname, services):
