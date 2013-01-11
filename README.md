@@ -2,6 +2,10 @@
 
 This charm makes it easy to deploy a Juju GUI into an existing environment.
 
+## Demo/Staging Server ##
+
+A [demo/staging server](https://uistage.jujucharms.com:8080/) is available.
+
 ## Deploying the Juju GUI ##
 
 Deploying the Juju GUI is accomplished using Juju itself.
