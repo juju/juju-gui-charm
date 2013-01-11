@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 #-*- python -*-
 
+import os
 import unittest
 import urlparse
 
@@ -12,6 +13,7 @@ from shelltoolbox import command
 from xvfbwrapper import Xvfb
 
 
+JUJU_GUI_SOURCE = os.getenv('JUJU_GUI_SOURCE')
 jitsu = command('jitsu')
 juju = command('juju')
 ssh = command('ssh')
@@ -39,6 +41,16 @@ class DeployTestMixin(object):
         def connected(driver):
             return driver.execute_script('return app.env.get("connected");')
         self.wait.until(connected, 'Environment not connected.')
+
+    def make_config_file(self, options):
+        """Create a charm config file adding, if required, the Juju GUI source.
+
+        This is just a simple wrapper around
+        ``charmhelpers.make_charm_config_file``.
+        """
+        if JUJU_GUI_SOURCE is not None:
+            options.setdefault('juju-gui-source', JUJU_GUI_SOURCE)
+        return make_charm_config_file({self.charm: options})
 
     def navigate_to(self, hostname, path='/'):
         """Load a page using the current Selenium driver.
@@ -118,8 +130,7 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
     def test_customized_api_port(self):
         # It is possible to customize the port used by the websocket server.
         api_port = 8081
-        config = {self.charm: {'juju-api-port': api_port}}
-        config_file = make_charm_config_file(config)
+        config_file = self.make_config_file({'juju-api-port': api_port})
         hostname = self.deploy(config_path=config_file.name)
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
@@ -132,8 +143,7 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
 
     def test_staging(self):
         # Ensure the Juju GUI and improv services are correctly set up.
-        config = {self.charm: {'staging': 'true'}}
-        config_file = make_charm_config_file(config)
+        config_file = self.make_config_file({'staging': 'true'})
         hostname = self.deploy(config_path=config_file.name)
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
@@ -149,8 +159,7 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
 
     def test_branch_source(self):
         # Ensure the Juju GUI is correctly deployed from a Bazaar branch.
-        config = {self.charm: {'juju-gui-source': 'lp:juju-gui'}}
-        config_file = make_charm_config_file(config)
+        config_file = self.make_config_file({'juju-gui-source': 'lp:juju-gui'})
         hostname = self.deploy(config_path=config_file.name)
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
