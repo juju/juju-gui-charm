@@ -299,7 +299,7 @@ class SaveOrCreateCertificatesTest(unittest.TestCase):
         self.key_file = os.path.join(self.cert_path, 'juju.key')
 
     def test_generation(self):
-        """Ensure certificates are correctly generated."""
+        # Ensure certificates are correctly generated.
         save_or_create_certificates(
             self.cert_path, 'some ignored contents', None)
         self.assertIn('CERTIFICATE', open(self.cert_file).read())
@@ -411,12 +411,16 @@ class StartStopTest(unittest.TestCase):
         config_js_file = tempfile.NamedTemporaryFile()
         self.addCleanup(config_js_file.close)
         start_gui(
-            port, False, 'This is login help.', True, '/tmp/certificates/',
-            self.destination_file.name, nginx_file.name, config_js_file.name)
+            port, False, 'myuser', 'passwd', 'This is login help.', True, True,
+            '/tmp/certificates/', self.destination_file.name, nginx_file.name,
+            config_js_file.name)
         conf = self.destination_file.read()
         self.assertTrue('/usr/sbin/nginx' in conf)
         js_conf = config_js_file.read()
+        self.assertIn('user: "myuser"', js_conf)
+        self.assertIn('password: "passwd"', js_conf)
         self.assertIn('login_help: "This is login help."', js_conf)
+        self.assertIn('readOnly: true', js_conf)
         nginx_conf = nginx_file.read()
         self.assertTrue('juju-gui/build-debug' in nginx_conf)
         self.assertIn('/tmp/certificates/juju.crt', nginx_conf)
@@ -424,6 +428,20 @@ class StartStopTest(unittest.TestCase):
         self.assertEqual(self.svc_ctl_call_count, 1)
         self.assertEqual(self.service_names, ['juju-gui'])
         self.assertEqual(self.actions, [charmhelpers.START])
+
+    def test_start_gui_missing_username_or_password(self):
+        # Ensure user and password are both null if only one is provided.
+        nginx_file = tempfile.NamedTemporaryFile()
+        self.addCleanup(nginx_file.close)
+        config_js_file = tempfile.NamedTemporaryFile()
+        self.addCleanup(config_js_file.close)
+        start_gui(
+            '1234', False, 'myuser', None, 'This is login help.', True, True,
+            '/tmp/certificates/', self.destination_file.name, nginx_file.name,
+            config_js_file.name)
+        js_conf = config_js_file.read()
+        self.assertIn('user: null', js_conf)
+        self.assertIn('password: null', js_conf)
 
     def test_stop_staging(self):
         stop(True)
