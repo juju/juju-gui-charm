@@ -63,15 +63,15 @@ options:
       the GUI. Both ssl-cert-contents and ssl-key-contents must be provided.
       If not, cetificates will be automatically generated.
     type: string
-  username:
+  user:
     description: |
-      The username to be used in the authentication process. Both username and
+      The username to be used in the authentication process. Both user and
       password must be provided. If not, they will be ignored and the user will
       be asked to authenticate using the login screen.
     type: string
   password:
     description: |
-      The password to be used in the authentication process. Both username and
+      The password to be used in the authentication process. Both user and
       password must be provided. If not, they will be ignored and the user will
       be asked to authenticate using the login screen.
     type: string
