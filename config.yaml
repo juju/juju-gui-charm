@@ -63,6 +63,18 @@ options:
       the GUI. Both ssl-cert-contents and ssl-key-contents must be provided.
       If not, cetificates will be automatically generated.
     type: string
+  username:
+    description: |
+      The username to be used in the authentication process. Both username and
+      password must be provided. If not, they will be ignored and the user will
+      be asked to authenticate using the login screen.
+    type: string
+  password:
+    description: |
+      The password to be used in the authentication process. Both username and
+      password must be provided. If not, they will be ignored and the user will
+      be asked to authenticate using the login screen.
+    type: string
   login-help:
     description: |
       The help text shown to the user on the login screen.
@@ -70,3 +82,8 @@ options:
     default: |
       The password is the admin-secret from the Juju environment.  This can
       often be found by looking in ~/.juju/environments.yaml.
+  read-only:
+    description: |
+      Whether or not the GUI is in read-only mode.
+    type: boolean
+    default: false
