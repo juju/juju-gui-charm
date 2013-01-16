@@ -14,6 +14,7 @@ from utils import (
     first_path_in_dir,
     get_release_file_url,
     get_zookeeper_address,
+    handle_auth_options,
     parse_source,
     render_to_file,
     save_or_create_certificates,
@@ -241,6 +242,39 @@ class GetZookeeperAddressTest(unittest.TestCase):
         self.assertEqual(self.zookeeper_address, address)
 
 
+class HandleAuthOptionsTest(unittest.TestCase):
+
+    def test_staging(self):
+        # Provided user and password are ignored if staging is True.
+        user_password_pairs = (
+            (None, None),
+            ('myuser', None),
+            (None, 'mypassword'),
+            ('myuser', 'mypassword'),
+        )
+        expected = ('admin', 'admin')
+        for user, password in user_password_pairs:
+            credentials = handle_auth_options(True, user, password)
+            self.assertTupleEqual(expected, credentials)
+
+    def test_provided_credentials(self):
+        # Credentials are correctly returned if both user and password are set.
+        user_password_pair = ('myuser', 'mypassword')
+        credentials = handle_auth_options(False, *user_password_pair)
+        self.assertTupleEqual(user_password_pair, credentials)
+
+    def test_missing_credentials(self):
+        # Both user and password must be provided. If not they will be ignored.
+        user_password_pairs = (
+            ('myuser', None),
+            (None, 'mypassword'),
+        )
+        expected = (None, None)
+        for user, password in user_password_pairs:
+            credentials = handle_auth_options(False, user, password)
+            self.assertTupleEqual(expected, credentials)
+
+
 class ParseSourceTest(unittest.TestCase):
 
     def test_latest_stable_release(self):
@@ -417,8 +451,8 @@ class StartStopTest(unittest.TestCase):
         conf = self.destination_file.read()
         self.assertTrue('/usr/sbin/nginx' in conf)
         js_conf = config_js_file.read()
-        self.assertIn('user: "myuser"', js_conf)
-        self.assertIn('password: "passwd"', js_conf)
+        self.assertIn('user: "admin"', js_conf)
+        self.assertIn('password: "admin"', js_conf)
         self.assertIn('login_help: "This is login help."', js_conf)
         self.assertIn('readOnly: true', js_conf)
         nginx_conf = nginx_file.read()
@@ -428,20 +462,6 @@ class StartStopTest(unittest.TestCase):
         self.assertEqual(self.svc_ctl_call_count, 1)
         self.assertEqual(self.service_names, ['juju-gui'])
         self.assertEqual(self.actions, [charmhelpers.START])
-
-    def test_start_gui_missing_username_or_password(self):
-        # Ensure user and password are both null if only one is provided.
-        nginx_file = tempfile.NamedTemporaryFile()
-        self.addCleanup(nginx_file.close)
-        config_js_file = tempfile.NamedTemporaryFile()
-        self.addCleanup(config_js_file.close)
-        start_gui(
-            '1234', False, 'myuser', None, 'This is login help.', True, True,
-            '/tmp/certificates/', self.destination_file.name, nginx_file.name,
-            config_js_file.name)
-        js_conf = config_js_file.read()
-        self.assertIn('user: null', js_conf)
-        self.assertIn('password: null', js_conf)
 
     def test_stop_staging(self):
         stop(True)

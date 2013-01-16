@@ -11,6 +11,7 @@ __all__ = [
     'get_release_file_url',
     'get_zookeeper_address',
     'GUI',
+    'handle_auth_options',
     'IMPROV',
     'JUJU_DIR',
     'JUJU_GUI_DIR',
@@ -115,6 +116,20 @@ def get_zookeeper_address(agent_file_path):
     """
     line = search_file('JUJU_ZOOKEEPER', agent_file_path).strip()
     return line.split('=')[1].strip('"')
+
+
+def handle_auth_options(staging, user, password):
+    """Handle authentication options.
+
+    Return the user and password to be used as credentials for the GUI.
+    The provided credentials are ignored if the GUI is connected to the
+    staging server.
+    """
+    if staging:
+        return 'admin', 'admin'
+    if user and password:
+        return user, password
+    return None, None
 
 
 def parse_source(source):
@@ -226,8 +241,7 @@ def start_gui(
     log('Setting up Juju GUI start up script.')
     render_to_file('juju-gui.conf.template', {}, config_path)
     log('Generating the Juju GUI configuration file.')
-    if not (user and password):
-        user = password = None
+    user, password = handle_auth_options(in_staging, user, password)
     context = {
         'address': unit_get('public-address'),
         'console_enabled': json.dumps(console_enabled),
