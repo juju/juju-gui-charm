@@ -105,17 +105,21 @@ def handle_config_changes(config, diff):
             start_agent(juju_api_port, config['ssl-cert-path'])
 
     # Handle changes to the juju-gui configuration.
-    gui_properties = set(
-        ['juju-gui-console-enabled', 'juju-api-port', 'staging', 'login-help'])
+    gui_properties = set([
+        'juju-api-port', 'juju-gui-console-enabled', 'login-help', 'password',
+        'read-only', 'staging', 'user'])
     gui_changed = added_or_changed & gui_properties
     if gui_changed or ssl_changed or juju_gui_source_changed:
         with su('root'):
             service_control(GUI, STOP)
         console_enabled = config.get('juju-gui-console-enabled')
-        ssl_cert_path = config['ssl-cert-path']
         login_help = config['login-help']
-        start_gui(juju_api_port, console_enabled, login_help,
-                  in_staging, ssl_cert_path)
+        password = config.get('password')
+        readonly = config['read-only']
+        ssl_cert_path = config['ssl-cert-path']
+        user = config.get('user')
+        start_gui(juju_api_port, console_enabled, user, password, login_help,
+                  readonly, in_staging, ssl_cert_path)
 
 
 def main():
