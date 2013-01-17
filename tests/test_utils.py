@@ -245,7 +245,7 @@ class GetZookeeperAddressTest(unittest.TestCase):
 class HandleAuthOptionsTest(unittest.TestCase):
 
     def test_staging(self):
-        # Provided user and password are ignored if staging is True.
+        # User and password are ignored if staging is True.
         user_password_pairs = (
             (None, None),
             ('myuser', None),

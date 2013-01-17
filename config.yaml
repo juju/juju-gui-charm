@@ -86,6 +86,9 @@ options:
       often be found by looking in ~/.juju/environments.yaml.
   read-only:
     description: |
-      Whether or not the GUI is in read-only mode.
+      Whether or not the GUI is in read-only mode. Note that read-only mode is
+      advisory, and enforced only in the client. If someone can access the
+      websocket and has the password, they can send commands over the websocket
+      to mutate the environment.
     type: boolean
     default: false
