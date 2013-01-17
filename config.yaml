@@ -63,6 +63,20 @@ options:
       the GUI. Both ssl-cert-contents and ssl-key-contents must be provided.
       If not, cetificates will be automatically generated.
     type: string
+  user:
+    description: |
+      The username to be used in the authentication process. Both user and
+      password must be provided. If not, they will be ignored and the user will
+      be asked to authenticate using the login screen. This option is ignored
+      if staging is set to true.
+    type: string
+  password:
+    description: |
+      The password to be used in the authentication process. Both user and
+      password must be provided. If not, they will be ignored and the user will
+      be asked to authenticate using the login screen. This option is ignored
+      if staging is set to true.
+    type: string
   login-help:
     description: |
       The help text shown to the user on the login screen.
@@ -70,3 +84,11 @@ options:
     default: |
       The password is the admin-secret from the Juju environment.  This can
       often be found by looking in ~/.juju/environments.yaml.
+  read-only:
+    description: |
+      Whether or not the GUI is in read-only mode. Note that read-only mode is
+      advisory, and enforced only in the client. If someone can access the
+      websocket and has the password, they can send commands over the websocket
+      to mutate the environment.
+    type: boolean
+    default: false

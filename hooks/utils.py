@@ -11,6 +11,7 @@ __all__ = [
     'get_release_file_url',
     'get_zookeeper_address',
     'GUI',
+    'handle_auth_options',
     'IMPROV',
     'JUJU_DIR',
     'JUJU_GUI_DIR',
@@ -117,6 +118,20 @@ def get_zookeeper_address(agent_file_path):
     return line.split('=')[1].strip('"')
 
 
+def handle_auth_options(staging, user, password):
+    """Handle authentication options.
+
+    Return the user and password to be used as credentials for the GUI.
+    The provided credentials are ignored if the GUI is connected to the
+    staging server.
+    """
+    if staging:
+        return 'admin', 'admin'
+    if user and password:
+        return user, password
+    return None, None
+
+
 def parse_source(source):
     """Parse the ``juju-gui-source`` option.
 
@@ -214,11 +229,10 @@ def start_agent(juju_api_port, ssl_cert_path,
         service_control(AGENT, START)
 
 
-def start_gui(juju_api_port, console_enabled, login_help,
-              in_staging, ssl_cert_path,
-              config_path='/etc/init/juju-gui.conf',
-              nginx_path=JUJU_GUI_SITE,
-              config_js_path=None):
+def start_gui(
+        juju_api_port, console_enabled, user, password, login_help, readonly,
+        in_staging, ssl_cert_path, config_path='/etc/init/juju-gui.conf',
+        nginx_path=JUJU_GUI_SITE, config_js_path=None):
     """Set up and start the Juju GUI server."""
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
@@ -227,11 +241,15 @@ def start_gui(juju_api_port, console_enabled, login_help,
     log('Setting up Juju GUI start up script.')
     render_to_file('juju-gui.conf.template', {}, config_path)
     log('Generating the Juju GUI configuration file.')
+    user, password = handle_auth_options(in_staging, user, password)
     context = {
         'address': unit_get('public-address'),
         'console_enabled': json.dumps(console_enabled),
-        'port': juju_api_port,
         'login_help': json.dumps(login_help),
+        'password': json.dumps(password),
+        'port': juju_api_port,
+        'readonly': json.dumps(readonly),
+        'user': json.dumps(user),
     }
     if config_js_path is None:
         config_js_path = os.path.join(
