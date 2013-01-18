@@ -1,7 +1,7 @@
-juju: charm
 name: juju-gui
 summary: User interface for Juju (development)
 description: Web GUI for Juju
 provides:
   web:
     interface: http
+maintainer: Juju GUI Team <juju-gui@lists.launchpad.net>
