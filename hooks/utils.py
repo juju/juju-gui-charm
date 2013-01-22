@@ -91,6 +91,7 @@ def get_release_file_url(project, series_name, release_version):
     series = _get_by_attr(project.series, 'name', series_name)
     if series is None:
         raise ValueError('%r: series not found' % series_name)
+    # Releases are returned by Launchpad in reverse date order.
     releases = list(series.releases)
     if not releases:
         raise ValueError('%r: series does not contain releases' % series_name)
