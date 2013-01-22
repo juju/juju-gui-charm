@@ -94,16 +94,16 @@ def get_release_file_url(project, series_name, release_version):
     releases = list(series.releases)
     if not releases:
         raise ValueError('%r: series does not contain releases' % series_name)
-    if release_version is None:
-        release = releases[0]
-    else:
+    if release_version is not None:
         release = _get_by_attr(releases, 'version', release_version)
-        if not release:
+        if release is None:
             raise ValueError('%r: release not found' % release_version)
-    files = [i for i in release.files if str(i).endswith('.tgz')]
-    if not files:
-        raise ValueError('%r: file not found' % release_version)
-    return files[0].file_link
+        releases = [release]
+    for release in releases:
+        for file_ in release.files:
+            if str(file_).endswith('.tgz'):
+                return file_.file_link
+    raise ValueError('%r: file not found' % release_version)
 
 
 def get_zookeeper_address(agent_file_path):
