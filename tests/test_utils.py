@@ -225,6 +225,26 @@ class GetReleaseFileUrlTest(unittest.TestCase):
             get_release_file_url(project, 'stable', None)
         self.assertIn('file not found', str(cm.exception))
 
+    def test_file_not_found_in_latest_release(self):
+        # The URL of a file from a previous release is returned if the latest
+        # one does not contain tarballs.
+        project = AttrDict(
+            series=[
+                AttrDict(
+                    name='stable',
+                    releases=[
+                        AttrDict(version='0.1.1', files=[]),
+                        AttrDict(
+                            version='0.1.0',
+                            files=[FileStub('http://example.com/0.1.0.tgz')],
+                        ),
+                    ],
+                ),
+            ],
+        )
+        url = get_release_file_url(project, 'stable', None)
+        self.assertEqual('http://example.com/0.1.0.tgz', url)
+
 
 class GetZookeeperAddressTest(unittest.TestCase):
 

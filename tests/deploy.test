@@ -154,8 +154,6 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
             self.stop_services, hostname, ['juju-api-improv', 'juju-gui'])
         self.navigate_to(hostname)
         self.assertEnvironmentIsConnected()
-        # Log in using the staging password.
-        self.login('admin')
         # The staging environment contains five deployed services.
         self.assertSetEqual(set(STAGING_SERVICES), self.get_service_names())
 
