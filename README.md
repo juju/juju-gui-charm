@@ -2,6 +2,13 @@
 
 This charm makes it easy to deploy a Juju GUI into an existing environment.
 
+## Supported Browsers ##
+
+The Juju GUI supports recent releases of Chrome and Chromium.  Recent Firefox
+releases are also supported, but regressions may occur until the completion of
+upcoming continuous integration work.  Internet Explorer 10 will be supported
+soon.
+
 ## Demo/Staging Server ##
 
 A [demo/staging server](https://uistage.jujucharms.com:8080/) is available.
@@ -44,14 +51,19 @@ this:
             - 80/tcp
             - 443/tcp
             - 8080/tcp
-            public-address: ec2-204-236-250-8.compute-1.amazonaws.com
+            public-address: ec2-www-xxx-yyy-zzz.compute-1.amazonaws.com
 
 That tells me I can go to the public-address in my browser via HTTPS
-(https://ec2-204-236-250-8.compute-1.amazonaws.com/ in this example), and start
-configuring the rest of Juju with the GUI.  You should see something similar.
-(Accessing the GUI via HTTP will redirect to using HTTPS.)
+(https://ec2-www-xxx-yyy-zzz.compute-1.amazonaws.com/ in this example), and
+start configuring the rest of Juju with the GUI.  You should see a similar
+web address.  Accessing the GUI via HTTP will redirect to using HTTPS.
 
-You will see a login form with the username fixed to "admin". The password is
+Note that currently, when using Firefox with self-signed certificates, you need
+to first manually add a TLS certificate exception for the Juju API port
+(default is 8080, see `juju-api-port` in `config.yaml`), and only then do the
+same for the main Juju GUI HTTPS connection on port 443.
+
+You will see a login form with the username fixed to "admin".  The password is
 the same as your Juju environment's `admin-secret`, found in
 `~/.juju/environments.yaml`.
 
