@@ -43,7 +43,7 @@ from utils import (
 
 
 DEB_DEPENDENCIES = (
-    'bzr', 'imagemagick', 'make', 'nginx', 'nodejs', 'npm', 'openssl',
+    'bzr', 'curl', 'imagemagick', 'make', 'nginx', 'nodejs', 'npm', 'openssl',
     'python-launchpadlib', 'zookeeper',
 )
 
