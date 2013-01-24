@@ -14,7 +14,6 @@ from utils import (
     first_path_in_dir,
     get_release_file_url,
     get_zookeeper_address,
-    handle_auth_options,
     parse_source,
     render_to_file,
     save_or_create_certificates,
@@ -262,39 +261,6 @@ class GetZookeeperAddressTest(unittest.TestCase):
         self.assertEqual(self.zookeeper_address, address)
 
 
-class HandleAuthOptionsTest(unittest.TestCase):
-
-    def test_staging(self):
-        # User and password are ignored if staging is True.
-        user_password_pairs = (
-            (None, None),
-            ('myuser', None),
-            (None, 'mypassword'),
-            ('myuser', 'mypassword'),
-        )
-        expected = ('admin', 'admin')
-        for user, password in user_password_pairs:
-            credentials = handle_auth_options(True, user, password)
-            self.assertTupleEqual(expected, credentials)
-
-    def test_provided_credentials(self):
-        # Credentials are correctly returned if both user and password are set.
-        user_password_pair = ('myuser', 'mypassword')
-        credentials = handle_auth_options(False, *user_password_pair)
-        self.assertTupleEqual(user_password_pair, credentials)
-
-    def test_missing_credentials(self):
-        # Both user and password must be provided. If not they will be ignored.
-        user_password_pairs = (
-            ('myuser', None),
-            (None, 'mypassword'),
-        )
-        expected = (None, None)
-        for user, password in user_password_pairs:
-            credentials = handle_auth_options(False, user, password)
-            self.assertTupleEqual(expected, credentials)
-
-
 class ParseSourceTest(unittest.TestCase):
 
     def test_latest_stable_release(self):
@@ -465,7 +431,7 @@ class StartStopTest(unittest.TestCase):
         config_js_file = tempfile.NamedTemporaryFile()
         self.addCleanup(config_js_file.close)
         start_gui(
-            port, False, 'myuser', 'passwd', 'This is login help.', True, True,
+            port, False, 'This is login help.', True, True,
             '/tmp/certificates/', self.destination_file.name, nginx_file.name,
             config_js_file.name)
         conf = self.destination_file.read()

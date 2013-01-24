@@ -11,7 +11,6 @@ __all__ = [
     'get_release_file_url',
     'get_zookeeper_address',
     'GUI',
-    'handle_auth_options',
     'IMPROV',
     'JUJU_DIR',
     'JUJU_GUI_DIR',
@@ -119,20 +118,6 @@ def get_zookeeper_address(agent_file_path):
     return line.split('=')[1].strip('"')
 
 
-def handle_auth_options(staging, user, password):
-    """Handle authentication options.
-
-    Return the user and password to be used as credentials for the GUI.
-    The provided credentials are ignored if the GUI is connected to the
-    staging server.
-    """
-    if staging:
-        return 'admin', 'admin'
-    if user and password:
-        return user, password
-    return None, None
-
-
 def parse_source(source):
     """Parse the ``juju-gui-source`` option.
 
@@ -231,8 +216,8 @@ def start_agent(juju_api_port, ssl_cert_path,
 
 
 def start_gui(
-        juju_api_port, console_enabled, user, password, login_help, readonly,
-        in_staging, ssl_cert_path, config_path='/etc/init/juju-gui.conf',
+        juju_api_port, console_enabled, login_help, readonly, in_staging,
+        ssl_cert_path, config_path='/etc/init/juju-gui.conf',
         nginx_path=JUJU_GUI_SITE, config_js_path=None):
     """Set up and start the Juju GUI server."""
     with su('root'):
@@ -242,7 +227,7 @@ def start_gui(
     log('Setting up Juju GUI start up script.')
     render_to_file('juju-gui.conf.template', {}, config_path)
     log('Generating the Juju GUI configuration file.')
-    user, password = handle_auth_options(in_staging, user, password)
+    user, password = ('admin', 'admin') if in_staging else (None, None)
     context = {
         'address': unit_get('public-address'),
         'console_enabled': json.dumps(console_enabled),
