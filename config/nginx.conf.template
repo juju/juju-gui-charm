@@ -1,16 +1,8 @@
 server {
-    listen 80;
-    server_name _;
-    return 301 https://$host$request_uri;
-}
-
-server {
-    listen 443 default_server ssl;
+    listen 8000 default_server;
     server_name _;
     root %(server_root)s;
     index index.html;
-    ssl_certificate %(ssl_cert_path)s/juju.crt;
-    ssl_certificate_key %(ssl_cert_path)s/juju.key;
 
     # Serve static assets.
     location ^~ /juju-ui/ {

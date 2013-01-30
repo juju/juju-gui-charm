@@ -6,7 +6,7 @@ var juju_config = {
   viewContainer: '#main',
   transitions: false,
   charm_store_url: 'https://jujucharms.com/',
-  socket_url: 'wss://%(address)s:%(port)s/ws',
+  socket_url: 'wss://%(address)s/ws',
   user: %(user)s,
   password: %(password)s,
   readOnly: %(readonly)s,

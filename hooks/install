@@ -43,14 +43,15 @@ from utils import (
 
 
 DEB_DEPENDENCIES = (
-    'bzr', 'curl', 'imagemagick', 'make', 'nginx', 'nodejs', 'npm', 'openssl',
-    'python-launchpadlib', 'zookeeper',
+    'bzr', 'curl', 'haproxy', 'imagemagick', 'make', 'nginx', 'nodejs', 'npm',
+    'openssl', 'python-launchpadlib', 'zookeeper',
 )
+REPOSITORIES = ('ppa:chris-lea/node.js', 'ppa:frankban/ppa')
 
 
 def get_dependencies():
     log('Installing dependencies.')
-    cmd_log(install_extra_repositories('ppa:chris-lea/node.js'))
+    cmd_log(install_extra_repositories(*REPOSITORIES))
     cmd_log(apt_get_install(*DEB_DEPENDENCIES))
 
 

@@ -247,6 +247,7 @@ def start_gui(
         'ssl_cert_path': ssl_cert_path.rstrip('/'),
     }
     render_to_file('nginx.conf.template', context, nginx_path)
+    render_to_file('haproxy.cfg.template', {}, '/etc/haproxy/haproxy.cfg')
     log('Starting Juju GUI.')
     with su('root'):
         # Start the Juju GUI.
