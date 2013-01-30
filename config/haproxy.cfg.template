@@ -1,0 +1,38 @@
+global
+    maxconn 4096
+    user haproxy
+    group haproxy
+    daemon
+    # Set the base path for TLS certificates.
+    ca-base /etc/ssl/juju-gui
+    crt-base /etc/ssl/juju-gui
+
+defaults
+    log global
+    maxconn 4096
+    mode http
+    option http-server-close
+    timeout connect 5s
+    timeout client 30s
+    timeout server 30s
+    # Set a long timeout for WebSocket connections.
+    timeout tunnel 1h
+
+backend juju
+    # The Juju WebSocket backend.
+    server ws1 127.0.0.1:8080 ssl ca-file juju.pem verify required check-ssl inter 500ms
+
+backend web
+    # Web traffic.
+    server web1 127.0.0.1:8000 check inter 500ms
+
+frontend public
+    # Redirect all HTTP traffic to HTTPS.
+    bind :80
+    redirect scheme https if !{ ssl_fc }
+    # Handle HTTPS.
+    bind :443 ssl crt browser.pem
+    # Send WebSocket connections to the Juju backend.
+    use_backend juju if { path /ws }
+    # Send everything else to the web server.
+    default_backend web
