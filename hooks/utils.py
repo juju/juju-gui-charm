@@ -259,7 +259,7 @@ def start_gui(
         'api_port': API_PORT,
         'ssl_cert_path': ssl_cert_path,
         # Use the same certificate for both HTTPS and Websocket connections.
-        # This will change in the long term.
+        # In the long term, we want separate certs to be used here.
         'web_pem': JUJU_PEM,
         'web_port': WEB_PORT,
     }
