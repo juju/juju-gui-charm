@@ -28,6 +28,7 @@ __all__ = [
 import json
 import os
 import logging
+import shutil
 import tempfile
 
 from launchpadlib.launchpad import Launchpad
@@ -51,11 +52,18 @@ from charmhelpers import (
 
 AGENT = 'juju-api-agent'
 IMPROV = 'juju-api-improv'
-GUI = 'juju-gui'
+HAPROXY = 'haproxy'
+NGINX = 'nginx'
+
+API_PORT = 8080
+WEB_PORT = 8000
+
 CURRENT_DIR = os.getcwd()
 JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
 JUJU_GUI_SITE = '/etc/nginx/sites-available/juju-gui'
+JUJU_PEM = 'juju.includes-private-key.pem'
+
 
 # Store the configuration from on invocation to the next.
 config_json = Serializer('/tmp/config.json')
@@ -165,7 +173,7 @@ def _setupLogging():
         filename=config['command-log-file'],
         level=logging.INFO,
         format="%(asctime)s: %(name)s@%(levelname)s %(message)s")
-    results_log = logging.getLogger(GUI)
+    results_log = logging.getLogger('juju-gui')
 
 
 def cmd_log(results):
@@ -179,15 +187,15 @@ def cmd_log(results):
     results_log.info('\n' + results)
 
 
-def start_improv(juju_api_port, staging_env, ssl_cert_path,
+def start_improv(staging_env, ssl_cert_path,
                  config_path='/etc/init/juju-api-improv.conf'):
     """Start a simulated juju environment using ``improv.py``."""
     log('Setting up staging start up script.')
     context = {
         'juju_dir': JUJU_DIR,
-        'port': juju_api_port,
-        'staging_env': staging_env,
         'keys': ssl_cert_path,
+        'port': API_PORT,
+        'staging_env': staging_env,
     }
     render_to_file('juju-api-improv.conf.template', context, config_path)
     log('Starting the staging backend.')
@@ -195,8 +203,7 @@ def start_improv(juju_api_port, staging_env, ssl_cert_path,
         service_control(IMPROV, START)
 
 
-def start_agent(juju_api_port, ssl_cert_path,
-                config_path='/etc/init/juju-api-agent.conf'):
+def start_agent(ssl_cert_path, config_path='/etc/init/juju-api-agent.conf'):
     """Start the Juju agent and connect to the current environment."""
     # Retrieve the Zookeeper address from the start up script.
     unit_dir = os.path.realpath(os.path.join(CURRENT_DIR, '..'))
@@ -205,9 +212,9 @@ def start_agent(juju_api_port, ssl_cert_path,
     log('Setting up API agent start up script.')
     context = {
         'juju_dir': JUJU_DIR,
-        'port': juju_api_port,
-        'zookeeper': zookeeper,
         'keys': ssl_cert_path,
+        'port': API_PORT,
+        'zookeeper': zookeeper,
     }
     render_to_file('juju-api-agent.conf.template', context, config_path)
     log('Starting API agent.')
@@ -216,16 +223,13 @@ def start_agent(juju_api_port, ssl_cert_path,
 
 
 def start_gui(
-        juju_api_port, console_enabled, login_help, readonly, in_staging,
-        ssl_cert_path, config_path='/etc/init/juju-gui.conf',
+        console_enabled, login_help, readonly, in_staging, ssl_cert_path,
         nginx_path=JUJU_GUI_SITE, config_js_path=None):
     """Set up and start the Juju GUI server."""
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
     build_dir = JUJU_GUI_DIR + '/build-'
     build_dir += 'debug' if in_staging else 'prod'
-    log('Setting up Juju GUI start up script.')
-    render_to_file('juju-gui.conf.template', {}, config_path)
     log('Generating the Juju GUI configuration file.')
     user, password = ('admin', 'admin') if in_staging else (None, None)
     context = {
@@ -233,7 +237,6 @@ def start_gui(
         'console_enabled': json.dumps(console_enabled),
         'login_help': json.dumps(login_help),
         'password': json.dumps(password),
-        'port': juju_api_port,
         'readonly': json.dumps(readonly),
         'user': json.dumps(user),
     }
@@ -242,23 +245,32 @@ def start_gui(
             build_dir, 'juju-ui', 'assets', 'config.js')
     render_to_file('config.js.template', context, config_js_path)
     log('Generating the nginx site configuration file.')
+    context = {'port': WEB_PORT, 'server_root': build_dir}
+    render_to_file('nginx-site.template', context, nginx_path)
+    log('Generating haproxy configuration file.')
     context = {
-        'server_root': build_dir,
-        'ssl_cert_path': ssl_cert_path.rstrip('/'),
+        'api_pem': JUJU_PEM,
+        'api_port': API_PORT,
+        'ssl_cert_path': ssl_cert_path,
+        # Use the same certificate for both HTTPS and Websocket connections.
+        # This will change in the long term.
+        'web_pem': JUJU_PEM,
+        'web_port': WEB_PORT,
     }
-    render_to_file('nginx.conf.template', context, nginx_path)
-    render_to_file('haproxy.cfg.template', {}, '/etc/haproxy/haproxy.cfg')
+    render_to_file('haproxy.cfg.template', context, '/etc/haproxy/haproxy.cfg')
     log('Starting Juju GUI.')
     with su('root'):
         # Start the Juju GUI.
-        service_control(GUI, START)
+        service_control(NGINX, START)
+        service_control(HAPROXY, START)
 
 
 def stop(in_staging):
     """Stop the Juju API agent."""
     with su('root'):
         log('Stopping Juju GUI.')
-        service_control(GUI, STOP)
+        service_control(HAPROXY, STOP)
+        service_control(NGINX, STOP)
         if in_staging:
             log('Stopping the staging backend.')
             service_control(IMPROV, STOP)
@@ -339,6 +351,9 @@ def save_or_create_certificates(
 
     If both *ssl_cert_contents* and *ssl_key_contents* are provided, use them
     as certificates; otherwise, generate them.
+
+    Also create a pem file, suitable for use in the haproxy configuration,
+    concatenating the key and the certificate files.
     """
     crt_path = os.path.join(ssl_cert_path, 'juju.crt')
     key_path = os.path.join(ssl_cert_path, 'juju.key')
@@ -359,3 +374,10 @@ def save_or_create_certificates(
             # These are arbitrary test values for the certificate.
             '/C=GB/ST=Juju/L=GUI/O=Ubuntu/CN=juju.ubuntu.com',
             '-keyout', key_path, '-out', crt_path))
+    # Generate the pem file.
+    pem_path = os.path.join(ssl_cert_path, JUJU_PEM)
+    if os.path.exists(pem_path):
+        os.remove(pem_path)
+    with open(pem_path, 'w') as pem_file:
+        shutil.copyfileobj(open(key_path), pem_file)
+        shutil.copyfileobj(open(crt_path), pem_file)
