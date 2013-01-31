@@ -10,10 +10,12 @@ import unittest
 import charmhelpers
 from utils import (
     _get_by_attr,
+    API_PORT,
     cmd_log,
     first_path_in_dir,
     get_release_file_url,
     get_zookeeper_address,
+    JUJU_PEM,
     parse_source,
     render_to_file,
     save_or_create_certificates,
@@ -21,6 +23,7 @@ from utils import (
     start_gui,
     start_improv,
     stop,
+    WEB_PORT,
 )
 # Import the whole utils package for monkey patching.
 import utils
@@ -331,6 +334,12 @@ class SaveOrCreateCertificatesTest(unittest.TestCase):
         self.assertIn('mycert', open(self.cert_file).read())
         self.assertIn('mykey', open(self.key_file).read())
 
+    def test_pem_file(self):
+        # Ensure the pem file is created concatenating the key and cert files.
+        save_or_create_certificates(self.cert_path, 'Certificate', 'Key')
+        pem_file = os.path.join(self.cert_path, JUJU_PEM)
+        self.assertEqual('KeyCertificate', open(pem_file).read())
+
 
 class CmdLogTest(unittest.TestCase):
     def setUp(self):
@@ -401,12 +410,11 @@ class StartStopTest(unittest.TestCase):
         charmhelpers.command = self.command
 
     def test_start_improv(self):
-        port = '1234'
         staging_env = 'large'
-        start_improv(port, staging_env, self.ssl_cert_path,
-            self.destination_file.name)
+        start_improv(
+            staging_env, self.ssl_cert_path, self.destination_file.name)
         conf = self.destination_file.read()
-        self.assertTrue('--port %s' % port in conf)
+        self.assertTrue('--port %s' % API_PORT in conf)
         self.assertTrue(staging_env + '.json' in conf)
         self.assertTrue(self.ssl_cert_path in conf)
         self.assertEqual(self.svc_ctl_call_count, 1)
@@ -414,10 +422,9 @@ class StartStopTest(unittest.TestCase):
         self.assertEqual(self.actions, [charmhelpers.START])
 
     def test_start_agent(self):
-        port = '1234'
-        start_agent(port, self.ssl_cert_path, self.destination_file.name)
+        start_agent(self.ssl_cert_path, self.destination_file.name)
         conf = self.destination_file.read()
-        self.assertTrue('--port %s' % port in conf)
+        self.assertTrue('--port %s' % API_PORT in conf)
         self.assertTrue('JUJU_ZOOKEEPER=%s' % self.fake_zk_address in conf)
         self.assertTrue(self.ssl_cert_path in conf)
         self.assertEqual(self.svc_ctl_call_count, 1)
@@ -425,41 +432,49 @@ class StartStopTest(unittest.TestCase):
         self.assertEqual(self.actions, [charmhelpers.START])
 
     def test_start_gui(self):
-        port = '1234'
+        config_js_file = self.destination_file
+        haproxy_file = tempfile.NamedTemporaryFile()
+        self.addCleanup(haproxy_file.close)
         nginx_file = tempfile.NamedTemporaryFile()
         self.addCleanup(nginx_file.close)
-        config_js_file = tempfile.NamedTemporaryFile()
-        self.addCleanup(config_js_file.close)
+        ssl_cert_path = '/tmp/certificates/'
         start_gui(
-            port, False, 'This is login help.', True, True,
-            '/tmp/certificates/', self.destination_file.name, nginx_file.name,
-            config_js_file.name)
-        conf = self.destination_file.read()
-        self.assertTrue('/usr/sbin/nginx' in conf)
+            False, 'This is login help.', True, True, ssl_cert_path,
+            haproxy_path=haproxy_file.name, nginx_path=nginx_file.name,
+            config_js_path=config_js_file.name)
+        self.assertEqual(self.svc_ctl_call_count, 2)
+        self.assertEqual(self.service_names, ['nginx', 'haproxy'])
+        self.assertEqual(self.actions, [charmhelpers.START] * 2)
+        haproxy_conf = haproxy_file.read()
+        self.assertIn('ca-base {0}'.format(ssl_cert_path), haproxy_conf)
+        self.assertIn('crt-base {0}'.format(ssl_cert_path), haproxy_conf)
+        self.assertIn('ws1 127.0.0.1:{0}'.format(API_PORT), haproxy_conf)
+        self.assertIn('web1 127.0.0.1:{0}'.format(WEB_PORT), haproxy_conf)
+        self.assertIn('ca-file {0}'.format(JUJU_PEM), haproxy_conf)
+        self.assertIn('crt {0}'.format(JUJU_PEM), haproxy_conf)
         js_conf = config_js_file.read()
+        self.assertIn('consoleEnabled: false', js_conf)
         self.assertIn('user: "admin"', js_conf)
         self.assertIn('password: "admin"', js_conf)
         self.assertIn('login_help: "This is login help."', js_conf)
         self.assertIn('readOnly: true', js_conf)
         nginx_conf = nginx_file.read()
-        self.assertTrue('juju-gui/build-debug' in nginx_conf)
-        self.assertIn('/tmp/certificates/juju.crt', nginx_conf)
-        self.assertIn('/tmp/certificates/juju.key', nginx_conf)
-        self.assertEqual(self.svc_ctl_call_count, 1)
-        self.assertEqual(self.service_names, ['juju-gui'])
-        self.assertEqual(self.actions, [charmhelpers.START])
+        self.assertIn('juju-gui/build-debug', nginx_conf)
+        self.assertIn('listen 127.0.0.1:{}'.format(WEB_PORT), nginx_conf)
 
     def test_stop_staging(self):
         stop(True)
-        self.assertEqual(self.svc_ctl_call_count, 2)
-        self.assertEqual(self.service_names, ['juju-gui', 'juju-api-improv'])
-        self.assertEqual(self.actions, [charmhelpers.STOP, charmhelpers.STOP])
+        self.assertEqual(self.svc_ctl_call_count, 3)
+        self.assertEqual(
+            self.service_names, ['haproxy', 'nginx', 'juju-api-improv'])
+        self.assertEqual(self.actions, [charmhelpers.STOP] * 3)
 
     def test_stop_production(self):
         stop(False)
-        self.assertEqual(self.svc_ctl_call_count, 2)
-        self.assertEqual(self.service_names, ['juju-gui', 'juju-api-agent'])
-        self.assertEqual(self.actions, [charmhelpers.STOP, charmhelpers.STOP])
+        self.assertEqual(self.svc_ctl_call_count, 3)
+        self.assertEqual(
+            self.service_names, ['haproxy', 'nginx', 'juju-api-agent'])
+        self.assertEqual(self.actions, [charmhelpers.STOP] * 3)
 
 
 if __name__ == '__main__':

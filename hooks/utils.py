@@ -229,7 +229,8 @@ def start_agent(ssl_cert_path, config_path='/etc/init/juju-api-agent.conf'):
 
 def start_gui(
         console_enabled, login_help, readonly, in_staging, ssl_cert_path,
-        nginx_path=JUJU_GUI_SITE, config_js_path=None):
+        haproxy_path='/etc/haproxy/haproxy.cfg', nginx_path=JUJU_GUI_SITE,
+        config_js_path=None):
     """Set up and start the Juju GUI server."""
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
@@ -262,7 +263,7 @@ def start_gui(
         'web_pem': JUJU_PEM,
         'web_port': WEB_PORT,
     }
-    render_to_file('haproxy.cfg.template', context, '/etc/haproxy/haproxy.cfg')
+    render_to_file('haproxy.cfg.template', context, haproxy_path)
     log('Starting Juju GUI.')
     with su('root'):
         # Start the Juju GUI.
