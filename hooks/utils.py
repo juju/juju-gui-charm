@@ -2,6 +2,7 @@
 
 __all__ = [
     'AGENT',
+    'API_PORT',
     'bzr_checkout',
     'cmd_log',
     'CURRENT_DIR',
@@ -10,9 +11,13 @@ __all__ = [
     'first_path_in_dir',
     'get_release_file_url',
     'get_zookeeper_address',
+    'HAPROXY',
     'IMPROV',
     'JUJU_DIR',
     'JUJU_GUI_DIR',
+    'JUJU_GUI_SITE',
+    'JUJU_PEM',
+    'NGINX',
     'parse_source',
     'render_to_file',
     'save_or_create_certificates',
@@ -22,6 +27,7 @@ __all__ = [
     'start_gui',
     'start_improv',
     'stop',
+    'WEB_PORT',
 ]
 
 import json
