@@ -129,7 +129,8 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         hostname = self.deploy()
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
-            self.stop_services, hostname, ['juju-api-agent', 'juju-gui'])
+            self.stop_services,
+            hostname, ['haproxy', 'nginx', 'juju-api-agent'])
         self.navigate_to(hostname)
         self.assertEnvironmentIsConnected()
 
@@ -138,7 +139,8 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         hostname = self.deploy({'staging': 'true'})
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
-            self.stop_services, hostname, ['juju-api-improv', 'juju-gui'])
+            self.stop_services,
+            hostname, ['haproxy', 'nginx', 'juju-api-improv'])
         self.navigate_to(hostname)
         self.assertEnvironmentIsConnected()
         # The staging environment contains five deployed services.
@@ -149,7 +151,8 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         hostname = self.deploy({'juju-gui-source': JUJU_GUI_TEST_BRANCH})
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
-            self.stop_services, hostname, ['juju-api-agent', 'juju-gui'])
+            self.stop_services,
+            hostname, ['haproxy', 'nginx', 'juju-api-agent'])
         self.navigate_to(hostname)
         self.assertEnvironmentIsConnected()
 
@@ -179,7 +182,8 @@ class DeployToTest(DeployTestMixin, unittest.TestCase):
         hostname = self.deploy_to()
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
-            self.stop_services, hostname, ['juju-api-agent', 'juju-gui'])
+            self.stop_services,
+            hostname, ['haproxy', 'nginx', 'juju-api-agent'])
         self.navigate_to(hostname)
         self.assertEnvironmentIsConnected()
 
