@@ -25,8 +25,9 @@ from utils import (
     config_json,
     fetch_api,
     fetch_gui,
-    GUI,
+    HAPROXY,
     IMPROV,
+    NGINX,
     save_or_create_certificates,
     setup_gui,
     start_agent,
@@ -40,7 +41,6 @@ def handle_config_changes(config, diff):
     log('Updating configuration.')
 
     added_or_changed = diff.added_or_changed
-    juju_api_port = config.get('juju-api-port')
     in_staging = config.get('staging')
 
     # The juju_gui_source_changed and juju_api_branch_changed variables
@@ -70,8 +70,7 @@ def handle_config_changes(config, diff):
 
     # Handle changes to the improv server configuration.
     if in_staging:
-        staging_properties = set(
-            ['staging', 'staging-environment', 'juju-api-port'])
+        staging_properties = set(['staging', 'staging-environment'])
         staging_changed = added_or_changed & staging_properties
         if staging_changed or ssl_changed or juju_api_branch_changed:
             if 'staging' in added_or_changed:
@@ -86,13 +85,12 @@ def handle_config_changes(config, diff):
             service_control(current_api, STOP)
             # Now the improv server can be cleanly started.
             log('Starting or restarting staging.')
-            start_improv(juju_api_port, config.get('staging-environment'),
+            start_improv(config.get('staging-environment'),
                          config['ssl-cert-path'])
     else:
-        agent_properties = set(['juju-api-port', 'staging'])
-        agent_changed = added_or_changed & agent_properties
+        agent_changed = 'staging' in added_or_changed
         if agent_changed or ssl_changed or juju_api_branch_changed:
-            if 'staging' in added_or_changed:
+            if agent_changed:
                 # If 'staging' transitions to False we need to stop the backend
                 # and start the agent.
                 current_api = IMPROV
@@ -102,22 +100,22 @@ def handle_config_changes(config, diff):
                 current_api = AGENT
             service_control(current_api, STOP)
             log('Starting or restarting Juju API agent.')
-            start_agent(juju_api_port, config['ssl-cert-path'])
+            start_agent(config['ssl-cert-path'])
 
     # Handle changes to the juju-gui configuration.
     gui_properties = set([
-        'juju-api-port', 'juju-gui-console-enabled', 'login-help', 'read-only',
-        'staging'])
+        'juju-gui-console-enabled', 'login-help', 'read-only', 'staging'])
     gui_changed = added_or_changed & gui_properties
     if gui_changed or ssl_changed or juju_gui_source_changed:
         with su('root'):
-            service_control(GUI, STOP)
+            service_control(HAPROXY, STOP)
+            service_control(NGINX, STOP)
         console_enabled = config.get('juju-gui-console-enabled')
         login_help = config['login-help']
         readonly = config['read-only']
         ssl_cert_path = config['ssl-cert-path']
-        start_gui(juju_api_port, console_enabled, login_help, readonly,
-                  in_staging, ssl_cert_path)
+        start_gui(
+            console_enabled, login_help, readonly, in_staging, ssl_cert_path)
 
 
 def main():
