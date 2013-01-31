@@ -10,7 +10,6 @@ __all__ = [
     'first_path_in_dir',
     'get_release_file_url',
     'get_zookeeper_address',
-    'GUI',
     'IMPROV',
     'JUJU_DIR',
     'JUJU_GUI_DIR',
