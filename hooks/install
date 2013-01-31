@@ -1,6 +1,8 @@
 #!/usr/bin/env python2
 # -*- python -*-
 
+import os
+import shutil
 from subprocess import (
     CalledProcessError,
     check_call,
@@ -42,6 +44,7 @@ from utils import (
 )
 
 
+CONFIG_FILES = ('haproxy.conf', 'nginx.conf')
 DEB_DEPENDENCIES = (
     'bzr', 'curl', 'haproxy', 'imagemagick', 'make', 'nginx', 'nodejs', 'npm',
     'openssl', 'python-launchpadlib', 'zookeeper',
@@ -50,9 +53,18 @@ REPOSITORIES = ('ppa:chris-lea/node.js', 'ppa:frankban/ppa')
 
 
 def get_dependencies():
+    """Install deb dependencies."""
     log('Installing dependencies.')
     cmd_log(install_extra_repositories(*REPOSITORIES))
     cmd_log(apt_get_install(*DEB_DEPENDENCIES))
+
+
+def setup_services():
+    """Set up haproxy and nginx upstart configuration files."""
+    log('Setting up haproxy and nginx start up scripts.')
+    source_dir = os.path.join(os.path.dirname(__file__),  '..', 'config')
+    for config_file in CONFIG_FILES:
+        shutil.copy(os.path.join(source_dir, config_file), '/etc/init/')
 
 
 def main():
@@ -66,6 +78,7 @@ def main():
         config['ssl-cert-path'], config.get('ssl-cert-contents'),
         config.get('ssl-key-contents'))
     fetch_api(config['juju-api-branch'])
+    setup_services()
     config_json.set(config)
 
 
