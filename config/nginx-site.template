@@ -1,5 +1,5 @@
 server {
-    listen 8000 default_server;
+    listen 127.0.0.1:%(port)s default_server;
     server_name _;
     root %(server_root)s;
     index index.html;
