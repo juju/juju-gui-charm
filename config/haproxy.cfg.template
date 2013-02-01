@@ -3,8 +3,9 @@ global
     user haproxy
     group haproxy
     daemon
-    # Set the base path for TLS certificates.
+    # Set the base path for the WebSocket TLS certificate.
     ca-base %(ssl_cert_path)s
+    # Set the base path for the HTTPS TLS certificate.
     crt-base %(ssl_cert_path)s
 
 defaults
