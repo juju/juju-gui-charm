@@ -56,6 +56,9 @@ That tells me I can go to the public-address in my browser via HTTPS
 start configuring the rest of Juju with the GUI.  You should see a similar
 web address.  Accessing the GUI via HTTP will redirect to using HTTPS.
 
+By default, the deployment uses self-signed certificates. The browser will ask
+you to accept a security exception once.
+
 You will see a login form with the username fixed to "admin".  The password is
 the same as your Juju environment's `admin-secret`, found in
 `~/.juju/environments.yaml`.
