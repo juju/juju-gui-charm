@@ -16,30 +16,24 @@ from utils import (
 )
 
 
-def open_ports(juju_api_port):
-    """Expose Juju GUI web server and websocket server ports."""
+def open_ports():
+    """Expose Juju GUI web server (HTTP and HTTPS) ports."""
     log('Exposing services.')
-    # Open the Juju GUI web server HTTP and HTTPS ports.
     open_port(80)
     open_port(443)
-    # Open the Juju websocket server port.
-    open_port(juju_api_port)
 
 
 def main():
     config = get_config()
-    juju_api_port = config['juju-api-port']
     staging = config.get('staging')
-    start_gui(
-        juju_api_port, config['juju-gui-console-enabled'],
-        config['login-help'], config['read-only'], staging,
-        config['ssl-cert-path'])
     if staging:
-        start_improv(juju_api_port, config['staging-environment'],
-                     config['ssl-cert-path'])
+        start_improv(config['staging-environment'], config['ssl-cert-path'])
     else:
-        start_agent(juju_api_port, config['ssl-cert-path'])
-    open_ports(juju_api_port)
+        start_agent(config['ssl-cert-path'])
+    start_gui(
+        config['juju-gui-console-enabled'], config['login-help'],
+        config['read-only'], staging, config['ssl-cert-path'])
+    open_ports()
 
 
 if __name__ == '__main__':

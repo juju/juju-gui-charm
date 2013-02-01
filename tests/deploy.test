@@ -129,29 +129,18 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         hostname = self.deploy()
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
-            self.stop_services, hostname, ['juju-api-agent', 'juju-gui'])
+            self.stop_services,
+            hostname, ['haproxy', 'nginx', 'juju-api-agent'])
         self.navigate_to(hostname)
         self.assertEnvironmentIsConnected()
-
-    def test_customized_api_port(self):
-        # It is possible to customize the port used by the websocket server.
-        api_port = 8081
-        hostname = self.deploy({'juju-api-port': api_port})
-        # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
-        self.addCleanup(
-            self.stop_services, hostname, ['juju-api-agent', 'juju-gui'])
-        self.navigate_to(hostname)
-        self.assertEnvironmentIsConnected()
-        ws_url = self.selenium.execute_script(
-            'return app.env.get("socket_url");')
-        self.assertIn(str(api_port), ws_url)
 
     def test_staging(self):
         # Ensure the Juju GUI and improv services are correctly set up.
         hostname = self.deploy({'staging': 'true'})
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
-            self.stop_services, hostname, ['juju-api-improv', 'juju-gui'])
+            self.stop_services,
+            hostname, ['haproxy', 'nginx', 'juju-api-improv'])
         self.navigate_to(hostname)
         self.assertEnvironmentIsConnected()
         # The staging environment contains five deployed services.
@@ -162,7 +151,8 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         hostname = self.deploy({'juju-gui-source': JUJU_GUI_TEST_BRANCH})
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
-            self.stop_services, hostname, ['juju-api-agent', 'juju-gui'])
+            self.stop_services,
+            hostname, ['haproxy', 'nginx', 'juju-api-agent'])
         self.navigate_to(hostname)
         self.assertEnvironmentIsConnected()
 
@@ -192,7 +182,8 @@ class DeployToTest(DeployTestMixin, unittest.TestCase):
         hostname = self.deploy_to()
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
-            self.stop_services, hostname, ['juju-api-agent', 'juju-gui'])
+            self.stop_services,
+            hostname, ['haproxy', 'nginx', 'juju-api-agent'])
         self.navigate_to(hostname)
         self.assertEnvironmentIsConnected()
 

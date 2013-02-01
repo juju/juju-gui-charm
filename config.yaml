@@ -17,11 +17,6 @@ options:
       The Juju API Bazaar branch (implementing the websocket server).
     type: string
     default: lp:~hazmat/juju/rapi-rollup
-  juju-api-port:
-    description: |
-      The port used by the websocket server.
-    type: int
-    default: 8080
   staging:
     description: |
       Connect the Juju GUI to the staging backend
