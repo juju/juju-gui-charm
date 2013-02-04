@@ -5,6 +5,7 @@ import os
 import shutil
 from simplejson import dumps
 import tempfile
+import tempita
 import unittest
 
 import charmhelpers
@@ -15,6 +16,7 @@ from utils import (
     first_path_in_dir,
     get_release_file_url,
     get_zookeeper_address,
+    JUJU_GUI_DIR,
     JUJU_PEM,
     parse_source,
     render_to_file,
@@ -298,9 +300,9 @@ class RenderToFileTest(unittest.TestCase):
     def setUp(self):
         self.destination_file = tempfile.NamedTemporaryFile()
         self.addCleanup(self.destination_file.close)
-        self.template_contents = '%(foo)s, %(bar)s'
+        self.template = tempita.Template('{{foo}}, {{bar}}')
         with tempfile.NamedTemporaryFile(delete=False) as template_file:
-            template_file.write(self.template_contents)
+            template_file.write(self.template.content)
             self.template_path = template_file.name
         self.addCleanup(os.remove, self.template_path)
 
@@ -308,7 +310,7 @@ class RenderToFileTest(unittest.TestCase):
         # Ensure the template is correctly rendered using the given context.
         context = {'foo': 'spam', 'bar': 'eggs'}
         render_to_file(self.template_path, context, self.destination_file.name)
-        expected = self.template_contents % context
+        expected = self.template.substitute(context)
         self.assertEqual(expected, self.destination_file.read())
 
 
@@ -439,7 +441,7 @@ class StartStopTest(unittest.TestCase):
         self.addCleanup(nginx_file.close)
         ssl_cert_path = '/tmp/certificates/'
         start_gui(
-            False, 'This is login help.', True, True, ssl_cert_path,
+            False, 'This is login help.', True, True, ssl_cert_path, True,
             haproxy_path=haproxy_file.name, nginx_path=nginx_file.name,
             config_js_path=config_js_file.name)
         self.assertEqual(self.svc_ctl_call_count, 2)
@@ -460,7 +462,8 @@ class StartStopTest(unittest.TestCase):
         self.assertIn('readOnly: true', js_conf)
         nginx_conf = nginx_file.read()
         self.assertIn('juju-gui/build-debug', nginx_conf)
-        self.assertIn('listen 127.0.0.1:{}'.format(WEB_PORT), nginx_conf)
+        self.assertIn('listen 127.0.0.1:{0}'.format(WEB_PORT), nginx_conf)
+        self.assertIn('alias {0}/test;'.format(JUJU_GUI_DIR), nginx_conf)
 
     def test_stop_staging(self):
         stop(True)
