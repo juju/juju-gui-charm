@@ -32,7 +32,8 @@ def main():
         start_agent(config['ssl-cert-path'])
     start_gui(
         config['juju-gui-console-enabled'], config['login-help'],
-        config['read-only'], staging, config['ssl-cert-path'])
+        config['read-only'], staging, config['ssl-cert-path'],
+        config['serve-tests'])
     open_ports()
 
 
