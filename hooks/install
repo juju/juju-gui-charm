@@ -25,7 +25,7 @@ PYTHON_DEPENDENCIES = (
 check_call(('apt-get', 'install', '-y') + PYTHON_DEPENDENCIES)
 
 
-# These modules depend on charmhelpers and shelltoolbox being installed so they
+# These modules depend on the Python dependencies above being installed so they
 # must not be imported until those packages are available.
 from charmhelpers import (
     get_config,
