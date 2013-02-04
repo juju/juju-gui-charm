@@ -1,14 +1,14 @@
 var juju_config = {
-  consoleEnabled: %(console_enabled)s,
+  consoleEnabled: {{console_enabled}},
   serverRouting: false,
   html5: true,
   container: '#main',
   viewContainer: '#main',
   transitions: false,
   charm_store_url: 'https://jujucharms.com/',
-  socket_url: 'wss://%(address)s/ws',
-  user: %(user)s,
-  password: %(password)s,
-  readOnly: %(readonly)s,
-  login_help: %(login_help)s
+  socket_url: 'wss://{{address}}/ws',
+  user: {{user}},
+  password: {{password}},
+  readOnly: {{readonly}},
+  login_help: {{login_help}}
 };

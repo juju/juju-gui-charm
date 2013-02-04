@@ -1,20 +1,27 @@
 server {
-    listen 127.0.0.1:%(port)s default_server;
+    listen 127.0.0.1:{{port}} default_server;
     server_name _;
-    root %(server_root)s;
+    root {{server_root}};
     index index.html;
 
     # Serve static assets.
     location ^~ /juju-ui/ {
-        root %(server_root)s;
+        root {{server_root}};
     }
     location = /favicon.ico {
         expires 10d;
-        root %(server_root)s;
+        root {{server_root}};
     }
     location = /index.html {
-        root %(server_root)s;
+        root {{server_root}};
     }
+
+    {{if serve_tests}}
+        # Serve unit tests.
+        location ^~ /test/ {
+            alias {{tests_root}};
+        }
+    {{endif}}
 
     # Fall through to the single-page app for all other URLs.
     location ~ / {
