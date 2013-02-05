@@ -237,7 +237,14 @@ def start_gui(
     """Set up and start the Juju GUI server."""
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
-    build_dirname = 'build-debug' if in_staging else 'build-prod'
+    # XXX 2013-02-05 frankban bug=1116320:
+        # External insecure resources are still loaded when testing in the
+        # debug environment. For now, switch to the production environment if
+        # the charm is configured to serve tests.
+    if in_staging and not serve_tests:
+        build_dirname = 'build-debug'
+    else:
+        build_dirname = 'build-prod'
     build_dir = os.path.join(JUJU_GUI_DIR, build_dirname)
     log('Generating the Juju GUI configuration file.')
     user, password = ('admin', 'admin') if in_staging else (None, None)
