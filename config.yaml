@@ -77,6 +77,6 @@ options:
     description: |
       Whether or not the GUI unit tests are exposed. If this option is enabled,
       unit tests can be run in the browser by visiting the URL
-      "https://[Juju GUI address]/tests/".
+      "https://[Juju GUI address]/test/".
     type: boolean
     default: false
