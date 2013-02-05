@@ -461,7 +461,7 @@ class StartStopTest(unittest.TestCase):
         self.assertIn('login_help: "This is login help."', js_conf)
         self.assertIn('readOnly: true', js_conf)
         nginx_conf = nginx_file.read()
-        self.assertIn('juju-gui/build-debug', nginx_conf)
+        self.assertIn('juju-gui/build-', nginx_conf)
         self.assertIn('listen 127.0.0.1:{0}'.format(WEB_PORT), nginx_conf)
         self.assertIn('alias {0}/test/;'.format(JUJU_GUI_DIR), nginx_conf)
 
