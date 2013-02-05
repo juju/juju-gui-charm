@@ -157,7 +157,7 @@ def render_to_file(template_name, context, destination):
 
     The tempita template language is used to render contents
     (see http://pythonpaste.org/tempita/).
-    The arguments *template_name* is the name or path of the template file:
+    The argument *template_name* is the name or path of the template file:
     it may be either a path relative to ``../config`` or an absolute path.
     The argument *destination* is a file path.
     The argument *context* is a dict-like object.
