@@ -21,6 +21,11 @@ server {
         location ^~ /test/ {
             alias {{tests_root}};
         }
+    {{else}}
+        # Redirect to site root so that the test URL does not directly
+        # reference the manifest file. This way we avoid this URL to be
+        # automatically added to the application cache.
+        rewrite ^/test/ $scheme://$host/ redirect;
     {{endif}}
 
     # Fall through to the single-page app for all other URLs.
