@@ -23,8 +23,8 @@ server {
         }
     {{else}}
         # Redirect to site root so that the test URL does not directly
-        # reference the manifest file. This way we avoid this URL to be
-        # automatically added to the application cache.
+        # reference the manifest file. This avoids automatically adding the URL
+        # to the application cache.
         rewrite ^/test/ $scheme://$host/ redirect;
     {{endif}}
 

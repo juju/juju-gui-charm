@@ -155,7 +155,8 @@ def parse_source(source):
 def render_to_file(template_name, context, destination):
     """Render the given *template_name* into *destination* using *context*.
 
-    The tempita template language is used to render contents.
+    The tempita template language is used to render contents
+    (see http://pythonpaste.org/tempita/).
     The arguments *template_name* is the name or path of the template file:
     it may be either a path relative to ``../config`` or an absolute path.
     The argument *destination* is a file path.
