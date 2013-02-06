@@ -5,8 +5,8 @@ start on runlevel [2345]
 stop on runlevel [!2345]
 
 setuid ubuntu
-env PYTHONPATH=%(juju_dir)s:$PYTHONPATH
+env PYTHONPATH={{juju_dir}}:$PYTHONPATH
 
-exec /usr/bin/python %(juju_dir)s/improv.py --port %(port)s \
-    -f %(juju_dir)s/%(staging_env)s.json \
-    --secure --keys %(keys)s
+exec /usr/bin/python {{juju_dir}}/improv.py --port {{port}} \
+    -f {{juju_dir}}/{{staging_env}}.json \
+    --secure --keys {{keys}}

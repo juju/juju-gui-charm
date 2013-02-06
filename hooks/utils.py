@@ -35,6 +35,7 @@ import os
 import logging
 import shutil
 import tempfile
+import tempita
 
 from launchpadlib.launchpad import Launchpad
 from shelltoolbox import (
@@ -151,19 +152,21 @@ def parse_source(source):
     return 'stable', source
 
 
-def render_to_file(template, context, destination):
-    """Render the given *template* into *destination* using *context*.
+def render_to_file(template_name, context, destination):
+    """Render the given *template_name* into *destination* using *context*.
 
-    The arguments *template* is the name or path of the template file: it may
-    be either a path relative to ``../config`` or an absolute path.
+    The tempita template language is used to render contents
+    (see http://pythonpaste.org/tempita/).
+    The argument *template_name* is the name or path of the template file:
+    it may be either a path relative to ``../config`` or an absolute path.
     The argument *destination* is a file path.
     The argument *context* is a dict-like object.
     """
     template_path = os.path.join(
-        os.path.dirname(__file__), '..', 'config', template)
-    contents = open(template_path).read()
+        os.path.dirname(__file__), '..', 'config', template_name)
+    template = tempita.Template.from_filename(template_path)
     with open(destination, 'w') as stream:
-        stream.write(contents % context)
+        stream.write(template.substitute(context))
 
 
 results_log = None
@@ -229,13 +232,20 @@ def start_agent(ssl_cert_path, config_path='/etc/init/juju-api-agent.conf'):
 
 def start_gui(
         console_enabled, login_help, readonly, in_staging, ssl_cert_path,
-        haproxy_path='/etc/haproxy/haproxy.cfg', nginx_path=JUJU_GUI_SITE,
-        config_js_path=None):
+        serve_tests, haproxy_path='/etc/haproxy/haproxy.cfg',
+        nginx_path=JUJU_GUI_SITE, config_js_path=None):
     """Set up and start the Juju GUI server."""
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
-    build_dir = JUJU_GUI_DIR + '/build-'
-    build_dir += 'debug' if in_staging else 'prod'
+    # XXX 2013-02-05 frankban bug=1116320:
+        # External insecure resources are still loaded when testing in the
+        # debug environment. For now, switch to the production environment if
+        # the charm is configured to serve tests.
+    if in_staging and not serve_tests:
+        build_dirname = 'build-debug'
+    else:
+        build_dirname = 'build-prod'
+    build_dir = os.path.join(JUJU_GUI_DIR, build_dirname)
     log('Generating the Juju GUI configuration file.')
     user, password = ('admin', 'admin') if in_staging else (None, None)
     context = {
@@ -251,7 +261,12 @@ def start_gui(
             build_dir, 'juju-ui', 'assets', 'config.js')
     render_to_file('config.js.template', context, config_js_path)
     log('Generating the nginx site configuration file.')
-    context = {'port': WEB_PORT, 'server_root': build_dir}
+    context = {
+        'port': WEB_PORT,
+        'serve_tests': serve_tests,
+        'server_root': build_dir,
+        'tests_root': os.path.join(JUJU_GUI_DIR, 'test', ''),
+    }
     render_to_file('nginx-site.template', context, nginx_path)
     log('Generating haproxy configuration file.')
     context = {

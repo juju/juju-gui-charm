@@ -4,9 +4,9 @@ global
     group haproxy
     daemon
     # Set the base path for the WebSocket TLS certificate.
-    ca-base %(ssl_cert_path)s
+    ca-base {{ssl_cert_path}}
     # Set the base path for the HTTPS TLS certificate.
-    crt-base %(ssl_cert_path)s
+    crt-base {{ssl_cert_path}}
 
 defaults
     log global
@@ -22,18 +22,18 @@ defaults
 backend juju
     # The Juju WebSocket backend.
     # Re-encrypt outgoing connections.
-    server ws1 127.0.0.1:%(api_port)s ssl ca-file %(api_pem)s verify required check-ssl inter 500ms
+    server ws1 127.0.0.1:{{api_port}} ssl ca-file {{api_pem}} verify required check-ssl inter 500ms
 
 backend web
     # Web traffic.
-    server web1 127.0.0.1:%(web_port)s check inter 500ms
+    server web1 127.0.0.1:{{web_port}} check inter 500ms
 
 frontend public
     # Redirect all HTTP traffic to HTTPS.
     bind :80
     redirect scheme https if !{ ssl_fc }
     # Handle HTTPS.
-    bind :443 ssl crt %(web_pem)s
+    bind :443 ssl crt {{web_pem}}
     # Send WebSocket connections to the Juju backend.
     use_backend juju if { path /ws }
     # Send everything else to the web server.

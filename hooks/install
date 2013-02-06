@@ -16,11 +16,16 @@ from subprocess import (
 import bootstrap_utils
 bootstrap_utils.install_extra_repositories('ppa:juju/pkgs')
 
-# python-shelltoolbox is installed as a dependency of python-charmhelpers.
-check_call(['apt-get', 'install', '-y', 'python-charmhelpers'])
+# Python dependencies must be installed here so that the charm can import and
+# use required libraries.
+PYTHON_DEPENDENCIES = (
+    'python-charmhelpers', 'python-launchpadlib', 'python-shelltoolbox',
+    'python-tempita',
+)
+check_call(('apt-get', 'install', '-y') + PYTHON_DEPENDENCIES)
 
 
-# These modules depend on charmhelpers and shelltoolbox being installed so they
+# These modules depend on the Python dependencies above being installed so they
 # must not be imported until those packages are available.
 from charmhelpers import (
     get_config,
@@ -47,7 +52,7 @@ from utils import (
 CONFIG_FILES = ('haproxy.conf', 'nginx.conf')
 DEB_DEPENDENCIES = (
     'bzr', 'curl', 'haproxy', 'imagemagick', 'make', 'nginx', 'nodejs', 'npm',
-    'openssl', 'python-launchpadlib', 'zookeeper',
+    'openssl', 'zookeeper',
 )
 REPOSITORIES = ('ppa:chris-lea/node.js', 'ppa:juju-gui/ppa')
 
