@@ -17,10 +17,10 @@ import bootstrap_utils
 bootstrap_utils.install_extra_repositories('ppa:juju/pkgs')
 
 # Python dependencies must be installed here so that the charm can import and
-# use required libraries.  python-shelltoolbox is installed as a dependency
-# of python-charmhelpers.
+# use required libraries.
 PYTHON_DEPENDENCIES = (
-    'python-charmhelpers', 'python-launchpadlib', 'python-tempita',
+    'python-charmhelpers', 'python-launchpadlib', 'python-shelltoolbox',
+    'python-tempita',
 )
 check_call(('apt-get', 'install', '-y') + PYTHON_DEPENDENCIES)
 
