@@ -43,6 +43,7 @@ from utils import (
     config_json,
     fetch_api,
     fetch_gui,
+    get_staging_dependencies,
     save_or_create_certificates,
     setup_gui,
     setup_nginx,
@@ -50,11 +51,10 @@ from utils import (
 
 
 CONFIG_FILES = ('haproxy.conf', 'nginx.conf')
+REPOSITORIES = ('ppa:juju-gui/ppa',)
 DEB_DEPENDENCIES = (
-    'bzr', 'curl', 'haproxy', 'imagemagick', 'make', 'nginx', 'nodejs', 'npm',
-    'openssl', 'zookeeper',
+    'curl', 'haproxy', 'nginx', 'openssl',
 )
-REPOSITORIES = ('ppa:chris-lea/node.js', 'ppa:juju-gui/ppa')
 
 
 def get_dependencies():
@@ -75,6 +75,8 @@ def setup_services():
 def main():
     config = get_config()
     get_dependencies()
+    if config.get('staging'):
+        get_staging_dependencies()
     release_tarball = fetch_gui(
         config['juju-gui-source'], config['command-log-file'])
     setup_gui(release_tarball)

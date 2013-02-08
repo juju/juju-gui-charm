@@ -25,6 +25,7 @@ from utils import (
     config_json,
     fetch_api,
     fetch_gui,
+    get_staging_dependencies,
     HAPROXY,
     IMPROV,
     NGINX,
@@ -77,6 +78,8 @@ def handle_config_changes(config, diff):
                 # 'staging' went from False to True, so the agent server is
                 # running and must be stopped.
                 current_api = AGENT
+                # We need to make sure we have staging dependencies.
+                get_staging_dependencies()
             else:
                 # Only staging parameters changed, so the existing staging
                 # server must be stopped and later restarted.
