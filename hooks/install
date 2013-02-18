@@ -88,7 +88,12 @@ def main():
 
 
 if __name__ == '__main__':
-    log_entry()
+    try:
+        log_entry()
+    except CalledProcessError as e:
+        print '========================================='
+        print e.output
+        print e.__dict__
     try:
         main()
     except CalledProcessError as e:
