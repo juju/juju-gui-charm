@@ -3,10 +3,8 @@
 
 import os
 import shutil
-from subprocess import (
-    CalledProcessError,
-    check_call,
-)
+from subprocess import check_call
+
 
 # If the user's environment has "juju-origin: ppa" set, they will
 # automatically have access to python-charmhelpers and python-shelltoolbox.
@@ -30,8 +28,6 @@ check_call(('apt-get', 'install', '-y') + PYTHON_DEPENDENCIES)
 from charmhelpers import (
     get_config,
     log,
-    log_entry,
-    log_exit,
 )
 from shelltoolbox import (
     apt_get_install,
@@ -43,6 +39,7 @@ from utils import (
     config_json,
     fetch_api,
     fetch_gui,
+    log_hook,
     save_or_create_certificates,
     setup_gui,
     setup_nginx,
@@ -88,17 +85,5 @@ def main():
 
 
 if __name__ == '__main__':
-    try:
-        log_entry()
-    except CalledProcessError as e:
-        print '========================================='
-        print e.output
-        print e.__dict__
-    try:
+    with log_hook():
         main()
-    except CalledProcessError as e:
-        log('Exception caught:')
-        log(e.output)
-        raise
-    finally:
-        log_exit()

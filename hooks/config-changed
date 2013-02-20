@@ -4,14 +4,11 @@
 # Copyright 2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from subprocess import CalledProcessError
 import sys
 
 from charmhelpers import (
     get_config,
     log,
-    log_entry,
-    log_exit,
     service_control,
     STOP,
 )
@@ -27,6 +24,7 @@ from utils import (
     fetch_gui,
     HAPROXY,
     IMPROV,
+    log_hook,
     NGINX,
     save_or_create_certificates,
     setup_gui,
@@ -134,12 +132,5 @@ def main():
 
 
 if __name__ == '__main__':
-    log_entry()
-    try:
+    with log_hook():
         main()
-    except CalledProcessError as e:
-        log('Exception caught:')
-        log(e.output)
-        raise
-    finally:
-        log_exit()

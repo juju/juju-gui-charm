@@ -4,11 +4,13 @@ from contextlib import contextmanager
 import os
 import shutil
 from simplejson import dumps
+from subprocess import CalledProcessError
 import tempfile
 import tempita
 import unittest
 
 import charmhelpers
+
 from utils import (
     _get_by_attr,
     API_PORT,
@@ -18,6 +20,7 @@ from utils import (
     get_zookeeper_address,
     JUJU_GUI_DIR,
     JUJU_PEM,
+    log_hook,
     parse_source,
     render_to_file,
     save_or_create_certificates,
@@ -264,6 +267,49 @@ class GetZookeeperAddressTest(unittest.TestCase):
         # Ensure the Zookeeper address is correctly retreived.
         address = get_zookeeper_address(self.agent_file_path)
         self.assertEqual(self.zookeeper_address, address)
+
+
+class LogHookTest(unittest.TestCase):
+
+    def setUp(self):
+        # Monkeypatch the charmhelpers log function.
+        self.output = []
+        self.original = utils.log
+        utils.log = self.output.append
+
+    def tearDown(self):
+        # Restore the original charmhelpers log function.
+        utils.log = self.original
+
+    def test_logging(self):
+        # The function emits log messages on entering and exiting the hook.
+        with log_hook():
+            self.output.append('executing hook')
+        self.assertEqual(3, len(self.output))
+        enter_message, executing_message, exit_message = self.output
+        self.assertIn('>>> Entering', enter_message)
+        self.assertEqual('executing hook', executing_message)
+        self.assertIn('<<< Exiting', exit_message)
+
+    def test_subprocess_error(self):
+        # If a CalledProcessError exception is raised, the command output is
+        # logged.
+        with self.assertRaises(CalledProcessError) as cm:
+            with log_hook():
+                raise CalledProcessError(2, 'command', 'output')
+        exception = cm.exception
+        self.assertIsInstance(exception, CalledProcessError)
+        self.assertEqual(2, exception.returncode)
+        self.assertEqual('output', self.output[-2])
+
+    def test_error(self):
+        # Possible errors are re-raised by the context manager.
+        with self.assertRaises(TypeError) as cm:
+            with log_hook():
+                raise TypeError
+        exception = cm.exception
+        self.assertIsInstance(exception, TypeError)
+        self.assertIn('<<< Exiting', self.output[-1])
 
 
 class ParseSourceTest(unittest.TestCase):
