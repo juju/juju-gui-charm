@@ -17,6 +17,7 @@ __all__ = [
     'JUJU_GUI_DIR',
     'JUJU_GUI_SITE',
     'JUJU_PEM',
+    'log_hook',
     'NGINX',
     'parse_source',
     'render_to_file',
@@ -30,10 +31,12 @@ __all__ = [
     'WEB_PORT',
 ]
 
+from contextlib import contextmanager
 import json
 import os
 import logging
 import shutil
+from subprocess import CalledProcessError
 import tempfile
 import tempita
 
@@ -42,6 +45,7 @@ from shelltoolbox import (
     command,
     environ,
     run,
+    script_name,
     search_file,
     Serializer,
     su,
@@ -130,6 +134,25 @@ def get_zookeeper_address(agent_file_path):
     """
     line = search_file('JUJU_ZOOKEEPER', agent_file_path).strip()
     return line.split('=')[1].strip('"')
+
+
+@contextmanager
+def log_hook():
+    """Log when an hook starts and stops its execution.
+
+    Also log to stdout possible CalledProcessError exceptions raised executing
+    the hook.
+    """
+    script = script_name()
+    log(">>> Entering {}".format(script))
+    try:
+        yield
+    except CalledProcessError as err:
+        log('Exception caught:')
+        log(err.output)
+        raise
+    finally:
+        log("<<< Exiting {}".format(script))
 
 
 def parse_source(source):
