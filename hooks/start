@@ -4,12 +4,11 @@
 from charmhelpers import (
     get_config,
     log,
-    log_entry,
-    log_exit,
     open_port,
 )
 
 from utils import (
+    log_hook,
     start_agent,
     start_gui,
     start_improv,
@@ -38,8 +37,5 @@ def main():
 
 
 if __name__ == '__main__':
-    log_entry()
-    try:
+    with log_hook():
         main()
-    finally:
-        log_exit()
