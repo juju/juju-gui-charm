@@ -277,6 +277,9 @@ def start_gui(
     build_dir = os.path.join(JUJU_GUI_DIR, build_dirname)
     log('Generating the Juju GUI configuration file.')
     user, password = ('admin', 'admin') if in_staging else (None, None)
+    protocol = 'wss'
+    if insecure:
+        protocol = 'ws'
     context = {
         'address': unit_get('public-address'),
         'console_enabled': json.dumps(console_enabled),
@@ -284,6 +287,7 @@ def start_gui(
         'password': json.dumps(password),
         'readonly': json.dumps(readonly),
         'user': json.dumps(user),
+        'socket_protocol': json.dumps(protocol)
     }
     if config_js_path is None:
         config_js_path = os.path.join(
