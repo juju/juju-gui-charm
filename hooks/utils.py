@@ -301,7 +301,8 @@ def start_gui(
         # Use the same certificate for both HTTPS and Websocket connections.
         # In the long term, we want separate certs to be used here.
         'web_pem': JUJU_PEM,
-        'web_port': WEB_PORT
+        'web_port': WEB_PORT,
+        'insecure': ''
     }
     if insecure is True:
         context['insecure'] = INSECURE
