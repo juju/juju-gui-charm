@@ -117,7 +117,7 @@ def handle_config_changes(config, diff):
         insecure = not config['secure']
         start_gui(
             console_enabled, login_help, readonly, in_staging, ssl_cert_path,
-            serve_tests, insecure)
+            serve_tests, insecure=insecure)
 
 
 def main():
