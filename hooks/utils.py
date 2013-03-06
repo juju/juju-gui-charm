@@ -349,7 +349,10 @@ def fetch_gui(juju_gui_source, logpath):
         log('Preparing a Juju GUI release.')
         logdir = os.path.dirname(logpath)
         fd, name = tempfile.mkstemp(prefix='make-distfile-', dir=logdir)
-        log('Output from "make distfile" sent to', name)
+        #commenting out the following line because of
+        #TypeError: 'unicode' object is not callable
+        #When using a branch instead of release
+        #log('Output from "make distfile" sent to', name)
         with environ(NO_BZR='1'):
             run('make', '-C', juju_gui_source_dir, 'distfile',
                 stdout=fd, stderr=fd)
