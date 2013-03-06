@@ -189,8 +189,13 @@ def render_to_file(template_name, context, destination):
     """
     template_path = os.path.join(
         os.path.dirname(__file__), '..', 'config', template_name)
+    log(template_path)
     template = tempita.Template.from_filename(template_path)
+    log(template)
+    log(destination)
     with open(destination, 'w') as stream:
+        log(context)
+        log(template.substitute(context))
         stream.write(template.substitute(context))
 
 
