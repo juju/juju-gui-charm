@@ -287,7 +287,7 @@ def start_gui(
         'password': json.dumps(password),
         'readonly': json.dumps(readonly),
         'user': json.dumps(user),
-        'socket_protocol': json.dumps(protocol)
+        'protocol': json.dumps(protocol)
     }
     if config_js_path is None:
         config_js_path = os.path.join(
