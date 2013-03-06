@@ -74,6 +74,8 @@ JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
 JUJU_GUI_SITE = '/etc/nginx/sites-available/juju-gui'
 JUJU_PEM = 'juju.includes-private-key.pem'
 
+INSECURE = '#'
+
 
 # Store the configuration from on invocation to the next.
 config_json = Serializer('/tmp/config.json')
@@ -256,7 +258,7 @@ def start_agent(ssl_cert_path, config_path='/etc/init/juju-api-agent.conf'):
 def start_gui(
         console_enabled, login_help, readonly, in_staging, ssl_cert_path,
         serve_tests, haproxy_path='/etc/haproxy/haproxy.cfg',
-        nginx_path=JUJU_GUI_SITE, config_js_path=None):
+        nginx_path=JUJU_GUI_SITE, config_js_path=None, insecure=False):
     """Set up and start the Juju GUI server."""
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
@@ -299,8 +301,9 @@ def start_gui(
         # Use the same certificate for both HTTPS and Websocket connections.
         # In the long term, we want separate certs to be used here.
         'web_pem': JUJU_PEM,
-        'web_port': WEB_PORT,
+        'web_port': WEB_PORT
     }
+    context['insecure'] = INSECURE if insecure is True
     render_to_file('haproxy.cfg.template', context, haproxy_path)
     log('Starting Juju GUI.')
     with su('root'):

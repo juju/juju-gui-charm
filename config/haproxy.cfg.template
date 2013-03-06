@@ -31,7 +31,7 @@ backend web
 frontend public
     # Redirect all HTTP traffic to HTTPS.
     bind :80
-    redirect scheme https if !{ ssl_fc }
+    {{insecure}} redirect scheme https if !{ ssl_fc }
     # Handle HTTPS.
     bind :443 ssl crt {{web_pem}}
     # Send WebSocket connections to the Juju backend.
