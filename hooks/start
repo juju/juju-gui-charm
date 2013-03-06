@@ -32,7 +32,7 @@ def main():
     start_gui(
         config['juju-gui-console-enabled'], config['login-help'],
         config['read-only'], staging, config['ssl-cert-path'],
-        config['serve-tests'])
+        config['serve-tests'], config['secure'])
     open_ports()
 
 
