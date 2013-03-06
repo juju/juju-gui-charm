@@ -303,7 +303,8 @@ def start_gui(
         'web_pem': JUJU_PEM,
         'web_port': WEB_PORT
     }
-    context['insecure'] = INSECURE if insecure is True
+    if insecure is True:
+        context['insecure'] = INSECURE
     render_to_file('haproxy.cfg.template', context, haproxy_path)
     log('Starting Juju GUI.')
     with su('root'):
