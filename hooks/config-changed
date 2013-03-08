@@ -114,10 +114,10 @@ def handle_config_changes(config, diff):
         readonly = config['read-only']
         serve_tests = config['serve-tests']
         ssl_cert_path = config['ssl-cert-path']
-        insecure = not config['secure']
+        secure = config['secure']
         start_gui(
             console_enabled, login_help, readonly, in_staging, ssl_cert_path,
-            serve_tests, insecure=insecure)
+            serve_tests, secure=secure)
 
 
 def main():

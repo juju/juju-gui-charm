@@ -262,7 +262,7 @@ def start_agent(ssl_cert_path, config_path='/etc/init/juju-api-agent.conf'):
 def start_gui(
         console_enabled, login_help, readonly, in_staging, ssl_cert_path,
         serve_tests, haproxy_path='/etc/haproxy/haproxy.cfg',
-        nginx_path=JUJU_GUI_SITE, config_js_path=None, insecure=False):
+        nginx_path=JUJU_GUI_SITE, config_js_path=None, secure=True):
     """Set up and start the Juju GUI server."""
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
@@ -278,7 +278,7 @@ def start_gui(
     log('Generating the Juju GUI configuration file.')
     user, password = ('admin', 'admin') if in_staging else (None, None)
     protocol = 'wss'
-    if insecure:
+    if secure is False:
         protocol = 'ws'
     context = {
         'address': unit_get('public-address'),
@@ -312,7 +312,8 @@ def start_gui(
         'web_port': WEB_PORT,
         'insecure': ''
     }
-    if insecure is True:
+    if secure is False:
+        log('Running haproxy in insecure mode')
         context['insecure'] = INSECURE
     render_to_file('haproxy.cfg.template', context, haproxy_path)
     log('Starting Juju GUI.')
@@ -349,10 +350,7 @@ def fetch_gui(juju_gui_source, logpath):
         log('Preparing a Juju GUI release.')
         logdir = os.path.dirname(logpath)
         fd, name = tempfile.mkstemp(prefix='make-distfile-', dir=logdir)
-        #commenting out the following line because of
-        #TypeError: 'unicode' object is not callable
-        #When using a branch instead of release
-        #log('Output from "make distfile" sent to', name)
+        log('Output from "make distfile" sent to %s' % name)
         with environ(NO_BZR='1'):
             run('make', '-C', juju_gui_source_dir, 'distfile',
                 stdout=fd, stderr=fd)
