@@ -83,6 +83,7 @@ options:
   secure:
     description: |
       In order to run the GUI over a non secure connection (HTTP) set this flag
-      to false. Do not set this property unless you are clear of the risks.
+      to false. Do not set this property unless you understand and accept the
+      risks.
     type: boolean
     default: true

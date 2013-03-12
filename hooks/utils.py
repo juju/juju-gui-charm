@@ -212,12 +212,8 @@ def render_to_file(template_name, context, destination):
     """
     template_path = os.path.join(
         os.path.dirname(__file__), '..', 'config', template_name)
-    print template_path
     template = tempita.Template.from_filename(template_path)
-    print destination
     with open(destination, 'w') as stream:
-        print context
-        print template.substitute(context)
         stream.write(template.substitute(context))
 
 
@@ -337,6 +333,8 @@ def start_gui(
     }
     if secure is False:
         log('Running haproxy in insecure mode')
+        # INSECURE is actually a hash: we insert it to comment out the line
+        # that redirects port 80 to port 443 in the haproxy config.
         context['insecure'] = INSECURE
     render_to_file('haproxy.cfg.template', context, haproxy_path)
     log('Starting Juju GUI.')
