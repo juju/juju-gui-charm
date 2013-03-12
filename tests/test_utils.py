@@ -500,6 +500,8 @@ class StartStopTest(unittest.TestCase):
         self.assertIn('web1 127.0.0.1:{0}'.format(WEB_PORT), haproxy_conf)
         self.assertIn('ca-file {0}'.format(JUJU_PEM), haproxy_conf)
         self.assertIn('crt {0}'.format(JUJU_PEM), haproxy_conf)
+        self.assertRegexpMatches(
+            haproxy_conf, r'bind :80\s*redirect scheme https')
         js_conf = config_js_file.read()
         self.assertIn('consoleEnabled: false', js_conf)
         self.assertIn('user: "admin"', js_conf)
@@ -510,6 +512,22 @@ class StartStopTest(unittest.TestCase):
         self.assertIn('juju-gui/build-', nginx_conf)
         self.assertIn('listen 127.0.0.1:{0}'.format(WEB_PORT), nginx_conf)
         self.assertIn('alias {0}/test/;'.format(JUJU_GUI_DIR), nginx_conf)
+
+    def test_start_gui_insecure(self):
+        config_js_file = self.destination_file
+        haproxy_file = tempfile.NamedTemporaryFile()
+        self.addCleanup(haproxy_file.close)
+        nginx_file = tempfile.NamedTemporaryFile()
+        self.addCleanup(nginx_file.close)
+        ssl_cert_path = '/tmp/certificates/'
+        start_gui(
+            False, 'This is login help.', True, True, ssl_cert_path, True,
+            haproxy_path=haproxy_file.name, nginx_path=nginx_file.name,
+            config_js_path=config_js_file.name, secure=False)
+        haproxy_conf = haproxy_file.read()
+        # The insecure approach comments out the https redirect.
+        self.assertRegexpMatches(
+            haproxy_conf, r'bind :80\s*#\s*redirect scheme https')
 
     def test_stop_staging(self):
         stop(True)
