@@ -10,6 +10,7 @@ __all__ = [
     'fetch_gui',
     'first_path_in_dir',
     'get_release_file_url',
+    'get_staging_dependencies',
     'get_zookeeper_address',
     'HAPROXY',
     'IMPROV',
@@ -42,8 +43,10 @@ import tempita
 
 from launchpadlib.launchpad import Launchpad
 from shelltoolbox import (
+    apt_get_install,
     command,
     environ,
+    install_extra_repositories,
     run,
     script_name,
     search_file,
@@ -73,6 +76,13 @@ JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
 JUJU_GUI_SITE = '/etc/nginx/sites-available/juju-gui'
 JUJU_PEM = 'juju.includes-private-key.pem'
+BUILD_REPOSITORIES = ('ppa:chris-lea/node.js',)
+DEB_BUILD_DEPENDENCIES = (
+    'bzr', 'imagemagick', 'make',  'nodejs', 'npm',
+)
+DEB_STAGE_DEPENDENCIES = (
+    'zookeeper',
+)
 
 INSECURE = '#'
 
@@ -81,6 +91,19 @@ INSECURE = '#'
 config_json = Serializer('/tmp/config.json')
 # Bazaar checkout command.
 bzr_checkout = command('bzr', 'co', '--lightweight')
+
+
+def _get_build_dependencies():
+    """Install deb dependencies for building."""
+    log('Installing build dependencies.')
+    cmd_log(install_extra_repositories(*BUILD_REPOSITORIES))
+    cmd_log(apt_get_install(*DEB_BUILD_DEPENDENCIES))
+
+
+def get_staging_dependencies():
+    """Install deb dependencies for the stage (improv) environment."""
+    log('Installing stage dependencies.')
+    cmd_log(apt_get_install(*DEB_STAGE_DEPENDENCIES))
 
 
 def first_path_in_dir(directory):
@@ -342,6 +365,9 @@ def fetch_gui(juju_gui_source, logpath):
     # Retrieve a Juju GUI release.
     origin, version_or_branch = parse_source(juju_gui_source)
     if origin == 'branch':
+        # Make sure we have the dependencies necessary for us to actually make
+        # a build.
+        _get_build_dependencies()
         # Create a release starting from a branch.
         juju_gui_source_dir = os.path.join(CURRENT_DIR, 'juju-gui-source')
         log('Retrieving Juju GUI source checkout from %s.' % version_or_branch)
