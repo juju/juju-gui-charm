@@ -6,7 +6,11 @@ var juju_config = {
   viewContainer: '#main',
   transitions: false,
   charm_store_url: 'https://jujucharms.com/',
-  socket_url: 'wss://{{address}}/ws',
+  // socket_url is only honored in older versions of the GUI.
+  socket_url: '{{raw_protocol}}://{{address}}/ws',
+  // socket_protocol is used instead by newer versions of the GUI to
+  // dynamically generate the websocket address.
+  socket_protocol: {{protocol}},
   user: {{user}},
   password: {{password}},
   readOnly: {{readonly}},

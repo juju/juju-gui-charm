@@ -85,7 +85,7 @@ class DeployTestMixin(object):
             return driver.title == 'Juju Admin'
         self.wait_for(page_ready, error='Juju GUI not found.')
 
-    def wait_for(self, condition, error=None, timeout=10):
+    def wait_for(self, condition, error=None, timeout=20):
         """Wait for condition to be True.
 
         The argument condition is a callable accepting a driver object.
@@ -95,7 +95,7 @@ class DeployTestMixin(object):
         wait = ui.WebDriverWait(self.selenium, timeout)
         return wait.until(condition, error)
 
-    def wait_for_css_selector(self, selector, error=None, timeout=10):
+    def wait_for_css_selector(self, selector, error=None, timeout=20):
         """Wait until the provided CSS selector is found.
 
         Fail printing the provided error if timeout is exceeded.
@@ -106,7 +106,7 @@ class DeployTestMixin(object):
         elements = self.wait_for(condition, error=error, timeout=timeout)
         return elements[0]
 
-    def wait_for_script(self, script, error=None, timeout=10):
+    def wait_for_script(self, script, error=None, timeout=20):
         """Wait for the given JavaScript snippet to return a True value.
 
         Fail printing the provided error if timeout is exceeded.

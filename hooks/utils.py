@@ -10,6 +10,7 @@ __all__ = [
     'fetch_gui',
     'first_path_in_dir',
     'get_release_file_url',
+    'get_staging_dependencies',
     'get_zookeeper_address',
     'HAPROXY',
     'IMPROV',
@@ -42,8 +43,10 @@ import tempita
 
 from launchpadlib.launchpad import Launchpad
 from shelltoolbox import (
+    apt_get_install,
     command,
     environ,
+    install_extra_repositories,
     run,
     script_name,
     search_file,
@@ -73,12 +76,32 @@ JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
 JUJU_GUI_SITE = '/etc/nginx/sites-available/juju-gui'
 JUJU_PEM = 'juju.includes-private-key.pem'
+BUILD_REPOSITORIES = ('ppa:chris-lea/node.js',)
+DEB_BUILD_DEPENDENCIES = (
+    'bzr', 'imagemagick', 'make',  'nodejs', 'npm',
+)
+DEB_STAGE_DEPENDENCIES = (
+    'zookeeper',
+)
 
 
 # Store the configuration from on invocation to the next.
 config_json = Serializer('/tmp/config.json')
 # Bazaar checkout command.
 bzr_checkout = command('bzr', 'co', '--lightweight')
+
+
+def _get_build_dependencies():
+    """Install deb dependencies for building."""
+    log('Installing build dependencies.')
+    cmd_log(install_extra_repositories(*BUILD_REPOSITORIES))
+    cmd_log(apt_get_install(*DEB_BUILD_DEPENDENCIES))
+
+
+def get_staging_dependencies():
+    """Install deb dependencies for the stage (improv) environment."""
+    log('Installing stage dependencies.')
+    cmd_log(apt_get_install(*DEB_STAGE_DEPENDENCIES))
 
 
 def first_path_in_dir(directory):
@@ -256,7 +279,7 @@ def start_agent(ssl_cert_path, config_path='/etc/init/juju-api-agent.conf'):
 def start_gui(
         console_enabled, login_help, readonly, in_staging, ssl_cert_path,
         serve_tests, haproxy_path='/etc/haproxy/haproxy.cfg',
-        nginx_path=JUJU_GUI_SITE, config_js_path=None):
+        nginx_path=JUJU_GUI_SITE, config_js_path=None, secure=True):
     """Set up and start the Juju GUI server."""
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
@@ -271,13 +294,20 @@ def start_gui(
     build_dir = os.path.join(JUJU_GUI_DIR, build_dirname)
     log('Generating the Juju GUI configuration file.')
     user, password = ('admin', 'admin') if in_staging else (None, None)
+    if secure:
+        protocol = 'wss'
+    else:
+        log('Running in insecure mode! Port 80 will serve unencrypted.')
+        protocol = 'ws'
     context = {
+        'raw_protocol': protocol,
         'address': unit_get('public-address'),
         'console_enabled': json.dumps(console_enabled),
         'login_help': json.dumps(login_help),
         'password': json.dumps(password),
         'readonly': json.dumps(readonly),
         'user': json.dumps(user),
+        'protocol': json.dumps(protocol)
     }
     if config_js_path is None:
         config_js_path = os.path.join(
@@ -300,6 +330,7 @@ def start_gui(
         # In the long term, we want separate certs to be used here.
         'web_pem': JUJU_PEM,
         'web_port': WEB_PORT,
+        'secure': secure
     }
     render_to_file('haproxy.cfg.template', context, haproxy_path)
     log('Starting Juju GUI.')
@@ -328,6 +359,9 @@ def fetch_gui(juju_gui_source, logpath):
     # Retrieve a Juju GUI release.
     origin, version_or_branch = parse_source(juju_gui_source)
     if origin == 'branch':
+        # Make sure we have the dependencies necessary for us to actually make
+        # a build.
+        _get_build_dependencies()
         # Create a release starting from a branch.
         juju_gui_source_dir = os.path.join(CURRENT_DIR, 'juju-gui-source')
         log('Retrieving Juju GUI source checkout from %s.' % version_or_branch)
@@ -336,7 +370,7 @@ def fetch_gui(juju_gui_source, logpath):
         log('Preparing a Juju GUI release.')
         logdir = os.path.dirname(logpath)
         fd, name = tempfile.mkstemp(prefix='make-distfile-', dir=logdir)
-        log('Output from "make distfile" sent to', name)
+        log('Output from "make distfile" sent to %s' % name)
         with environ(NO_BZR='1'):
             run('make', '-C', juju_gui_source_dir, 'distfile',
                 stdout=fd, stderr=fd)

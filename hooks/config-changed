@@ -22,6 +22,7 @@ from utils import (
     config_json,
     fetch_api,
     fetch_gui,
+    get_staging_dependencies,
     HAPROXY,
     IMPROV,
     log_hook,
@@ -75,6 +76,8 @@ def handle_config_changes(config, diff):
                 # 'staging' went from False to True, so the agent server is
                 # running and must be stopped.
                 current_api = AGENT
+                # We need to make sure we have staging dependencies.
+                get_staging_dependencies()
             else:
                 # Only staging parameters changed, so the existing staging
                 # server must be stopped and later restarted.
@@ -103,7 +106,7 @@ def handle_config_changes(config, diff):
     # Handle changes to the juju-gui configuration.
     gui_properties = set([
         'juju-gui-console-enabled', 'login-help', 'read-only', 'serve-tests',
-        'staging'])
+        'staging', 'secure'])
     gui_changed = added_or_changed & gui_properties
     if gui_changed or ssl_changed or juju_gui_source_changed:
         with su('root'):
@@ -114,9 +117,10 @@ def handle_config_changes(config, diff):
         readonly = config['read-only']
         serve_tests = config['serve-tests']
         ssl_cert_path = config['ssl-cert-path']
+        secure = config['secure']
         start_gui(
             console_enabled, login_help, readonly, in_staging, ssl_cert_path,
-            serve_tests)
+            serve_tests, secure=secure)
 
 
 def main():
