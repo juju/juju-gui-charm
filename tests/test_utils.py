@@ -500,14 +500,15 @@ class StartStopTest(unittest.TestCase):
         self.assertIn('web1 127.0.0.1:{0}'.format(WEB_PORT), haproxy_conf)
         self.assertIn('ca-file {0}'.format(JUJU_PEM), haproxy_conf)
         self.assertIn('crt {0}'.format(JUJU_PEM), haproxy_conf)
-        self.assertRegexpMatches(
-            haproxy_conf, r'bind :80\s*redirect scheme https')
+        self.assertIn('redirect scheme https', haproxy_conf)
         js_conf = config_js_file.read()
         self.assertIn('consoleEnabled: false', js_conf)
         self.assertIn('user: "admin"', js_conf)
         self.assertIn('password: "admin"', js_conf)
         self.assertIn('login_help: "This is login help."', js_conf)
         self.assertIn('readOnly: true', js_conf)
+        self.assertIn("socket_url: 'wss://", js_conf)
+        self.assertIn('socket_protocol: "wss"', js_conf)
         nginx_conf = nginx_file.read()
         self.assertIn('juju-gui/build-', nginx_conf)
         self.assertIn('listen 127.0.0.1:{0}'.format(WEB_PORT), nginx_conf)
@@ -524,10 +525,12 @@ class StartStopTest(unittest.TestCase):
             False, 'This is login help.', True, True, ssl_cert_path, True,
             haproxy_path=haproxy_file.name, nginx_path=nginx_file.name,
             config_js_path=config_js_file.name, secure=False)
+        js_conf = config_js_file.read()
+        self.assertIn("socket_url: 'ws://", js_conf)
+        self.assertIn('socket_protocol: "ws"', js_conf)
         haproxy_conf = haproxy_file.read()
-        # The insecure approach comments out the https redirect.
-        self.assertRegexpMatches(
-            haproxy_conf, r'bind :80\s*#\s*redirect scheme https')
+        # The insecure approach eliminates the https redirect.
+        self.assertNotIn('redirect scheme https', haproxy_conf)
 
     def test_stop_staging(self):
         stop(True)

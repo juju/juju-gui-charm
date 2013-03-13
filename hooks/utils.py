@@ -84,8 +84,6 @@ DEB_STAGE_DEPENDENCIES = (
     'zookeeper',
 )
 
-INSECURE = '#'
-
 
 # Store the configuration from on invocation to the next.
 config_json = Serializer('/tmp/config.json')
@@ -296,10 +294,13 @@ def start_gui(
     build_dir = os.path.join(JUJU_GUI_DIR, build_dirname)
     log('Generating the Juju GUI configuration file.')
     user, password = ('admin', 'admin') if in_staging else (None, None)
-    protocol = 'wss'
-    if secure is False:
+    if secure:
+        protocol = 'wss'
+    else:
+        log('Running in insecure mode! Port 80 will serve unencrypted.')
         protocol = 'ws'
     context = {
+        'raw_protocol': protocol,
         'address': unit_get('public-address'),
         'console_enabled': json.dumps(console_enabled),
         'login_help': json.dumps(login_help),
@@ -329,13 +330,8 @@ def start_gui(
         # In the long term, we want separate certs to be used here.
         'web_pem': JUJU_PEM,
         'web_port': WEB_PORT,
-        'insecure': ''
+        'secure': secure
     }
-    if secure is False:
-        log('Running haproxy in insecure mode')
-        # INSECURE is actually a hash: we insert it to comment out the line
-        # that redirects port 80 to port 443 in the haproxy config.
-        context['insecure'] = INSECURE
     render_to_file('haproxy.cfg.template', context, haproxy_path)
     log('Starting Juju GUI.')
     with su('root'):
