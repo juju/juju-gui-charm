@@ -78,7 +78,7 @@ JUJU_GUI_SITE = '/etc/nginx/sites-available/juju-gui'
 JUJU_PEM = 'juju.includes-private-key.pem'
 BUILD_REPOSITORIES = ('ppa:chris-lea/node.js',)
 DEB_BUILD_DEPENDENCIES = (
-    'bzr', 'imagemagick', 'make',  'nodejs', 'npm',
+    'bzr', 'imagemagick', 'make',  'nodejs',
 )
 DEB_STAGE_DEPENDENCIES = (
     'zookeeper',
