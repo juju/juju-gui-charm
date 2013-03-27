@@ -381,12 +381,14 @@ def stop(in_staging):
         log('Stopping Juju GUI.')
         service_control(HAPROXY, STOP)
         service_control(NGINX, STOP)
-        if in_staging:
-            log('Stopping the staging backend.')
-            service_control(IMPROV, STOP)
-        else:
-            log('Stopping API agent.')
-            service_control(AGENT, STOP)
+        # No need to stop staging or the API agent in juju-core environments.
+        if legacy_juju:
+            if in_staging:
+                log('Stopping the staging backend.')
+                service_control(IMPROV, STOP)
+            else:
+                log('Stopping API agent.')
+                service_control(AGENT, STOP)
 
 
 def fetch_gui(juju_gui_source, logpath):
