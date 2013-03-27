@@ -22,7 +22,11 @@ defaults
 backend juju
     # The Juju WebSocket backend.
     # Re-encrypt outgoing connections.
+    {{if legacy_juju}}
     server ws1 127.0.0.1:{{api_port}} ssl ca-file {{api_pem}} verify required check-ssl inter 500ms
+    {{else}}
+    server ws1 {{api_address}} ssl check-ssl inter 500ms
+    {{endif}}
 
 backend web
     # Web traffic.

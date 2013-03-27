@@ -9,6 +9,7 @@ __all__ = [
     'fetch_api',
     'fetch_gui',
     'first_path_in_dir',
+    'get_api_address',
     'get_release_file_url',
     'get_staging_dependencies',
     'get_zookeeper_address',
@@ -18,6 +19,7 @@ __all__ = [
     'JUJU_GUI_DIR',
     'JUJU_GUI_SITE',
     'JUJU_PEM',
+    'legacy_juju',
     'log_hook',
     'NGINX',
     'parse_source',
@@ -39,7 +41,6 @@ import logging
 import shutil
 from subprocess import CalledProcessError
 import tempfile
-import tempita
 
 from launchpadlib.launchpad import Launchpad
 from shelltoolbox import (
@@ -61,6 +62,7 @@ from charmhelpers import (
     STOP,
     unit_get,
 )
+import tempita
 
 
 AGENT = 'juju-api-agent'
@@ -89,6 +91,10 @@ DEB_STAGE_DEPENDENCIES = (
 config_json = Serializer('/tmp/config.json')
 # Bazaar checkout command.
 bzr_checkout = command('bzr', 'co', '--lightweight')
+# Whether or not the charm is deployed using juju-core.
+# If juju-core has been used to deploy the charm, an agent.conf file must
+# be present in the charm parent directory.
+legacy_juju = not os.path.exists(os.path.join(CURRENT_DIR, '..', 'agent.conf'))
 
 
 def _get_build_dependencies():
@@ -96,6 +102,22 @@ def _get_build_dependencies():
     log('Installing build dependencies.')
     cmd_log(install_extra_repositories(*BUILD_REPOSITORIES))
     cmd_log(apt_get_install(*DEB_BUILD_DEPENDENCIES))
+
+
+def get_api_address(unit_dir):
+    """Return the Juju API address stored in the uniter agent.conf file."""
+    import yaml  # python-yaml is only installed if juju-core is used.
+    # XXX 2013-03-27 frankban: currently the uniter agent.conf file does not
+    # include the API address. For now retrieve it from the machine agent file.
+    base_dir = os.path.abspath(os.path.join(unit_dir, '..'))
+    for dirname in os.listdir(base_dir):
+        if dirname.startswith('machine-'):
+            agent_conf = os.path.join(base_dir, dirname, 'agent.conf')
+            break
+    else:
+        raise IOError('Juju agent configuration file not found.')
+    contents = yaml.load(open(agent_conf))
+    return contents['apiinfo']['addrs'][0]
 
 
 def get_staging_dependencies():
@@ -293,7 +315,12 @@ def start_gui(
         build_dirname = 'build-prod'
     build_dir = os.path.join(JUJU_GUI_DIR, build_dirname)
     log('Generating the Juju GUI configuration file.')
-    user, password = ('admin', 'admin') if in_staging else (None, None)
+    user, password = None, None
+    if legacy_juju and in_staging:
+        user, password = 'admin', 'admin'
+    else:
+        user, password = None, None
+    api_backend = 'python' if legacy_juju else 'go'
     if secure:
         protocol = 'wss'
     else:
@@ -305,6 +332,7 @@ def start_gui(
         'console_enabled': json.dumps(console_enabled),
         'login_help': json.dumps(login_help),
         'password': json.dumps(password),
+        'api_backend': json.dumps(api_backend),
         'readonly': json.dumps(readonly),
         'user': json.dumps(user),
         'protocol': json.dumps(protocol)
@@ -323,15 +351,22 @@ def start_gui(
     render_to_file('nginx-site.template', context, nginx_path)
     log('Generating haproxy configuration file.')
     context = {
+        # In juju-core environments "api_pem" and "api_port" are ignored, and
+        # "api_address", included below, is used instead.
         'api_pem': JUJU_PEM,
         'api_port': API_PORT,
+        'legacy_juju': legacy_juju,
         'ssl_cert_path': ssl_cert_path,
-        # Use the same certificate for both HTTPS and Websocket connections.
-        # In the long term, we want separate certs to be used here.
+        # In PyJuju environments, use the same certificate for both HTTPS and
+        # Websocket connections.
         'web_pem': JUJU_PEM,
         'web_port': WEB_PORT,
         'secure': secure
     }
+    if not legacy_juju:
+        # Retrieve the juju-core API server address.
+        context['api_address'] = get_api_address(
+            os.path.join(CURRENT_DIR, '..'))
     render_to_file('haproxy.cfg.template', context, haproxy_path)
     log('Starting Juju GUI.')
     with su('root'):
