@@ -42,6 +42,7 @@ def handle_config_changes(config, diff):
 
     added_or_changed = diff.added_or_changed
     in_staging = config.get('staging')
+    is_legacy_juju = legacy_juju()
 
     # The gui_source_changed and api_branch_changed variables control whether
     # we restart the GUI and the API, respectively, at the end of the function.
@@ -54,7 +55,7 @@ def handle_config_changes(config, diff):
         release_tarball = fetch_gui(
             config['juju-gui-source'], config['command-log-file'])
         setup_gui(release_tarball)
-    if legacy_juju and ('juju-api-branch' in added_or_changed):
+    if is_legacy_juju and ('juju-api-branch' in added_or_changed):
         api_branch_changed = True
         fetch_api(config['juju-api-branch'])
 
@@ -70,7 +71,7 @@ def handle_config_changes(config, diff):
     # Handle changes to the improv server configuration. This step is currently
     # skipped the charm is deployed in a juju-core environment where the
     # staging server is not supported.
-    if legacy_juju:
+    if is_legacy_juju:
         if in_staging:
             staging_properties = set(['staging', 'staging-environment'])
             staging_changed = added_or_changed & staging_properties
@@ -112,7 +113,7 @@ def handle_config_changes(config, diff):
         'secure'])
     gui_changed = added_or_changed & gui_properties
     # Changes on the "staging" option are only relevant in PyJuju environments.
-    staging_changed = legacy_juju and ('staging' in added_or_changed)
+    staging_changed = is_legacy_juju and ('staging' in added_or_changed)
     if gui_changed or staging_changed or ssl_changed or gui_source_changed:
         with su('root'):
             service_control(HAPROXY, STOP)

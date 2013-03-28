@@ -72,8 +72,9 @@ def setup_services():
 def main():
     config = get_config()
     get_dependencies()
+    is_legacy_juju = legacy_juju()
     # juju-core staging is not supported yet.
-    if legacy_juju and config.get('staging'):
+    if is_legacy_juju and config.get('staging'):
         get_staging_dependencies()
     release_tarball = fetch_gui(
         config['juju-gui-source'], config['command-log-file'])
@@ -82,7 +83,7 @@ def main():
     save_or_create_certificates(
         config['ssl-cert-path'], config.get('ssl-cert-contents'),
         config.get('ssl-key-contents'))
-    if legacy_juju:
+    if is_legacy_juju:
         fetch_api(config['juju-api-branch'])
     else:
         cmd_log(apt_get_install(*JUJU_CORE_DEPENDENCIES))

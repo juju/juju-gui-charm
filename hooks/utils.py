@@ -94,7 +94,8 @@ bzr_checkout = command('bzr', 'co', '--lightweight')
 # Whether or not the charm is deployed using juju-core.
 # If juju-core has been used to deploy the charm, an agent.conf file must
 # be present in the charm parent directory.
-legacy_juju = not os.path.exists(os.path.join(CURRENT_DIR, '..', 'agent.conf'))
+legacy_juju = lambda: not os.path.exists(
+    os.path.join(CURRENT_DIR, '..', 'agent.conf'))
 
 
 def _get_build_dependencies():
@@ -315,12 +316,13 @@ def start_gui(
         build_dirname = 'build-prod'
     build_dir = os.path.join(JUJU_GUI_DIR, build_dirname)
     log('Generating the Juju GUI configuration file.')
+    is_legacy_juju = legacy_juju()
     user, password = None, None
-    if legacy_juju and in_staging:
+    if is_legacy_juju and in_staging:
         user, password = 'admin', 'admin'
     else:
         user, password = None, None
-    api_backend = 'python' if legacy_juju else 'go'
+    api_backend = 'python' if is_legacy_juju else 'go'
     if secure:
         protocol = 'wss'
     else:
@@ -350,23 +352,23 @@ def start_gui(
     }
     render_to_file('nginx-site.template', context, nginx_path)
     log('Generating haproxy configuration file.')
+    if is_legacy_juju:
+        # The PyJuju API agent is listening on localhost.
+        api_address = '127.0.0.1:{0}'.format(API_PORT)
+    else:
+        # Retrieve the juju-core API server address.
+        api_address = get_api_address(os.path.join(CURRENT_DIR, '..'))
     context = {
-        # In juju-core environments "api_pem" and "api_port" are ignored, and
-        # "api_address", included below, is used instead.
+        'api_address': api_address,
         'api_pem': JUJU_PEM,
-        'api_port': API_PORT,
-        'legacy_juju': legacy_juju,
+        'legacy_juju': is_legacy_juju,
         'ssl_cert_path': ssl_cert_path,
         # In PyJuju environments, use the same certificate for both HTTPS and
-        # Websocket connections.
+        # WebSocket connections.
         'web_pem': JUJU_PEM,
         'web_port': WEB_PORT,
         'secure': secure
     }
-    if not legacy_juju:
-        # Retrieve the juju-core API server address.
-        context['api_address'] = get_api_address(
-            os.path.join(CURRENT_DIR, '..'))
     render_to_file('haproxy.cfg.template', context, haproxy_path)
     log('Starting Juju GUI.')
     with su('root'):
@@ -382,7 +384,7 @@ def stop(in_staging):
         service_control(HAPROXY, STOP)
         service_control(NGINX, STOP)
         # No need to stop staging or the API agent in juju-core environments.
-        if legacy_juju:
+        if legacy_juju():
             if in_staging:
                 log('Stopping the staging backend.')
                 service_control(IMPROV, STOP)

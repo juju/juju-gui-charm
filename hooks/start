@@ -28,7 +28,7 @@ def main():
     staging = config.get('staging')
     # If juju-core is used, there is no need to start either the staging server
     # (not supported) or the API agent (already included out of the box).
-    if legacy_juju:
+    if legacy_juju():
         if staging:
             start_improv(
                 config['staging-environment'], config['ssl-cert-path'])

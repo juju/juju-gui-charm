@@ -10,16 +10,19 @@ import tempita
 import unittest
 
 import charmhelpers
+import yaml
 
 from utils import (
     _get_by_attr,
     API_PORT,
     cmd_log,
     first_path_in_dir,
+    get_api_address,
     get_release_file_url,
     get_zookeeper_address,
     JUJU_GUI_DIR,
     JUJU_PEM,
+    legacy_juju,
     log_hook,
     parse_source,
     render_to_file,
@@ -77,6 +80,56 @@ class FirstPathInDirTest(unittest.TestCase):
     def test_empty_directory(self):
         # An IndexError is raised if the directory is empty.
         self.assertRaises(IndexError, first_path_in_dir, self.directory)
+
+
+class GetApiAddressTest(unittest.TestCase):
+
+    def setUp(self):
+        self.base_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.base_dir)
+        self.unit_dir = tempfile.mkdtemp(dir=self.base_dir)
+        self.machine_dir = os.path.join(self.base_dir, 'machine-1')
+
+    def test_retrieving_address(self):
+        # The API address is correctly returned.
+        address = 'example.com:17070'
+        os.mkdir(self.machine_dir)
+        with open(os.path.join(self.machine_dir, 'agent.conf'), 'w') as conf:
+            yaml.dump({'apiinfo': {'addrs': [address]}}, conf)
+        self.assertEqual(address, get_api_address(self.unit_dir))
+
+    def test_missing_file(self):
+        # An IOError is raised if the agent configuration file is not found.
+        os.mkdir(self.machine_dir)
+        self.assertRaises(IOError, get_api_address, self.unit_dir)
+
+    def test_missing_directory(self):
+        # An IOError is raised if the machine directory is not found.
+        self.assertRaises(IOError, get_api_address, self.unit_dir)
+
+
+class LegacyJujuTest(unittest.TestCase):
+
+    def setUp(self):
+        self.base_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.base_dir)
+        # Monkey patch utils.CURRENT_DIR.
+        self.original_current_dir = utils.CURRENT_DIR
+        utils.CURRENT_DIR = tempfile.mkdtemp(dir=self.base_dir)
+
+    def tearDown(self):
+        # Restore the original utils.CURRENT_DIR.
+        utils.CURRENT_DIR = self.original_current_dir
+
+    def test_jujucore(self):
+        # If the agent file is found this is a juju-core environment.
+        agent_path = os.path.join(self.base_dir, 'agent.conf')
+        open(agent_path, 'w').close()
+        self.assertFalse(legacy_juju())
+
+    def test_pyjuju(self):
+        # If the agent file does not exist this is a PyJuju environment.
+        self.assertTrue(legacy_juju())
 
 
 def make_collection(attr, values):
@@ -441,8 +494,7 @@ class StartStopTest(unittest.TestCase):
             run=(utils.run, noop),
             unit_get=(utils.unit_get, noop),
             get_zookeeper_address=(
-                utils.get_zookeeper_address, get_zookeeper_address_mock)
-            )
+                utils.get_zookeeper_address, get_zookeeper_address_mock))
         # Apply the patches.
         for fn, fcns in self.functions.items():
             setattr(utils, fn, fcns[1])
