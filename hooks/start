@@ -8,6 +8,7 @@ from charmhelpers import (
 )
 
 from utils import (
+    legacy_juju,
     log_hook,
     start_agent,
     start_gui,
@@ -25,10 +26,14 @@ def open_ports():
 def main():
     config = get_config()
     staging = config.get('staging')
-    if staging:
-        start_improv(config['staging-environment'], config['ssl-cert-path'])
-    else:
-        start_agent(config['ssl-cert-path'])
+    # If juju-core is used, there is no need to start either the staging server
+    # (not supported) or the API agent (already included out of the box).
+    if legacy_juju():
+        if staging:
+            start_improv(
+                config['staging-environment'], config['ssl-cert-path'])
+        else:
+            start_agent(config['ssl-cert-path'])
     start_gui(
         config['juju-gui-console-enabled'], config['login-help'],
         config['read-only'], staging, config['ssl-cert-path'],

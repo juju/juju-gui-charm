@@ -14,13 +14,17 @@ options:
     default: stable
   juju-api-branch:
     description: |
-      The Juju API Bazaar branch (implementing the websocket server).
+      The Juju API Bazaar branch (implementing the WebSocket server).
+      Since juju-core includes the WebSocket API server out of the box, this
+      option is ignored if the charm is deployed using juju-core.
     type: string
     default: lp:~hazmat/juju/rapi-rollup
   staging:
     description: |
       Connect the Juju GUI to the staging backend
       (i.e. a simulated Juju environment).
+      Currently juju-core does not support the staging backend. For this
+      reason, this option is ignored if the charm is deployed using juju-core.
     type: boolean
     default: false
   staging-environment:
@@ -28,6 +32,8 @@ options:
       The environment JSON export used by the staging server. This option can
       be used to change the topology of the simulated Juju environment.
       Possible values are 'sample' and 'large'.
+      Currently juju-core does not support the staging backend. For this
+      reason, this option is ignored if the charm is deployed using juju-core.
     type: string
     default: sample
   juju-gui-console-enabled:

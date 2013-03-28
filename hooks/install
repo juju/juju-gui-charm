@@ -39,6 +39,7 @@ from utils import (
     config_json,
     fetch_api,
     fetch_gui,
+    legacy_juju,
     log_hook,
     get_staging_dependencies,
     save_or_create_certificates,
@@ -49,9 +50,8 @@ from utils import (
 
 CONFIG_FILES = ('haproxy.conf', 'nginx.conf')
 REPOSITORIES = ('ppa:juju-gui/ppa',)
-DEB_DEPENDENCIES = (
-    'curl', 'haproxy', 'nginx', 'openssl',
-)
+DEB_DEPENDENCIES = ('curl', 'haproxy', 'nginx', 'openssl')
+JUJU_CORE_DEPENDENCIES = ('python-yaml',)
 
 
 def get_dependencies():
@@ -72,7 +72,9 @@ def setup_services():
 def main():
     config = get_config()
     get_dependencies()
-    if config.get('staging'):
+    is_legacy_juju = legacy_juju()
+    # juju-core staging is not supported yet.
+    if is_legacy_juju and config.get('staging'):
         get_staging_dependencies()
     release_tarball = fetch_gui(
         config['juju-gui-source'], config['command-log-file'])
@@ -81,7 +83,10 @@ def main():
     save_or_create_certificates(
         config['ssl-cert-path'], config.get('ssl-cert-contents'),
         config.get('ssl-key-contents'))
-    fetch_api(config['juju-api-branch'])
+    if is_legacy_juju:
+        fetch_api(config['juju-api-branch'])
+    else:
+        cmd_log(apt_get_install(*JUJU_CORE_DEPENDENCIES))
     setup_services()
     config_json.set(config)
 

@@ -22,7 +22,13 @@ defaults
 backend juju
     # The Juju WebSocket backend.
     # Re-encrypt outgoing connections.
-    server ws1 127.0.0.1:{{api_port}} ssl ca-file {{api_pem}} verify required check-ssl inter 500ms
+    {{if legacy_juju}}
+        server ws1 {{api_address}} ssl ca-file {{api_pem}} verify required check-ssl inter 500ms
+    {{else}}
+        # Replace "/ws/" with "/" in any request path.
+        reqrep ^([^\ ]*)\ /ws/    \1\ /
+        server ws1 {{api_address}} ssl check-ssl inter 500ms
+    {{endif}}
 
 backend web
     # Web traffic.
@@ -32,7 +38,7 @@ frontend public
     # Redirect all HTTP traffic to HTTPS.
     bind :80
     {{if secure}}
-    redirect scheme https if !{ ssl_fc }
+        redirect scheme https if !{ ssl_fc }
     {{endif}}
     # Handle HTTPS.
     bind :443 ssl crt {{web_pem}}

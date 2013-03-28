@@ -18,6 +18,7 @@ var juju_config = {
   socket_protocol: {{protocol}},
   user: {{user}},
   password: {{password}},
+  apiBackend: {{api_backend}}, // Value can be 'python' or 'go'.
   readOnly: {{readonly}},
   login_help: {{login_help}}
 };
