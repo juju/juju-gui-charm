@@ -69,7 +69,7 @@ def handle_config_changes(config, diff):
             config.get('ssl-key-contents'))
 
     # Handle changes to the improv server configuration. This step is currently
-    # skipped the charm is deployed in a juju-core environment where the
+    # skipped if the charm is deployed in a juju-core environment where the
     # staging server is not supported.
     if is_legacy_juju:
         if in_staging:

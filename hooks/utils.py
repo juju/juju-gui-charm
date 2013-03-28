@@ -364,7 +364,8 @@ def start_gui(
         'legacy_juju': is_legacy_juju,
         'ssl_cert_path': ssl_cert_path,
         # In PyJuju environments, use the same certificate for both HTTPS and
-        # WebSocket connections.
+        # WebSocket connections. In juju-core the system already has the proper
+        # certificate installed.
         'web_pem': JUJU_PEM,
         'web_port': WEB_PORT,
         'secure': secure
