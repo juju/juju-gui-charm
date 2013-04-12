@@ -303,7 +303,8 @@ def start_agent(ssl_cert_path, config_path='/etc/init/juju-api-agent.conf'):
 def start_gui(
         console_enabled, login_help, readonly, in_staging, ssl_cert_path,
         serve_tests, haproxy_path='/etc/haproxy/haproxy.cfg',
-        nginx_path=JUJU_GUI_SITE, config_js_path=None, secure=True):
+        nginx_path=JUJU_GUI_SITE, config_js_path=None, secure=True,
+        sandbox=False):
     """Set up and start the Juju GUI server."""
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
@@ -323,12 +324,14 @@ def start_gui(
         user, password = 'admin', 'admin'
     else:
         user, password = None, None
+
     api_backend = 'python' if is_legacy_juju else 'go'
     if secure:
         protocol = 'wss'
     else:
         log('Running in insecure mode! Port 80 will serve unencrypted.')
         protocol = 'ws'
+
     context = {
         'raw_protocol': protocol,
         'address': unit_get('public-address'),
@@ -338,7 +341,8 @@ def start_gui(
         'api_backend': json.dumps(api_backend),
         'readonly': json.dumps(readonly),
         'user': json.dumps(user),
-        'protocol': json.dumps(protocol)
+        'protocol': json.dumps(protocol),
+        'sandbox': json.dumps(sandbox),
     }
     if config_js_path is None:
         config_js_path = os.path.join(

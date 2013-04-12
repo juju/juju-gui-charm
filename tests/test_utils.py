@@ -598,6 +598,5 @@ class StartStopTest(unittest.TestCase):
             self.service_names, ['haproxy', 'nginx', 'juju-api-agent'])
         self.assertEqual(self.actions, [charmhelpers.STOP] * 3)
 
-
 if __name__ == '__main__':
     unittest.main(verbosity=2)

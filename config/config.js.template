@@ -20,5 +20,6 @@ var juju_config = {
   password: {{password}},
   apiBackend: {{api_backend}}, // Value can be 'python' or 'go'.
   readOnly: {{readonly}},
+  sandbox: {{sandbox}},
   login_help: {{login_help}}
 };

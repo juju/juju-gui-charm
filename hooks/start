@@ -3,43 +3,19 @@
 
 from charmhelpers import (
     get_config,
-    log,
-    open_port,
 )
 
 from utils import (
-    legacy_juju,
     log_hook,
-    start_agent,
-    start_gui,
-    start_improv,
 )
 
-
-def open_ports():
-    """Expose Juju GUI web server (HTTP and HTTPS) ports."""
-    log('Exposing services.')
-    open_port(80)
-    open_port(443)
+from backend import Backend
 
 
 def main():
     config = get_config()
-    staging = config.get('staging')
-    # If juju-core is used, there is no need to start either the staging server
-    # (not supported) or the API agent (already included out of the box).
-    if legacy_juju():
-        if staging:
-            start_improv(
-                config['staging-environment'], config['ssl-cert-path'])
-        else:
-            start_agent(config['ssl-cert-path'])
-    start_gui(
-        config['juju-gui-console-enabled'], config['login-help'],
-        config['read-only'], staging, config['ssl-cert-path'],
-        config['serve-tests'], secure=config['secure'])
-    open_ports()
-
+    backend = Backend(config)
+    backend.start()
 
 if __name__ == '__main__':
     with log_hook():

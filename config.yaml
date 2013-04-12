@@ -93,3 +93,10 @@ options:
       risks.
     type: boolean
     default: true
+  sandbox:
+    description: |
+      Run using an in-memory sandbox rather than a real (or even improv) Juju backend.
+      Sandbox is a client side construct running entirely in the client.
+      type: boolean
+      default: false
+
