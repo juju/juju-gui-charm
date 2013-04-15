@@ -10,15 +10,20 @@ from subprocess import check_call
 # well.  To do so, we need to install the Juju PPA, which we will do with a
 # couple of functions that are actually maintained in python-shelltoolbox.
 import bootstrap_utils
-bootstrap_utils.install_extra_repositories('ppa:juju/pkgs')
 
-# Python dependencies must be installed here so that the charm can import and
-# use required libraries.
-PYTHON_DEPENDENCIES = (
-    'python-apt', 'python-charmhelpers', 'python-launchpadlib', 'python-shelltoolbox',
-    'python-tempita',
-)
-check_call(('apt-get', 'install', '-y') + PYTHON_DEPENDENCIES)
+config = bootstrap_utils.get_config()
+allow_external = config.get('allow-external-sources', True)
+
+if allow_external:
+    bootstrap_utils.install_extra_repositories('ppa:juju/pkgs')
+
+    # Python dependencies must be installed here so that the charm can import and
+    # use required libraries.
+    PYTHON_DEPENDENCIES = (
+        'python-apt', 'python-charmhelpers', 'python-launchpadlib', 'python-shelltoolbox',
+        'python-tempita',
+    )
+    check_call(('apt-get', 'install', '-y') + PYTHON_DEPENDENCIES)
 
 
 # These modules depend on the Python dependencies above being installed so they
