@@ -104,4 +104,4 @@ options:
       Allow access to remote PPAs and external software source. If this is
       False then you must have somehow configured the charms container
       prior to installation.
-      default: true
+    default: true
