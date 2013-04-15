@@ -10,6 +10,8 @@ options:
         will be deployed;
       - a Bazaar branch (e.g. 'lp:juju-gui'): a release will be created and
         deployed from the specified Bazaar branch.
+      - a 'url:' prefixed url (ex: url:http://...) of a specific location
+        to pull a release from.
     type: string
     default: stable
   juju-api-branch:

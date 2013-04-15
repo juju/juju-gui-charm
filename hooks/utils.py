@@ -218,6 +218,8 @@ def parse_source(source):
        - ('trunk', '0.1.0+build.1'): trunk release v0.1.0 bzr revision 1;
        - ('branch', 'lp:juju-gui'): release is made from a branch.
     """
+    if source.startswith('url:'):
+        return 'url', source[4:]
     if source in ('stable', 'trunk'):
         return source, None
     if source.startswith('lp:') or source.startswith('http://'):
@@ -411,11 +413,14 @@ def fetch_gui(juju_gui_source, logpath):
         release_tarball = first_path_in_dir(
             os.path.join(juju_gui_source_dir, 'releases'))
     else:
-        # Retrieve a release from Launchpad.
         log('Retrieving Juju GUI release.')
-        launchpad = Launchpad.login_anonymously('Juju GUI charm', 'production')
-        project = launchpad.projects['juju-gui']
-        file_url = get_release_file_url(project, origin, version_or_branch)
+        if origin == 'url':
+            file_url = version_or_branch
+        else:
+            # Retrieve a release from Launchpad.
+            launchpad = Launchpad.login_anonymously('Juju GUI charm', 'production')
+            project = launchpad.projects['juju-gui']
+            file_url = get_release_file_url(project, origin, version_or_branch)
         log('Downloading release file from %s.' % file_url)
         release_tarball = os.path.join(CURRENT_DIR, 'release.tgz')
         cmd_log(run('curl', '-L', '-o', release_tarball, file_url))
