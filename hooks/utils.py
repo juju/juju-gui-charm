@@ -3,9 +3,19 @@
 __all__ = [
     'AGENT',
     'API_PORT',
-    'bzr_checkout',
-    'cmd_log',
     'CURRENT_DIR',
+    'HAPROXY',
+    'IMPROV',
+    'JUJU_DIR',
+    'JUJU_GUI_DIR',
+    'JUJU_GUI_SITE',
+    'JUJU_PEM',
+    'NGINX',
+    'StopChain',
+    'WEB_PORT',
+    'bzr_checkout',
+    'chain',
+    'cmd_log',
     'fetch_api',
     'fetch_gui',
     'first_path_in_dir',
@@ -13,15 +23,10 @@ __all__ = [
     'get_release_file_url',
     'get_staging_dependencies',
     'get_zookeeper_address',
-    'HAPROXY',
-    'IMPROV',
-    'JUJU_DIR',
-    'JUJU_GUI_DIR',
-    'JUJU_GUI_SITE',
-    'JUJU_PEM',
     'legacy_juju',
     'log_hook',
-    'NGINX',
+    'merge',
+    'overrideable',
     'parse_source',
     'render_to_file',
     'save_or_create_certificates',
@@ -30,8 +35,6 @@ __all__ = [
     'start_agent',
     'start_gui',
     'start_improv',
-    'stop',
-    'WEB_PORT',
 ]
 
 from contextlib import contextmanager
@@ -59,7 +62,6 @@ from charmhelpers import (
     log,
     service_control,
     START,
-    STOP,
     unit_get,
 )
 
@@ -385,22 +387,6 @@ def start_gui(
         service_control(HAPROXY, START)
 
 
-def stop(in_staging):
-    """Stop the Juju API agent."""
-    with su('root'):
-        log('Stopping Juju GUI.')
-        service_control(HAPROXY, STOP)
-        service_control(NGINX, STOP)
-        # No need to stop staging or the API agent in juju-core environments.
-        if legacy_juju():
-            if in_staging:
-                log('Stopping the staging backend.')
-                service_control(IMPROV, STOP)
-            else:
-                log('Stopping API agent.')
-                service_control(AGENT, STOP)
-
-
 def fetch_gui(juju_gui_source, logpath):
     """Retrieve the Juju GUI release/branch."""
     # Retrieve a Juju GUI release.
@@ -523,3 +509,71 @@ def check_packages(*packages):
             continue
         missing.add(pkg_name)
     return missing
+
+
+## Backend support decorators
+class StopChain(Exception):
+    """Stop Processing a chain command without raising
+    another error.
+    """
+
+def chain(name, reverse=False):
+    """Helper method to compose a set of strategy objects into
+    a callable.
+
+    Each method is called in the context of its strategy
+    instance (normal OOP) and its argument is the Backend
+    instance.
+    """
+    # chain method calls through all implementing mixins
+    def method(self):
+        workingset = self.backends
+        if reverse:
+            workingset = reversed(workingset)
+        for backend in workingset:
+            call = backend.__class__.__dict__.get(name)
+            if call:
+                try:
+                    call(backend, self)
+                except StopChain:
+                    break
+
+
+    method.__name__ = name
+    return method
+
+def overrideable(f):
+    """Helper to support very limited overrides for use in testing.
+
+    def foo():
+        return True
+    b = Backend(foo=foo)
+    assert b.foo() is True
+    """
+    name = f.__name__
+    def overridden(self, *args, **kwargs):
+        if name in self.overrides:
+            return self.overrides[name](*args, **kwargs)
+        else:
+            return f(self, *args, **kwargs)
+    overridden.__name__ = name
+    return overridden
+
+def merge(name):
+    """Helper to merge a property from a set of strategy objects
+    into a unified set.
+    """
+    # return merged property from every providing backend as a set
+    @property
+    def method(self):
+        result = set()
+        for backend in self.backends:
+            segment = backend.__class__.__dict__.get(name)
+            if segment and isinstance(segment, (list, tuple, set)):
+                result |= set(segment)
+
+        return result
+    return method
+
+
+

@@ -21,11 +21,14 @@ from utils import (
     IMPROV,
     JUJU_DIR,
     NGINX,
+    chain,
     check_packages,
     cmd_log,
     fetch_api,
     fetch_gui,
     get_config,
+    merge,
+    overrideable,
     parse_source,
     save_or_create_certificates,
     setup_gui,
@@ -70,7 +73,7 @@ class UpstartMixin(object):
 
     def install(self, backend):
         """Set up haproxy and nginx upstart configuration files."""
-        log('Setting up haproxy and nginx start up scripts.')
+        backend.log('Setting up haproxy and nginx start up scripts.')
         config = backend.config
         setup_nginx()
         if backend.different('ssl-cert-path', 'ssl-cert-contents', 'ssl-key-contents'):
@@ -84,13 +87,13 @@ class UpstartMixin(object):
 
     def start(self, backend):
         with su('root'):
-            service_control(HAPROXY, START)
-            service_control(NGINX, START)
+            backend.service_control(NGINX, START)
+            backend.service_control(HAPROXY, START)
 
     def stop(self, backend):
         with su('root'):
-            service_control(HAPROXY, STOP)
-            service_control(NGINX, STOP)
+            backend.service_control(HAPROXY, STOP)
+            backend.service_control(NGINX, STOP)
 
 
 class GuiMixin(object):
@@ -114,12 +117,16 @@ class SandboxBackend(object):
     pass
 
 class PythonBackend(object):
-    def start(self, config):
-        if not config['staging']:
-            start_agent(config['ssl-cert-path'])
+    def install(self, config):
+        if (not os.path.exists(JUJU_DIR) or
+            config.different('staging', 'juju-api-branch')):
+            fetch_api(config['juju-api-branch'])
 
-    def stop(self, config):
-        service_control(AGENT, STOP)
+    def start(self, backend):
+        backend.start_agent(backend['ssl-cert-path'])
+
+    def stop(self, backend):
+        backend.service_control(AGENT, STOP)
 
 class ImprovBackend(object):
     debs = ('zookeeper', )
@@ -129,81 +136,15 @@ class ImprovBackend(object):
             config.different('staging', 'juju-api-branch')):
             fetch_api(config['juju-api-branch'])
 
-    def start(self, config):
-        start_improv(
-            config['staging-environment'], config['ssl-cert-path'])
+    def start(self, backend):
+        backend.start_improv(
+            backend['staging-environment'], backend['ssl-cert-path'])
 
-    def stop(self, config):
-        service_control(IMPROV, STOP)
+    def stop(self, backend):
+        backend.service_control(IMPROV, STOP)
 
 class GoBackend(object):
     debs = ('python-yaml', )
-
-
-
-
-class StopChain(Exception):
-    """Stop Processing a chain command without raising
-    another error.
-    """
-
-def chain(name, reverse=False):
-    """Helper method to compose a set of strategy objects into
-    a callable.
-
-    Each method is called in the context of its strategy
-    instance (normal OOP) and its argument is the Backend
-    instance.
-    """
-    # chain method calls through all implementing mixins
-    def method(self):
-        workingset = self.backends
-        if reverse:
-            workingset = reversed(workingset)
-        for backend in workingset:
-            call = backend.__class__.__dict__.get(name)
-            if call:
-                try:
-                    call(backend, self)
-                except StopChain:
-                    break
-
-
-    method.__name__ = name
-    return method
-
-def overrideable(f):
-    """Helper to support very limited overrides for use in testing.
-
-    def foo():
-        return True
-    b = Backend(foo=foo)
-    assert b.foo() is True
-    """
-    name = f.__name__
-    def overridden(self, *args, **kwargs):
-        if name in self.overrides:
-            return self.overrides[name](*args, **kwargs)
-        else:
-            return f(self, *args, **kwargs)
-    overridden.__name__ = name
-    return overridden
-
-def merge(name):
-    """Helper to merge a property from a set of strategy objects
-    into a unified set.
-    """
-    # return merged property from every providing backend as a set
-    @property
-    def method(self):
-        result = set()
-        for backend in self.backends:
-            segment = backend.__class__.__dict__.get(name)
-            if segment and isinstance(segment, (list, tuple, set)):
-                result |= set(segment)
-
-        return result
-    return method
 
 
 class  Backend(object):
@@ -226,23 +167,24 @@ class  Backend(object):
         self.overrides = overrides
 
         # We always use upstart.
-        backends = [UpstartMixin]
+        backends = []
 
         api = config.get('apiBackend', 'python')
         #serve_tests = config.get('serve-tests', False)
         sandbox = config.get('sandbox', False)
         staging = config.get('staging', False)
 
-        if config.get('use_external_code', True) is not False:
-            backends.insert(0, InstallMixin)
+        backends.append(InstallMixin)
+        backends.append(UpstartMixin)
 
         if api == 'python':
-            backends.append(PythonBackend)
             if staging:
                 if sandbox:
                     backends.append(SandboxBackend)
                 else:
                     backends.append(ImprovBackend)
+            else:
+                backends.append(PythonBackend)
         else:
             if staging:
                 raise ValueError(
@@ -272,6 +214,22 @@ class  Backend(object):
     def check_packages(self, *packages):
         return check_packages(*packages)
 
+    @overrideable
+    def service_control(self, service, action):
+        print "{} service: {}".format(action, service)
+        return service_control(service, action)
+
+    @overrideable
+    def start_agent(self, cert_path):
+        return start_agent(cert_path)
+
+    @overrideable
+    def start_improv(self, stage_env, cert_path):
+        return start_improv(stage_env, cert_path)
+
+    @overrideable
+    def log(self, msg, *args):
+        log(msg, *args)
 
     def different(self, *keys):
         """Return a boolean indicating if the current config

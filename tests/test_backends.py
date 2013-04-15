@@ -25,7 +25,7 @@ class TestBackends(unittest.TestCase):
         self.assertIn('zookeeper', backend.debs)
         self.assertIn('ppa:juju-gui/ppa', backend.repositories)
         self.assertIn('ImprovBackend', self.backendNames(backend))
-        self.assertIn('PythonBackend', self.backendNames(backend))
+        self.assertNotIn('PythonBackend', self.backendNames(backend))
 
 
     def test_get_python_sandbox(self):
