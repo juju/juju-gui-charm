@@ -61,6 +61,7 @@ from charmhelpers import (
     get_config,
     log,
     service_control,
+    RESTART,
     START,
     unit_get,
 )
@@ -383,8 +384,8 @@ def start_gui(
     log('Starting Juju GUI.')
     with su('root'):
         # Start the Juju GUI.
-        service_control(NGINX, START)
-        service_control(HAPROXY, START)
+        service_control(NGINX, RESTART)
+        service_control(HAPROXY, RESTART)
 
 
 def fetch_gui(juju_gui_source, logpath):

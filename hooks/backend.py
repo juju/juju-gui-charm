@@ -6,7 +6,7 @@ from charmhelpers import (
     log,
     open_port,
     service_control,
-    START,
+    RESTART,
     STOP,
 )
 from shelltoolbox import (
@@ -27,6 +27,7 @@ from utils import (
     fetch_api,
     fetch_gui,
     get_config,
+    legacy_juju,
     merge,
     overrideable,
     parse_source,
@@ -87,8 +88,8 @@ class UpstartMixin(object):
 
     def start(self, backend):
         with su('root'):
-            backend.service_control(NGINX, START)
-            backend.service_control(HAPROXY, START)
+            backend.service_control(NGINX, RESTART)
+            backend.service_control(HAPROXY, RESTART)
 
     def stop(self, backend):
         with su('root'):
@@ -167,15 +168,11 @@ class  Backend(object):
         self.overrides = overrides
 
         # We always use upstart.
-        backends = []
+        backends = [InstallMixin, UpstartMixin]
 
-        api = config.get('apiBackend', 'python')
-        #serve_tests = config.get('serve-tests', False)
+        api = legacy_juju() and "python" or "go"
         sandbox = config.get('sandbox', False)
         staging = config.get('staging', False)
-
-        backends.append(InstallMixin)
-        backends.append(UpstartMixin)
 
         if api == 'python':
             if staging:
@@ -216,16 +213,15 @@ class  Backend(object):
 
     @overrideable
     def service_control(self, service, action):
-        print "{} service: {}".format(action, service)
-        return service_control(service, action)
+        service_control(service, action)
 
     @overrideable
     def start_agent(self, cert_path):
-        return start_agent(cert_path)
+        start_agent(cert_path)
 
     @overrideable
     def start_improv(self, stage_env, cert_path):
-        return start_improv(stage_env, cert_path)
+        start_improv(stage_env, cert_path)
 
     @overrideable
     def log(self, msg, *args):
