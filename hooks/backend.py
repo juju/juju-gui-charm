@@ -105,14 +105,13 @@ class GuiMixin(object):
     repositories = ('ppa:juju-gui/ppa',)
 
     def start(self, config):
-        if config.different('staging', 'sandbox', *self.gui_properties):
-            start_gui(
-                config['juju-gui-console-enabled'], config['login-help'],
-                config['read-only'], config['staging'], config['ssl-cert-path'],
-                config['serve-tests'], secure=config['secure'],
-                sandbox=config['sandbox'])
-            open_port(80)
-            open_port(443)
+        start_gui(
+            config['juju-gui-console-enabled'], config['login-help'],
+            config['read-only'], config['staging'], config['ssl-cert-path'],
+            config['serve-tests'], secure=config['secure'],
+            sandbox=config['sandbox'])
+        open_port(80)
+        open_port(443)
 
 class SandboxBackend(object):
     pass
