@@ -97,6 +97,11 @@ options:
     description: |
       Run using an in-memory sandbox rather than a real (or even improv) Juju backend.
       Sandbox is a client side construct running entirely in the client.
-      type: boolean
-      default: false
-
+    type: boolean
+    default: false
+  allow-external-sources:
+    description: |
+      Allow access to remote PPAs and external software source. If this is
+      False then you must have somehow configured the charms container
+      prior to installation.
+      default: true

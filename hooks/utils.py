@@ -62,6 +62,8 @@ from charmhelpers import (
     STOP,
     unit_get,
 )
+
+import apt
 import tempita
 
 
@@ -504,3 +506,20 @@ def save_or_create_certificates(
     with open(pem_path, 'w') as pem_file:
         shutil.copyfileobj(open(key_path), pem_file)
         shutil.copyfileobj(open(crt_path), pem_file)
+
+
+def check_packages(*packages):
+    """Given a list of packages, return the packages which are not installed.
+    """
+    cache = apt.Cache()
+    missing = set()
+    for pkg_name in packages:
+        try:
+            pkg = cache[pkg_name]
+        except KeyError:
+            missing.add(pkg_name)
+            continue
+        if pkg.is_installed:
+            continue
+        missing.add(pkg_name)
+    return missing

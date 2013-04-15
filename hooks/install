@@ -15,7 +15,7 @@ bootstrap_utils.install_extra_repositories('ppa:juju/pkgs')
 # Python dependencies must be installed here so that the charm can import and
 # use required libraries.
 PYTHON_DEPENDENCIES = (
-    'python-charmhelpers', 'python-launchpadlib', 'python-shelltoolbox',
+    'python-apt', 'python-charmhelpers', 'python-launchpadlib', 'python-shelltoolbox',
     'python-tempita',
 )
 check_call(('apt-get', 'install', '-y') + PYTHON_DEPENDENCIES)
@@ -39,6 +39,7 @@ def main():
     config = get_config()
     backend = Backend(config)
     backend.install()
+    # Store current configuration.
     config_json.set(config)
 
 

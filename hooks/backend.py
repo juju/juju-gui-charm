@@ -19,10 +19,14 @@ from utils import (
     AGENT,
     HAPROXY,
     IMPROV,
+    JUJU_DIR,
     NGINX,
+    check_packages,
     cmd_log,
     fetch_api,
     fetch_gui,
+    get_config,
+    parse_source,
     save_or_create_certificates,
     setup_gui,
     setup_nginx,
@@ -38,26 +42,42 @@ import shutil
 class InstallMixin(object):
     def install(self, backend):
         config = backend.config
-        cmd_log(install_extra_repositories(backend.repositories))
-        cmd_log(apt_get_install(backend.debs))
+        allow_external = backend['allow-external-sources']
+        missing = backend.check_packages(*backend.debs)
+        if missing:
+            if allow_external is True:
+                cmd_log(install_extra_repositories(*backend.repositories))
+                cmd_log(apt_get_install(*backend.debs))
+            else:
+                raise RuntimeError(
+                    "Unable to retrieve required packages: {}".format(missing))
+
+
         if backend.different('juju-gui-source'):
+            origin, version_or_branch = parse_source(config['juju-gui-source'])
+            if not allow_external and origin == "branch":
+                raise RuntimeError(
+                    "Unable to fetch requested version of Juju Gui due to " \
+                    "allow_external_sources being false in charm config.")
+
             release_tarball = fetch_gui(
                 config['juju-gui-source'], config['command-log-file'])
-        setup_gui(release_tarball)
+            setup_gui(release_tarball)
+
+class UpstartMixin(object):
+    upstart_scripts = ('haproxy.conf', 'nginx.conf')
+    debs = ('curl', 'openssl', 'nginx', 'haproxy')
+
+    def install(self, backend):
+        """Set up haproxy and nginx upstart configuration files."""
+        log('Setting up haproxy and nginx start up scripts.')
+        config = backend.config
         setup_nginx()
         if backend.different('ssl-cert-path', 'ssl-cert-contents', 'ssl-key-contents'):
             save_or_create_certificates(
                 config['ssl-cert-path'], config.get('ssl-cert-contents'),
                 config.get('ssl-key-contents'))
 
-class UpstartMixin(object):
-    upstart_scripts = ('haproxy.conf', 'nginx.conf')
-    dependencies = ('nginx', 'haproxy')
-    debs = ('curl', 'openssl')
-
-    def install(self, backend):
-        """Set up haproxy and nginx upstart configuration files."""
-        log('Setting up haproxy and nginx start up scripts.')
         source_dir = os.path.join(os.path.dirname(__file__),  '..', 'config')
         for config_file in backend.upstart_scripts:
             shutil.copy(os.path.join(source_dir, config_file), '/etc/init/')
@@ -78,6 +98,8 @@ class GuiMixin(object):
         'juju-gui-console-enabled', 'login-help', 'read-only',
         'serve-tests', 'secure'])
 
+    repositories = ('ppa:juju-gui/ppa',)
+
     def start(self, config):
         if config.different('staging', 'sandbox', *self.gui_properties):
             start_gui(
@@ -88,27 +110,24 @@ class GuiMixin(object):
             open_port(80)
             open_port(443)
 
-
 class SandboxBackend(object):
     pass
 
 class PythonBackend(object):
-    repositories = ('ppa:juju-gui/ppa',)
-    build_dependencies = (
-        'bzr', 'imagemagick', 'make', 'nodejs', 'npm')
-
     def start(self, config):
-        start_agent(config['ssl-cert-path'])
+        if not config['staging']:
+            start_agent(config['ssl-cert-path'])
 
     def stop(self, config):
         service_control(AGENT, STOP)
 
 class ImprovBackend(object):
-    staging_dependencies = ('zookeeper', )
+    debs = ('zookeeper', )
 
     def install(self, config):
-        if config.different('juju-api-branch'):
-            fetch_api(config(['juju-api-branch']))
+        if (not os.path.exists(JUJU_DIR) or
+            config.different('staging', 'juju-api-branch')):
+            fetch_api(config['juju-api-branch'])
 
     def start(self, config):
         start_improv(
@@ -153,6 +172,23 @@ def chain(name, reverse=False):
     method.__name__ = name
     return method
 
+def overrideable(f):
+    """Helper to support very limited overrides for use in testing.
+
+    def foo():
+        return True
+    b = Backend(foo=foo)
+    assert b.foo() is True
+    """
+    name = f.__name__
+    def overridden(self, *args, **kwargs):
+        if name in self.overrides:
+            return self.overrides[name](*args, **kwargs)
+        else:
+            return f(self, *args, **kwargs)
+    overridden.__name__ = name
+    return overridden
+
 def merge(name):
     """Helper to merge a property from a set of strategy objects
     into a unified set.
@@ -176,19 +212,21 @@ class  Backend(object):
     comes from the JSON de-serialization of config.json in JujuGUI).
 
     """
-    def __init__(self, config, prev_config=None):
+    def __init__(self, config=None, prev_config=None, **overrides):
         """
         Backends function through composition. __init__ becomes the
         factory method to generate a selection of stragegy classes
         to use together to implement the backend proper."""
         # Ingest the config and build out the ordered list of
         # backend elements to include
+        if config is None:
+            config = get_config()
         self.config = config
         self.prev_config = prev_config
-
+        self.overrides = overrides
 
         # We always use upstart.
-        backends = [InstallMixin, UpstartMixin]
+        backends = [UpstartMixin]
 
         api = config.get('apiBackend', 'python')
         #serve_tests = config.get('serve-tests', False)
@@ -202,9 +240,9 @@ class  Backend(object):
             backends.append(PythonBackend)
             if staging:
                 if sandbox:
-                    backends.insert(0, SandboxBackend)
+                    backends.append(SandboxBackend)
                 else:
-                    backends.insert(0, ImprovBackend)
+                    backends.append(ImprovBackend)
         else:
             if staging:
                 raise ValueError(
@@ -215,7 +253,7 @@ class  Backend(object):
             backends.append(GoBackend)
 
         # All backends can manage the gui.
-        backends.insert(0, GuiMixin)
+        backends.append(GuiMixin)
 
         # record our choice mapping classes to instances
         for i, b in enumerate(backends):
@@ -224,7 +262,16 @@ class  Backend(object):
         self.backends = backends
 
     def __getitem__(self, key):
-        return self.config[key]
+        try:
+            return self.config[key]
+        except KeyError:
+            print("Unable to extract config key '%s' from %s" % (key, self.config))
+            raise
+
+    @overrideable
+    def check_packages(self, *packages):
+        return check_packages(*packages)
+
 
     def different(self, *keys):
         """Return a boolean indicating if the current config
@@ -235,10 +282,11 @@ class  Backend(object):
             return True
 
         for key in keys:
-            current = self[key]
+            current = self.config.get(key)
             prev = self.prev_config.get(key)
-            r = current == prev
-            if r: return True
+            r = current != prev
+            if r:
+                return True
         return False
 
 

@@ -22,20 +22,6 @@ from utils import (
 from backend import Backend
 
 
-def handle_config_changes(config, diff):
-    # Handle all configuration file changes.
-    log('Updating configuration.')
-    prev_config = config_json.get()
-    backend = Backend(config, prev_config)
-
-    # Woot
-    if prev_config:
-        prev_backend = Backend(prev_config)
-        # Stop whatever the old config was.
-        prev_backend.stop()
-    backend.install()
-    backend.start()
-
 def main():
     config = get_config()
     prev_config = config_json.get()
@@ -44,7 +30,19 @@ def main():
     if not diff.modified:
         log("No configuration changes, exiting.")
         sys.exit(0)
-    handle_config_changes(config, diff)
+
+    log('Updating configuration.')
+    backend = Backend(config, prev_config)
+
+    # Woot
+    if prev_config:
+        # Stop whatever the old config was.
+        prev_backend = Backend(prev_config)
+        prev_backend.stop()
+    backend.install()
+    backend.start()
+
+    # Record new configuration
     config_json.set(config)
 
 
