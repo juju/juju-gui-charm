@@ -1,7 +1,11 @@
 import unittest
 
 from backend import Backend
+from contextlib import contextmanager
 
+import charmhelpers
+import tempfile
+import utils
 
 class TestBackends(unittest.TestCase):
     """
@@ -30,13 +34,13 @@ class TestBackends(unittest.TestCase):
 
     def test_get_python_sandbox(self):
         config = {
-            "sandbox": True
+            "sandbox": True,
+            "staging": True,
         }
         backend = Backend(config)
         self.assertIn("nginx", backend.debs)
         self.assertNotIn('zookeeper', backend.debs)
         self.assertNotIn('ImprovBackend', self.backendNames(backend))
-        self.assertIn('PythonBackend', self.backendNames(backend))
 
 
     def test_allow_external_sources_false(self):
@@ -52,8 +56,3 @@ class TestBackends(unittest.TestCase):
             backend.install()
             self.assertTrue(str(err).startswith("Unable to fetch"))
 
-
-
-
-if __name__ == '__main__':
-    unittest.main()
