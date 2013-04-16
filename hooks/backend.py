@@ -30,7 +30,6 @@ from utils import (
     legacy_juju,
     merge,
     overrideable,
-    parse_source,
     save_or_create_certificates,
     setup_gui,
     setup_nginx,
@@ -46,24 +45,14 @@ import shutil
 class InstallMixin(object):
     def install(self, backend):
         config = backend.config
-        allow_external = backend['allow-external-sources']
+        allow_repos = backend['allow-additional-deb-repositories']
         missing = backend.check_packages(*backend.debs)
         if missing:
-            if allow_external is True:
+            if allow_repos is True:
                 cmd_log(install_extra_repositories(*backend.repositories))
-                cmd_log(apt_get_install(*backend.debs))
-            else:
-                raise RuntimeError(
-                    "Unable to retrieve required packages: {}".format(missing))
-
+            cmd_log(apt_get_install(*backend.debs))
 
         if backend.different('juju-gui-source'):
-            origin, version_or_branch = parse_source(config['juju-gui-source'])
-            if not allow_external and origin == "branch":
-                raise RuntimeError(
-                    "Unable to fetch requested version of Juju Gui due to " \
-                    "allow_external_sources being false in charm config.")
-
             release_tarball = fetch_gui(
                 config['juju-gui-source'], config['command-log-file'])
             setup_gui(release_tarball)

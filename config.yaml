@@ -101,10 +101,9 @@ options:
       Sandbox is a client side construct running entirely in the client.
     type: boolean
     default: false
-  allow-external-sources:
+  allow-additional-deb-repositories:
     description: |
-      Allow access to remote PPAs and external software source. If this is
-      False then you must have somehow configured the charms container
-      prior to installation.
+      Allow access to remote PPAs. If this is False then you must have somehow
+      configured package sources prior to installation.
     type: boolean
     default: true

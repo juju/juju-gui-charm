@@ -1,11 +1,6 @@
 import unittest
 
 from backend import Backend
-from contextlib import contextmanager
-
-import charmhelpers
-import tempfile
-import utils
 
 class TestBackends(unittest.TestCase):
     """
@@ -41,18 +36,4 @@ class TestBackends(unittest.TestCase):
         self.assertIn("nginx", backend.debs)
         self.assertNotIn('zookeeper', backend.debs)
         self.assertNotIn('ImprovBackend', self.backendNames(backend))
-
-
-    def test_allow_external_sources_false(self):
-        # Turn off external software access and request a branch
-        config = {
-            "juju-gui-source": "lp:juju-gui",
-            "allow-external-sources": False
-        }
-        def check_packages(*args):
-            return None
-        backend = Backend(config, check_packages=check_packages)
-        with self.assertRaises(RuntimeError) as err:
-            backend.install()
-            self.assertTrue(str(err).startswith("Unable to fetch"))
 

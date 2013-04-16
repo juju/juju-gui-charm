@@ -14,28 +14,27 @@ import bootstrap_utils
 config = bootstrap_utils.get_config()
 allow_external = True
 try:
-    allow_external = config.get('allow-external-sources', True)
+    allow_repos = config.get('allow-additional-deb-repositories', True)
 except Exception:
     pass
 
-if allow_external:
+if allow_repos:
     bootstrap_utils.install_extra_repositories('ppa:juju/pkgs')
 
-    # Python dependencies must be installed here so that the charm can import and
-    # use required libraries.
-    PYTHON_DEPENDENCIES = (
-        'python-apt', 'python-charmhelpers', 'python-launchpadlib', 'python-shelltoolbox',
-        'python-tempita',
-    )
-    check_call(('apt-get', 'install', '-y') + PYTHON_DEPENDENCIES)
+# Python dependencies must be installed here so that the charm can import and
+# use required libraries.
+PYTHON_DEPENDENCIES = (
+    'python-apt', 'python-charmhelpers', 'python-launchpadlib', 'python-shelltoolbox',
+    'python-tempita',
+)
+check_call(('apt-get', 'install', '-y') + PYTHON_DEPENDENCIES)
 
 
 try:
     import charmhelpers
 except ImportError:
     print """"Missing required dependencies. Validate
-    allow-external-sources: True
-    or install missing dependencies.
+    allow-additional-deb-repositories: True
     """
     raise
 
