@@ -11,6 +11,7 @@ from charmhelpers import (
 )
 from shelltoolbox import (
     apt_get_install,
+    command,
     install_extra_repositories,
     su,
 )
@@ -42,14 +43,14 @@ import os
 import shutil
 
 
+apt_get = command('apt-get')
+
 class InstallMixin(object):
     def install(self, backend):
         config = backend.config
-        allow_repos = backend['allow-additional-deb-repositories']
         missing = backend.check_packages(*backend.debs)
         if missing:
-            if allow_repos is True:
-                cmd_log(install_extra_repositories(*backend.repositories))
+            cmd_log(backend.install_extra_repositories(*backend.repositories))
             cmd_log(apt_get_install(*backend.debs))
 
         if backend.different('juju-gui-source'):
@@ -214,6 +215,14 @@ class  Backend(object):
     @overrideable
     def log(self, msg, *args):
         log(msg, *args)
+
+    @overrideable
+    def install_extra_repositories(self, *packages):
+        if self.config.get('allow-additional-deb-repositories', True):
+            install_extra_repositories(*packages)
+        else:
+            apt_get('update')
+
 
     def different(self, *keys):
         """Return a boolean indicating if the current config
