@@ -3,6 +3,7 @@
 # we need here.
 
 import subprocess
+import yaml
 
 try:
     import shelltoolbox
@@ -50,5 +51,8 @@ except ImportError:
             run('apt-add-repository', assume_yes, repository)
         run('apt-get', 'clean')
         run('apt-get', 'update')
+
 else:
     install_extra_repositories = shelltoolbox.install_extra_repositories
+    run = shelltoolbox.run
+

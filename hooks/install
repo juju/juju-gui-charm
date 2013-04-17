@@ -1,10 +1,8 @@
 #!/usr/bin/env python2
 # -*- python -*-
 
-import os
-import shutil
 from subprocess import check_call
-
+import yaml
 
 # If the user's environment has "juju-origin: ppa" set, they will
 # automatically have access to python-charmhelpers and python-shelltoolbox.
@@ -12,82 +10,38 @@ from subprocess import check_call
 # well.  To do so, we need to install the Juju PPA, which we will do with a
 # couple of functions that are actually maintained in python-shelltoolbox.
 import bootstrap_utils
-bootstrap_utils.install_extra_repositories('ppa:juju/pkgs')
+
+def get_config():
+    output = bootstrap_utils.run('config-get')
+    return yaml.safe_load(output)
+
+config = get_config()
+allow_repos = config.get('allow-additional-deb-repositories', True)
+if allow_repos:
+    bootstrap_utils.install_extra_repositories('ppa:juju/pkgs')
 
 # Python dependencies must be installed here so that the charm can import and
 # use required libraries.
 PYTHON_DEPENDENCIES = (
-    'python-charmhelpers', 'python-launchpadlib', 'python-shelltoolbox',
+    'python-apt', 'python-charmhelpers', 'python-launchpadlib', 'python-shelltoolbox',
     'python-tempita',
 )
 check_call(('apt-get', 'install', '-y') + PYTHON_DEPENDENCIES)
 
 
-# These modules depend on the Python dependencies above being installed so they
-# must not be imported until those packages are available.
-from charmhelpers import (
-    get_config,
-    log,
-)
-from shelltoolbox import (
-    apt_get_install,
-    install_extra_repositories,
-)
-
 from utils import (
-    cmd_log,
     config_json,
-    fetch_api,
-    fetch_gui,
-    legacy_juju,
     log_hook,
-    get_staging_dependencies,
-    save_or_create_certificates,
-    setup_gui,
-    setup_nginx,
 )
 
-
-CONFIG_FILES = ('haproxy.conf', 'nginx.conf')
-REPOSITORIES = ('ppa:juju-gui/ppa',)
-DEB_DEPENDENCIES = ('curl', 'haproxy', 'nginx', 'openssl')
-JUJU_CORE_DEPENDENCIES = ('python-yaml',)
-
-
-def get_dependencies():
-    """Install deb dependencies."""
-    log('Installing dependencies.')
-    cmd_log(install_extra_repositories(*REPOSITORIES))
-    cmd_log(apt_get_install(*DEB_DEPENDENCIES))
-
-
-def setup_services():
-    """Set up haproxy and nginx upstart configuration files."""
-    log('Setting up haproxy and nginx start up scripts.')
-    source_dir = os.path.join(os.path.dirname(__file__),  '..', 'config')
-    for config_file in CONFIG_FILES:
-        shutil.copy(os.path.join(source_dir, config_file), '/etc/init/')
+from backend import Backend
 
 
 def main():
     config = get_config()
-    get_dependencies()
-    is_legacy_juju = legacy_juju()
-    # juju-core staging is not supported yet.
-    if is_legacy_juju and config.get('staging'):
-        get_staging_dependencies()
-    release_tarball = fetch_gui(
-        config['juju-gui-source'], config['command-log-file'])
-    setup_gui(release_tarball)
-    setup_nginx()
-    save_or_create_certificates(
-        config['ssl-cert-path'], config.get('ssl-cert-contents'),
-        config.get('ssl-key-contents'))
-    if is_legacy_juju:
-        fetch_api(config['juju-api-branch'])
-    else:
-        cmd_log(apt_get_install(*JUJU_CORE_DEPENDENCIES))
-    setup_services()
+    backend = Backend(config)
+    backend.install()
+    # Store current configuration.
     config_json.set(config)
 
 

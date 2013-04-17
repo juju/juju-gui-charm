@@ -9,7 +9,10 @@ options:
       - a trunk version (e.g '0.1.0+build.1'): the specified trunk version
         will be deployed;
       - a Bazaar branch (e.g. 'lp:juju-gui'): a release will be created and
-        deployed from the specified Bazaar branch.
+        deployed from the specified Bazaar branch. 'http://' prefixed branches
+        work as well.
+      - a 'url:' prefixed url (ex: url:http://...) of a specific location
+        to pull a release from.
     type: string
     default: stable
   juju-api-branch:
@@ -91,5 +94,21 @@ options:
       In order to run the GUI over a non secure connection (HTTP) set this flag
       to false. Do not set this property unless you understand and accept the
       risks.
+    type: boolean
+    default: true
+  sandbox:
+    description: |
+      Run using an in-memory sandbox rather than a real (or even improv) Juju backend.
+      Sandbox is a client side construct running entirely in the client. Sandbox doesn't
+      currently support imported environment simulation and is exclusive to the staging: true
+      configuration. If staging is true it will be used in preference to sandbox at this time.
+    type: boolean
+    default: false
+  allow-additional-deb-repositories:
+    description: |
+      Allow access to remote PPAs. If this is False then you must have somehow
+      configured the configured package sources to include the packages that
+      the GUI needs.  This will be made more explicit soon.  For now, look in
+      the source: hooks/install and hooks/backend.py in particular.
     type: boolean
     default: true

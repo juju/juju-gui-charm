@@ -30,7 +30,6 @@ from utils import (
     start_agent,
     start_gui,
     start_improv,
-    stop,
     WEB_PORT,
 )
 # Import the whole utils package for monkey patching.
@@ -544,7 +543,7 @@ class StartStopTest(unittest.TestCase):
             config_js_path=config_js_file.name)
         self.assertEqual(self.svc_ctl_call_count, 2)
         self.assertEqual(self.service_names, ['nginx', 'haproxy'])
-        self.assertEqual(self.actions, [charmhelpers.START] * 2)
+        self.assertEqual(self.actions, [charmhelpers.RESTART] * 2)
         haproxy_conf = haproxy_file.read()
         self.assertIn('ca-base {0}'.format(ssl_cert_path), haproxy_conf)
         self.assertIn('crt-base {0}'.format(ssl_cert_path), haproxy_conf)
@@ -583,20 +582,6 @@ class StartStopTest(unittest.TestCase):
         haproxy_conf = haproxy_file.read()
         # The insecure approach eliminates the https redirect.
         self.assertNotIn('redirect scheme https', haproxy_conf)
-
-    def test_stop_staging(self):
-        stop(True)
-        self.assertEqual(self.svc_ctl_call_count, 3)
-        self.assertEqual(
-            self.service_names, ['haproxy', 'nginx', 'juju-api-improv'])
-        self.assertEqual(self.actions, [charmhelpers.STOP] * 3)
-
-    def test_stop_production(self):
-        stop(False)
-        self.assertEqual(self.svc_ctl_call_count, 3)
-        self.assertEqual(
-            self.service_names, ['haproxy', 'nginx', 'juju-api-agent'])
-        self.assertEqual(self.actions, [charmhelpers.STOP] * 3)
 
 
 if __name__ == '__main__':

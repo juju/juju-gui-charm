@@ -3,9 +3,19 @@
 __all__ = [
     'AGENT',
     'API_PORT',
-    'bzr_checkout',
-    'cmd_log',
     'CURRENT_DIR',
+    'HAPROXY',
+    'IMPROV',
+    'JUJU_DIR',
+    'JUJU_GUI_DIR',
+    'JUJU_GUI_SITE',
+    'JUJU_PEM',
+    'NGINX',
+    'StopChain',
+    'WEB_PORT',
+    'bzr_checkout',
+    'chain',
+    'cmd_log',
     'fetch_api',
     'fetch_gui',
     'first_path_in_dir',
@@ -13,15 +23,10 @@ __all__ = [
     'get_release_file_url',
     'get_staging_dependencies',
     'get_zookeeper_address',
-    'HAPROXY',
-    'IMPROV',
-    'JUJU_DIR',
-    'JUJU_GUI_DIR',
-    'JUJU_GUI_SITE',
-    'JUJU_PEM',
     'legacy_juju',
     'log_hook',
-    'NGINX',
+    'merge',
+    'overrideable',
     'parse_source',
     'render_to_file',
     'save_or_create_certificates',
@@ -30,8 +35,6 @@ __all__ = [
     'start_agent',
     'start_gui',
     'start_improv',
-    'stop',
-    'WEB_PORT',
 ]
 
 from contextlib import contextmanager
@@ -58,10 +61,12 @@ from charmhelpers import (
     get_config,
     log,
     service_control,
+    RESTART,
     START,
-    STOP,
     unit_get,
 )
+
+import apt
 import tempita
 
 
@@ -213,6 +218,8 @@ def parse_source(source):
        - ('trunk', '0.1.0+build.1'): trunk release v0.1.0 bzr revision 1;
        - ('branch', 'lp:juju-gui'): release is made from a branch.
     """
+    if source.startswith('url:'):
+        return 'url', source[4:]
     if source in ('stable', 'trunk'):
         return source, None
     if source.startswith('lp:') or source.startswith('http://'):
@@ -303,7 +310,8 @@ def start_agent(ssl_cert_path, config_path='/etc/init/juju-api-agent.conf'):
 def start_gui(
         console_enabled, login_help, readonly, in_staging, ssl_cert_path,
         serve_tests, haproxy_path='/etc/haproxy/haproxy.cfg',
-        nginx_path=JUJU_GUI_SITE, config_js_path=None, secure=True):
+        nginx_path=JUJU_GUI_SITE, config_js_path=None, secure=True,
+        sandbox=False):
     """Set up and start the Juju GUI server."""
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
@@ -323,12 +331,14 @@ def start_gui(
         user, password = 'admin', 'admin'
     else:
         user, password = None, None
+
     api_backend = 'python' if is_legacy_juju else 'go'
     if secure:
         protocol = 'wss'
     else:
         log('Running in insecure mode! Port 80 will serve unencrypted.')
         protocol = 'ws'
+
     context = {
         'raw_protocol': protocol,
         'address': unit_get('public-address'),
@@ -338,7 +348,8 @@ def start_gui(
         'api_backend': json.dumps(api_backend),
         'readonly': json.dumps(readonly),
         'user': json.dumps(user),
-        'protocol': json.dumps(protocol)
+        'protocol': json.dumps(protocol),
+        'sandbox': json.dumps(sandbox),
     }
     if config_js_path is None:
         config_js_path = os.path.join(
@@ -375,24 +386,8 @@ def start_gui(
     log('Starting Juju GUI.')
     with su('root'):
         # Start the Juju GUI.
-        service_control(NGINX, START)
-        service_control(HAPROXY, START)
-
-
-def stop(in_staging):
-    """Stop the Juju API agent."""
-    with su('root'):
-        log('Stopping Juju GUI.')
-        service_control(HAPROXY, STOP)
-        service_control(NGINX, STOP)
-        # No need to stop staging or the API agent in juju-core environments.
-        if legacy_juju():
-            if in_staging:
-                log('Stopping the staging backend.')
-                service_control(IMPROV, STOP)
-            else:
-                log('Stopping API agent.')
-                service_control(AGENT, STOP)
+        service_control(NGINX, RESTART)
+        service_control(HAPROXY, RESTART)
 
 
 def fetch_gui(juju_gui_source, logpath):
@@ -418,11 +413,14 @@ def fetch_gui(juju_gui_source, logpath):
         release_tarball = first_path_in_dir(
             os.path.join(juju_gui_source_dir, 'releases'))
     else:
-        # Retrieve a release from Launchpad.
         log('Retrieving Juju GUI release.')
-        launchpad = Launchpad.login_anonymously('Juju GUI charm', 'production')
-        project = launchpad.projects['juju-gui']
-        file_url = get_release_file_url(project, origin, version_or_branch)
+        if origin == 'url':
+            file_url = version_or_branch
+        else:
+            # Retrieve a release from Launchpad.
+            launchpad = Launchpad.login_anonymously('Juju GUI charm', 'production')
+            project = launchpad.projects['juju-gui']
+            file_url = get_release_file_url(project, origin, version_or_branch)
         log('Downloading release file from %s.' % file_url)
         release_tarball = os.path.join(CURRENT_DIR, 'release.tgz')
         cmd_log(run('curl', '-L', '-o', release_tarball, file_url))
@@ -500,3 +498,88 @@ def save_or_create_certificates(
     with open(pem_path, 'w') as pem_file:
         shutil.copyfileobj(open(key_path), pem_file)
         shutil.copyfileobj(open(crt_path), pem_file)
+
+
+def check_packages(*packages):
+    """Given a list of packages, return the packages which are not installed.
+    """
+    cache = apt.Cache()
+    missing = set()
+    for pkg_name in packages:
+        try:
+            pkg = cache[pkg_name]
+        except KeyError:
+            missing.add(pkg_name)
+            continue
+        if pkg.is_installed:
+            continue
+        missing.add(pkg_name)
+    return missing
+
+
+## Backend support decorators
+class StopChain(Exception):
+    """Stop Processing a chain command without raising
+    another error.
+    """
+
+def chain(name, reverse=False):
+    """Helper method to compose a set of strategy objects into
+    a callable.
+
+    Each method is called in the context of its strategy
+    instance (normal OOP) and its argument is the Backend
+    instance.
+    """
+    # chain method calls through all implementing mixins
+    def method(self):
+        workingset = self.backends
+        if reverse:
+            workingset = reversed(workingset)
+        for backend in workingset:
+            call = backend.__class__.__dict__.get(name)
+            if call:
+                try:
+                    call(backend, self)
+                except StopChain:
+                    break
+
+
+    method.__name__ = name
+    return method
+
+def overrideable(f):
+    """Helper to support very limited overrides for use in testing.
+
+    def foo():
+        return True
+    b = Backend(foo=foo)
+    assert b.foo() is True
+    """
+    name = f.__name__
+    def overridden(self, *args, **kwargs):
+        if name in self.overrides:
+            return self.overrides[name](*args, **kwargs)
+        else:
+            return f(self, *args, **kwargs)
+    overridden.__name__ = name
+    return overridden
+
+def merge(name):
+    """Helper to merge a property from a set of strategy objects
+    into a unified set.
+    """
+    # return merged property from every providing backend as a set
+    @property
+    def method(self):
+        result = set()
+        for backend in self.backends:
+            segment = backend.__class__.__dict__.get(name)
+            if segment and isinstance(segment, (list, tuple, set)):
+                result |= set(segment)
+
+        return result
+    return method
+
+
+
