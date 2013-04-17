@@ -52,8 +52,7 @@ except ImportError:
         run('apt-get', 'clean')
         run('apt-get', 'update')
 
-    def get_config():
-        output = run('config-get')
-        return yaml.safe_load(output)
 else:
     install_extra_repositories = shelltoolbox.install_extra_repositories
+    run = shelltoolbox.run
+

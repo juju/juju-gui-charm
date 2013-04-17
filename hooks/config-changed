@@ -34,12 +34,11 @@ def main():
     log('Updating configuration.')
     backend = Backend(config, prev_config)
 
-    # Woot
+    backend.install()
     if prev_config:
         # Stop whatever the old config was.
         prev_backend = Backend(prev_config)
         prev_backend.stop()
-    backend.install()
     backend.start()
 
     # Record new configuration

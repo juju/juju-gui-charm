@@ -165,10 +165,9 @@ class  Backend(object):
 
         if api == 'python':
             if staging:
-                if sandbox:
-                    backends.append(SandboxBackend)
-                else:
-                    backends.append(ImprovBackend)
+                backends.append(ImprovBackend)
+            elif sandbox:
+                backends.append(SandboxBackend)
             else:
                 backends.append(PythonBackend)
         else:

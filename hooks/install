@@ -2,7 +2,7 @@
 # -*- python -*-
 
 from subprocess import check_call
-
+import yaml
 
 # If the user's environment has "juju-origin: ppa" set, they will
 # automatically have access to python-charmhelpers and python-shelltoolbox.
@@ -11,13 +11,12 @@ from subprocess import check_call
 # couple of functions that are actually maintained in python-shelltoolbox.
 import bootstrap_utils
 
-config = bootstrap_utils.get_config()
-allow_external = True
-try:
-    allow_repos = config.get('allow-additional-deb-repositories', True)
-except Exception:
-    pass
+def get_config():
+    output = bootstrap_utils.run('config-get')
+    return yaml.safe_load(output)
 
+config = bootstrap_utils.get_config()
+allow_repos = config.get('allow-additional-deb-repositories', True)
 if allow_repos:
     bootstrap_utils.install_extra_repositories('ppa:juju/pkgs')
 
@@ -29,20 +28,6 @@ PYTHON_DEPENDENCIES = (
 )
 check_call(('apt-get', 'install', '-y') + PYTHON_DEPENDENCIES)
 
-
-try:
-    import charmhelpers
-except ImportError:
-    print """"Missing required dependencies. Validate
-    allow-additional-deb-repositories: True
-    """
-    raise
-
-# These modules depend on the Python dependencies above being installed so they
-# must not be imported until those packages are available.
-from charmhelpers import (
-    get_config,
-)
 
 from utils import (
     config_json,
