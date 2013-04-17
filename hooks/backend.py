@@ -159,7 +159,7 @@ class  Backend(object):
         # We always use upstart.
         backends = [InstallMixin, UpstartMixin]
 
-        api = legacy_juju() and "python" or "go"
+        api = "python" if legacy_juju() else "go"
         sandbox = config.get('sandbox', False)
         staging = config.get('staging', False)
 
