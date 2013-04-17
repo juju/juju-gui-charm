@@ -15,7 +15,7 @@ def get_config():
     output = bootstrap_utils.run('config-get')
     return yaml.safe_load(output)
 
-config = bootstrap_utils.get_config()
+config = get_config()
 allow_repos = config.get('allow-additional-deb-repositories', True)
 if allow_repos:
     bootstrap_utils.install_extra_repositories('ppa:juju/pkgs')
