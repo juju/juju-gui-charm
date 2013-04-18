@@ -44,6 +44,7 @@ import logging
 import shutil
 from subprocess import CalledProcessError
 import tempfile
+from urlparse import urlparse
 
 from launchpadlib.launchpad import Launchpad
 from shelltoolbox import (
@@ -416,6 +417,10 @@ def fetch_gui(juju_gui_source, logpath):
         log('Retrieving Juju GUI release.')
         if origin == 'url':
             file_url = version_or_branch
+            if urlparse(file_url).scheme == '':
+                if file_url[0] != '/':
+                    file_url = os.path.join(os.path.abspath(CURRENT_DIR), file_url)
+                file_url = "file://%s" % file_url
         else:
             # Retrieve a release from Launchpad.
             launchpad = Launchpad.login_anonymously('Juju GUI charm', 'production')
