@@ -490,9 +490,9 @@ class StartStopTest(unittest.TestCase):
         orig_rtf = utils.render_to_file
         def render_to_file(template, context, dest):
             target = tempfile.NamedTemporaryFile()
-            self.addCleanup(target.close)
             orig_rtf(template, context, target.name)
-            self.files[os.path.basename(dest)] = open(target.name, 'r').read()
+            with open(target.name, 'r') as fp:
+                self.files[os.path.basename(dest)] = fp.read()
 
         self.functions = dict(
             service_control=(utils.service_control, service_control_mock),
@@ -507,8 +507,6 @@ class StartStopTest(unittest.TestCase):
         for fn, fcns in self.functions.items():
             setattr(utils, fn, fcns[1])
 
-        self.destination_file = tempfile.NamedTemporaryFile()
-        self.addCleanup(self.destination_file.close)
         self.ssl_cert_path = 'ssl/cert/path'
 
     def tearDown(self):
@@ -516,7 +514,6 @@ class StartStopTest(unittest.TestCase):
         for fn, fcns in self.functions.items():
             setattr(utils, fn, fcns[0])
         charmhelpers.command = self.command
-        #self.files = {}
 
     def test_start_improv(self):
         staging_env = 'large'

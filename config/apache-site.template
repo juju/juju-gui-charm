@@ -1,5 +1,7 @@
 <VirtualHost *:{{port}}>
 	ServerAdmin webmaster@localhost
+    ServerSignature Off 
+    ServerTokens Prod
 
 	DocumentRoot {{server_root}}
 	<Directory />
