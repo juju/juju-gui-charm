@@ -486,20 +486,27 @@ class StartStopTest(unittest.TestCase):
         def get_zookeeper_address_mock(fp):
             return self.fake_zk_address
 
+        self.files = {}
+        orig_rtf = utils.render_to_file
+        def render_to_file(template, context, dest):
+            target = tempfile.NamedTemporaryFile()
+            orig_rtf(template, context, target.name)
+            with open(target.name, 'r') as fp:
+                self.files[os.path.basename(dest)] = fp.read()
+
         self.functions = dict(
             service_control=(utils.service_control, service_control_mock),
             log=(utils.log, noop),
             su=(utils.su, su),
             run=(utils.run, noop),
             unit_get=(utils.unit_get, noop),
+            render_to_file=(utils.render_to_file, render_to_file),
             get_zookeeper_address=(
                 utils.get_zookeeper_address, get_zookeeper_address_mock))
         # Apply the patches.
         for fn, fcns in self.functions.items():
             setattr(utils, fn, fcns[1])
 
-        self.destination_file = tempfile.NamedTemporaryFile()
-        self.addCleanup(self.destination_file.close)
         self.ssl_cert_path = 'ssl/cert/path'
 
     def tearDown(self):
@@ -511,8 +518,8 @@ class StartStopTest(unittest.TestCase):
     def test_start_improv(self):
         staging_env = 'large'
         start_improv(
-            staging_env, self.ssl_cert_path, self.destination_file.name)
-        conf = self.destination_file.read()
+            staging_env, self.ssl_cert_path, 'improv')
+        conf = self.files['improv']
         self.assertTrue('--port %s' % API_PORT in conf)
         self.assertTrue(staging_env + '.json' in conf)
         self.assertTrue(self.ssl_cert_path in conf)
@@ -521,8 +528,8 @@ class StartStopTest(unittest.TestCase):
         self.assertEqual(self.actions, [charmhelpers.START])
 
     def test_start_agent(self):
-        start_agent(self.ssl_cert_path, self.destination_file.name)
-        conf = self.destination_file.read()
+        start_agent(self.ssl_cert_path, 'config')
+        conf = self.files['config']
         self.assertTrue('--port %s' % API_PORT in conf)
         self.assertTrue('JUJU_ZOOKEEPER=%s' % self.fake_zk_address in conf)
         self.assertTrue(self.ssl_cert_path in conf)
@@ -531,20 +538,11 @@ class StartStopTest(unittest.TestCase):
         self.assertEqual(self.actions, [charmhelpers.START])
 
     def test_start_gui(self):
-        config_js_file = self.destination_file
-        haproxy_file = tempfile.NamedTemporaryFile()
-        self.addCleanup(haproxy_file.close)
-        nginx_file = tempfile.NamedTemporaryFile()
-        self.addCleanup(nginx_file.close)
         ssl_cert_path = '/tmp/certificates/'
         start_gui(
             False, 'This is login help.', True, True, ssl_cert_path, True,
-            haproxy_path=haproxy_file.name, nginx_path=nginx_file.name,
-            config_js_path=config_js_file.name)
-        self.assertEqual(self.svc_ctl_call_count, 2)
-        self.assertEqual(self.service_names, ['nginx', 'haproxy'])
-        self.assertEqual(self.actions, [charmhelpers.RESTART] * 2)
-        haproxy_conf = haproxy_file.read()
+            haproxy_path='haproxy', config_js_path='config')
+        haproxy_conf = self.files['haproxy']
         self.assertIn('ca-base {0}'.format(ssl_cert_path), haproxy_conf)
         self.assertIn('crt-base {0}'.format(ssl_cert_path), haproxy_conf)
         self.assertIn('ws1 127.0.0.1:{0}'.format(API_PORT), haproxy_conf)
@@ -552,7 +550,7 @@ class StartStopTest(unittest.TestCase):
         self.assertIn('ca-file {0}'.format(JUJU_PEM), haproxy_conf)
         self.assertIn('crt {0}'.format(JUJU_PEM), haproxy_conf)
         self.assertIn('redirect scheme https', haproxy_conf)
-        js_conf = config_js_file.read()
+        js_conf =  self.files['config']
         self.assertIn('consoleEnabled: false', js_conf)
         self.assertIn('user: "admin"', js_conf)
         self.assertIn('password: "admin"', js_conf)
@@ -560,26 +558,20 @@ class StartStopTest(unittest.TestCase):
         self.assertIn('readOnly: true', js_conf)
         self.assertIn("socket_url: 'wss://", js_conf)
         self.assertIn('socket_protocol: "wss"', js_conf)
-        nginx_conf = nginx_file.read()
-        self.assertIn('juju-gui/build-', nginx_conf)
-        self.assertIn('listen 127.0.0.1:{0}'.format(WEB_PORT), nginx_conf)
-        self.assertIn('alias {0}/test/;'.format(JUJU_GUI_DIR), nginx_conf)
+        apache_conf = self.files['juju-gui']
+        self.assertIn('juju-gui/build-', apache_conf)
+        self.assertIn('VirtualHost *:{0}'.format(WEB_PORT), apache_conf)
+        self.assertIn('Alias /test {0}/test/'.format(JUJU_GUI_DIR), apache_conf)
 
     def test_start_gui_insecure(self):
-        config_js_file = self.destination_file
-        haproxy_file = tempfile.NamedTemporaryFile()
-        self.addCleanup(haproxy_file.close)
-        nginx_file = tempfile.NamedTemporaryFile()
-        self.addCleanup(nginx_file.close)
         ssl_cert_path = '/tmp/certificates/'
         start_gui(
             False, 'This is login help.', True, True, ssl_cert_path, True,
-            haproxy_path=haproxy_file.name, nginx_path=nginx_file.name,
-            config_js_path=config_js_file.name, secure=False)
-        js_conf = config_js_file.read()
+            haproxy_path='haproxy', config_js_path='config', secure=False)
+        js_conf = self.files['config']
         self.assertIn("socket_url: 'ws://", js_conf)
         self.assertIn('socket_protocol: "ws"', js_conf)
-        haproxy_conf = haproxy_file.read()
+        haproxy_conf = self.files['haproxy']
         # The insecure approach eliminates the https redirect.
         self.assertNotIn('redirect scheme https', haproxy_conf)
 

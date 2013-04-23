@@ -2,6 +2,7 @@
 
 __all__ = [
     'AGENT',
+    'APACHE',
     'API_PORT',
     'CURRENT_DIR',
     'HAPROXY',
@@ -10,7 +11,6 @@ __all__ = [
     'JUJU_GUI_DIR',
     'JUJU_GUI_SITE',
     'JUJU_PEM',
-    'NGINX',
     'StopChain',
     'WEB_PORT',
     'bzr_checkout',
@@ -30,11 +30,12 @@ __all__ = [
     'parse_source',
     'render_to_file',
     'save_or_create_certificates',
+    'setup_apache',
     'setup_gui',
-    'setup_nginx',
     'start_agent',
     'start_gui',
     'start_improv',
+    'write_apache_config',
 ]
 
 from contextlib import contextmanager
@@ -61,7 +62,6 @@ from charmhelpers import (
     get_config,
     log,
     service_control,
-    RESTART,
     START,
     unit_get,
 )
@@ -71,9 +71,9 @@ import tempita
 
 
 AGENT = 'juju-api-agent'
+APACHE = 'apache2'
 IMPROV = 'juju-api-improv'
 HAPROXY = 'haproxy'
-NGINX = 'nginx'
 
 API_PORT = 8080
 WEB_PORT = 8000
@@ -81,7 +81,8 @@ WEB_PORT = 8000
 CURRENT_DIR = os.getcwd()
 JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
-JUJU_GUI_SITE = '/etc/nginx/sites-available/juju-gui'
+JUJU_GUI_SITE = '/etc/apache2/sites-available/juju-gui'
+JUJU_GUI_PORTS = '/etc/apache2/ports.conf'
 JUJU_PEM = 'juju.includes-private-key.pem'
 BUILD_REPOSITORIES = ('ppa:chris-lea/node.js-legacy',)
 DEB_BUILD_DEPENDENCIES = (
@@ -310,8 +311,7 @@ def start_agent(ssl_cert_path, config_path='/etc/init/juju-api-agent.conf'):
 def start_gui(
         console_enabled, login_help, readonly, in_staging, ssl_cert_path,
         serve_tests, haproxy_path='/etc/haproxy/haproxy.cfg',
-        nginx_path=JUJU_GUI_SITE, config_js_path=None, secure=True,
-        sandbox=False):
+        config_js_path=None, secure=True, sandbox=False):
     """Set up and start the Juju GUI server."""
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
@@ -355,14 +355,9 @@ def start_gui(
         config_js_path = os.path.join(
             build_dir, 'juju-ui', 'assets', 'config.js')
     render_to_file('config.js.template', context, config_js_path)
-    log('Generating the nginx site configuration file.')
-    context = {
-        'port': WEB_PORT,
-        'serve_tests': serve_tests,
-        'server_root': build_dir,
-        'tests_root': os.path.join(JUJU_GUI_DIR, 'test', ''),
-    }
-    render_to_file('nginx-site.template', context, nginx_path)
+
+    write_apache_config(build_dir, serve_tests)
+
     log('Generating haproxy configuration file.')
     if is_legacy_juju:
         # The PyJuju API agent is listening on localhost.
@@ -384,10 +379,17 @@ def start_gui(
     }
     render_to_file('haproxy.cfg.template', context, haproxy_path)
     log('Starting Juju GUI.')
-    with su('root'):
-        # Start the Juju GUI.
-        service_control(NGINX, RESTART)
-        service_control(HAPROXY, RESTART)
+
+def write_apache_config(build_dir, serve_tests=False):
+    log('Generating the apache site configuration file.')
+    context = {
+        'port': WEB_PORT,
+        'serve_tests': serve_tests,
+        'server_root': build_dir,
+        'tests_root': os.path.join(JUJU_GUI_DIR, 'test', ''),
+    }
+    render_to_file('apache-ports.template', context, JUJU_GUI_PORTS)
+    render_to_file('apache-site.template', context, JUJU_GUI_SITE)
 
 
 def fetch_gui(juju_gui_source, logpath):
@@ -448,18 +450,23 @@ def setup_gui(release_tarball):
     cmd_log(run('ln', '-sf', first_path_in_dir(release_dir), JUJU_GUI_DIR))
 
 
-def setup_nginx():
-    """Set up nginx."""
-    log('Setting up nginx.')
-    nginx_default_site = '/etc/nginx/sites-enabled/default'
-    if os.path.exists(nginx_default_site):
-        os.remove(nginx_default_site)
+def setup_apache():
+    """Set up apache."""
+    log('Setting up apache.')
     if not os.path.exists(JUJU_GUI_SITE):
         cmd_log(run('touch', JUJU_GUI_SITE))
         cmd_log(run('chown', 'ubuntu:', JUJU_GUI_SITE))
         cmd_log(
             run('ln', '-s', JUJU_GUI_SITE,
-                '/etc/nginx/sites-enabled/juju-gui'))
+                '/etc/apache2/sites-enabled/juju-gui'))
+
+    if not os.path.exists(JUJU_GUI_PORTS):
+        cmd_log(run('touch', JUJU_GUI_PORTS))
+        cmd_log(run('chown', 'ubuntu:', JUJU_GUI_PORTS))
+
+    with su('root'):
+        run('a2dissite', 'default')
+        run('a2ensite', 'juju-gui')
 
 
 def save_or_create_certificates(

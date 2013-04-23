@@ -17,7 +17,7 @@ class TestBackends(unittest.TestCase):
             "staging": True,
         }
         backend = Backend(config)
-        self.assertIn("nginx", backend.debs)
+        self.assertIn("apache2", backend.debs)
         self.assertIn("haproxy", backend.debs)
         self.assertIn("curl", backend.debs)
         self.assertIn("openssl", backend.debs)
@@ -30,10 +30,10 @@ class TestBackends(unittest.TestCase):
     def test_get_python_sandbox(self):
         config = {
             "sandbox": True,
-            "staging": True,
+            "staging": False,
         }
         backend = Backend(config)
-        self.assertIn("nginx", backend.debs)
+        self.assertIn("apache2", backend.debs)
         self.assertNotIn('zookeeper', backend.debs)
         self.assertNotIn('ImprovBackend', self.backendNames(backend))
 

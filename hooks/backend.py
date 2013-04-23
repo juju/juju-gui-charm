@@ -18,10 +18,10 @@ from shelltoolbox import (
 
 from utils import (
     AGENT,
+    APACHE,
     HAPROXY,
     IMPROV,
     JUJU_DIR,
-    NGINX,
     chain,
     check_packages,
     cmd_log,
@@ -33,7 +33,7 @@ from utils import (
     overrideable,
     save_or_create_certificates,
     setup_gui,
-    setup_nginx,
+    setup_apache,
     start_agent,
     start_gui,
     start_improv,
@@ -59,14 +59,14 @@ class InstallMixin(object):
             setup_gui(release_tarball)
 
 class UpstartMixin(object):
-    upstart_scripts = ('haproxy.conf', 'nginx.conf')
-    debs = ('curl', 'openssl', 'nginx', 'haproxy')
+    upstart_scripts = ('haproxy.conf', )
+    debs = ('curl', 'openssl', 'haproxy', 'apache2')
 
     def install(self, backend):
         """Set up haproxy and nginx upstart configuration files."""
+        setup_apache()
         backend.log('Setting up haproxy and nginx start up scripts.')
         config = backend.config
-        setup_nginx()
         if backend.different('ssl-cert-path', 'ssl-cert-contents', 'ssl-key-contents'):
             save_or_create_certificates(
                 config['ssl-cert-path'], config.get('ssl-cert-contents'),
@@ -78,13 +78,13 @@ class UpstartMixin(object):
 
     def start(self, backend):
         with su('root'):
-            backend.service_control(NGINX, RESTART)
+            backend.service_control(APACHE, RESTART)
             backend.service_control(HAPROXY, RESTART)
 
     def stop(self, backend):
         with su('root'):
             backend.service_control(HAPROXY, STOP)
-            backend.service_control(NGINX, STOP)
+            backend.service_control(APACHE, STOP)
 
 
 class GuiMixin(object):
@@ -157,7 +157,7 @@ class  Backend(object):
         self.overrides = overrides
 
         # We always use upstart.
-        backends = [InstallMixin, UpstartMixin]
+        backends = [InstallMixin, ]
 
         api = "python" if legacy_juju() else "go"
         sandbox = config.get('sandbox', False)
@@ -181,6 +181,7 @@ class  Backend(object):
 
         # All backends can manage the gui.
         backends.append(GuiMixin)
+        backends.append(UpstartMixin)
 
         # record our choice mapping classes to instances
         for i, b in enumerate(backends):
@@ -221,7 +222,6 @@ class  Backend(object):
             install_extra_repositories(*packages)
         else:
             apt_get('update')
-
 
     def different(self, *keys):
         """Return a boolean indicating if the current config

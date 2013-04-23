@@ -1,8 +1,8 @@
 #!/usr/bin/env python2
 # -*- python -*-
 
+import json
 from subprocess import check_call
-import yaml
 
 # If the user's environment has "juju-origin: ppa" set, they will
 # automatically have access to python-charmhelpers and python-shelltoolbox.
@@ -12,8 +12,8 @@ import yaml
 import bootstrap_utils
 
 def get_config():
-    output = bootstrap_utils.run('config-get')
-    return yaml.safe_load(output)
+    output = bootstrap_utils.run('config-get', '--format', 'json')
+    return json.loads(output)
 
 config = get_config()
 allow_repos = config.get('allow-additional-deb-repositories', True)
