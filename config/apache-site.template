@@ -22,6 +22,9 @@
 	CustomLog ${APACHE_LOG_DIR}/access.log combined
 
     {{if serve_tests}}
-    Alias /test {{tests_root}}
+        Alias /test {{tests_root}}
     {{endif}}
+
+    FallbackResource /index.html
+
 </VirtualHost>
