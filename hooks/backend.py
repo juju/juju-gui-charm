@@ -60,10 +60,11 @@ class InstallMixin(object):
 
 class UpstartMixin(object):
     upstart_scripts = ('haproxy.conf', )
-    debs = ('curl', 'openssl', 'haproxy')
+    debs = ('curl', 'openssl', 'haproxy', 'apache2')
 
     def install(self, backend):
         """Set up haproxy and nginx upstart configuration files."""
+        setup_apache()
         backend.log('Setting up haproxy and nginx start up scripts.')
         config = backend.config
         if backend.different('ssl-cert-path', 'ssl-cert-contents', 'ssl-key-contents'):
@@ -77,24 +78,12 @@ class UpstartMixin(object):
 
     def start(self, backend):
         with su('root'):
+            backend.service_control(APACHE, RESTART)
             backend.service_control(HAPROXY, RESTART)
 
     def stop(self, backend):
         with su('root'):
             backend.service_control(HAPROXY, STOP)
-
-class ApacheMixin(object):
-    debs = ('apache2',)
-
-    def install(self, backend):
-        setup_apache()
-
-    def start(self, backend):
-        with su('root'):
-            backend.service_control(APACHE, RESTART)
-
-    def stop(self, backend):
-        with su('root'):
             backend.service_control(APACHE, STOP)
 
 
@@ -168,7 +157,7 @@ class  Backend(object):
         self.overrides = overrides
 
         # We always use upstart.
-        backends = [InstallMixin, UpstartMixin, ApacheMixin]
+        backends = [InstallMixin, ]
 
         api = "python" if legacy_juju() else "go"
         sandbox = config.get('sandbox', False)
@@ -192,6 +181,7 @@ class  Backend(object):
 
         # All backends can manage the gui.
         backends.append(GuiMixin)
+        backends.append(UpstartMixin)
 
         # record our choice mapping classes to instances
         for i, b in enumerate(backends):
