@@ -9,9 +9,6 @@ feature for determining if configuration values have changed between old and
 new configurations so we can selectively take action.
 """
 
-# These normally depend on python packages being installed from hooks/install.
-# If we are unable to use external code due to some deployment restrictions,
-# these deps will already have been installed or this code will fail.
 from charmhelpers import (
     RESTART,
     STOP,
