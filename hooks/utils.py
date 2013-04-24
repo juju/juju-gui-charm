@@ -48,6 +48,7 @@ import tempfile
 
 from launchpadlib.launchpad import Launchpad
 from shelltoolbox import (
+    Serializer,
     apt_get_install,
     command,
     environ,
@@ -55,14 +56,13 @@ from shelltoolbox import (
     run,
     script_name,
     search_file,
-    Serializer,
     su,
 )
 from charmhelpers import (
+    START,
     get_config,
     log,
     service_control,
-    START,
     unit_get,
 )
 
@@ -420,7 +420,8 @@ def fetch_gui(juju_gui_source, logpath):
             file_url = version_or_branch
         else:
             # Retrieve a release from Launchpad.
-            launchpad = Launchpad.login_anonymously('Juju GUI charm', 'production')
+            launchpad = Launchpad.login_anonymously(
+                'Juju GUI charm', 'production')
             project = launchpad.projects['juju-gui']
             file_url = get_release_file_url(project, origin, version_or_branch)
         log('Downloading release file from %s.' % file_url)
@@ -530,6 +531,7 @@ class StopChain(Exception):
     another error.
     """
 
+
 def chain(name, reverse=False):
     """Helper method to compose a set of strategy objects into
     a callable.
@@ -551,9 +553,9 @@ def chain(name, reverse=False):
                 except StopChain:
                     break
 
-
     method.__name__ = name
     return method
+
 
 def overrideable(f):
     """Helper to support very limited overrides for use in testing.
@@ -564,13 +566,16 @@ def overrideable(f):
     assert b.foo() is True
     """
     name = f.__name__
+
     def overridden(self, *args, **kwargs):
         if name in self.overrides:
             return self.overrides[name](*args, **kwargs)
         else:
             return f(self, *args, **kwargs)
+
     overridden.__name__ = name
     return overridden
+
 
 def merge(name):
     """Helper to merge a property from a set of strategy objects
@@ -587,6 +592,3 @@ def merge(name):
 
         return result
     return method
-
-
-

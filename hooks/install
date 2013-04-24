@@ -11,6 +11,7 @@ from subprocess import check_call
 # couple of functions that are actually maintained in python-shelltoolbox.
 import bootstrap_utils
 
+
 def get_config():
     output = bootstrap_utils.run('config-get', '--format', 'json')
     return json.loads(output)
@@ -23,8 +24,8 @@ if allow_repos:
 # Python dependencies must be installed here so that the charm can import and
 # use required libraries.
 PYTHON_DEPENDENCIES = (
-    'python-apt', 'python-charmhelpers', 'python-launchpadlib', 'python-shelltoolbox',
-    'python-tempita',
+    'python-apt', 'python-charmhelpers', 'python-launchpadlib',
+    'python-shelltoolbox', 'python-tempita',
 )
 check_call(('apt-get', 'install', '-y') + PYTHON_DEPENDENCIES)
 

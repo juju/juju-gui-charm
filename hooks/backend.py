@@ -1,13 +1,23 @@
-## These normally depend on python packages being installed
-## from hooks/install. If we are unable to use external code
-## due to some  deployment restrictions these deps will already
-## have been installed or this code will fail.
+"""
+A composition system for creating backend object.
+
+Backends implement start(), stop() and install() methods. A backend is composed
+of many mixins and each mixin will implement any/all of those methods and all
+will be called. Backends additionally provide for collecting property values
+from each mixin into a single final property on the backend. There is also a
+feature for determining if configuration values have changed between old and
+new configurations so we can selectively take action.
+"""
+
+# These normally depend on python packages being installed from hooks/install.
+# If we are unable to use external code due to some deployment restrictions,
+# these deps will already have been installed or this code will fail.
 from charmhelpers import (
+    RESTART,
+    STOP,
     log,
     open_port,
     service_control,
-    RESTART,
-    STOP,
 )
 from shelltoolbox import (
     apt_get_install,
@@ -15,7 +25,6 @@ from shelltoolbox import (
     install_extra_repositories,
     su,
 )
-
 from utils import (
     AGENT,
     APACHE,
@@ -45,6 +54,7 @@ import shutil
 
 apt_get = command('apt-get')
 
+
 class InstallMixin(object):
     def install(self, backend):
         config = backend.config
@@ -58,6 +68,7 @@ class InstallMixin(object):
                 config['juju-gui-source'], config['command-log-file'])
             setup_gui(release_tarball)
 
+
 class UpstartMixin(object):
     upstart_scripts = ('haproxy.conf', )
     debs = ('curl', 'openssl', 'haproxy', 'apache2')
@@ -67,7 +78,8 @@ class UpstartMixin(object):
         setup_apache()
         backend.log('Setting up haproxy and nginx start up scripts.')
         config = backend.config
-        if backend.different('ssl-cert-path', 'ssl-cert-contents', 'ssl-key-contents'):
+        if backend.different(
+                'ssl-cert-path', 'ssl-cert-contents', 'ssl-key-contents'):
             save_or_create_certificates(
                 config['ssl-cert-path'], config.get('ssl-cert-contents'),
                 config.get('ssl-key-contents'))
@@ -88,7 +100,7 @@ class UpstartMixin(object):
 
 
 class GuiMixin(object):
-    gui_properties =  set([
+    gui_properties = set([
         'juju-gui-console-enabled', 'login-help', 'read-only',
         'serve-tests', 'secure'])
 
@@ -103,13 +115,16 @@ class GuiMixin(object):
         open_port(80)
         open_port(443)
 
+
 class SandboxBackend(object):
     pass
 
+
 class PythonBackend(object):
+
     def install(self, config):
         if (not os.path.exists(JUJU_DIR) or
-            config.different('staging', 'juju-api-branch')):
+                config.different('staging', 'juju-api-branch')):
             fetch_api(config['juju-api-branch'])
 
     def start(self, backend):
@@ -118,12 +133,13 @@ class PythonBackend(object):
     def stop(self, backend):
         backend.service_control(AGENT, STOP)
 
+
 class ImprovBackend(object):
     debs = ('zookeeper', )
 
     def install(self, config):
         if (not os.path.exists(JUJU_DIR) or
-            config.different('staging', 'juju-api-branch')):
+                config.different('staging', 'juju-api-branch')):
             fetch_api(config['juju-api-branch'])
 
     def start(self, backend):
@@ -133,21 +149,23 @@ class ImprovBackend(object):
     def stop(self, backend):
         backend.service_control(IMPROV, STOP)
 
+
 class GoBackend(object):
     debs = ('python-yaml', )
 
 
-class  Backend(object):
+class Backend(object):
     """Compose methods and policy needed to interact
     with a Juju backend. Given a config dict (which typically
     comes from the JSON de-serialization of config.json in JujuGUI).
-
     """
+
     def __init__(self, config=None, prev_config=None, **overrides):
         """
         Backends function through composition. __init__ becomes the
-        factory method to generate a selection of stragegy classes
-        to use together to implement the backend proper."""
+        factory method to generate a selection of strategy classes
+        to use together to implement the backend proper.
+        """
         # Ingest the config and build out the ordered list of
         # backend elements to include
         if config is None:
@@ -193,7 +211,8 @@ class  Backend(object):
         try:
             return self.config[key]
         except KeyError:
-            print("Unable to extract config key '%s' from %s" % (key, self.config))
+            print("Unable to extract config key '%s' from %s" %
+                (key, self.config))
             raise
 
     @overrideable
@@ -239,8 +258,6 @@ class  Backend(object):
                 return True
         return False
 
-
-
     ## Composed Methods
     install = chain('install')
     start = chain('start')
@@ -254,4 +271,3 @@ class  Backend(object):
     repositories = merge('repositories')
     debs = merge('debs')
     upstart_scripts = merge('upstart_scripts')
-
