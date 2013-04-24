@@ -1,13 +1,16 @@
-# These are actually maintained in python-shelltoolbox.  Precise does not have
-# that package, so we need to bootstrap the process by copying the functions
-# we need here.
+"""
+These are actually maintained in python-shelltoolbox.  Precise does not have
+that package, so we need to bootstrap the process by copying the functions
+we need here.
+"""
 
 import subprocess
-import yaml
+
 
 try:
     import shelltoolbox
 except ImportError:
+
     def run(*args, **kwargs):
         """Run the command with the given arguments.
 
@@ -27,9 +30,10 @@ except ImportError:
         if process.returncode:
             exception = subprocess.CalledProcessError(
                 process.returncode, repr(args))
-            # The output argument of `CalledProcessError` was introduced in Python
-            # 2.7. Monkey patch the output here to avoid TypeErrors in older
-            # versions of Python, still preserving the output in Python 2.7.
+            # The output argument of `CalledProcessError` was introduced in
+            # Python 2.7. Monkey patch the output here to avoid TypeErrors
+            # in older versions of Python, still preserving the output in
+            # Python 2.7.
             exception.output = ''.join(filter(None, [stdout, stderr]))
             raise exception
         return stdout
@@ -37,8 +41,8 @@ except ImportError:
     def install_extra_repositories(*repositories):
         """Install all of the extra repositories and update apt.
 
-        Given repositories can contain a "{distribution}" placeholder, that will
-        be replaced by current distribution codename.
+        Given repositories can contain a "{distribution}" placeholder,
+        that will be replaced by current distribution codename.
 
         :raises: subprocess.CalledProcessError
         """
@@ -55,4 +59,3 @@ except ImportError:
 else:
     install_extra_repositories = shelltoolbox.install_extra_repositories
     run = shelltoolbox.run
-
