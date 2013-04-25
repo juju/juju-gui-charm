@@ -84,9 +84,9 @@ JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
 JUJU_GUI_SITE = '/etc/apache2/sites-available/juju-gui'
 JUJU_GUI_PORTS = '/etc/apache2/ports.conf'
 JUJU_PEM = 'juju.includes-private-key.pem'
-BUILD_REPOSITORIES = ('ppa:chris-lea/node.js',)
+BUILD_REPOSITORIES = ('ppa:chris-lea/node.js-legacy',)
 DEB_BUILD_DEPENDENCIES = (
-    'bzr', 'imagemagick', 'make',  'nodejs',
+    'bzr', 'imagemagick', 'make',  'nodejs', 'npm',
 )
 DEB_STAGE_DEPENDENCIES = (
     'zookeeper',
