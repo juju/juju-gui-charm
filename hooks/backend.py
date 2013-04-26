@@ -34,12 +34,14 @@ from utils import (
     fetch_api,
     fetch_gui,
     get_config,
+    get_npm_cache_archive_url,
     legacy_juju,
     merge,
     overrideable,
+    prime_npm_cache,
     save_or_create_certificates,
-    setup_gui,
     setup_apache,
+    setup_gui,
     start_agent,
     start_gui,
     start_improv,
@@ -53,20 +55,34 @@ apt_get = command('apt-get')
 
 
 class InstallMixin(object):
+    """Provide for the GUI and its dependencies to be installed."""
+
     def install(self, backend):
+        """Install the GUI and dependencies."""
         config = backend.config
+        # If the given installable thing ("backend") requires one or more debs
+        # that are not yet installed, install them.
         missing = backend.check_packages(*backend.debs)
         if missing:
             cmd_log(backend.install_extra_repositories(*backend.repositories))
             cmd_log(apt_get_install(*backend.debs))
 
+        # If we are not using a pre-built release of the GUI (i.e., we are
+        # using a branch) then we need to build a release archive to use.
         if backend.different('juju-gui-source'):
+            # Inject NPM packages into the cache for faster building.
+            #prime_npm_cache(get_npm_cache_archive_url())
+            # Build a release from the branch.
             release_tarball = fetch_gui(
                 config['juju-gui-source'], config['command-log-file'])
+            # XXX Why do we only set up the GUI if the "juju-gui-source"
+            # configuration is non-default?
             setup_gui(release_tarball)
 
 
 class UpstartMixin(object):
+    """Manage (install, start, stop, etc.) some service via Upstart."""
+
     upstart_scripts = ('haproxy.conf', )
     debs = ('curl', 'openssl', 'haproxy', 'apache2')
 
@@ -152,16 +168,14 @@ class GoBackend(object):
 
 
 class Backend(object):
-    """Compose methods and policy needed to interact
-    with a Juju backend. Given a config dict (which typically
-    comes from the JSON de-serialization of config.json in JujuGUI).
+    """Compose methods and policy needed to interact with a Juju backend.
+
+    "config" is a config dict (which typically comes from the JSON
+    de-serialization of config.json in JujuGUI).
     """
 
     def __init__(self, config=None, prev_config=None, **overrides):
-        """
-        Backends function through composition. __init__ becomes the
-        factory method to generate a selection of strategy classes
-        to use together to implement the backend proper.
+        """Generate a selection of strategy classes that implement the backend.
         """
         # Ingest the config and build out the ordered list of
         # backend elements to include
@@ -171,7 +185,7 @@ class Backend(object):
         self.prev_config = prev_config
         self.overrides = overrides
 
-        # We always use upstart.
+        # We always install the GUI.
         backends = [InstallMixin, ]
 
         api = "python" if legacy_juju() else "go"
@@ -194,7 +208,8 @@ class Backend(object):
                     "Unable to use sandbox with {} backend".format(api))
             backends.append(GoBackend)
 
-        # All backends can manage the gui.
+        # All backends need to install, start, and stop the services that
+        # provide the GUI.
         backends.append(GuiMixin)
         backends.append(UpstartMixin)
 
