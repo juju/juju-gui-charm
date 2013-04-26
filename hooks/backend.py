@@ -107,8 +107,8 @@ class GuiMixin(object):
         start_gui(
             config['juju-gui-console-enabled'], config['login-help'],
             config['read-only'], config['staging'], config['ssl-cert-path'],
-            config['serve-tests'], secure=config['secure'],
-            sandbox=config['sandbox'])
+            config['charmworld_url'], config['serve-tests'],
+            secure=config['secure'], sandbox=config['sandbox'])
         open_port(80)
         open_port(443)
 
