@@ -2,7 +2,7 @@
 # -*- python -*-
 
 import json
-from subprocess import check_call
+import os
 
 # If the user's environment has "juju-origin: ppa" set, they will
 # automatically have access to python-charmhelpers and python-shelltoolbox.
@@ -27,7 +27,7 @@ PYTHON_DEPENDENCIES = (
     'python-apt', 'python-charmhelpers', 'python-launchpadlib',
     'python-shelltoolbox', 'python-tempita',
 )
-check_call(('apt-get', 'install', '-y') + PYTHON_DEPENDENCIES)
+bootstrap_utils.run(*(('apt-get', 'install', '-y') + PYTHON_DEPENDENCIES))
 
 
 from utils import (
@@ -39,6 +39,15 @@ from backend import Backend
 
 
 def main():
+    # Run pre-install tasks, if available.  Please do not rely on the
+    # exec.d interface without conferring with the Juju GUI team: it may
+    # change after upcoming discussion with Canonical IS.
+    if os.path.isdir('exec.d'):
+        for module in os.listdir('exec.d'):
+            try:
+                bootstrap_utils.run(os.path.join('exec.d',module,'charm-pre-install'))
+            except OSError:
+                pass
     config = get_config()
     backend = Backend(config)
     backend.install()

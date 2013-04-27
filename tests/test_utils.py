@@ -366,6 +366,15 @@ class LogHookTest(unittest.TestCase):
 
 class ParseSourceTest(unittest.TestCase):
 
+    def setUp(self):
+        # Monkey patch utils.CURRENT_DIR.
+        self.original_current_dir = utils.CURRENT_DIR
+        utils.CURRENT_DIR = '/current/dir'
+
+    def tearDown(self):
+        # Restore the original utils.CURRENT_DIR.
+        utils.CURRENT_DIR = self.original_current_dir
+
     def test_latest_stable_release(self):
         # Ensure the latest stable release is correctly parsed.
         expected = ('stable', None)
@@ -391,6 +400,18 @@ class ParseSourceTest(unittest.TestCase):
         sources = ('lp:example', 'http://bazaar.launchpad.net/example')
         for source in sources:
             self.assertTupleEqual(('branch', source), parse_source(source))
+
+    def test_url(self):
+        expected = ('url', 'http://example.com/gui')
+        self.assertTupleEqual(expected, parse_source('url:http://example.com/gui'))
+
+    def test_file_url(self):
+        expected = ('url', 'file:///foo/bar')
+        self.assertTupleEqual(expected, parse_source('url:/foo/bar'))
+
+    def test_relative_file_url(self):
+        expected = ('url', 'file:///current/dir/foo/bar')
+        self.assertTupleEqual(expected, parse_source('url:foo/bar'))
 
 
 class RenderToFileTest(unittest.TestCase):

@@ -45,6 +45,7 @@ import logging
 import shutil
 from subprocess import CalledProcessError
 import tempfile
+from urlparse import urlparse
 
 from launchpadlib.launchpad import Launchpad
 from shelltoolbox import (
@@ -217,10 +218,17 @@ def parse_source(source):
        - ('stable', '0.1.0'): stable release v0.1.0;
        - ('trunk', None): latest trunk release;
        - ('trunk', '0.1.0+build.1'): trunk release v0.1.0 bzr revision 1;
-       - ('branch', 'lp:juju-gui'): release is made from a branch.
+       - ('branch', 'lp:juju-gui'): release is made from a branch;
+       - ('url', 'http://example.com/gui'): release from a downloaded file.
     """
     if source.startswith('url:'):
-        return 'url', source[4:]
+        source = source[4:]
+        # Support file paths, including relative paths.
+        if urlparse(source).scheme == '':
+            if source[0] != '/':
+                source = os.path.join(os.path.abspath(CURRENT_DIR), source)
+            source = "file://%s" % source
+        return 'url', source
     if source in ('stable', 'trunk'):
         return source, None
     if source.startswith('lp:') or source.startswith('http://'):
