@@ -191,7 +191,7 @@ def get_zookeeper_address(agent_file_path):
 
 @contextmanager
 def log_hook():
-    """Log when an hook starts and stops its execution.
+    """Log when a hook starts and stops its execution.
 
     Also log to stdout possible CalledProcessError exceptions raised executing
     the hook.
@@ -310,7 +310,7 @@ def start_agent(ssl_cert_path, config_path='/etc/init/juju-api-agent.conf'):
 
 def start_gui(
         console_enabled, login_help, readonly, in_staging, ssl_cert_path,
-        serve_tests, haproxy_path='/etc/haproxy/haproxy.cfg',
+        charmworld_url, serve_tests, haproxy_path='/etc/haproxy/haproxy.cfg',
         config_js_path=None, secure=True, sandbox=False):
     """Set up and start the Juju GUI server."""
     with su('root'):
@@ -350,6 +350,7 @@ def start_gui(
         'user': json.dumps(user),
         'protocol': json.dumps(protocol),
         'sandbox': json.dumps(sandbox),
+        'charmworld_url': json.dumps(charmworld_url),
     }
     if config_js_path is None:
         config_js_path = os.path.join(

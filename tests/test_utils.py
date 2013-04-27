@@ -539,9 +539,11 @@ class StartStopTest(unittest.TestCase):
 
     def test_start_gui(self):
         ssl_cert_path = '/tmp/certificates/'
+        charmworld_url = 'http://charmworld.example'
         start_gui(
-            False, 'This is login help.', True, True, ssl_cert_path, True,
-            haproxy_path='haproxy', config_js_path='config')
+            False, 'This is login help.', True, True, ssl_cert_path,
+            charmworld_url, True, haproxy_path='haproxy',
+            config_js_path='config')
         haproxy_conf = self.files['haproxy']
         self.assertIn('ca-base {0}'.format(ssl_cert_path), haproxy_conf)
         self.assertIn('crt-base {0}'.format(ssl_cert_path), haproxy_conf)
@@ -558,6 +560,7 @@ class StartStopTest(unittest.TestCase):
         self.assertIn('readOnly: true', js_conf)
         self.assertIn("socket_url: 'wss://", js_conf)
         self.assertIn('socket_protocol: "wss"', js_conf)
+        self.assertIn('charmworldURL: "http://charmworld.example"', js_conf)
         apache_conf = self.files['juju-gui']
         self.assertIn('juju-gui/build-', apache_conf)
         self.assertIn('VirtualHost *:{0}'.format(WEB_PORT), apache_conf)
@@ -565,9 +568,11 @@ class StartStopTest(unittest.TestCase):
 
     def test_start_gui_insecure(self):
         ssl_cert_path = '/tmp/certificates/'
+        charmworld_url = 'http://charmworld.example'
         start_gui(
-            False, 'This is login help.', True, True, ssl_cert_path, True,
-            haproxy_path='haproxy', config_js_path='config', secure=False)
+            False, 'This is login help.', True, True, ssl_cert_path, 
+            charmworld_url, True, haproxy_path='haproxy',
+            config_js_path='config', secure=False)
         js_conf = self.files['config']
         self.assertIn("socket_url: 'ws://", js_conf)
         self.assertIn('socket_protocol: "ws"', js_conf)
