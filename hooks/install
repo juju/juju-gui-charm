@@ -51,9 +51,13 @@ def main():
             try:
                 bootstrap_utils.run(filename)
             except OSError, e:
-                # If the exec.d file does not exist or is not runnable,
-                # assume we can recover.  Log the problem and proceed.
-                if e.errno in (errno.ENOENT, errno.EACCES):
+                # If the exec.d file does not exist or is not runnable or
+                # is not a directory, assume we can recover.  Log the problem
+                # and proceed.  Note that Juju Core has a special need of
+                # errno.ENOTDIR because it apparently adds a ".empty" file in
+                # empty charm directories, so trying to run
+                # ./exec.d/.empty/charm-pre-install will trigger that error.
+                if e.errno in (errno.ENOENT, errno.EACCES, errno.ENOTDIR):
                     log('{}: {}'.format(e.strerror, filename))
                 else:
                     raise
