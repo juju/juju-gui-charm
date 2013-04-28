@@ -11,6 +11,7 @@ var juju_config = {
   // SubApps.
   consoleEnabled: {{console_enabled}},
   charm_store_url: 'https://jujucharms.com/',
+  charmworldURL: {{charmworld_url}},
   // socket_url is only honored in older versions of the GUI.
   socket_url: '{{raw_protocol}}://{{address}}/ws',
   // socket_protocol is used instead by newer versions of the GUI to

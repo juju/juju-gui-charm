@@ -166,7 +166,7 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
             self.stop_services,
-            hostname, ['haproxy', 'nginx', 'juju-api-agent'])
+            hostname, ['haproxy', 'apache2', 'juju-api-agent'])
         self.navigate_to(hostname)
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()
@@ -177,7 +177,7 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
             self.stop_services,
-            hostname, ['haproxy', 'nginx', 'juju-api-improv'])
+            hostname, ['haproxy', 'apache2', 'juju-api-improv'])
         self.navigate_to(hostname)
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()
@@ -190,7 +190,7 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
             self.stop_services,
-            hostname, ['haproxy', 'nginx', 'juju-api-agent'])
+            hostname, ['haproxy', 'apache2', 'juju-api-agent'])
         self.navigate_to(hostname)
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()
@@ -222,7 +222,7 @@ class DeployToTest(DeployTestMixin, unittest.TestCase):
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
             self.stop_services,
-            hostname, ['haproxy', 'nginx', 'juju-api-agent'])
+            hostname, ['haproxy', 'apache2', 'juju-api-agent'])
         self.navigate_to(hostname)
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()
