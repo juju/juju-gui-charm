@@ -403,7 +403,8 @@ class ParseSourceTest(unittest.TestCase):
 
     def test_url(self):
         expected = ('url', 'http://example.com/gui')
-        self.assertTupleEqual(expected, parse_source('url:http://example.com/gui'))
+        self.assertTupleEqual(
+            expected, parse_source('url:http://example.com/gui'))
 
     def test_file_url(self):
         expected = ('url', 'file:///foo/bar')

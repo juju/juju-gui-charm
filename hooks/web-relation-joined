@@ -6,16 +6,11 @@ from charmhelpers import (
     get_config,
     relation_set,
 )
-
-from utils import (
-    log_hook,
-)
+from utils import log_hook
 
 
 def main():
-    hostname = socket.getfqdn(socket.gethostname())
-    if hostname == "localhost":
-        hostname = socket.gethostname()
+    hostname = socket.getfqdn()
     config = get_config()
     if config['secure']:
     	port = 443
