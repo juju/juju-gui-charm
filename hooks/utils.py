@@ -45,6 +45,7 @@ import logging
 import shutil
 from subprocess import CalledProcessError
 import tempfile
+from urlparse import urlparse
 
 from launchpadlib.launchpad import Launchpad
 from shelltoolbox import (
@@ -84,9 +85,9 @@ JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
 JUJU_GUI_SITE = '/etc/apache2/sites-available/juju-gui'
 JUJU_GUI_PORTS = '/etc/apache2/ports.conf'
 JUJU_PEM = 'juju.includes-private-key.pem'
-BUILD_REPOSITORIES = ('ppa:chris-lea/node.js',)
+BUILD_REPOSITORIES = ('ppa:chris-lea/node.js-legacy',)
 DEB_BUILD_DEPENDENCIES = (
-    'bzr', 'imagemagick', 'make',  'nodejs',
+    'bzr', 'imagemagick', 'make',  'nodejs', 'npm',
 )
 DEB_STAGE_DEPENDENCIES = (
     'zookeeper',
@@ -191,7 +192,7 @@ def get_zookeeper_address(agent_file_path):
 
 @contextmanager
 def log_hook():
-    """Log when an hook starts and stops its execution.
+    """Log when a hook starts and stops its execution.
 
     Also log to stdout possible CalledProcessError exceptions raised executing
     the hook.
@@ -217,10 +218,17 @@ def parse_source(source):
        - ('stable', '0.1.0'): stable release v0.1.0;
        - ('trunk', None): latest trunk release;
        - ('trunk', '0.1.0+build.1'): trunk release v0.1.0 bzr revision 1;
-       - ('branch', 'lp:juju-gui'): release is made from a branch.
+       - ('branch', 'lp:juju-gui'): release is made from a branch;
+       - ('url', 'http://example.com/gui'): release from a downloaded file.
     """
     if source.startswith('url:'):
-        return 'url', source[4:]
+        source = source[4:]
+        # Support file paths, including relative paths.
+        if urlparse(source).scheme == '':
+            if not source.startswith('/'):
+                source = os.path.join(os.path.abspath(CURRENT_DIR), source)
+            source = "file://%s" % source
+        return 'url', source
     if source in ('stable', 'trunk'):
         return source, None
     if source.startswith('lp:') or source.startswith('http://'):
@@ -310,7 +318,7 @@ def start_agent(ssl_cert_path, config_path='/etc/init/juju-api-agent.conf'):
 
 def start_gui(
         console_enabled, login_help, readonly, in_staging, ssl_cert_path,
-        serve_tests, haproxy_path='/etc/haproxy/haproxy.cfg',
+        charmworld_url, serve_tests, haproxy_path='/etc/haproxy/haproxy.cfg',
         config_js_path=None, secure=True, sandbox=False):
     """Set up and start the Juju GUI server."""
     with su('root'):
@@ -350,6 +358,7 @@ def start_gui(
         'user': json.dumps(user),
         'protocol': json.dumps(protocol),
         'sandbox': json.dumps(sandbox),
+        'charmworld_url': json.dumps(charmworld_url),
     }
     if config_js_path is None:
         config_js_path = os.path.join(

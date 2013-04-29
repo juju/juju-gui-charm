@@ -112,3 +112,9 @@ options:
       the source: hooks/install and hooks/backend.py in particular.
     type: boolean
     default: true
+  charmworld-url:
+    description: |
+      The URL of the charm catalog site ("charmworld") from which charm catalog
+      data will be drawn.
+    type: string
+    default: http://staging.jujucharms.com

@@ -366,6 +366,15 @@ class LogHookTest(unittest.TestCase):
 
 class ParseSourceTest(unittest.TestCase):
 
+    def setUp(self):
+        # Monkey patch utils.CURRENT_DIR.
+        self.original_current_dir = utils.CURRENT_DIR
+        utils.CURRENT_DIR = '/current/dir'
+
+    def tearDown(self):
+        # Restore the original utils.CURRENT_DIR.
+        utils.CURRENT_DIR = self.original_current_dir
+
     def test_latest_stable_release(self):
         # Ensure the latest stable release is correctly parsed.
         expected = ('stable', None)
@@ -391,6 +400,19 @@ class ParseSourceTest(unittest.TestCase):
         sources = ('lp:example', 'http://bazaar.launchpad.net/example')
         for source in sources:
             self.assertTupleEqual(('branch', source), parse_source(source))
+
+    def test_url(self):
+        expected = ('url', 'http://example.com/gui')
+        self.assertTupleEqual(
+            expected, parse_source('url:http://example.com/gui'))
+
+    def test_file_url(self):
+        expected = ('url', 'file:///foo/bar')
+        self.assertTupleEqual(expected, parse_source('url:/foo/bar'))
+
+    def test_relative_file_url(self):
+        expected = ('url', 'file:///current/dir/foo/bar')
+        self.assertTupleEqual(expected, parse_source('url:foo/bar'))
 
 
 class RenderToFileTest(unittest.TestCase):
@@ -539,9 +561,11 @@ class StartStopTest(unittest.TestCase):
 
     def test_start_gui(self):
         ssl_cert_path = '/tmp/certificates/'
+        charmworld_url = 'http://charmworld.example'
         start_gui(
-            False, 'This is login help.', True, True, ssl_cert_path, True,
-            haproxy_path='haproxy', config_js_path='config')
+            False, 'This is login help.', True, True, ssl_cert_path,
+            charmworld_url, True, haproxy_path='haproxy',
+            config_js_path='config')
         haproxy_conf = self.files['haproxy']
         self.assertIn('ca-base {0}'.format(ssl_cert_path), haproxy_conf)
         self.assertIn('crt-base {0}'.format(ssl_cert_path), haproxy_conf)
@@ -558,6 +582,7 @@ class StartStopTest(unittest.TestCase):
         self.assertIn('readOnly: true', js_conf)
         self.assertIn("socket_url: 'wss://", js_conf)
         self.assertIn('socket_protocol: "wss"', js_conf)
+        self.assertIn('charmworldURL: "http://charmworld.example"', js_conf)
         apache_conf = self.files['juju-gui']
         self.assertIn('juju-gui/build-', apache_conf)
         self.assertIn('VirtualHost *:{0}'.format(WEB_PORT), apache_conf)
@@ -565,9 +590,11 @@ class StartStopTest(unittest.TestCase):
 
     def test_start_gui_insecure(self):
         ssl_cert_path = '/tmp/certificates/'
+        charmworld_url = 'http://charmworld.example'
         start_gui(
-            False, 'This is login help.', True, True, ssl_cert_path, True,
-            haproxy_path='haproxy', config_js_path='config', secure=False)
+            False, 'This is login help.', True, True, ssl_cert_path, 
+            charmworld_url, True, haproxy_path='haproxy',
+            config_js_path='config', secure=False)
         js_conf = self.files['config']
         self.assertIn("socket_url: 'ws://", js_conf)
         self.assertIn('socket_protocol: "ws"', js_conf)
