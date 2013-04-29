@@ -13,24 +13,25 @@ import charmhelpers
 import yaml
 
 from utils import (
-    _get_by_attr,
     API_PORT,
+    JUJU_GUI_DIR,
+    JUJU_PEM,
+    WEB_PORT,
+    _get_by_attr,
     cmd_log,
     first_path_in_dir,
     get_api_address,
     get_release_file_url,
     get_zookeeper_address,
-    JUJU_GUI_DIR,
-    JUJU_PEM,
     legacy_juju,
     log_hook,
     parse_source,
+    get_npm_cache_archive_url,
     render_to_file,
     save_or_create_certificates,
     start_agent,
     start_gui,
     start_improv,
-    WEB_PORT,
 )
 # Import the whole utils package for monkey patching.
 import utils
