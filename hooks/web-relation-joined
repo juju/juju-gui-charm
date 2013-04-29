@@ -2,6 +2,7 @@
 #-*- python -*-
 
 import socket
+
 from charmhelpers import (
     get_config,
     relation_set,
@@ -12,11 +13,9 @@ from utils import log_hook
 def main():
     hostname = socket.getfqdn()
     config = get_config()
-    if config['secure']:
-    	port = 443
-    else:
-    	port = 80
+    port = 443 if config['secure'] else 80
     relation_set(port=port, hostname=hostname)
+
 
 if __name__ == '__main__':
     with log_hook():

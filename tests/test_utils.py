@@ -6,22 +6,23 @@ import shutil
 from simplejson import dumps
 from subprocess import CalledProcessError
 import tempfile
-import tempita
 import unittest
 
 import charmhelpers
+import tempita
 import yaml
 
 from utils import (
-    _get_by_attr,
     API_PORT,
+    JUJU_GUI_DIR,
+    JUJU_PEM,
+    WEB_PORT,
+    _get_by_attr,
     cmd_log,
     first_path_in_dir,
     get_api_address,
     get_release_file_url,
     get_zookeeper_address,
-    JUJU_GUI_DIR,
-    JUJU_PEM,
     legacy_juju,
     log_hook,
     parse_source,
@@ -30,7 +31,6 @@ from utils import (
     start_agent,
     start_gui,
     start_improv,
-    WEB_PORT,
 )
 # Import the whole utils package for monkey patching.
 import utils
@@ -40,9 +40,10 @@ class AttrDict(dict):
     """A dict with the ability to access keys as attributes."""
 
     def __getattr__(self, attr):
-        if attr in self:
+        try:
             return self[attr]
-        raise AttributeError
+        except KeyError:
+            raise AttributeError
 
 
 class AttrDictTest(unittest.TestCase):
@@ -464,6 +465,7 @@ class SaveOrCreateCertificatesTest(unittest.TestCase):
 
 
 class CmdLogTest(unittest.TestCase):
+
     def setUp(self):
         # Patch the charmhelpers 'command', which powers get_config.  The
         # result of this is the mock_config dictionary will be returned.
@@ -510,6 +512,7 @@ class StartStopTest(unittest.TestCase):
 
         self.files = {}
         orig_rtf = utils.render_to_file
+
         def render_to_file(template, context, dest):
             target = tempfile.NamedTemporaryFile()
             orig_rtf(template, context, target.name)
@@ -574,7 +577,7 @@ class StartStopTest(unittest.TestCase):
         self.assertIn('ca-file {0}'.format(JUJU_PEM), haproxy_conf)
         self.assertIn('crt {0}'.format(JUJU_PEM), haproxy_conf)
         self.assertIn('redirect scheme https', haproxy_conf)
-        js_conf =  self.files['config']
+        js_conf = self.files['config']
         self.assertIn('consoleEnabled: false', js_conf)
         self.assertIn('user: "admin"', js_conf)
         self.assertIn('password: "admin"', js_conf)
@@ -586,13 +589,14 @@ class StartStopTest(unittest.TestCase):
         apache_conf = self.files['juju-gui']
         self.assertIn('juju-gui/build-', apache_conf)
         self.assertIn('VirtualHost *:{0}'.format(WEB_PORT), apache_conf)
-        self.assertIn('Alias /test {0}/test/'.format(JUJU_GUI_DIR), apache_conf)
+        self.assertIn(
+            'Alias /test {0}/test/'.format(JUJU_GUI_DIR), apache_conf)
 
     def test_start_gui_insecure(self):
         ssl_cert_path = '/tmp/certificates/'
         charmworld_url = 'http://charmworld.example'
         start_gui(
-            False, 'This is login help.', True, True, ssl_cert_path, 
+            False, 'This is login help.', True, True, ssl_cert_path,
             charmworld_url, True, haproxy_path='haproxy',
             config_js_path='config', secure=False)
         js_conf = self.files['config']

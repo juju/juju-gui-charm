@@ -1,21 +1,17 @@
 #!/usr/bin/env python2
 #-*- python -*-
 
-from charmhelpers import (
-    get_config,
-)
-
-from utils import (
-    log_hook,
-)
+from charmhelpers import get_config
 
 from backend import Backend
+from utils import log_hook
 
 
 def main():
     config = get_config()
     backend = Backend(config)
     backend.start()
+
 
 if __name__ == '__main__':
     with log_hook():

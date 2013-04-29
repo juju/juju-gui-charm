@@ -1,5 +1,5 @@
 """
-A composition system for creating backend object.
+A composition system for creating backend objects.
 
 Backends implement start(), stop() and install() methods. A backend is composed
 of many mixins and each mixin will implement any/all of those methods and all
@@ -53,6 +53,7 @@ apt_get = command('apt-get')
 
 
 class InstallMixin(object):
+
     def install(self, backend):
         config = backend.config
         missing = backend.check_packages(*backend.debs)
@@ -66,14 +67,28 @@ class InstallMixin(object):
             setup_gui(release_tarball)
 
 
+class GuiMixin(object):
+    repositories = ('ppa:juju-gui/ppa',)
+
+    def start(self, backend):
+        config = backend.config
+        start_gui(
+            config['juju-gui-console-enabled'], config['login-help'],
+            config['read-only'], config['staging'], config['ssl-cert-path'],
+            config['charmworld-url'], config['serve-tests'],
+            secure=config['secure'], sandbox=config['sandbox'])
+        open_port(80)
+        open_port(443)
+
+
 class UpstartMixin(object):
     upstart_scripts = ('haproxy.conf', )
     debs = ('curl', 'openssl', 'haproxy', 'apache2')
 
     def install(self, backend):
-        """Set up haproxy and nginx upstart configuration files."""
+        """Set up haproxy and Apache upstart configuration files."""
         setup_apache()
-        backend.log('Setting up haproxy and nginx start up scripts.')
+        backend.log('Setting up haproxy and Apache start up scripts.')
         config = backend.config
         if backend.different(
                 'ssl-cert-path', 'ssl-cert-contents', 'ssl-key-contents'):
@@ -94,23 +109,6 @@ class UpstartMixin(object):
         with su('root'):
             backend.service_control(HAPROXY, STOP)
             backend.service_control(APACHE, STOP)
-
-
-class GuiMixin(object):
-    gui_properties = set([
-        'juju-gui-console-enabled', 'login-help', 'read-only',
-        'serve-tests', 'secure'])
-
-    repositories = ('ppa:juju-gui/ppa',)
-
-    def start(self, config):
-        start_gui(
-            config['juju-gui-console-enabled'], config['login-help'],
-            config['read-only'], config['staging'], config['ssl-cert-path'],
-            config['charmworld-url'], config['serve-tests'],
-            secure=config['secure'], sandbox=config['sandbox'])
-        open_port(80)
-        open_port(443)
 
 
 class SandboxBackend(object):
@@ -163,54 +161,53 @@ class Backend(object):
         factory method to generate a selection of strategy classes
         to use together to implement the backend proper.
         """
-        # Ingest the config and build out the ordered list of
-        # backend elements to include
+        # Ingest the config and build out the ordered list of backend elements
+        # to include.
         if config is None:
             config = get_config()
         self.config = config
+        if prev_config is None:
+            prev_config = {}
         self.prev_config = prev_config
         self.overrides = overrides
 
-        # We always use upstart.
-        backends = [InstallMixin, ]
+        mixins = [InstallMixin]
 
-        api = "python" if legacy_juju() else "go"
         sandbox = config.get('sandbox', False)
         staging = config.get('staging', False)
 
-        if api == 'python':
+        if legacy_juju():
             if staging:
-                backends.append(ImprovBackend)
+                mixins.append(ImprovBackend)
             elif sandbox:
-                backends.append(SandboxBackend)
+                mixins.append(SandboxBackend)
             else:
-                backends.append(PythonBackend)
+                mixins.append(PythonBackend)
         else:
             if staging:
-                raise ValueError(
-                    "Unable to use staging with {} backend".format(api))
-            if sandbox:
-                raise ValueError(
-                    "Unable to use sandbox with {} backend".format(api))
-            backends.append(GoBackend)
+                raise ValueError('Unable to use staging with go backend')
+            elif sandbox:
+                raise ValueError('Unable to use sandbox with go backend')
+            mixins.append(GoBackend)
 
-        # All backends can manage the gui.
-        backends.append(GuiMixin)
-        backends.append(UpstartMixin)
+        # All mixins can manage the GUI.
+        mixins.append(GuiMixin)
+        # We always use upstart.
+        mixins.append(UpstartMixin)
 
-        # record our choice mapping classes to instances
-        for i, b in enumerate(backends):
+        # Record our choice mapping classes to instances.
+        for i, b in enumerate(mixins):
             if callable(b):
-                backends[i] = b()
-        self.backends = backends
+                mixins[i] = b()
+        self.mixins = mixins
 
-    def __getitem__(self, key):
-        try:
-            return self.config[key]
-        except KeyError:
-            print("Unable to extract config key '%s' from %s" %
-                (key, self.config))
-            raise
+    # def __getitem__(self, key):
+    #     try:
+    #         return self.config[key]
+    #     except KeyError:
+    #         print('Unable to extract config key "%s" from %s' %
+    #             (key, self.config))
+    #         raise
 
     @overrideable
     def check_packages(self, *packages):
@@ -244,15 +241,9 @@ class Backend(object):
         value differs from the config value passed in prev_config
         with respect to any of the passed in string keys.
         """
-        if self.prev_config is None:
+        if any(self.config.get(key) != self.prev_config.get(key)
+                for key in keys):
             return True
-
-        for key in keys:
-            current = self.config.get(key)
-            prev = self.prev_config.get(key)
-            r = current != prev
-            if r:
-                return True
         return False
 
     ## Composed Methods

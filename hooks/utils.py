@@ -11,7 +11,6 @@ __all__ = [
     'JUJU_GUI_DIR',
     'JUJU_GUI_SITE',
     'JUJU_PEM',
-    'StopChain',
     'WEB_PORT',
     'bzr_checkout',
     'chain',
@@ -47,6 +46,9 @@ from subprocess import CalledProcessError
 import tempfile
 from urlparse import urlparse
 
+import apt
+import tempita
+
 from launchpadlib.launchpad import Launchpad
 from shelltoolbox import (
     Serializer,
@@ -66,9 +68,6 @@ from charmhelpers import (
     service_control,
     unit_get,
 )
-
-import apt
-import tempita
 
 
 AGENT = 'juju-api-agent'
@@ -534,33 +533,19 @@ def check_packages(*packages):
     return missing
 
 
-## Backend support decorators
-class StopChain(Exception):
-    """Stop Processing a chain command without raising
-    another error.
+def chain(name):
+    """Helper method to compose a set of mixin objects into a callable.
+
+    Each method is called in the context of its mixin instance and its argument
+    is the Backend instance.
     """
-
-
-def chain(name, reverse=False):
-    """Helper method to compose a set of strategy objects into
-    a callable.
-
-    Each method is called in the context of its strategy
-    instance (normal OOP) and its argument is the Backend
-    instance.
-    """
-    # chain method calls through all implementing mixins
+    # Chain method calls through all implementing mixins.
     def method(self):
-        workingset = self.backends
-        if reverse:
-            workingset = reversed(workingset)
-        for backend in workingset:
-            call = backend.__class__.__dict__.get(name)
-            if call:
-                try:
-                    call(backend, self)
-                except StopChain:
-                    break
+        mixins = self.mixins
+        for mixin in mixins:
+            callable = mixin.__class__.__dict__.get(name)
+            if callable:
+                callable(mixin, self)
 
     method.__name__ = name
     return method
@@ -590,12 +575,12 @@ def merge(name):
     """Helper to merge a property from a set of strategy objects
     into a unified set.
     """
-    # return merged property from every providing backend as a set
+    # Return merged property from every providing mixin as a set.
     @property
     def method(self):
         result = set()
-        for backend in self.backends:
-            segment = backend.__class__.__dict__.get(name)
+        for mixin in self.mixins:
+            segment = mixin.__class__.__dict__.get(name)
             if segment and isinstance(segment, (list, tuple, set)):
                 result |= set(segment)
 
