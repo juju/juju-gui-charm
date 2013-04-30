@@ -46,9 +46,6 @@ from subprocess import CalledProcessError
 import tempfile
 from urlparse import urlparse
 
-import apt
-import tempita
-
 from launchpadlib.launchpad import Launchpad
 from shelltoolbox import (
     Serializer,
@@ -68,6 +65,9 @@ from charmhelpers import (
     service_control,
     unit_get,
 )
+
+import apt
+import tempita
 
 
 AGENT = 'juju-api-agent'
@@ -533,13 +533,16 @@ def check_packages(*packages):
     return missing
 
 
-def chain(name):
-    """Helper method to compose a set of mixin objects into a callable.
+## Backend support decorators
 
-    Each method is called in the context of its mixin instance and its argument
-    is the Backend instance.
+def chain(name):
+    """Helper method to compose a set of strategy objects into
+    a callable.
+
+    Each method is called in the context of its mixin
+    instance and its argument is the Backend instance.
     """
-    # Chain method calls through all implementing mixins.
+    # chain method calls through all implementing mixins
     def method(self):
         mixins = self.mixins
         for mixin in mixins:
@@ -575,7 +578,7 @@ def merge(name):
     """Helper to merge a property from a set of strategy objects
     into a unified set.
     """
-    # Return merged property from every providing mixin as a set.
+    # return merged property from every providing backend as a set
     @property
     def method(self):
         result = set()

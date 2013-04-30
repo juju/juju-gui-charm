@@ -1,5 +1,5 @@
 """
-A composition system for creating backend objects.
+A composition system for creating backend object.
 
 Backends implement start(), stop() and install() methods. A backend is composed
 of many mixins and each mixin will implement any/all of those methods and all
@@ -53,7 +53,6 @@ apt_get = command('apt-get')
 
 
 class InstallMixin(object):
-
     def install(self, backend):
         config = backend.config
         missing = backend.check_packages(*backend.debs)
@@ -67,28 +66,14 @@ class InstallMixin(object):
             setup_gui(release_tarball)
 
 
-class GuiMixin(object):
-    repositories = ('ppa:juju-gui/ppa',)
-
-    def start(self, backend):
-        config = backend.config
-        start_gui(
-            config['juju-gui-console-enabled'], config['login-help'],
-            config['read-only'], config['staging'], config['ssl-cert-path'],
-            config['charmworld-url'], config['serve-tests'],
-            secure=config['secure'], sandbox=config['sandbox'])
-        open_port(80)
-        open_port(443)
-
-
 class UpstartMixin(object):
     upstart_scripts = ('haproxy.conf', )
     debs = ('curl', 'openssl', 'haproxy', 'apache2')
 
     def install(self, backend):
-        """Set up haproxy and Apache upstart configuration files."""
+        """Set up haproxy and nginx upstart configuration files."""
         setup_apache()
-        backend.log('Setting up haproxy and Apache start up scripts.')
+        backend.log('Setting up haproxy and nginx start up scripts.')
         config = backend.config
         if backend.different(
                 'ssl-cert-path', 'ssl-cert-contents', 'ssl-key-contents'):
@@ -109,6 +94,20 @@ class UpstartMixin(object):
         with su('root'):
             backend.service_control(HAPROXY, STOP)
             backend.service_control(APACHE, STOP)
+
+
+class GuiMixin(object):
+    repositories = ('ppa:juju-gui/ppa',)
+
+    def start(self, backend):
+        config = backend.config
+        start_gui(
+            config['juju-gui-console-enabled'], config['login-help'],
+            config['read-only'], config['staging'], config['ssl-cert-path'],
+            config['charmworld-url'], config['serve-tests'],
+            secure=config['secure'], sandbox=config['sandbox'])
+        open_port(80)
+        open_port(443)
 
 
 class SandboxBackend(object):
@@ -161,8 +160,8 @@ class Backend(object):
         factory method to generate a selection of strategy classes
         to use together to implement the backend proper.
         """
-        # Ingest the config and build out the ordered list of backend elements
-        # to include.
+        # Ingest the config and build out the ordered list of
+        # backend elements to include
         if config is None:
             config = get_config()
         self.config = config
@@ -185,9 +184,11 @@ class Backend(object):
                 mixins.append(PythonBackend)
         else:
             if staging:
-                raise ValueError('Unable to use staging with go backend')
-            elif sandbox:
-                raise ValueError('Unable to use sandbox with go backend')
+                raise ValueError(
+                    "Unable to use staging with {} backend".format(api))
+            if sandbox:
+                raise ValueError(
+                    "Unable to use sandbox with {} backend".format(api))
             mixins.append(GoBackend)
 
         # All mixins can manage the GUI.
@@ -195,19 +196,11 @@ class Backend(object):
         # We always use upstart.
         mixins.append(UpstartMixin)
 
-        # Record our choice mapping classes to instances.
+        # record our choice mapping classes to instances
         for i, b in enumerate(mixins):
             if callable(b):
                 mixins[i] = b()
         self.mixins = mixins
-
-    # def __getitem__(self, key):
-    #     try:
-    #         return self.config[key]
-    #     except KeyError:
-    #         print('Unable to extract config key "%s" from %s' %
-    #             (key, self.config))
-    #         raise
 
     @overrideable
     def check_packages(self, *packages):

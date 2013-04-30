@@ -1,9 +1,14 @@
 #!/usr/bin/env python2
 #-*- python -*-
 
+from charmhelpers import get_config
+
+from utils import (
+    log_hook,
+    stop,
+)
 
 from backend import Backend
-from utils import log_hook
 
 
 def main():
