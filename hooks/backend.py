@@ -36,8 +36,8 @@ import os
 import shutil
 
 
-SYS_INIT_DIR = '/etc/init/'
 apt_get = shelltoolbox.command('apt-get')
+SYS_INIT_DIR = '/etc/init/'
 
 
 class InstallMixin(object):
@@ -147,12 +147,12 @@ class Backend(object):
 
     def __init__(self, config=None, prev_config=None, **overrides):
         """
-        Mixins function through composition. __init__ becomes the
+        Mixins work through composition. __init__ becomes the
         factory method to generate a selection of mixin classes
         to use together to implement the backend proper.
         """
         # Ingest the config and build out the ordered list of
-        # mixin elements to include
+        # mixin elements to include.
         if config is None:
             config = get_config()
         self.config = config
@@ -224,10 +224,8 @@ class Backend(object):
         if self.prev_config is None:
             # No previous config passed in, cannot say anything is different.
             return False
-        if any(self.config.get(key) != self.prev_config.get(key)
-                for key in keys):
-            return True
-        return False
+        return any(self.config.get(key) != self.prev_config.get(key)
+            for key in keys)
 
     ## Composed Methods
     install = chain('install')

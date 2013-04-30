@@ -540,7 +540,7 @@ def chain(name):
     a callable.
 
     Each method is called in the context of its mixin
-    instance and its argument is the Backend instance.
+    instance, and its argument is the Backend instance.
     """
     # chain method calls through all implementing mixins
     def method(self):
