@@ -100,9 +100,17 @@ class TestBackendProperties(unittest.TestCase):
 
 
 class GotEmAllDict(dict):
+    """A dictionary that always returns the same default value for any key."""
+
+    def __init__(self, default):
+        self.default = default
+        super(GotEmAllDict, self).__init__()
 
     def __getitem__(self, key):
-        return False
+        return self.default
+
+    def get(self, key, default):
+        return self.default
 
 
 class TestBackendCommands(unittest.TestCase):
@@ -134,9 +142,8 @@ class TestBackendCommands(unittest.TestCase):
             check_packages=mock_check_packages,
             log=mock_log)
         test_backend.install()
-        self.assertTrue(called.get('check_packages'))
-        self.assertTrue(called.get('setup_apache'))
-        self.assertTrue(called.get('log'))
+        for mocked in ('check_packages', 'setup_apache', 'log'):
+            self.assertTrue(mocked, '{} was not called'.format(mocked))
 
         # Cleanup.
         utils.setup_apache = original_setup_apache
@@ -160,7 +167,7 @@ class TestBackendCommands(unittest.TestCase):
         @contextmanager
         def mock_su(user):
             called['su'] = True
-            yield None
+            yield
         original_su = shelltoolbox.su
         shelltoolbox.su = mock_su
 
@@ -170,21 +177,56 @@ class TestBackendCommands(unittest.TestCase):
         def mock_start_agent(cert_path):
             called['start_agent'] = True
 
+        # Call start_agent.
         test_backend = backend.Backend(
-            config=GotEmAllDict(),
+            config=GotEmAllDict(False),
             service_control=mock_service_control,
             start_agent=mock_start_agent)
         test_backend.start()
-        self.assertTrue(called.get('service_control'))
-        self.assertTrue(called.get('start_agent'))
-        self.assertTrue(called.get('start_gui'))
-        self.assertTrue(called.get('open_port'))
-        self.assertTrue(called.get('su'))
+        for mocked in ('service_control', 'start_agent', 'start_gui',
+                'open_port', 'su'):
+            self.assertTrue(mocked, '{} was not called'.format(mocked))
+
+        def mock_start_improv(stage_env, cert_path):
+            called['start_improv'] = True
+
+        # Call start_improv.
+        test_backend = backend.Backend(
+            config=GotEmAllDict(True),
+            service_control=mock_service_control,
+            start_improv=mock_start_improv)
+        test_backend.start()
+        for mocked in ('service_control', 'start_improv', 'start_gui',
+                'open_port', 'su'):
+            self.assertTrue(mocked, '{} was not called'.format(mocked))
 
         # Cleanup.
         shelltoolbox.su = original_su
         charmhelpers.open_port = original_open_port
         utils.setup_gui = original_start_gui
+
+    def test_stop(self):
+        called = {}
+
+        @contextmanager
+        def mock_su(user):
+            called['su'] = True
+            yield
+        original_su = shelltoolbox.su
+        shelltoolbox.su = mock_su
+
+        def mock_service_control(service, action):
+            called['service_control'] = True
+
+        test_backend = backend.Backend(
+            config={'sandbox': False, 'staging': False},
+            service_control=mock_service_control)
+        test_backend.stop()
+        for mocked in ('service_control', 'su'):
+            self.assertTrue(mocked, '{} was not called'.format(mocked))
+
+        # Cleanup.
+        shelltoolbox.su = original_su
 
 
 class TestBackendUtils(unittest.TestCase):
