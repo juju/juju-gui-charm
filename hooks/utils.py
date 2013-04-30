@@ -297,7 +297,9 @@ def start_improv(staging_env, ssl_cert_path,
         service_control(IMPROV, START)
 
 
-def start_agent(ssl_cert_path, config_path='/etc/init/juju-api-agent.conf'):
+def start_agent(
+        ssl_cert_path, config_path='/etc/init/juju-api-agent.conf', 
+        read_only=False):
     """Start the Juju agent and connect to the current environment."""
     # Retrieve the Zookeeper address from the start up script.
     unit_dir = os.path.realpath(os.path.join(CURRENT_DIR, '..'))
@@ -309,6 +311,7 @@ def start_agent(ssl_cert_path, config_path='/etc/init/juju-api-agent.conf'):
         'keys': ssl_cert_path,
         'port': API_PORT,
         'zookeeper': zookeeper,
+        'read_only': read_only
     }
     render_to_file('juju-api-agent.conf.template', context, config_path)
     log('Starting API agent.')
