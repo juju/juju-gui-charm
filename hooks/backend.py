@@ -1,5 +1,5 @@
 """
-A composition system for creating backend object.
+A composition system for creating backend objects.
 
 Backends implement start(), stop() and install() methods. A backend is composed
 of many mixins and each mixin will implement any/all of those methods and all
@@ -53,6 +53,7 @@ apt_get = command('apt-get')
 
 
 class InstallMixin(object):
+
     def install(self, backend):
         config = backend.config
         missing = backend.check_packages(*backend.debs)
@@ -71,9 +72,9 @@ class UpstartMixin(object):
     debs = ('curl', 'openssl', 'haproxy', 'apache2')
 
     def install(self, backend):
-        """Set up haproxy and nginx upstart configuration files."""
+        """Set up haproxy and Apache upstart configuration files."""
         setup_apache()
-        backend.log('Setting up haproxy and nginx start up scripts.')
+        backend.log('Setting up haproxy and Apache start up scripts.')
         config = backend.config
         if backend.different(
                 'ssl-cert-path', 'ssl-cert-contents', 'ssl-key-contents'):
@@ -164,7 +165,7 @@ class Backend(object):
         to use together to implement the backend proper.
         """
         # Ingest the config and build out the ordered list of
-        # backend elements to include
+        # backend elements to include.
         if config is None:
             config = get_config()
         self.config = config
@@ -187,18 +188,16 @@ class Backend(object):
                 backends.append(PythonBackend)
         else:
             if staging:
-                raise ValueError(
-                    "Unable to use staging with {} backend".format(api))
-            if sandbox:
-                raise ValueError(
-                    "Unable to use sandbox with {} backend".format(api))
+                raise ValueError('Unable to use staging with go backend')
+            elif sandbox:
+                raise ValueError('Unable to use sandbox with go backend')
             backends.append(GoBackend)
 
         # All backends can manage the gui.
         backends.append(GuiMixin)
         backends.append(UpstartMixin)
 
-        # record our choice mapping classes to instances
+        # Record our choice mapping classes to instances.
         for i, b in enumerate(backends):
             if callable(b):
                 backends[i] = b()

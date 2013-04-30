@@ -47,6 +47,9 @@ from subprocess import CalledProcessError
 import tempfile
 from urlparse import urlparse
 
+import apt
+import tempita
+
 from launchpadlib.launchpad import Launchpad
 from shelltoolbox import (
     Serializer,
@@ -66,9 +69,6 @@ from charmhelpers import (
     service_control,
     unit_get,
 )
-
-import apt
-import tempita
 
 
 AGENT = 'juju-api-agent'
@@ -542,14 +542,13 @@ class StopChain(Exception):
 
 
 def chain(name, reverse=False):
-    """Helper method to compose a set of strategy objects into
-    a callable.
+    """Helper method to compose a set of mixin objects into a callable.
 
     Each method is called in the context of its strategy
     instance (normal OOP) and its argument is the Backend
     instance.
     """
-    # chain method calls through all implementing mixins
+    # Chain method calls through all implementing mixins.
     def method(self):
         workingset = self.backends
         if reverse:
@@ -590,7 +589,7 @@ def merge(name):
     """Helper to merge a property from a set of strategy objects
     into a unified set.
     """
-    # return merged property from every providing backend as a set
+    # Return merged property from every providing mixin as a set.
     @property
     def method(self):
         result = set()

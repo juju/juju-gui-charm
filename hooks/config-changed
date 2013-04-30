@@ -10,16 +10,13 @@ from charmhelpers import (
     get_config,
     log,
 )
-from shelltoolbox import (
-    DictDiffer,
-)
+from shelltoolbox import DictDiffer
 
+from backend import Backend
 from utils import (
     config_json,
     log_hook,
 )
-
-from backend import Backend
 
 
 def main():
