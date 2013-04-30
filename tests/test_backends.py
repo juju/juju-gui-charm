@@ -73,7 +73,7 @@ class TestBackendProperties(unittest.TestCase):
     def test_go_backend(self):
         # Monkeypatch utils.CURRENT_DIR.
         base_dir = tempfile.mkdtemp()
-        original_current_dir = utils.CURRENT_DIR
+        orig_current_dir = utils.CURRENT_DIR
         utils.CURRENT_DIR = tempfile.mkdtemp(dir=base_dir)
         # Create a fake agent file.
         agent_path = os.path.join(base_dir, 'agent.conf')
@@ -81,7 +81,7 @@ class TestBackendProperties(unittest.TestCase):
         test_backend = backend.Backend(
             config={'sandbox': False, 'staging': False})
         # Cleanup.
-        utils.CURRENT_DIR = original_current_dir
+        utils.CURRENT_DIR = orig_current_dir
         shutil.rmtree(base_dir)
         # Tests
         mixin_names = get_mixin_names(test_backend)
@@ -109,124 +109,143 @@ class GotEmAllDict(dict):
     def __getitem__(self, key):
         return self.default
 
-    def get(self, key, default):
+    def get(self, key, default=None):
         return self.default
 
 
 class TestBackendCommands(unittest.TestCase):
 
-    def test_install(self):
-        # Monkeypatch utils
-        original_juju_dir = utils.JUJU_DIR
-        original_sys_init_dir = backend.SYS_INIT_DIR
-        temp_dir = tempfile.mkdtemp()
-        utils.JUJU_DIR = temp_dir
-        backend.SYS_INIT_DIR = temp_dir
-
-        called = {}
+    def setUp(self):
+        self.called = {}
 
         def mock_setup_apache():
-            called['setup_apache'] = True
-        original_setup_apache = utils.setup_apache
+            self.called['setup_apache'] = True
+        self.orig_setup_apache = utils.setup_apache
         utils.setup_apache = mock_setup_apache
 
+        def mock_fetch_api(juju_api_branch):
+            self.called['fetch_api'] = True
+        self.orig_fetch_api = utils.fetch_api
+        utils.fetch_api = mock_fetch_api
+
+        def mock_fetch_gui(juju_gui_source, logpath):
+            self.called['fetch_gui'] = True
+        self.orig_fetch_gui = utils.fetch_gui
+        utils.fetch_gui = mock_fetch_gui
+
+        def mock_setup_gui(release_tarball):
+            self.called['setup_gui'] = True
+        self.orig_setup_gui = utils.setup_gui
+        utils.setup_gui = mock_setup_gui
+
+        def mock_save_or_create_certificates(
+                ssl_cert_path, ssl_cert_contents, ssl_key_contents):
+            self.called['save_or_create_certificates'] = True
+        self.orig_save_or_create_certs = utils.save_or_create_certificates
+        utils.save_or_create_certificates = mock_save_or_create_certificates
+
         def mock_check_packages(*args):
-            called['check_packages'] = True
+            self.called['check_packages'] = True
             return False
-
-        def mock_log(msg, *args):
-            called['log'] = True
-
-        test_backend = backend.Backend(
-            config={'sandbox': False, 'staging': False},
-            check_packages=mock_check_packages,
-            log=mock_log)
-        test_backend.install()
-        for mocked in ('check_packages', 'setup_apache', 'log'):
-            self.assertTrue(mocked, '{} was not called'.format(mocked))
-
-        # Cleanup.
-        utils.setup_apache = original_setup_apache
-        backend.SYS_INIT_DIR = original_sys_init_dir
-        utils.JUJU_DIR = original_juju_dir
-        shutil.rmtree(temp_dir)
-
-    def test_start(self):
-        called = {}
+        self.orig_check_packages = utils.check_packages
+        utils.check_packages = mock_check_packages
 
         def mock_start_gui(*args, **kwargs):
-            called['start_gui'] = True
-        original_start_gui = utils.start_gui
+            self.called['start_gui'] = True
+        self.orig_start_gui = utils.start_gui
         utils.start_gui = mock_start_gui
 
+        def mock_start_agent(cert_path):
+            self.called['start_agent'] = True
+        self.orig_start_agent = utils.start_agent
+        utils.start_agent = mock_start_agent
+
+        def mock_start_improv(stage_env, cert_path):
+            self.called['start_improv'] = True
+        self.orig_start_improv = utils.start_improv
+        utils.start_improv = mock_start_improv
+
+        def mock_log(msg, *args):
+            self.called['log'] = True
+        self.orig_log = charmhelpers.log
+        charmhelpers.log = mock_log
+
         def mock_open_port(port):
-            called['open_port'] = True
-        original_open_port = charmhelpers.open_port
+            self.called['open_port'] = True
+        self.orig_open_port = charmhelpers.open_port
         charmhelpers.open_port = mock_open_port
+
+        def mock_service_control(service, action):
+            self.called['service_control'] = True
+        self.orig_service_control = charmhelpers.service_control
+        charmhelpers.service_control = mock_service_control
 
         @contextmanager
         def mock_su(user):
-            called['su'] = True
+            self.called['su'] = True
             yield
-        original_su = shelltoolbox.su
+        self.orig_su = shelltoolbox.su
         shelltoolbox.su = mock_su
 
-        def mock_service_control(service, action):
-            called['service_control'] = True
+        # Monkeypatch directories.
+        self.orig_juju_dir = utils.JUJU_DIR
+        self.orig_sys_init_dir = backend.SYS_INIT_DIR
+        self.temp_dir = tempfile.mkdtemp()
+        utils.JUJU_DIR = self.temp_dir
+        backend.SYS_INIT_DIR = self.temp_dir
 
-        def mock_start_agent(cert_path):
-            called['start_agent'] = True
+    def tearDown(self):
+        # Cleanup directories.
+        backend.SYS_INIT_DIR = self.orig_sys_init_dir
+        utils.JUJU_DIR = self.orig_juju_dir
+        shutil.rmtree(self.temp_dir)
 
-        # Call start_agent.
-        test_backend = backend.Backend(
-            config=GotEmAllDict(False),
-            service_control=mock_service_control,
-            start_agent=mock_start_agent)
+        # Undo the monkeypatching.
+        shelltoolbox.su = self.orig_su
+        charmhelpers.service_control = self.orig_service_control
+        charmhelpers.open_port = self.orig_open_port
+        charmhelpers.log = self.orig_log
+        utils.start_improv = self.orig_start_improv
+        utils.start_agent = self.orig_start_agent
+        utils.start_gui = self.orig_start_gui
+        utils.check_packages = self.orig_check_packages
+        utils.save_or_create_certificates = self.orig_save_or_create_certs
+        utils.setup_gui = self.orig_setup_gui
+        utils.fetch_gui = self.orig_fetch_gui
+        utils.fetch_api = self.orig_fetch_api
+        utils.setup_apache = self.orig_setup_apache
+
+    def test_install_python(self):
+        test_backend = backend.Backend(config=GotEmAllDict(False))
+        test_backend.install()
+        for mocked in ('check_packages', 'setup_apache', 'fetch_api', 'log'):
+            self.assertTrue(mocked, '{} was not called'.format(mocked))
+
+    def test_install_improv(self):
+        test_backend = backend.Backend(config=GotEmAllDict(True))
+        test_backend.install()
+        for mocked in ('check_packages', 'setup_apache', 'fetch_api', 'log'):
+            self.assertTrue(mocked, '{} was not called'.format(mocked))
+
+    def test_start_agent(self):
+        test_backend = backend.Backend(config=GotEmAllDict(False))
         test_backend.start()
         for mocked in ('service_control', 'start_agent', 'start_gui',
                 'open_port', 'su'):
             self.assertTrue(mocked, '{} was not called'.format(mocked))
 
-        def mock_start_improv(stage_env, cert_path):
-            called['start_improv'] = True
-
-        # Call start_improv.
-        test_backend = backend.Backend(
-            config=GotEmAllDict(True),
-            service_control=mock_service_control,
-            start_improv=mock_start_improv)
+    def test_start_improv(self):
+        test_backend = backend.Backend(config=GotEmAllDict(True))
         test_backend.start()
         for mocked in ('service_control', 'start_improv', 'start_gui',
                 'open_port', 'su'):
             self.assertTrue(mocked, '{} was not called'.format(mocked))
 
-        # Cleanup.
-        shelltoolbox.su = original_su
-        charmhelpers.open_port = original_open_port
-        utils.setup_gui = original_start_gui
-
     def test_stop(self):
-        called = {}
-
-        @contextmanager
-        def mock_su(user):
-            called['su'] = True
-            yield
-        original_su = shelltoolbox.su
-        shelltoolbox.su = mock_su
-
-        def mock_service_control(service, action):
-            called['service_control'] = True
-
-        test_backend = backend.Backend(
-            config={'sandbox': False, 'staging': False},
-            service_control=mock_service_control)
+        test_backend = backend.Backend(config=GotEmAllDict(False))
         test_backend.stop()
         for mocked in ('service_control', 'su'):
             self.assertTrue(mocked, '{} was not called'.format(mocked))
-
-        # Cleanup.
-        shelltoolbox.su = original_su
 
 
 class TestBackendUtils(unittest.TestCase):

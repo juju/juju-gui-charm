@@ -25,7 +25,6 @@ __all__ = [
     'legacy_juju',
     'log_hook',
     'merge',
-    'overrideable',
     'parse_source',
     'render_to_file',
     'save_or_create_certificates',
@@ -544,34 +543,13 @@ def chain(name):
     """
     # chain method calls through all implementing mixins
     def method(self):
-        mixins = self.mixins
-        for mixin in mixins:
+        for mixin in self.mixins:
             callable = mixin.__class__.__dict__.get(name)
             if callable:
                 callable(mixin, self)
 
     method.__name__ = name
     return method
-
-
-def overrideable(f):
-    """Helper to support very limited overrides for use in testing.
-
-    def foo():
-        return True
-    b = Backend(foo=foo)
-    assert b.foo() is True
-    """
-    name = f.__name__
-
-    def overridden(self, *args, **kwargs):
-        if name in self.overrides:
-            return self.overrides[name](*args, **kwargs)
-        else:
-            return f(self, *args, **kwargs)
-
-    overridden.__name__ = name
-    return overridden
 
 
 def merge(name):

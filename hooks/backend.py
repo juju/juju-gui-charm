@@ -11,25 +11,6 @@ new configurations so we can selectively take action.
 
 import charmhelpers
 import shelltoolbox
-from utils import (
-    AGENT,
-    APACHE,
-    HAPROXY,
-    IMPROV,
-    chain,
-    check_packages,
-    cmd_log,
-    fetch_api,
-    fetch_gui,
-    get_config,
-    legacy_juju,
-    merge,
-    overrideable,
-    save_or_create_certificates,
-    setup_gui,
-    start_agent,
-    start_improv,
-)
 import utils
 
 import os
@@ -43,15 +24,17 @@ SYS_INIT_DIR = '/etc/init/'
 class InstallMixin(object):
     def install(self, backend):
         config = backend.config
-        missing = backend.check_packages(*backend.debs)
+        missing = utils.check_packages(*backend.debs)
         if missing:
-            cmd_log(backend.install_extra_repositories(*backend.repositories))
-            cmd_log(shelltoolbox.apt_get_install(*backend.debs))
+            utils.cmd_log(
+                backend.install_extra_repositories(*backend.repositories))
+            utils.cmd_log(
+                shelltoolbox.apt_get_install(*backend.debs))
 
         if backend.different('juju-gui-source'):
-            release_tarball = fetch_gui(
+            release_tarball = utils.fetch_gui(
                 config['juju-gui-source'], config['command-log-file'])
-            setup_gui(release_tarball)
+            utils.setup_gui(release_tarball)
 
 
 class UpstartMixin(object):
@@ -61,11 +44,11 @@ class UpstartMixin(object):
     def install(self, backend):
         """Set up haproxy and nginx upstart configuration files."""
         utils.setup_apache()
-        backend.log('Setting up haproxy and nginx start up scripts.')
+        charmhelpers.log('Setting up haproxy and nginx start up scripts.')
         config = backend.config
         if backend.different(
                 'ssl-cert-path', 'ssl-cert-contents', 'ssl-key-contents'):
-            save_or_create_certificates(
+            utils.save_or_create_certificates(
                 config['ssl-cert-path'], config.get('ssl-cert-contents'),
                 config.get('ssl-key-contents'))
 
@@ -75,13 +58,13 @@ class UpstartMixin(object):
 
     def start(self, backend):
         with shelltoolbox.su('root'):
-            backend.service_control(APACHE, charmhelpers.RESTART)
-            backend.service_control(HAPROXY, charmhelpers.RESTART)
+            charmhelpers.service_control(utils.APACHE, charmhelpers.RESTART)
+            charmhelpers.service_control(utils.HAPROXY, charmhelpers.RESTART)
 
     def stop(self, backend):
         with shelltoolbox.su('root'):
-            backend.service_control(HAPROXY, charmhelpers.STOP)
-            backend.service_control(APACHE, charmhelpers.STOP)
+            charmhelpers.service_control(utils.HAPROXY, charmhelpers.STOP)
+            charmhelpers.service_control(utils.APACHE, charmhelpers.STOP)
 
 
 class GuiMixin(object):
@@ -108,13 +91,13 @@ class PythonMixin(object):
         config = backend.config
         if (not os.path.exists(utils.JUJU_DIR) or
                 backend.different('staging', 'juju-api-branch')):
-            fetch_api(config['juju-api-branch'])
+            utils.fetch_api(config['juju-api-branch'])
 
     def start(self, backend):
-        backend.start_agent(backend.config['ssl-cert-path'])
+        utils.start_agent(backend.config['ssl-cert-path'])
 
     def stop(self, backend):
-        backend.service_control(AGENT, charmhelpers.STOP)
+        charmhelpers.service_control(utils.AGENT, charmhelpers.STOP)
 
 
 class ImprovMixin(object):
@@ -124,15 +107,15 @@ class ImprovMixin(object):
         config = backend.config
         if (not os.path.exists(utils.JUJU_DIR) or
                 backend.different('staging', 'juju-api-branch')):
-            fetch_api(config['juju-api-branch'])
+            utils.fetch_api(config['juju-api-branch'])
 
     def start(self, backend):
         config = backend.config
-        backend.start_improv(
+        utils.start_improv(
             config['staging-environment'], config['ssl-cert-path'])
 
     def stop(self, backend):
-        backend.service_control(IMPROV, charmhelpers.STOP)
+        charmhelpers.service_control(utils.IMPROV, charmhelpers.STOP)
 
 
 class GoMixin(object):
@@ -140,31 +123,32 @@ class GoMixin(object):
 
 
 class Backend(object):
-    """Compose methods and policy needed to interact
-    with a Juju backend. Given a config dict (which typically
-    comes from the JSON de-serialization of config.json in JujuGUI).
+    """Compose methods and policy needed to interact with a Juju backend.
+
+    Mixins work through composition. __init__ is a factory that generates
+    a list of mixin classes to use together to implement the backend proper.
     """
 
-    def __init__(self, config=None, prev_config=None, **overrides):
+    def __init__(self, config=None, prev_config=None):
         """
-        Mixins work through composition. __init__ becomes the
-        factory method to generate a selection of mixin classes
-        to use together to implement the backend proper.
+        'config' is a dict which typically comes from the JSON de-serialization
+            of config.json in JujuGUI.
+        'prev_config' is a dict used to compute the differences. If it is not
+            passed, all current config values are considered new.
         """
-        # Ingest the config and build out the ordered list of
-        # mixin elements to include.
         if config is None:
-            config = get_config()
+            config = utils.get_config()
         self.config = config
+        if prev_config is None:
+            prev_config = {}
         self.prev_config = prev_config
-        self.overrides = overrides
 
         mixins = [InstallMixin]
 
         sandbox = config.get('sandbox', False)
         staging = config.get('staging', False)
 
-        if legacy_juju():
+        if utils.legacy_juju():
             if staging:
                 mixins.append(ImprovMixin)
             elif sandbox:
@@ -189,30 +173,9 @@ class Backend(object):
                 mixins[i] = b()
         self.mixins = mixins
 
-    @overrideable
-    def check_packages(self, *packages):
-        return check_packages(*packages)
-
-    @overrideable
-    def service_control(self, service, action):
-        charmhelpers.service_control(service, action)
-
-    @overrideable
-    def start_agent(self, cert_path):
-        start_agent(cert_path)
-
-    @overrideable
-    def start_improv(self, stage_env, cert_path):
-        start_improv(stage_env, cert_path)
-
-    @overrideable
-    def log(self, msg, *args):
-        charmhelpers.log(msg, *args)
-
-    @overrideable
     def install_extra_repositories(self, *packages):
         if self.config.get('allow-additional-deb-repositories', True):
-            shelltoolbox.install_extra_repositories(*packages)
+            utils.install_extra_repositories(*packages)
         else:
             apt_get('update')
 
@@ -221,22 +184,19 @@ class Backend(object):
         value differs from the config value passed in prev_config
         with respect to any of the passed in string keys.
         """
-        if self.prev_config is None:
-            # No previous config passed in, cannot say anything is different.
-            return False
         return any(self.config.get(key) != self.prev_config.get(key)
             for key in keys)
 
     ## Composed Methods
-    install = chain('install')
-    start = chain('start')
-    stop = chain('stop')
+    install = utils.chain('install')
+    start = utils.chain('start')
+    stop = utils.chain('stop')
 
     ## Merged Properties
-    dependencies = merge('dependencies')
-    build_dependencies = merge('build_dependencies')
-    staging_dependencies = merge('staging_dependencies')
+    dependencies = utils.merge('dependencies')
+    build_dependencies = utils.merge('build_dependencies')
+    staging_dependencies = utils.merge('staging_dependencies')
 
-    repositories = merge('repositories')
-    debs = merge('debs')
-    upstart_scripts = merge('upstart_scripts')
+    repositories = utils.merge('repositories')
+    debs = utils.merge('debs')
+    upstart_scripts = utils.merge('upstart_scripts')
