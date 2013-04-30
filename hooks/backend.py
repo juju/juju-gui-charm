@@ -29,7 +29,7 @@ from utils import (
     IMPROV,
     JUJU_DIR,
     chain,
-    check_packages,
+    find_missing_packages,
     cmd_log,
     fetch_api,
     fetch_gui,
@@ -62,7 +62,7 @@ class InstallMixin(object):
         config = backend.config
         # If the given installable thing ("backend") requires one or more debs
         # that are not yet installed, install them.
-        missing = backend.check_packages(*backend.debs)
+        missing = backend.find_missing_packages(*backend.debs)
         if missing:
             cmd_log(backend.install_extra_repositories(*backend.repositories))
             cmd_log(apt_get_install(*backend.debs))
@@ -71,13 +71,19 @@ class InstallMixin(object):
         # using a branch) then we need to build a release archive to use.
         if backend.different('juju-gui-source'):
             # Inject NPM packages into the cache for faster building.
-            #prime_npm_cache(get_npm_cache_archive_url())
+            self._prime_npm_cache()
             # Build a release from the branch.
-            release_tarball = fetch_gui(
-                config['juju-gui-source'], config['command-log-file'])
-            # XXX Why do we only set up the GUI if the "juju-gui-source"
-            # configuration is non-default?
-            setup_gui(release_tarball)
+            self._build_and_install_from_branch()
+
+    def _prime_npm_cache(self):
+        # This is a separate method so it can be easily overridden for testing.
+        prime_npm_cache(get_npm_cache_archive_url())
+
+    def _build_and_install_from_branch(self):
+        # This is a separate method so it can be easily overridden for testing.
+        release_tarball = fetch_gui(
+            config['juju-gui-source'], config['command-log-file'])
+        setup_gui(release_tarball)
 
 
 class UpstartMixin(object):
@@ -228,8 +234,8 @@ class Backend(object):
             raise
 
     @overrideable
-    def check_packages(self, *packages):
-        return check_packages(*packages)
+    def find_missing_packages(self, *packages):
+        return find_missing_packages(*packages)
 
     @overrideable
     def service_control(self, service, action):

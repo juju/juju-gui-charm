@@ -401,7 +401,7 @@ def write_apache_config(build_dir, serve_tests=False):
     render_to_file('apache-site.template', context, JUJU_GUI_SITE)
 
 
-def get_npm_cache_archive_url():
+def get_npm_cache_archive_url(Launchpad=Launchpad):
     """Figure out the URL of the most recent NPM cache archive on Launchpad."""
     launchpad = Launchpad.login_anonymously('Juju GUI charm', 'production')
     project = launchpad.projects['juju-gui']
@@ -421,7 +421,7 @@ def prime_npm_cache(npm_cache_url):
         os.mkdir(npm_cache_dir)
     except OSError, e:
         # If the directory already exists then ignore the error.
-        if e.errno != 17: # File exists.
+        if e.errno != errno.EEXIST: # File exists.
             raise
     uncompress = command('tar', '-x', '-z', '-C', npm_cache_dir, '-f')
     cmd_log(uncompress(npm_cache_archive))
@@ -543,7 +543,7 @@ def save_or_create_certificates(
         shutil.copyfileobj(open(crt_path), pem_file)
 
 
-def check_packages(*packages):
+def find_missing_packages(*packages):
     """Given a list of packages, return the packages which are not installed.
     """
     cache = apt.Cache()
