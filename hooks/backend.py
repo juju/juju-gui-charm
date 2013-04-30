@@ -110,11 +110,11 @@ class GuiMixin(object):
         open_port(443)
 
 
-class SandboxBackend(object):
+class SandboxMixin(object):
     pass
 
 
-class PythonBackend(object):
+class PythonMixin(object):
 
     def install(self, config):
         if (not os.path.exists(JUJU_DIR) or
@@ -128,7 +128,7 @@ class PythonBackend(object):
         backend.service_control(AGENT, STOP)
 
 
-class ImprovBackend(object):
+class ImprovMixin(object):
     debs = ('zookeeper', )
 
     def install(self, config):
@@ -144,7 +144,7 @@ class ImprovBackend(object):
         backend.service_control(IMPROV, STOP)
 
 
-class GoBackend(object):
+class GoMixin(object):
     debs = ('python-yaml', )
 
 
@@ -156,12 +156,12 @@ class Backend(object):
 
     def __init__(self, config=None, prev_config=None, **overrides):
         """
-        Backends function through composition. __init__ becomes the
-        factory method to generate a selection of strategy classes
+        Mixins function through composition. __init__ becomes the
+        factory method to generate a selection of mixin classes
         to use together to implement the backend proper.
         """
         # Ingest the config and build out the ordered list of
-        # backend elements to include
+        # mixin elements to include
         if config is None:
             config = get_config()
         self.config = config
@@ -177,11 +177,11 @@ class Backend(object):
 
         if legacy_juju():
             if staging:
-                mixins.append(ImprovBackend)
+                mixins.append(ImprovMixin)
             elif sandbox:
-                mixins.append(SandboxBackend)
+                mixins.append(SandboxMixin)
             else:
-                mixins.append(PythonBackend)
+                mixins.append(PythonMixin)
         else:
             if staging:
                 raise ValueError(
@@ -189,7 +189,7 @@ class Backend(object):
             if sandbox:
                 raise ValueError(
                     "Unable to use sandbox with {} backend".format(api))
-            mixins.append(GoBackend)
+            mixins.append(GoMixin)
 
         # All mixins can manage the GUI.
         mixins.append(GuiMixin)

@@ -9,7 +9,7 @@ import utils
 
 
 def get_mixin_names(backend):
-    return frozenset(b.__class__.__name__ for b in backend.mixins)
+    return tuple(b.__class__.__name__ for b in backend.mixins)
 
 
 class TestBackends(unittest.TestCase):
@@ -22,7 +22,9 @@ class TestBackends(unittest.TestCase):
     def test_staging_backend(self):
         backend = Backend(config={'sandbox': False, 'staging': True})
         mixin_names = get_mixin_names(backend)
-        self.assertEqual(frozenset(('ImprovBackend',)), mixin_names)
+        self.assertEqual(
+            ('InstallMixin', 'ImprovMixin', 'GuiMixin', 'UpstartMixin'),
+            mixin_names)
         self.assertEqual(
             frozenset(('apache2', 'curl', 'haproxy', 'openssl', 'zookeeper')),
             backend.debs)
@@ -33,7 +35,9 @@ class TestBackends(unittest.TestCase):
     def test_sandbox_backend(self):
         backend = Backend(config={'sandbox': True, 'staging': False})
         mixin_names = get_mixin_names(backend)
-        self.assertEqual(frozenset(('SandboxBackend',)), mixin_names)
+        self.assertEqual(
+            ('InstallMixin', 'SandboxMixin', 'GuiMixin', 'UpstartMixin'),
+            mixin_names)
         self.assertEqual(
             frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
             backend.debs)
@@ -44,7 +48,9 @@ class TestBackends(unittest.TestCase):
     def test_python_backend(self):
         backend = Backend(config={'sandbox': False, 'staging': False})
         mixin_names = get_mixin_names(backend)
-        self.assertEqual(frozenset(('PythonBackend',)), mixin_names)
+        self.assertEqual(
+            ('InstallMixin', 'PythonMixin', 'GuiMixin', 'UpstartMixin'),
+            mixin_names)
         self.assertEqual(
             frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
             backend.debs)
@@ -66,9 +72,12 @@ class TestBackends(unittest.TestCase):
         shutil.rmtree(base_dir)
         # Tests
         mixin_names = get_mixin_names(backend)
-        self.assertEqual(frozenset(('GoBackend',)), mixin_names)
         self.assertEqual(
-            frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
+            ('InstallMixin', 'GoMixin', 'GuiMixin', 'UpstartMixin'),
+            mixin_names)
+        self.assertEqual(
+            frozenset(
+                ('apache2', 'curl', 'haproxy', 'openssl', 'python-yaml')),
             backend.debs)
         self.assertEqual(
             frozenset(('ppa:juju-gui/ppa',)), backend.repositories)
