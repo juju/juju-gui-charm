@@ -243,7 +243,7 @@ class Backend(object):
 
     @overrideable
     def start_agent(self, cert_path):
-        start_agent(cert_path)
+        start_agent(cert_path, read_only=self.config['read-only'])
 
     @overrideable
     def start_improv(self, stage_env, cert_path):

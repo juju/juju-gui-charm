@@ -297,7 +297,9 @@ def start_improv(staging_env, ssl_cert_path,
         service_control(IMPROV, START)
 
 
-def start_agent(ssl_cert_path, config_path='/etc/init/juju-api-agent.conf'):
+def start_agent(
+        ssl_cert_path, config_path='/etc/init/juju-api-agent.conf', 
+        read_only=False):
     """Start the Juju agent and connect to the current environment."""
     # Retrieve the Zookeeper address from the start up script.
     unit_dir = os.path.realpath(os.path.join(CURRENT_DIR, '..'))
@@ -309,6 +311,7 @@ def start_agent(ssl_cert_path, config_path='/etc/init/juju-api-agent.conf'):
         'keys': ssl_cert_path,
         'port': API_PORT,
         'zookeeper': zookeeper,
+        'read_only': read_only
     }
     render_to_file('juju-api-agent.conf.template', context, config_path)
     log('Starting API agent.')
@@ -421,7 +424,7 @@ def prime_npm_cache(npm_cache_url):
         os.mkdir(npm_cache_dir)
     except OSError, e:
         # If the directory already exists then ignore the error.
-        if e.errno != 17: # File exists.
+        if e.errno != errno.EEXIST: # File exists.
             raise
     uncompress = command('tar', '-x', '-z', '-C', npm_cache_dir, '-f')
     cmd_log(uncompress(npm_cache_archive))
