@@ -73,13 +73,13 @@ class InstallMixin(object):
             # Inject NPM packages into the cache for faster building.
             self._prime_npm_cache()
             # Build a release from the branch.
-            self._build_and_install_from_branch()
+            self._build_and_install_from_branch(config)
 
     def _prime_npm_cache(self):
         # This is a separate method so it can be easily overridden for testing.
         prime_npm_cache(get_npm_cache_archive_url())
 
-    def _build_and_install_from_branch(self):
+    def _build_and_install_from_branch(self, config):
         # This is a separate method so it can be easily overridden for testing.
         release_tarball = fetch_gui(
             config['juju-gui-source'], config['command-log-file'])

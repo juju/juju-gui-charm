@@ -656,7 +656,7 @@ class TestNpmCache(unittest.TestCase):
                 assertFalse(self.branch_installed)
                 self.cache_primed = True
 
-            def _build_and_install_from_branch(self):
+            def _build_and_install_from_branch(self, config):
                 # The cache is primed before the branch is installed.
                 assertTrue(self.cache_primed)
                 self.branch_installed = True
