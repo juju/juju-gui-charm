@@ -9,25 +9,13 @@ feature for determining if configuration values have changed between old and
 new configurations so we can selectively take action.
 """
 
-from charmhelpers import (
-    RESTART,
-    STOP,
-    log,
-    open_port,
-    service_control,
-)
-from shelltoolbox import (
-    apt_get_install,
-    command,
-    install_extra_repositories,
-    su,
-)
+import charmhelpers
+import shelltoolbox
 from utils import (
     AGENT,
     APACHE,
     HAPROXY,
     IMPROV,
-    JUJU_DIR,
     chain,
     check_packages,
     cmd_log,
@@ -39,17 +27,17 @@ from utils import (
     overrideable,
     save_or_create_certificates,
     setup_gui,
-    setup_apache,
     start_agent,
-    start_gui,
     start_improv,
 )
+import utils
 
 import os
 import shutil
 
 
-apt_get = command('apt-get')
+SYS_INIT_DIR = '/etc/init/'
+apt_get = shelltoolbox.command('apt-get')
 
 
 class InstallMixin(object):
@@ -58,7 +46,7 @@ class InstallMixin(object):
         missing = backend.check_packages(*backend.debs)
         if missing:
             cmd_log(backend.install_extra_repositories(*backend.repositories))
-            cmd_log(apt_get_install(*backend.debs))
+            cmd_log(shelltoolbox.apt_get_install(*backend.debs))
 
         if backend.different('juju-gui-source'):
             release_tarball = fetch_gui(
@@ -72,7 +60,7 @@ class UpstartMixin(object):
 
     def install(self, backend):
         """Set up haproxy and nginx upstart configuration files."""
-        setup_apache()
+        utils.setup_apache()
         backend.log('Setting up haproxy and nginx start up scripts.')
         config = backend.config
         if backend.different(
@@ -83,17 +71,17 @@ class UpstartMixin(object):
 
         source_dir = os.path.join(os.path.dirname(__file__),  '..', 'config')
         for config_file in backend.upstart_scripts:
-            shutil.copy(os.path.join(source_dir, config_file), '/etc/init/')
+            shutil.copy(os.path.join(source_dir, config_file), SYS_INIT_DIR)
 
     def start(self, backend):
-        with su('root'):
-            backend.service_control(APACHE, RESTART)
-            backend.service_control(HAPROXY, RESTART)
+        with shelltoolbox.su('root'):
+            backend.service_control(APACHE, charmhelpers.RESTART)
+            backend.service_control(HAPROXY, charmhelpers.RESTART)
 
     def stop(self, backend):
-        with su('root'):
-            backend.service_control(HAPROXY, STOP)
-            backend.service_control(APACHE, STOP)
+        with shelltoolbox.su('root'):
+            backend.service_control(HAPROXY, charmhelpers.STOP)
+            backend.service_control(APACHE, charmhelpers.STOP)
 
 
 class GuiMixin(object):
@@ -101,13 +89,13 @@ class GuiMixin(object):
 
     def start(self, backend):
         config = backend.config
-        start_gui(
+        utils.start_gui(
             config['juju-gui-console-enabled'], config['login-help'],
             config['read-only'], config['staging'], config['ssl-cert-path'],
             config['charmworld-url'], config['serve-tests'],
             secure=config['secure'], sandbox=config['sandbox'])
-        open_port(80)
-        open_port(443)
+        charmhelpers.open_port(80)
+        charmhelpers.open_port(443)
 
 
 class SandboxMixin(object):
@@ -116,32 +104,35 @@ class SandboxMixin(object):
 
 class PythonMixin(object):
 
-    def install(self, config):
-        if (not os.path.exists(JUJU_DIR) or
-                config.different('staging', 'juju-api-branch')):
+    def install(self, backend):
+        config = backend.config
+        if (not os.path.exists(utils.JUJU_DIR) or
+                backend.different('staging', 'juju-api-branch')):
             fetch_api(config['juju-api-branch'])
 
     def start(self, backend):
-        backend.start_agent(backend['ssl-cert-path'])
+        backend.start_agent(backend.config['ssl-cert-path'])
 
     def stop(self, backend):
-        backend.service_control(AGENT, STOP)
+        backend.service_control(AGENT, charmhelpers.STOP)
 
 
 class ImprovMixin(object):
     debs = ('zookeeper', )
 
-    def install(self, config):
-        if (not os.path.exists(JUJU_DIR) or
-                config.different('staging', 'juju-api-branch')):
+    def install(self, backend):
+        config = backend.config
+        if (not os.path.exists(utils.JUJU_DIR) or
+                backend.different('staging', 'juju-api-branch')):
             fetch_api(config['juju-api-branch'])
 
     def start(self, backend):
+        config = backend.config
         backend.start_improv(
-            backend['staging-environment'], backend['ssl-cert-path'])
+            config['staging-environment'], config['ssl-cert-path'])
 
     def stop(self, backend):
-        backend.service_control(IMPROV, STOP)
+        backend.service_control(IMPROV, charmhelpers.STOP)
 
 
 class GoMixin(object):
@@ -165,8 +156,6 @@ class Backend(object):
         if config is None:
             config = get_config()
         self.config = config
-        if prev_config is None:
-            prev_config = {}
         self.prev_config = prev_config
         self.overrides = overrides
 
@@ -184,11 +173,9 @@ class Backend(object):
                 mixins.append(PythonMixin)
         else:
             if staging:
-                raise ValueError(
-                    "Unable to use staging with {} backend".format(api))
-            if sandbox:
-                raise ValueError(
-                    "Unable to use sandbox with {} backend".format(api))
+                raise ValueError('Unable to use staging with go backend')
+            elif sandbox:
+                raise ValueError('Unable to use sandbox with go backend')
             mixins.append(GoMixin)
 
         # All mixins can manage the GUI.
@@ -208,7 +195,7 @@ class Backend(object):
 
     @overrideable
     def service_control(self, service, action):
-        service_control(service, action)
+        charmhelpers.service_control(service, action)
 
     @overrideable
     def start_agent(self, cert_path):
@@ -220,12 +207,12 @@ class Backend(object):
 
     @overrideable
     def log(self, msg, *args):
-        log(msg, *args)
+        charmhelpers.log(msg, *args)
 
     @overrideable
     def install_extra_repositories(self, *packages):
         if self.config.get('allow-additional-deb-repositories', True):
-            install_extra_repositories(*packages)
+            shelltoolbox.install_extra_repositories(*packages)
         else:
             apt_get('update')
 
@@ -234,6 +221,9 @@ class Backend(object):
         value differs from the config value passed in prev_config
         with respect to any of the passed in string keys.
         """
+        if self.prev_config is None:
+            # No previous config passed in, cannot say anything is different.
+            return False
         if any(self.config.get(key) != self.prev_config.get(key)
                 for key in keys):
             return True
