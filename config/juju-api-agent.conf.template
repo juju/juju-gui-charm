@@ -11,4 +11,4 @@ env JUJU_ZOOKEEPER={{zookeeper}}
 exec /usr/bin/python -m juju.agents.api --nodaemon --port {{port}} \
     --logfile /var/log/juju/api-agent.log \
     --session-file /var/run/juju/api-agent.zksession \
-    --secure --keys {{keys}}
+    --secure --keys {{keys}} {{if read_only}} --read-only {{endif}}
