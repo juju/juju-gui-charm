@@ -21,60 +21,36 @@ class TestBackends(unittest.TestCase):
 
     def test_staging_backend(self):
         backend = Backend(config={'sandbox': False, 'staging': True})
-        # Mixins.
         mixin_names = get_mixin_names(backend)
-        self.assertIn('ImprovBackend', mixin_names)
-        self.assertNotIn('SandboxBackend', mixin_names)
-        self.assertNotIn('PythonBackend', mixin_names)
-        self.assertNotIn('GoBackend', mixin_names)
-        # Packages.
-        self.assertIn('apache2', backend.debs)
-        self.assertIn('curl', backend.debs)
-        self.assertIn('haproxy', backend.debs)
-        self.assertIn('openssl', backend.debs)
-        self.assertIn('zookeeper', backend.debs)
-        # Repositories.
-        self.assertIn('ppa:juju-gui/ppa', backend.repositories)
-        # Upstart scripts.
-        self.assertIn('haproxy.conf', backend.upstart_scripts)
+        self.assertEqual(frozenset(('ImprovBackend',)), mixin_names)
+        self.assertEqual(
+            frozenset(('apache2', 'curl', 'haproxy', 'openssl', 'zookeeper')),
+            backend.debs)
+        self.assertEqual(
+            frozenset(('ppa:juju-gui/ppa',)), backend.repositories)
+        self.assertEqual(frozenset(('haproxy.conf',)), backend.upstart_scripts)
 
     def test_sandbox_backend(self):
         backend = Backend(config={'sandbox': True, 'staging': False})
-        # Mixins.
         mixin_names = get_mixin_names(backend)
-        self.assertNotIn('ImprovBackend', mixin_names)
-        self.assertIn('SandboxBackend', mixin_names)
-        self.assertNotIn('PythonBackend', mixin_names)
-        self.assertNotIn('GoBackend', mixin_names)
-        # Packages.
-        self.assertIn('apache2', backend.debs)
-        self.assertIn('curl', backend.debs)
-        self.assertIn('haproxy', backend.debs)
-        self.assertIn('openssl', backend.debs)
-        self.assertNotIn('zookeeper', backend.debs)
-        # Repositories.
-        self.assertIn('ppa:juju-gui/ppa', backend.repositories)
-        # Upstart scripts.
-        self.assertIn('haproxy.conf', backend.upstart_scripts)
+        self.assertEqual(frozenset(('SandboxBackend',)), mixin_names)
+        self.assertEqual(
+            frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
+            backend.debs)
+        self.assertEqual(
+            frozenset(('ppa:juju-gui/ppa',)), backend.repositories)
+        self.assertEqual(frozenset(('haproxy.conf',)), backend.upstart_scripts)
 
     def test_python_backend(self):
         backend = Backend(config={'sandbox': False, 'staging': False})
-        # Mixins.
         mixin_names = get_mixin_names(backend)
-        self.assertNotIn('ImprovBackend', mixin_names)
-        self.assertNotIn('SandboxBackend', mixin_names)
-        self.assertIn('PythonBackend', mixin_names)
-        self.assertNotIn('GoBackend', mixin_names)
-        # Packages.
-        self.assertIn('apache2', backend.debs)
-        self.assertIn('curl', backend.debs)
-        self.assertIn('haproxy', backend.debs)
-        self.assertIn('openssl', backend.debs)
-        self.assertNotIn('zookeeper', backend.debs)
-        # Repositories.
-        self.assertIn('ppa:juju-gui/ppa', backend.repositories)
-        # Upstart scripts.
-        self.assertIn('haproxy.conf', backend.upstart_scripts)
+        self.assertEqual(frozenset(('PythonBackend',)), mixin_names)
+        self.assertEqual(
+            frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
+            backend.debs)
+        self.assertEqual(
+            frozenset(('ppa:juju-gui/ppa',)), backend.repositories)
+        self.assertEqual(frozenset(('haproxy.conf',)), backend.upstart_scripts)
 
     def test_go_backend(self):
         # Monkeypatch utils.CURRENT_DIR.
@@ -88,22 +64,15 @@ class TestBackends(unittest.TestCase):
         # Cleanup.
         utils.CURRENT_DIR = original_current_dir
         shutil.rmtree(base_dir)
-        # Mixins.
+        # Tests
         mixin_names = get_mixin_names(backend)
-        self.assertNotIn('ImprovBackend', mixin_names)
-        self.assertNotIn('SandboxBackend', mixin_names)
-        self.assertNotIn('PythonBackend', mixin_names)
-        self.assertIn('GoBackend', mixin_names)
-        # Packages.
-        self.assertIn('apache2', backend.debs)
-        self.assertIn('curl', backend.debs)
-        self.assertIn('haproxy', backend.debs)
-        self.assertIn('openssl', backend.debs)
-        self.assertNotIn('zookeeper', backend.debs)
-        # Repositories.
-        self.assertIn('ppa:juju-gui/ppa', backend.repositories)
-        # Upstart scripts.
-        self.assertIn('haproxy.conf', backend.upstart_scripts)
+        self.assertEqual(frozenset(('GoBackend',)), mixin_names)
+        self.assertEqual(
+            frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
+            backend.debs)
+        self.assertEqual(
+            frozenset(('ppa:juju-gui/ppa',)), backend.repositories)
+        self.assertEqual(frozenset(('haproxy.conf',)), backend.upstart_scripts)
 
     def test_same_config(self):
         backend = Backend(
