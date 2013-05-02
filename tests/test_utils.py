@@ -512,6 +512,7 @@ class StartStopTest(unittest.TestCase):
 
         self.files = {}
         orig_rtf = utils.render_to_file
+
         def render_to_file(template, context, dest):
             target = tempfile.NamedTemporaryFile()
             orig_rtf(template, context, target.name)
@@ -576,7 +577,7 @@ class StartStopTest(unittest.TestCase):
         self.assertIn('ca-file {0}'.format(JUJU_PEM), haproxy_conf)
         self.assertIn('crt {0}'.format(JUJU_PEM), haproxy_conf)
         self.assertIn('redirect scheme https', haproxy_conf)
-        js_conf =  self.files['config']
+        js_conf = self.files['config']
         self.assertIn('consoleEnabled: false', js_conf)
         self.assertIn('user: "admin"', js_conf)
         self.assertIn('password: "admin"', js_conf)
@@ -588,13 +589,14 @@ class StartStopTest(unittest.TestCase):
         apache_conf = self.files['juju-gui']
         self.assertIn('juju-gui/build-', apache_conf)
         self.assertIn('VirtualHost *:{0}'.format(WEB_PORT), apache_conf)
-        self.assertIn('Alias /test {0}/test/'.format(JUJU_GUI_DIR), apache_conf)
+        self.assertIn(
+            'Alias /test {0}/test/'.format(JUJU_GUI_DIR), apache_conf)
 
     def test_start_gui_insecure(self):
         ssl_cert_path = '/tmp/certificates/'
         charmworld_url = 'http://charmworld.example'
         start_gui(
-            False, 'This is login help.', True, True, ssl_cert_path, 
+            False, 'This is login help.', True, True, ssl_cert_path,
             charmworld_url, True, haproxy_path='haproxy',
             config_js_path='config', secure=False)
         js_conf = self.files['config']
@@ -603,6 +605,18 @@ class StartStopTest(unittest.TestCase):
         haproxy_conf = self.files['haproxy']
         # The insecure approach eliminates the https redirect.
         self.assertNotIn('redirect scheme https', haproxy_conf)
+
+    def test_start_gui_sandbox(self):
+        ssl_cert_path = '/tmp/certificates/'
+        charmworld_url = 'http://charmworld.example'
+        start_gui(
+            False, 'This is login help.', False, False, ssl_cert_path,
+            charmworld_url, True, haproxy_path='haproxy',
+            config_js_path='config', sandbox=True)
+        js_conf = self.files['config']
+        self.assertIn('sandbox: true', js_conf)
+        self.assertIn('user: "admin"', js_conf)
+        self.assertIn('password: "admin"', js_conf)
 
 
 class TestNpmCache(unittest.TestCase):
@@ -638,7 +652,6 @@ class TestNpmCache(unittest.TestCase):
 
         url = get_npm_cache_archive_url(Launchpad=FauxLaunchpadFactory())
         self.assertEqual(url, 'http://launchpad.example/path/to/cache/file')
-
 
     def test_InstallMixin_primes_npm_cache(self):
         # The InstallMixin.install() method primes the NPM cache before

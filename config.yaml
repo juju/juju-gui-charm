@@ -117,4 +117,4 @@ options:
       The URL of the charm catalog site ("charmworld") from which charm catalog
       data will be drawn.
     type: string
-    default: http://staging.jujucharms.com
+    default: https://manage.jujucharms.com
