@@ -1,3 +1,4 @@
+from collections import defaultdict
 from contextlib import contextmanager
 import os
 import shutil
@@ -103,24 +104,19 @@ class TestBackendProperties(unittest.TestCase):
             test_backend.upstart_scripts)
 
 
-class GotEmAllDict(dict):
+class GotEmAllDict(defaultdict):
     """A dictionary that returns the same default value for all given keys."""
 
-    def __init__(self, default):
-        self.default = default
-        super(GotEmAllDict, self).__init__()
-
-    def __getitem__(self, key):
-        return self.default
-
     def get(self, key, default=None):
-        return self.default
+        return self.default_factory()
 
 
 class TestBackendCommands(unittest.TestCase):
 
     def setUp(self):
         self.called = {}
+        self.alwaysFalse = GotEmAllDict(lambda: False)
+        self.alwaysTrue = GotEmAllDict(lambda: True)
 
         # Monkeypatch functions.
         self.utils_mocks = {
@@ -180,35 +176,35 @@ class TestBackendCommands(unittest.TestCase):
             setattr(utils, name, orig_fun)
 
     def test_install_python(self):
-        test_backend = backend.Backend(config=GotEmAllDict(False))
+        test_backend = backend.Backend(config=self.alwaysFalse)
         test_backend.install()
         for mocked in (
                 'find_missing_packages', 'setup_apache', 'fetch_api', 'log'):
             self.assertTrue(mocked, '{} was not called'.format(mocked))
 
     def test_install_improv(self):
-        test_backend = backend.Backend(config=GotEmAllDict(True))
+        test_backend = backend.Backend(config=self.alwaysTrue)
         test_backend.install()
         for mocked in (
                 'find_missing_packages', 'setup_apache', 'fetch_api', 'log'):
             self.assertTrue(mocked, '{} was not called'.format(mocked))
 
     def test_start_agent(self):
-        test_backend = backend.Backend(config=GotEmAllDict(False))
+        test_backend = backend.Backend(config=self.alwaysFalse)
         test_backend.start()
         for mocked in ('service_control', 'start_agent', 'start_gui',
                 'open_port', 'su'):
             self.assertTrue(mocked, '{} was not called'.format(mocked))
 
     def test_start_improv(self):
-        test_backend = backend.Backend(config=GotEmAllDict(True))
+        test_backend = backend.Backend(config=self.alwaysTrue)
         test_backend.start()
         for mocked in ('service_control', 'start_improv', 'start_gui',
                 'open_port', 'su'):
             self.assertTrue(mocked, '{} was not called'.format(mocked))
 
     def test_stop(self):
-        test_backend = backend.Backend(config=GotEmAllDict(False))
+        test_backend = backend.Backend(config=self.alwaysFalse)
         test_backend.stop()
         for mocked in ('service_control', 'su'):
             self.assertTrue(mocked, '{} was not called'.format(mocked))

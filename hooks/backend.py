@@ -146,7 +146,7 @@ class Backend(object):
 
     def __init__(self, config=None, prev_config=None):
         """Generate a list of mixin classes that implement the backend, working
-        through composition
+        through composition.
 
         'config' is a dict which typically comes from the JSON de-serialization
             of config.json in JujuGUI.
@@ -202,8 +202,9 @@ class Backend(object):
         value differs from the config value passed in prev_config
         with respect to any of the passed in string keys.
         """
-        return any(self.config.get(key) != self.prev_config.get(key)
-            for key in keys)
+        # Minimize lookups inside the loop, just because.
+        current, previous = self.config.get, self.prev_config.get
+        return any(current(key) != previous(key) for key in keys)
 
     ## Composed Methods
     install = utils.chain('install')

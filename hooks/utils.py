@@ -576,9 +576,9 @@ def chain(name):
     # chain method calls through all implementing mixins
     def method(self):
         for mixin in self.mixins:
-            callable = getattr(type(mixin), name, None)
-            if callable:
-                callable(mixin, self)
+            a_callable = getattr(type(mixin), name, None)
+            if a_callable:
+                a_callable(mixin, self)
 
     method.__name__ = name
     return method
