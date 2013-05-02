@@ -144,11 +144,21 @@ class TestBackendCommands(unittest.TestCase):
         self.orig_save_or_create_certs = utils.save_or_create_certificates
         utils.save_or_create_certificates = mock_save_or_create_certificates
 
-        def mock_check_packages(*args):
-            self.called['check_packages'] = True
+        def mock_find_missing_packages(*args):
+            self.called['find_missing_packages'] = True
             return False
-        self.orig_check_packages = utils.check_packages
-        utils.check_packages = mock_check_packages
+        self.orig_find_missing_packages = utils.find_missing_packages
+        utils.find_missing_packages = mock_find_missing_packages
+
+        def mock_prime_npm_cache(npm_cache_url):
+            self.called['prime_npm_cache'] = True
+        self.orig_prime_npm_cache = utils.prime_npm_cache
+        utils.prime_npm_cache = mock_prime_npm_cache
+
+        def mock_get_npm_cache_archive_url(Launchpad=''):
+            self.called['get_npm_cache_archive_url'] = True
+        self.orig_get_npm_cache_archive_url = utils.get_npm_cache_archive_url
+        utils.get_npm_cache_archive_url = mock_get_npm_cache_archive_url
 
         def mock_start_gui(*args, **kwargs):
             self.called['start_gui'] = True
@@ -208,7 +218,9 @@ class TestBackendCommands(unittest.TestCase):
         utils.start_improv = self.orig_start_improv
         utils.start_agent = self.orig_start_agent
         utils.start_gui = self.orig_start_gui
-        utils.check_packages = self.orig_check_packages
+        utils.get_npm_cache_archive_url = self.orig_get_npm_cache_archive_url
+        utils.prime_npm_cache = self.orig_prime_npm_cache
+        utils.find_missing_packages = self.orig_find_missing_packages
         utils.save_or_create_certificates = self.orig_save_or_create_certs
         utils.setup_gui = self.orig_setup_gui
         utils.fetch_gui = self.orig_fetch_gui
@@ -218,13 +230,15 @@ class TestBackendCommands(unittest.TestCase):
     def test_install_python(self):
         test_backend = backend.Backend(config=GotEmAllDict(False))
         test_backend.install()
-        for mocked in ('check_packages', 'setup_apache', 'fetch_api', 'log'):
+        for mocked in (
+                'find_missing_packages', 'setup_apache', 'fetch_api', 'log'):
             self.assertTrue(mocked, '{} was not called'.format(mocked))
 
     def test_install_improv(self):
         test_backend = backend.Backend(config=GotEmAllDict(True))
         test_backend.install()
-        for mocked in ('check_packages', 'setup_apache', 'fetch_api', 'log'):
+        for mocked in (
+                'find_missing_packages', 'setup_apache', 'fetch_api', 'log'):
             self.assertTrue(mocked, '{} was not called'.format(mocked))
 
     def test_start_agent(self):
