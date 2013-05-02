@@ -22,22 +22,41 @@ SYS_INIT_DIR = '/etc/init/'
 
 
 class InstallMixin(object):
+    """Provide for the GUI and its dependencies to be installed."""
+
     def install(self, backend):
-        config = backend.config
-        missing = utils.check_packages(*backend.debs)
+        """Install the GUI and dependencies."""
+        # If the given installable thing ("backend") requires one or more debs
+        # that are not yet installed, install them.
+        missing = utils.find_missing_packages(*backend.debs)
         if missing:
             utils.cmd_log(
                 backend.install_extra_repositories(*backend.repositories))
             utils.cmd_log(
                 shelltoolbox.apt_get_install(*backend.debs))
 
+        # If we are not using a pre-built release of the GUI (i.e., we are
+        # using a branch) then we need to build a release archive to use.
         if backend.different('juju-gui-source'):
-            release_tarball = utils.fetch_gui(
-                config['juju-gui-source'], config['command-log-file'])
-            utils.setup_gui(release_tarball)
+            # Inject NPM packages into the cache for faster building.
+            self._prime_npm_cache()
+            # Build a release from the branch.
+            self._build_and_install_from_branch(backend.config)
+
+    def _prime_npm_cache(self):
+        # This is a separate method so it can be easily overridden for testing.
+        utils.prime_npm_cache(utils.get_npm_cache_archive_url())
+
+    def _build_and_install_from_branch(self, config):
+        # This is a separate method so it can be easily overridden for testing.
+        release_tarball = utils.fetch_gui(
+            config['juju-gui-source'], config['command-log-file'])
+        utils.setup_gui(release_tarball)
 
 
 class UpstartMixin(object):
+    """Manage (install, start, stop, etc.) some service via Upstart."""
+
     upstart_scripts = ('haproxy.conf', )
     debs = ('curl', 'openssl', 'haproxy', 'apache2')
 
@@ -123,14 +142,12 @@ class GoMixin(object):
 
 
 class Backend(object):
-    """Compose methods and policy needed to interact with a Juju backend.
-
-    Mixins work through composition. __init__ is a factory that generates
-    a list of mixin classes to use together to implement the backend proper.
-    """
+    """Compose methods and policy needed to interact with a Juju backend."""
 
     def __init__(self, config=None, prev_config=None):
-        """
+        """Generate a list of mixin classes that implement the backend, working
+        through composition
+
         'config' is a dict which typically comes from the JSON de-serialization
             of config.json in JujuGUI.
         'prev_config' is a dict used to compute the differences. If it is not
@@ -143,6 +160,7 @@ class Backend(object):
             prev_config = {}
         self.prev_config = prev_config
 
+        # We always install the GUI.
         mixins = [InstallMixin]
 
         sandbox = config.get('sandbox', False)
@@ -162,9 +180,9 @@ class Backend(object):
                 raise ValueError('Unable to use sandbox with go backend')
             mixins.append(GoMixin)
 
-        # All mixins can manage the GUI.
+        # All backends need to install, start, and stop the services that
+        # provide the GUI.
         mixins.append(GuiMixin)
-        # We always use upstart.
         mixins.append(UpstartMixin)
 
         # record our choice mapping classes to instances
