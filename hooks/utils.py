@@ -567,16 +567,15 @@ def find_missing_packages(*packages):
 ## Backend support decorators
 
 def chain(name):
-    """Helper method to compose a set of strategy objects into
-    a callable.
+    """Helper method to compose a set of mixin objects into a callable.
 
-    Each method is called in the context of its mixin
-    instance, and its argument is the Backend instance.
+    Each method is called in the context of its mixin instance, and its
+    argument is the Backend instance.
     """
     # chain method calls through all implementing mixins
     def method(self):
         for mixin in self.mixins:
-            callable = mixin.__class__.__dict__.get(name)
+            callable = getattr(type(mixin), name, None)
             if callable:
                 callable(mixin, self)
 
@@ -593,7 +592,7 @@ def merge(name):
     def method(self):
         result = set()
         for mixin in self.mixins:
-            segment = mixin.__class__.__dict__.get(name)
+            segment = getattr(type(mixin), name, None)
             if segment and isinstance(segment, (list, tuple, set)):
                 result |= set(segment)
 

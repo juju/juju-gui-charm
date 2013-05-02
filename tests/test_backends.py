@@ -33,7 +33,8 @@ class TestBackendProperties(unittest.TestCase):
             frozenset(('apache2', 'curl', 'haproxy', 'openssl', 'zookeeper')),
             test_backend.debs)
         self.assertEqual(
-            frozenset(('ppa:juju-gui/ppa',)), test_backend.repositories)
+            frozenset(('ppa:juju-gui/ppa',)),
+            test_backend.repositories)
         self.assertEqual(
             frozenset(('haproxy.conf',)),
             test_backend.upstart_scripts)
@@ -49,7 +50,8 @@ class TestBackendProperties(unittest.TestCase):
             frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
             test_backend.debs)
         self.assertEqual(
-            frozenset(('ppa:juju-gui/ppa',)), test_backend.repositories)
+            frozenset(('ppa:juju-gui/ppa',)),
+            test_backend.repositories)
         self.assertEqual(
             frozenset(('haproxy.conf',)),
             test_backend.upstart_scripts)
@@ -65,7 +67,8 @@ class TestBackendProperties(unittest.TestCase):
             frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
             test_backend.debs)
         self.assertEqual(
-            frozenset(('ppa:juju-gui/ppa',)), test_backend.repositories)
+            frozenset(('ppa:juju-gui/ppa',)),
+            test_backend.repositories)
         self.assertEqual(
             frozenset(('haproxy.conf',)),
             test_backend.upstart_scripts)
@@ -93,14 +96,15 @@ class TestBackendProperties(unittest.TestCase):
                 ('apache2', 'curl', 'haproxy', 'openssl', 'python-yaml')),
             test_backend.debs)
         self.assertEqual(
-            frozenset(('ppa:juju-gui/ppa',)), test_backend.repositories)
+            frozenset(('ppa:juju-gui/ppa',)),
+            test_backend.repositories)
         self.assertEqual(
             frozenset(('haproxy.conf',)),
             test_backend.upstart_scripts)
 
 
 class GotEmAllDict(dict):
-    """A dictionary that always returns the same default value for any key."""
+    """A dictionary that returns the same default value for all given keys."""
 
     def __init__(self, default):
         self.default = default
@@ -118,77 +122,36 @@ class TestBackendCommands(unittest.TestCase):
     def setUp(self):
         self.called = {}
 
-        def mock_setup_apache():
-            self.called['setup_apache'] = True
-        self.orig_setup_apache = utils.setup_apache
-        utils.setup_apache = mock_setup_apache
+        # Monkeypatch functions.
+        self.utils_mocks = {
+            'setup_apache': utils.setup_apache,
+            'fetch_api': utils.fetch_api,
+            'fetch_gui': utils.fetch_gui,
+            'setup_gui': utils.setup_gui,
+            'save_or_create_certificates': utils.save_or_create_certificates,
+            'find_missing_packages': utils.find_missing_packages,
+            'prime_npm_cache': utils.prime_npm_cache,
+            'get_npm_cache_archive_url': utils.get_npm_cache_archive_url,
+            'start_gui': utils.start_gui,
+            'start_agent': utils.start_agent,
+            'start_improv': utils.start_improv,
+        }
+        self.charmhelpers_mocks = {
+            'log': charmhelpers.log,
+            'open_port': charmhelpers.open_port,
+            'service_control': charmhelpers.service_control,
+        }
 
-        def mock_fetch_api(juju_api_branch):
-            self.called['fetch_api'] = True
-        self.orig_fetch_api = utils.fetch_api
-        utils.fetch_api = mock_fetch_api
+        def make_mock_function(name):
+            def mock_function(*args, **kwargs):
+                self.called[name] = True
+            mock_function.__name__ = name
+            return mock_function
 
-        def mock_fetch_gui(juju_gui_source, logpath):
-            self.called['fetch_gui'] = True
-        self.orig_fetch_gui = utils.fetch_gui
-        utils.fetch_gui = mock_fetch_gui
-
-        def mock_setup_gui(release_tarball):
-            self.called['setup_gui'] = True
-        self.orig_setup_gui = utils.setup_gui
-        utils.setup_gui = mock_setup_gui
-
-        def mock_save_or_create_certificates(
-                ssl_cert_path, ssl_cert_contents, ssl_key_contents):
-            self.called['save_or_create_certificates'] = True
-        self.orig_save_or_create_certs = utils.save_or_create_certificates
-        utils.save_or_create_certificates = mock_save_or_create_certificates
-
-        def mock_find_missing_packages(*args):
-            self.called['find_missing_packages'] = True
-            return False
-        self.orig_find_missing_packages = utils.find_missing_packages
-        utils.find_missing_packages = mock_find_missing_packages
-
-        def mock_prime_npm_cache(npm_cache_url):
-            self.called['prime_npm_cache'] = True
-        self.orig_prime_npm_cache = utils.prime_npm_cache
-        utils.prime_npm_cache = mock_prime_npm_cache
-
-        def mock_get_npm_cache_archive_url(Launchpad=''):
-            self.called['get_npm_cache_archive_url'] = True
-        self.orig_get_npm_cache_archive_url = utils.get_npm_cache_archive_url
-        utils.get_npm_cache_archive_url = mock_get_npm_cache_archive_url
-
-        def mock_start_gui(*args, **kwargs):
-            self.called['start_gui'] = True
-        self.orig_start_gui = utils.start_gui
-        utils.start_gui = mock_start_gui
-
-        def mock_start_agent(cert_path):
-            self.called['start_agent'] = True
-        self.orig_start_agent = utils.start_agent
-        utils.start_agent = mock_start_agent
-
-        def mock_start_improv(stage_env, cert_path):
-            self.called['start_improv'] = True
-        self.orig_start_improv = utils.start_improv
-        utils.start_improv = mock_start_improv
-
-        def mock_log(msg, *args):
-            self.called['log'] = True
-        self.orig_log = charmhelpers.log
-        charmhelpers.log = mock_log
-
-        def mock_open_port(port):
-            self.called['open_port'] = True
-        self.orig_open_port = charmhelpers.open_port
-        charmhelpers.open_port = mock_open_port
-
-        def mock_service_control(service, action):
-            self.called['service_control'] = True
-        self.orig_service_control = charmhelpers.service_control
-        charmhelpers.service_control = mock_service_control
+        for name in self.utils_mocks.keys():
+            setattr(utils, name, make_mock_function(name))
+        for name in self.charmhelpers_mocks.keys():
+            setattr(charmhelpers, name, make_mock_function(name))
 
         @contextmanager
         def mock_su(user):
@@ -209,23 +172,12 @@ class TestBackendCommands(unittest.TestCase):
         backend.SYS_INIT_DIR = self.orig_sys_init_dir
         utils.JUJU_DIR = self.orig_juju_dir
         shutil.rmtree(self.temp_dir)
-
         # Undo the monkeypatching.
         shelltoolbox.su = self.orig_su
-        charmhelpers.service_control = self.orig_service_control
-        charmhelpers.open_port = self.orig_open_port
-        charmhelpers.log = self.orig_log
-        utils.start_improv = self.orig_start_improv
-        utils.start_agent = self.orig_start_agent
-        utils.start_gui = self.orig_start_gui
-        utils.get_npm_cache_archive_url = self.orig_get_npm_cache_archive_url
-        utils.prime_npm_cache = self.orig_prime_npm_cache
-        utils.find_missing_packages = self.orig_find_missing_packages
-        utils.save_or_create_certificates = self.orig_save_or_create_certs
-        utils.setup_gui = self.orig_setup_gui
-        utils.fetch_gui = self.orig_fetch_gui
-        utils.fetch_api = self.orig_fetch_api
-        utils.setup_apache = self.orig_setup_apache
+        for name, orig_fun in self.charmhelpers_mocks.items():
+            setattr(charmhelpers, name, orig_fun)
+        for name, orig_fun in self.utils_mocks.items():
+            setattr(utils, name, orig_fun)
 
     def test_install_python(self):
         test_backend = backend.Backend(config=GotEmAllDict(False))
