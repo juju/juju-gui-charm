@@ -40,6 +40,7 @@ __all__ = [
 ]
 
 from contextlib import contextmanager
+import errno
 import json
 import os
 import logging
@@ -425,7 +426,7 @@ def prime_npm_cache(npm_cache_url):
         os.mkdir(npm_cache_dir)
     except OSError, e:
         # If the directory already exists then ignore the error.
-        if e.errno != errno.EEXIST: # File exists.
+        if e.errno != errno.EEXIST:  # File exists.
             raise
     uncompress = command('tar', '-x', '-z', '-C', npm_cache_dir, '-f')
     cmd_log(uncompress(npm_cache_archive))
