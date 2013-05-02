@@ -11,23 +11,24 @@ __all__ = [
     'JUJU_GUI_DIR',
     'JUJU_GUI_SITE',
     'JUJU_PEM',
-    'StopChain',
     'WEB_PORT',
     'bzr_checkout',
     'chain',
     'cmd_log',
     'fetch_api',
     'fetch_gui',
+    'find_missing_packages',
     'first_path_in_dir',
     'get_api_address',
+    'get_npm_cache_archive_url',
     'get_release_file_url',
     'get_staging_dependencies',
     'get_zookeeper_address',
     'legacy_juju',
     'log_hook',
     'merge',
-    'overrideable',
     'parse_source',
+    'prime_npm_cache',
     'render_to_file',
     'save_or_create_certificates',
     'setup_apache',
@@ -39,6 +40,7 @@ __all__ = [
 ]
 
 from contextlib import contextmanager
+import errno
 import json
 import os
 import logging
@@ -424,7 +426,7 @@ def prime_npm_cache(npm_cache_url):
         os.mkdir(npm_cache_dir)
     except OSError, e:
         # If the directory already exists then ignore the error.
-        if e.errno != errno.EEXIST: # File exists.
+        if e.errno != errno.EEXIST:  # File exists.
             raise
     uncompress = command('tar', '-x', '-z', '-C', npm_cache_dir, '-f')
     cmd_log(uncompress(npm_cache_archive))
@@ -564,55 +566,22 @@ def find_missing_packages(*packages):
 
 
 ## Backend support decorators
-class StopChain(Exception):
-    """Stop Processing a chain command without raising
-    another error.
-    """
 
+def chain(name):
+    """Helper method to compose a set of mixin objects into a callable.
 
-def chain(name, reverse=False):
-    """Helper method to compose a set of strategy objects into
-    a callable.
-
-    Each method is called in the context of its strategy
-    instance (normal OOP) and its argument is the Backend
-    instance.
+    Each method is called in the context of its mixin instance, and its
+    argument is the Backend instance.
     """
     # chain method calls through all implementing mixins
     def method(self):
-        workingset = self.backends
-        if reverse:
-            workingset = reversed(workingset)
-        for backend in workingset:
-            call = backend.__class__.__dict__.get(name)
-            if call:
-                try:
-                    call(backend, self)
-                except StopChain:
-                    break
+        for mixin in self.mixins:
+            a_callable = getattr(type(mixin), name, None)
+            if a_callable:
+                a_callable(mixin, self)
 
     method.__name__ = name
     return method
-
-
-def overrideable(f):
-    """Helper to support very limited overrides for use in testing.
-
-    def foo():
-        return True
-    b = Backend(foo=foo)
-    assert b.foo() is True
-    """
-    name = f.__name__
-
-    def overridden(self, *args, **kwargs):
-        if name in self.overrides:
-            return self.overrides[name](*args, **kwargs)
-        else:
-            return f(self, *args, **kwargs)
-
-    overridden.__name__ = name
-    return overridden
 
 
 def merge(name):
@@ -623,8 +592,8 @@ def merge(name):
     @property
     def method(self):
         result = set()
-        for backend in self.backends:
-            segment = backend.__class__.__dict__.get(name)
+        for mixin in self.mixins:
+            segment = getattr(type(mixin), name, None)
             if segment and isinstance(segment, (list, tuple, set)):
                 result |= set(segment)
 
