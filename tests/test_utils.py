@@ -48,7 +48,7 @@ class AttrDict(dict):
             raise AttributeError
 
 
-class AttrDictTest(unittest.TestCase):
+class TestAttrDict(unittest.TestCase):
 
     def test_key_as_attribute(self):
         # Ensure attributes can be used to retrieve dict values.
@@ -62,7 +62,7 @@ class AttrDictTest(unittest.TestCase):
             AttrDict().myattr
 
 
-class FirstPathInDirTest(unittest.TestCase):
+class TestFirstPathInDir(unittest.TestCase):
 
     def setUp(self):
         self.directory = tempfile.mkdtemp()
@@ -84,7 +84,7 @@ class FirstPathInDirTest(unittest.TestCase):
         self.assertRaises(IndexError, first_path_in_dir, self.directory)
 
 
-class GetApiAddressTest(unittest.TestCase):
+class TestGetApiAddress(unittest.TestCase):
 
     def setUp(self):
         self.base_dir = tempfile.mkdtemp()
@@ -110,7 +110,7 @@ class GetApiAddressTest(unittest.TestCase):
         self.assertRaises(IOError, get_api_address, self.unit_dir)
 
 
-class LegacyJujuTest(unittest.TestCase):
+class TestLegacyJuju(unittest.TestCase):
 
     def setUp(self):
         self.base_dir = tempfile.mkdtemp()
@@ -143,7 +143,7 @@ def make_collection(attr, values):
     return [AttrDict({attr: value}) for value in values]
 
 
-class MakeCollectionTest(unittest.TestCase):
+class TestMakeCollection(unittest.TestCase):
 
     def test_factory(self):
         # Ensure the factory returns the expected object instances.
@@ -153,7 +153,7 @@ class MakeCollectionTest(unittest.TestCase):
             self.assertEqual(num, instance.myattr)
 
 
-class GetByAttrTest(unittest.TestCase):
+class TestGetByAttr(unittest.TestCase):
 
     attr = 'myattr'
     collection = make_collection(attr, range(5))
@@ -187,7 +187,7 @@ class FileStub(object):
         return self.file_link
 
 
-class GetReleaseFileUrlTest(unittest.TestCase):
+class TestGetReleaseFileUrl(unittest.TestCase):
 
     project = AttrDict(
         series=(
@@ -308,7 +308,7 @@ class GetReleaseFileUrlTest(unittest.TestCase):
         self.assertEqual('http://example.com/0.1.0.tgz', url)
 
 
-class GetZookeeperAddressTest(unittest.TestCase):
+class TestGetZookeeperAddress(unittest.TestCase):
 
     def setUp(self):
         self.zookeeper_address = 'example.com:2000'
@@ -324,7 +324,7 @@ class GetZookeeperAddressTest(unittest.TestCase):
         self.assertEqual(self.zookeeper_address, address)
 
 
-class LogHookTest(unittest.TestCase):
+class TestLogHook(unittest.TestCase):
 
     def setUp(self):
         # Monkeypatch the charmhelpers log function.
@@ -367,7 +367,7 @@ class LogHookTest(unittest.TestCase):
         self.assertIn('<<< Exiting', self.output[-1])
 
 
-class ParseSourceTest(unittest.TestCase):
+class TestParseSource(unittest.TestCase):
 
     def setUp(self):
         # Monkey patch utils.CURRENT_DIR.
@@ -418,7 +418,7 @@ class ParseSourceTest(unittest.TestCase):
         self.assertTupleEqual(expected, parse_source('url:foo/bar'))
 
 
-class RenderToFileTest(unittest.TestCase):
+class TestRenderToFile(unittest.TestCase):
 
     def setUp(self):
         self.destination_file = tempfile.NamedTemporaryFile()
@@ -437,7 +437,7 @@ class RenderToFileTest(unittest.TestCase):
         self.assertEqual(expected, self.destination_file.read())
 
 
-class SaveOrCreateCertificatesTest(unittest.TestCase):
+class TestSaveOrCreateCertificates(unittest.TestCase):
 
     def setUp(self):
         base_dir = tempfile.mkdtemp()
@@ -466,7 +466,7 @@ class SaveOrCreateCertificatesTest(unittest.TestCase):
         self.assertEqual('KeyCertificate', open(pem_file).read())
 
 
-class CmdLogTest(unittest.TestCase):
+class TestCmdLog(unittest.TestCase):
 
     def setUp(self):
         # Patch the charmhelpers 'command', which powers get_config.  The
@@ -487,7 +487,7 @@ class CmdLogTest(unittest.TestCase):
         self.assertTrue(line.endswith(': juju-gui@INFO \nfoo\n'))
 
 
-class StartStopTest(unittest.TestCase):
+class TestStartStop(unittest.TestCase):
 
     def setUp(self):
         self.service_names = []
