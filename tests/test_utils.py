@@ -680,16 +680,18 @@ class TestNpmCache(unittest.TestCase):
             debs = ('DEBS',)
 
             @classmethod
-            def find_missing_packages(cls, *debs):
-                self.assertEqual(cls.debs, debs)
-                return False
-
-            @classmethod
             def different(cls, key):
                 self.assertEqual(key, 'juju-gui-source')
                 return True
 
+        def faux_find_missing_packages(*debs):
+            self.assertEqual(('DEBS',), debs)
+            return False
+
         mixin = TestableInstallMixin()
+        # Monkeypatch.
+        orig_find_missing_packages = utils.find_missing_packages
+        utils.find_missing_packages = faux_find_missing_packages
         # Prior to "install" the NPM cache has not been primed.
         self.assertFalse(mixin.cache_primed)
         self.assertFalse(mixin.branch_installed)
@@ -697,6 +699,8 @@ class TestNpmCache(unittest.TestCase):
         # After "install" the NPM cache has been primed.
         self.assertTrue(mixin.cache_primed)
         self.assertTrue(mixin.branch_installed)
+        # Restore.
+        utils.find_missing_packages = orig_find_missing_packages
 
 
 if __name__ == '__main__':
