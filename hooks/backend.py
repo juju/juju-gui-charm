@@ -9,232 +9,191 @@ feature for determining if configuration values have changed between old and
 new configurations so we can selectively take action.
 """
 
-from charmhelpers import (
-    RESTART,
-    STOP,
-    log,
-    open_port,
-    service_control,
-)
-from shelltoolbox import (
-    apt_get_install,
-    command,
-    install_extra_repositories,
-    su,
-)
-from utils import (
-    AGENT,
-    APACHE,
-    HAPROXY,
-    IMPROV,
-    JUJU_DIR,
-    chain,
-    check_packages,
-    cmd_log,
-    fetch_api,
-    fetch_gui,
-    get_config,
-    legacy_juju,
-    merge,
-    overrideable,
-    save_or_create_certificates,
-    setup_gui,
-    setup_apache,
-    start_agent,
-    start_gui,
-    start_improv,
-)
+import charmhelpers
+import shelltoolbox
+import utils
 
 import os
 import shutil
 
 
-apt_get = command('apt-get')
+apt_get = shelltoolbox.command('apt-get')
+SYS_INIT_DIR = '/etc/init/'
 
 
 class InstallMixin(object):
+    """Provide for the GUI and its dependencies to be installed."""
 
     def install(self, backend):
-        config = backend.config
-        missing = backend.check_packages(*backend.debs)
+        """Install the GUI and dependencies."""
+        # If the given installable thing ("backend") requires one or more debs
+        # that are not yet installed, install them.
+        missing = utils.find_missing_packages(*backend.debs)
         if missing:
-            cmd_log(backend.install_extra_repositories(*backend.repositories))
-            cmd_log(apt_get_install(*backend.debs))
+            utils.cmd_log(
+                backend.install_extra_repositories(*backend.repositories))
+            utils.cmd_log(
+                shelltoolbox.apt_get_install(*backend.debs))
 
+        # If we are not using a pre-built release of the GUI (i.e., we are
+        # using a branch) then we need to build a release archive to use.
         if backend.different('juju-gui-source'):
-            release_tarball = fetch_gui(
-                config['juju-gui-source'], config['command-log-file'])
-            setup_gui(release_tarball)
+            # Inject NPM packages into the cache for faster building.
+            self._prime_npm_cache()
+            # Build a release from the branch.
+            self._build_and_install_from_branch(backend.config)
+
+    def _prime_npm_cache(self):
+        # This is a separate method so it can be easily overridden for testing.
+        utils.prime_npm_cache(utils.get_npm_cache_archive_url())
+
+    def _build_and_install_from_branch(self, config):
+        # This is a separate method so it can be easily overridden for testing.
+        release_tarball = utils.fetch_gui(
+            config['juju-gui-source'], config['command-log-file'])
+        utils.setup_gui(release_tarball)
 
 
 class UpstartMixin(object):
+    """Manage (install, start, stop, etc.) some service via Upstart."""
+
     upstart_scripts = ('haproxy.conf',)
     debs = ('curl', 'openssl', 'haproxy', 'apache2')
 
     def install(self, backend):
         """Set up haproxy and Apache upstart configuration files."""
-        setup_apache()
-        backend.log('Setting up haproxy and Apache start up scripts.')
+        utils.setup_apache()
+        charmhelpers.log('Setting up haproxy and Apache start up scripts.')
         config = backend.config
         if backend.different(
                 'ssl-cert-path', 'ssl-cert-contents', 'ssl-key-contents'):
-            save_or_create_certificates(
+            utils.save_or_create_certificates(
                 config['ssl-cert-path'], config.get('ssl-cert-contents'),
                 config.get('ssl-key-contents'))
 
         source_dir = os.path.join(os.path.dirname(__file__),  '..', 'config')
         for config_file in backend.upstart_scripts:
-            shutil.copy(os.path.join(source_dir, config_file), '/etc/init/')
+            shutil.copy(os.path.join(source_dir, config_file), SYS_INIT_DIR)
 
     def start(self, backend):
-        with su('root'):
-            backend.service_control(APACHE, RESTART)
-            backend.service_control(HAPROXY, RESTART)
+        with shelltoolbox.su('root'):
+            charmhelpers.service_control(utils.APACHE, charmhelpers.RESTART)
+            charmhelpers.service_control(utils.HAPROXY, charmhelpers.RESTART)
 
     def stop(self, backend):
-        with su('root'):
-            backend.service_control(HAPROXY, STOP)
-            backend.service_control(APACHE, STOP)
+        with shelltoolbox.su('root'):
+            charmhelpers.service_control(utils.HAPROXY, charmhelpers.STOP)
+            charmhelpers.service_control(utils.APACHE, charmhelpers.STOP)
 
 
 class GuiMixin(object):
-    gui_properties = set([
-        'juju-gui-console-enabled', 'login-help', 'read-only',
-        'serve-tests', 'secure'])
-
     repositories = ('ppa:juju-gui/ppa',)
 
-    def start(self, config):
-        start_gui(
+    def start(self, backend):
+        config = backend.config
+        utils.start_gui(
             config['juju-gui-console-enabled'], config['login-help'],
             config['read-only'], config['staging'], config['ssl-cert-path'],
             config['charmworld-url'], config['serve-tests'],
             secure=config['secure'], sandbox=config['sandbox'])
-        open_port(80)
-        open_port(443)
+        charmhelpers.open_port(80)
+        charmhelpers.open_port(443)
 
 
-class SandboxBackend(object):
+class SandboxMixin(object):
     pass
 
 
-class PythonBackend(object):
+class PythonMixin(object):
 
-    def install(self, config):
-        if (not os.path.exists(JUJU_DIR) or
-                config.different('staging', 'juju-api-branch')):
-            fetch_api(config['juju-api-branch'])
+    def install(self, backend):
+        config = backend.config
+        if (not os.path.exists(utils.JUJU_DIR) or
+                backend.different('staging', 'juju-api-branch')):
+            utils.fetch_api(config['juju-api-branch'])
 
     def start(self, backend):
-        backend.start_agent(backend['ssl-cert-path'])
+        utils.start_agent(backend.config['ssl-cert-path'])
 
     def stop(self, backend):
-        backend.service_control(AGENT, STOP)
+        charmhelpers.service_control(utils.AGENT, charmhelpers.STOP)
 
 
-class ImprovBackend(object):
+class ImprovMixin(object):
     debs = ('zookeeper',)
 
-    def install(self, config):
-        if (not os.path.exists(JUJU_DIR) or
-                config.different('staging', 'juju-api-branch')):
-            fetch_api(config['juju-api-branch'])
+    def install(self, backend):
+        config = backend.config
+        if (not os.path.exists(utils.JUJU_DIR) or
+                backend.different('staging', 'juju-api-branch')):
+            utils.fetch_api(config['juju-api-branch'])
 
     def start(self, backend):
-        backend.start_improv(
-            backend['staging-environment'], backend['ssl-cert-path'])
+        config = backend.config
+        utils.start_improv(
+            config['staging-environment'], config['ssl-cert-path'])
 
     def stop(self, backend):
-        backend.service_control(IMPROV, STOP)
+        charmhelpers.service_control(utils.IMPROV, charmhelpers.STOP)
 
 
-class GoBackend(object):
+class GoMixin(object):
     debs = ('python-yaml',)
 
 
 class Backend(object):
-    """Compose methods and policy needed to interact
-    with a Juju backend. Given a config dict (which typically
-    comes from the JSON de-serialization of config.json in JujuGUI).
-    """
+    """Compose methods and policy needed to interact with a Juju backend."""
 
-    def __init__(self, config=None, prev_config=None, **overrides):
+    def __init__(self, config=None, prev_config=None):
+        """Generate a list of mixin classes that implement the backend, working
+        through composition.
+
+        'config' is a dict which typically comes from the JSON de-serialization
+            of config.json in JujuGUI.
+        'prev_config' is a dict used to compute the differences. If it is not
+            passed, all current config values are considered new.
         """
-        Backends function through composition. __init__ becomes the
-        factory method to generate a selection of strategy classes
-        to use together to implement the backend proper.
-        """
-        # Ingest the config and build out the ordered list of
-        # backend elements to include.
         if config is None:
-            config = get_config()
+            config = utils.get_config()
         self.config = config
+        if prev_config is None:
+            prev_config = {}
         self.prev_config = prev_config
-        self.overrides = overrides
 
-        # We always use upstart.
-        backends = [InstallMixin, ]
+        # We always install the GUI.
+        mixins = [InstallMixin]
 
-        api = "python" if legacy_juju() else "go"
         sandbox = config.get('sandbox', False)
         staging = config.get('staging', False)
 
-        if api == 'python':
+        if utils.legacy_juju():
             if staging:
-                backends.append(ImprovBackend)
+                mixins.append(ImprovMixin)
             elif sandbox:
-                backends.append(SandboxBackend)
+                mixins.append(SandboxMixin)
             else:
-                backends.append(PythonBackend)
+                mixins.append(PythonMixin)
         else:
             if staging:
                 raise ValueError('Unable to use staging with go backend')
             elif sandbox:
                 raise ValueError('Unable to use sandbox with go backend')
-            backends.append(GoBackend)
+            mixins.append(GoMixin)
 
-        # All backends can manage the gui.
-        backends.append(GuiMixin)
-        backends.append(UpstartMixin)
+        # All backends need to install, start, and stop the services that
+        # provide the GUI.
+        mixins.append(GuiMixin)
+        mixins.append(UpstartMixin)
 
         # Record our choice mapping classes to instances.
-        for i, b in enumerate(backends):
+        for i, b in enumerate(mixins):
             if callable(b):
-                backends[i] = b()
-        self.backends = backends
+                mixins[i] = b()
+        self.mixins = mixins
 
-    def __getitem__(self, key):
-        try:
-            return self.config[key]
-        except KeyError:
-            print("Unable to extract config key '%s' from %s" %
-                (key, self.config))
-            raise
-
-    @overrideable
-    def check_packages(self, *packages):
-        return check_packages(*packages)
-
-    @overrideable
-    def service_control(self, service, action):
-        service_control(service, action)
-
-    @overrideable
-    def start_agent(self, cert_path):
-        start_agent(cert_path)
-
-    @overrideable
-    def start_improv(self, stage_env, cert_path):
-        start_improv(stage_env, cert_path)
-
-    @overrideable
-    def log(self, msg, *args):
-        log(msg, *args)
-
-    @overrideable
     def install_extra_repositories(self, *packages):
         if self.config.get('allow-additional-deb-repositories', True):
-            install_extra_repositories(*packages)
+            utils.install_extra_repositories(*packages)
         else:
             apt_get('update')
 
@@ -243,27 +202,20 @@ class Backend(object):
         value differs from the config value passed in prev_config
         with respect to any of the passed in string keys.
         """
-        if self.prev_config is None:
-            return True
-
-        for key in keys:
-            current = self.config.get(key)
-            prev = self.prev_config.get(key)
-            r = current != prev
-            if r:
-                return True
-        return False
+        # Minimize lookups inside the loop, just because.
+        current, previous = self.config.get, self.prev_config.get
+        return any(current(key) != previous(key) for key in keys)
 
     ## Composed Methods
-    install = chain('install')
-    start = chain('start')
-    stop = chain('stop')
+    install = utils.chain('install')
+    start = utils.chain('start')
+    stop = utils.chain('stop')
 
     ## Merged Properties
-    dependencies = merge('dependencies')
-    build_dependencies = merge('build_dependencies')
-    staging_dependencies = merge('staging_dependencies')
+    dependencies = utils.merge('dependencies')
+    build_dependencies = utils.merge('build_dependencies')
+    staging_dependencies = utils.merge('staging_dependencies')
 
-    repositories = merge('repositories')
-    debs = merge('debs')
-    upstart_scripts = merge('upstart_scripts')
+    repositories = utils.merge('repositories')
+    debs = utils.merge('debs')
+    upstart_scripts = utils.merge('upstart_scripts')

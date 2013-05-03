@@ -11,23 +11,24 @@ __all__ = [
     'JUJU_GUI_DIR',
     'JUJU_GUI_SITE',
     'JUJU_PEM',
-    'StopChain',
     'WEB_PORT',
     'bzr_checkout',
     'chain',
     'cmd_log',
     'fetch_api',
     'fetch_gui',
+    'find_missing_packages',
     'first_path_in_dir',
     'get_api_address',
+    'get_npm_cache_archive_url',
     'get_release_file_url',
     'get_staging_dependencies',
     'get_zookeeper_address',
     'legacy_juju',
     'log_hook',
     'merge',
-    'overrideable',
     'parse_source',
+    'prime_npm_cache',
     'render_to_file',
     'save_or_create_certificates',
     'setup_apache',
@@ -39,6 +40,7 @@ __all__ = [
 ]
 
 from contextlib import contextmanager
+import errno
 import json
 import os
 import logging
@@ -297,7 +299,9 @@ def start_improv(staging_env, ssl_cert_path,
         service_control(IMPROV, START)
 
 
-def start_agent(ssl_cert_path, config_path='/etc/init/juju-api-agent.conf'):
+def start_agent(
+        ssl_cert_path, config_path='/etc/init/juju-api-agent.conf', 
+        read_only=False):
     """Start the Juju agent and connect to the current environment."""
     # Retrieve the Zookeeper address from the start up script.
     unit_dir = os.path.realpath(os.path.join(CURRENT_DIR, '..'))
@@ -309,6 +313,7 @@ def start_agent(ssl_cert_path, config_path='/etc/init/juju-api-agent.conf'):
         'keys': ssl_cert_path,
         'port': API_PORT,
         'zookeeper': zookeeper,
+        'read_only': read_only
     }
     render_to_file('juju-api-agent.conf.template', context, config_path)
     log('Starting API agent.')
@@ -399,6 +404,32 @@ def write_apache_config(build_dir, serve_tests=False):
     }
     render_to_file('apache-ports.template', context, JUJU_GUI_PORTS)
     render_to_file('apache-site.template', context, JUJU_GUI_SITE)
+
+
+def get_npm_cache_archive_url(Launchpad=Launchpad):
+    """Figure out the URL of the most recent NPM cache archive on Launchpad."""
+    launchpad = Launchpad.login_anonymously('Juju GUI charm', 'production')
+    project = launchpad.projects['juju-gui']
+    # Find the URL of the most recently created NPM cache archive.
+    npm_cache_url = get_release_file_url(project, 'npm-cache', None)
+    return npm_cache_url
+
+
+def prime_npm_cache(npm_cache_url):
+    """Download NPM cache archive and prime the NPM cache with it."""
+    # Download the cache archive and then uncompress it into the NPM cache.
+    npm_cache_archive = os.path.join(CURRENT_DIR, 'npm-cache.tgz')
+    cmd_log(run('curl', '-L', '-o', npm_cache_archive, npm_cache_url))
+    npm_cache_dir = os.path.expanduser('~/.npm')
+    # The NPM cache directory probably does not exist, so make it if not.
+    try:
+        os.mkdir(npm_cache_dir)
+    except OSError, e:
+        # If the directory already exists then ignore the error.
+        if e.errno != errno.EEXIST:  # File exists.
+            raise
+    uncompress = command('tar', '-x', '-z', '-C', npm_cache_dir, '-f')
+    cmd_log(uncompress(npm_cache_archive))
 
 
 def fetch_gui(juju_gui_source, logpath):
@@ -517,7 +548,7 @@ def save_or_create_certificates(
         shutil.copyfileobj(open(crt_path), pem_file)
 
 
-def check_packages(*packages):
+def find_missing_packages(*packages):
     """Given a list of packages, return the packages which are not installed.
     """
     cache = apt.Cache()
@@ -535,54 +566,22 @@ def check_packages(*packages):
 
 
 ## Backend support decorators
-class StopChain(Exception):
-    """Stop Processing a chain command without raising
-    another error.
-    """
 
-
-def chain(name, reverse=False):
+def chain(name):
     """Helper method to compose a set of mixin objects into a callable.
 
-    Each method is called in the context of its strategy
-    instance (normal OOP) and its argument is the Backend
-    instance.
+    Each method is called in the context of its mixin instance, and its
+    argument is the Backend instance.
     """
     # Chain method calls through all implementing mixins.
     def method(self):
-        workingset = self.backends
-        if reverse:
-            workingset = reversed(workingset)
-        for backend in workingset:
-            call = backend.__class__.__dict__.get(name)
-            if call:
-                try:
-                    call(backend, self)
-                except StopChain:
-                    break
+        for mixin in self.mixins:
+            a_callable = getattr(type(mixin), name, None)
+            if a_callable:
+                a_callable(mixin, self)
 
     method.__name__ = name
     return method
-
-
-def overrideable(f):
-    """Helper to support very limited overrides for use in testing.
-
-    def foo():
-        return True
-    b = Backend(foo=foo)
-    assert b.foo() is True
-    """
-    name = f.__name__
-
-    def overridden(self, *args, **kwargs):
-        if name in self.overrides:
-            return self.overrides[name](*args, **kwargs)
-        else:
-            return f(self, *args, **kwargs)
-
-    overridden.__name__ = name
-    return overridden
 
 
 def merge(name):
@@ -593,8 +592,8 @@ def merge(name):
     @property
     def method(self):
         result = set()
-        for backend in self.backends:
-            segment = backend.__class__.__dict__.get(name)
+        for mixin in self.mixins:
+            segment = getattr(type(mixin), name, None)
             if segment and isinstance(segment, (list, tuple, set)):
                 result |= set(segment)
 

@@ -1,3 +1,4 @@
 .emacs*
 tags
 exec.d/*
+npm-cache.tgz
