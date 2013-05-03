@@ -68,7 +68,7 @@ class InstallMixin(object):
 
 
 class UpstartMixin(object):
-    upstart_scripts = ('haproxy.conf', )
+    upstart_scripts = ('haproxy.conf',)
     debs = ('curl', 'openssl', 'haproxy', 'apache2')
 
     def install(self, backend):
@@ -133,7 +133,7 @@ class PythonBackend(object):
 
 
 class ImprovBackend(object):
-    debs = ('zookeeper', )
+    debs = ('zookeeper',)
 
     def install(self, config):
         if (not os.path.exists(JUJU_DIR) or
@@ -149,7 +149,7 @@ class ImprovBackend(object):
 
 
 class GoBackend(object):
-    debs = ('python-yaml', )
+    debs = ('python-yaml',)
 
 
 class Backend(object):
