@@ -1,5 +1,5 @@
 """
-A composition system for creating backend object.
+A composition system for creating backend objects.
 
 Backends implement start(), stop() and install() methods. A backend is composed
 of many mixins and each mixin will implement any/all of those methods and all
@@ -57,13 +57,13 @@ class InstallMixin(object):
 class UpstartMixin(object):
     """Manage (install, start, stop, etc.) some service via Upstart."""
 
-    upstart_scripts = ('haproxy.conf', )
+    upstart_scripts = ('haproxy.conf',)
     debs = ('curl', 'openssl', 'haproxy', 'apache2')
 
     def install(self, backend):
-        """Set up haproxy and nginx upstart configuration files."""
+        """Set up haproxy and Apache upstart configuration files."""
         utils.setup_apache()
-        charmhelpers.log('Setting up haproxy and nginx start up scripts.')
+        charmhelpers.log('Setting up haproxy and Apache start up scripts.')
         config = backend.config
         if backend.different(
                 'ssl-cert-path', 'ssl-cert-contents', 'ssl-key-contents'):
@@ -120,7 +120,7 @@ class PythonMixin(object):
 
 
 class ImprovMixin(object):
-    debs = ('zookeeper', )
+    debs = ('zookeeper',)
 
     def install(self, backend):
         config = backend.config
@@ -138,7 +138,7 @@ class ImprovMixin(object):
 
 
 class GoMixin(object):
-    debs = ('python-yaml', )
+    debs = ('python-yaml',)
 
 
 class Backend(object):
@@ -185,7 +185,7 @@ class Backend(object):
         mixins.append(GuiMixin)
         mixins.append(UpstartMixin)
 
-        # record our choice mapping classes to instances
+        # Record our choice mapping classes to instances.
         for i, b in enumerate(mixins):
             if callable(b):
                 mixins[i] = b()
