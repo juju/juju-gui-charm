@@ -608,6 +608,18 @@ class TestStartStop(unittest.TestCase):
         # The insecure approach eliminates the https redirect.
         self.assertNotIn('redirect scheme https', haproxy_conf)
 
+    def test_start_gui_sandbox(self):
+        ssl_cert_path = '/tmp/certificates/'
+        charmworld_url = 'http://charmworld.example'
+        start_gui(
+            False, 'This is login help.', False, False, ssl_cert_path,
+            charmworld_url, True, haproxy_path='haproxy',
+            config_js_path='config', sandbox=True)
+        js_conf = self.files['config']
+        self.assertIn('sandbox: true', js_conf)
+        self.assertIn('user: "admin"', js_conf)
+        self.assertIn('password: "admin"', js_conf)
+
 
 class TestNpmCache(unittest.TestCase):
     """To speed building from a branch we prepopulate the NPM cache."""
@@ -642,7 +654,6 @@ class TestNpmCache(unittest.TestCase):
 
         url = get_npm_cache_archive_url(Launchpad=FauxLaunchpadFactory())
         self.assertEqual(url, 'http://launchpad.example/path/to/cache/file')
-
 
     def test_InstallMixin_primes_npm_cache(self):
         # The InstallMixin.install() method primes the NPM cache before

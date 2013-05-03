@@ -340,7 +340,7 @@ def start_gui(
     log('Generating the Juju GUI configuration file.')
     is_legacy_juju = legacy_juju()
     user, password = None, None
-    if is_legacy_juju and in_staging:
+    if (is_legacy_juju and in_staging) or sandbox:
         user, password = 'admin', 'admin'
     else:
         user, password = None, None
@@ -393,6 +393,7 @@ def start_gui(
     }
     render_to_file('haproxy.cfg.template', context, haproxy_path)
     log('Starting Juju GUI.')
+
 
 def write_apache_config(build_dir, serve_tests=False):
     log('Generating the apache site configuration file.')
