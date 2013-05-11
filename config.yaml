@@ -10,7 +10,8 @@ options:
         will be deployed;
       - a Bazaar branch (e.g. 'lp:juju-gui'): a release will be created and
         deployed from the specified Bazaar branch. 'http://' prefixed branches
-        work as well.
+        work as well. It is also possible to include the specific branch
+        revision, e.g. 'lp:juju-gui:42' will checkout revno 42.
       - a 'url:' prefixed url (ex: url:http://...) of a specific location
         to pull a release from.
     type: string

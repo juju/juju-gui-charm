@@ -44,6 +44,7 @@ import errno
 import json
 import os
 import logging
+import re
 import shutil
 from subprocess import CalledProcessError
 import tempfile
@@ -211,6 +212,9 @@ def log_hook():
         log("<<< Exiting {}".format(script))
 
 
+bzr_url_expression = re.compile(r'^((?:lp:|http:\/\/)[^:]+)(?::(\d+))?$')
+
+
 def parse_source(source):
     """Parse the ``juju-gui-source`` option.
 
@@ -220,7 +224,9 @@ def parse_source(source):
        - ('stable', '0.1.0'): stable release v0.1.0;
        - ('trunk', None): latest trunk release;
        - ('trunk', '0.1.0+build.1'): trunk release v0.1.0 bzr revision 1;
-       - ('branch', 'lp:juju-gui'): release is made from a branch;
+       - ('branch', ('lp:juju-gui', 42): release is made from a branch -
+         in this case the second element includes the branch URL and revision;
+       - ('branch', ('lp:juju-gui', None): no revision is specified;
        - ('url', 'http://example.com/gui'): release from a downloaded file.
     """
     if source.startswith('url:'):
@@ -233,8 +239,9 @@ def parse_source(source):
         return 'url', source
     if source in ('stable', 'trunk'):
         return source, None
-    if source.startswith('lp:') or source.startswith('http://'):
-        return 'branch', source
+    match = bzr_url_expression.match(source)
+    if match is not None:
+        return 'branch', match.groups()
     if 'build' in source:
         return 'trunk', source
     return 'stable', source
@@ -438,6 +445,7 @@ def fetch_gui(juju_gui_source, logpath):
     # Retrieve a Juju GUI release.
     origin, version_or_branch = parse_source(juju_gui_source)
     if origin == 'branch':
+        branch_url, revision = version_or_branch
         # Make sure we have the dependencies necessary for us to actually make
         # a build.
         _get_build_dependencies()
@@ -445,7 +453,9 @@ def fetch_gui(juju_gui_source, logpath):
         juju_gui_source_dir = os.path.join(CURRENT_DIR, 'juju-gui-source')
         log('Retrieving Juju GUI source checkout from %s.' % version_or_branch)
         cmd_log(run('rm', '-rf', juju_gui_source_dir))
-        cmd_log(bzr_checkout(version_or_branch, juju_gui_source_dir))
+        checkout_args = [] if revision is None else ['--revision', revision]
+        checkout_args.extend([version_or_branch, juju_gui_source_dir])
+        cmd_log(bzr_checkout(checkout_args))
         log('Preparing a Juju GUI release.')
         logdir = os.path.dirname(logpath)
         fd, name = tempfile.mkstemp(prefix='make-distfile-', dir=logdir)
