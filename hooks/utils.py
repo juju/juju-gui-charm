@@ -212,7 +212,12 @@ def log_hook():
         log("<<< Exiting {}".format(script))
 
 
-bzr_url_expression = re.compile(r'^((?:lp:|http:\/\/)[^:]+)(?::(\d+))?$')
+bzr_url_expression = re.compile(r"""
+    ^  # Beginning of line.
+    ((?:lp:|http:\/\/)[^:]+)  # Branch URL (scheme + domain/path).
+    (?::(\d+))?  # Optional branch revision.
+    $  # End of line.
+""", re.VERBOSE)
 
 
 def parse_source(source):
