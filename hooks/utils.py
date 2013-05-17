@@ -456,11 +456,17 @@ def fetch_gui(juju_gui_source, logpath):
         _get_build_dependencies()
         # Create a release starting from a branch.
         juju_gui_source_dir = os.path.join(CURRENT_DIR, 'juju-gui-source')
-        log('Retrieving Juju GUI source checkout from %s.' % version_or_branch)
+        if revision is None:
+            checkout_args = []
+            revno = 'latest revno'
+        else:
+            checkout_args = ['--revision', revision]
+            revno = 'revno {}'.format(revision)
+        log('Retrieving Juju GUI source checkout from {} ({}).'.format(
+            branch_url, revno))
         cmd_log(run('rm', '-rf', juju_gui_source_dir))
-        checkout_args = [] if revision is None else ['--revision', revision]
-        checkout_args.extend([version_or_branch, juju_gui_source_dir])
-        cmd_log(bzr_checkout(checkout_args))
+        checkout_args.extend([branch_url, juju_gui_source_dir])
+        cmd_log(bzr_checkout(*checkout_args))
         log('Preparing a Juju GUI release.')
         logdir = os.path.dirname(logpath)
         fd, name = tempfile.mkstemp(prefix='make-distfile-', dir=logdir)
