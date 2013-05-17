@@ -402,7 +402,15 @@ class TestParseSource(unittest.TestCase):
         # Ensure a Bazaar branch is correctly parsed.
         sources = ('lp:example', 'http://bazaar.launchpad.net/example')
         for source in sources:
-            self.assertTupleEqual(('branch', source), parse_source(source))
+            expected = ('branch', (source, None))
+            self.assertEqual(expected, parse_source(source))
+
+    def test_bzr_branch_and_revision(self):
+        # A Bazaar branch is correctly parsed when including revision.
+        sources = ('lp:example:42', 'http://bazaar.launchpad.net/example:1')
+        for source in sources:
+            expected = ('branch', tuple(source.rsplit(':', 1)))
+            self.assertEqual(expected, parse_source(source))
 
     def test_url(self):
         expected = ('url', 'http://example.com/gui')
