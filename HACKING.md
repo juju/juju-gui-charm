@@ -31,8 +31,8 @@ locally.  The files may be installed globally, or into your home directory (as
 here):
 
     sudo apt-get install autoconf libtool python-charmhelpers python-tempita
-    bzr branch lp:~jimbaker/juju-jitsu/unit-test jitsu-unit-test
-    cd jitsu-unit-test
+    bzr branch lp:juju-jitsu juju-jitsu
+    cd juju-jitsu
     autoreconf
     ./configure --prefix=$HOME
     make
@@ -133,7 +133,7 @@ environment probably will reduce frustrations.  Then, deploy your charm like
 this (again, assuming you have set up your repo the way the functional tests
 need them, as described above).
 
-    juju deploy --repository=/path/to/charm/repo --upgrade local:precise/juju-gui
+    juju deploy --repository=/path/to/charm/repo local:precise/juju-gui
     juju expose juju-gui
 
 Now you are working with a test run, as described in

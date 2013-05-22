@@ -4,8 +4,10 @@ author "Canonical"
 start on runlevel [2345]
 stop on runlevel [!2345]
 
-env PYTHONPATH={{juju_dir}}:$PYTHONPATH
 env JUJU_ZOOKEEPER={{zookeeper}}
+
+# Cater for "juju-origin: lp:juju" in the environment (bug 1130681).
+chdir {{juju_dir}}
 
 # Use --nodaemon so that upstart can correctly retrieve the process ID.
 exec /usr/bin/python -m juju.agents.api --nodaemon --port {{port}} \
