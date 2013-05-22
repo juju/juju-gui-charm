@@ -4,8 +4,12 @@ author "Canonical"
 start on runlevel [2345]
 stop on runlevel [!2345]
 
-env PYTHONPATH={{juju_dir}}:$PYTHONPATH
 env JUJU_ZOOKEEPER={{zookeeper}}
+
+# Fix for bug 1130681: when the environment sets "juju-origin: lp:juju",
+# easy_install mucks sys.path and the juju libs are not found, unless we
+# change to their directory so that it comes first in sys.path.
+chdir {{juju_dir}}
 
 # Use --nodaemon so that upstart can correctly retrieve the process ID.
 exec /usr/bin/python -m juju.agents.api --nodaemon --port {{port}} \
