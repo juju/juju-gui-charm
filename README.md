@@ -57,24 +57,37 @@ web address.  Accessing the GUI via HTTP will redirect to using HTTPS.
 By default, the deployment uses self-signed certificates. The browser will ask
 you to accept a security exception once.
 
-You will see a login form with the username fixed to "admin".  The password is
-the same as your Juju environment's `admin-secret`, found in
-`~/.juju/environments.yaml`.
+You will see a login form with the username fixed to "user-admin" (for juju-
+core) or "admin" (for pyjuju). The password is the same as your Juju
+environment's `admin-secret`, found in `~/.juju/environments.yaml`.
 
-### Deploying with Jitsu ###
+### Deploying to a chosen machine ###
 
 The instructions above cause you to use a separate machine to work with the
 GUI.  If you'd like to reduce your machine footprint (and perhaps your costs),
-you can colocate the GUI with the Juju bootstrap node.  This approach will
-change in the future (probably with the Juju shipped with Ubuntu 13.04), so be
-warned.
+you can colocate the GUI with the Juju bootstrap node.
 
-For now, though, install Jitsu...
+This approach might change in the future (possibly with the Juju shipped with
+Ubuntu 13.10), so be warned.
+
+The instructions differ depending on the Juju implementation.
+
+#### juju-core ####
+
+Replace "juju deploy cs:~juju-gui/precise/juju-gui" from the previous
+instructions with this:
+
+    juju deploy --force-machine 0 cs:~juju-gui/precise/juju-gui
+
+#### pyjuju ####
+
+Colocation support is not included by default in the pyjuju implementation; to
+activate it, you will need to install Jitsu:
 
     sudo apt-get install juju-jitsu
 
-...and then replace "juju deploy cs:~juju-gui/precise/juju-gui" from the
-previous instructions with this:
+and then replace "juju deploy cs:~juju-gui/precise/juju-gui" from the previous
+instructions with this:
 
     jitsu deploy-to 0 cs:~juju-gui/precise/juju-gui
 
