@@ -106,17 +106,21 @@ options:
       staging is true it will be used in preference to sandbox at this time.
     type: boolean
     default: false
-  allow-additional-deb-repositories:
-    description: |
-      Allow access to remote PPAs. If this is False then you must have somehow
-      configured the configured package sources to include the packages that
-      the GUI needs.  This will be made more explicit soon.  For now, look in
-      the source: hooks/install and hooks/backend.py in particular.
-    type: boolean
-    default: true
   charmworld-url:
     description: |
       The URL of the charm catalog site ("charmworld") from which charm
       catalog data will be drawn.
     type: string
     default: https://manage.jujucharms.com
+  repository-location:
+    description: |
+      The charm depends on several software packages that are not packaged in
+      Ubuntu.  In order to ensure that only versions known to work with our
+      charm are used, there is a single PPA where all packages are kept.  The
+      juju-gui-charmers team supports 'stable' and 'devel' versions.  Only
+      stable should be used for production.  For enterprise deployments that
+      do not allow access to resources outside of their control, the location
+      can be any specification as long as it is recognizable by
+      'add-apt-repository'.
+    type: string
+    default: ppa:juju-gui-charmers/stable
