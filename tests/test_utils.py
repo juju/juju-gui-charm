@@ -9,6 +9,7 @@ import tempfile
 import unittest
 
 import charmhelpers
+from shelltoolbox import environ
 import tempita
 import yaml
 
@@ -86,28 +87,70 @@ class TestFirstPathInDir(unittest.TestCase):
 
 class TestGetApiAddress(unittest.TestCase):
 
-    def setUp(self):
-        self.base_dir = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, self.base_dir)
-        self.unit_dir = tempfile.mkdtemp(dir=self.base_dir)
-        self.machine_dir = os.path.join(self.base_dir, 'machine-1')
+    env_address = 'env.example.com:17070'
+    agent_address = 'agent.example.com:17070'
 
-    def test_retrieving_address(self):
-        # The API address is correctly returned.
-        address = 'example.com:17070'
-        os.mkdir(self.machine_dir)
-        with open(os.path.join(self.machine_dir, 'agent.conf'), 'w') as conf:
-            yaml.dump({'apiinfo': {'addrs': [address]}}, conf)
-        self.assertEqual(address, get_api_address(self.unit_dir))
+    @contextmanager
+    def agent_file(self, addresses=None):
+        """Set up a directory structure similar to the one created by juju.
 
-    def test_missing_file(self):
+        If addresses are provided, also create a machiner directory and an
+        agent file containing the addresses.
+        Remove the directory structure when exiting from the context manager.
+        """
+        base_dir = tempfile.mkdtemp()
+        unit_dir = tempfile.mkdtemp(dir=base_dir)
+        machine_dir = os.path.join(base_dir, 'machine-1')
+        if addresses is not None:
+            os.mkdir(machine_dir)
+            with open(os.path.join(machine_dir, 'agent.conf'), 'w') as conf:
+                yaml.dump({'apiinfo': {'addrs': addresses}}, conf)
+        try:
+            yield unit_dir, machine_dir
+        finally:
+            shutil.rmtree(base_dir)
+
+    def test_retrieving_address_from_env(self):
+        # The API address is correctly retrieved from the environment.
+        with environ(JUJU_API_ADDRESSES=self.env_address):
+            self.assertEqual(self.env_address, get_api_address())
+
+    def test_multiple_addresses_in_env(self):
+        # If multiple API addresses are listed in the environment variable,
+        # the first one is returned.
+        addresses = '{} foo.example.com:42'.format(self.env_address)
+        with environ(JUJU_API_ADDRESSES=addresses):
+            self.assertEqual(self.env_address, get_api_address())
+
+    def test_both_env_and_agent_file(self):
+        # If the API address is included in both the environment and the
+        # agent.conf file, the environment variable takes precedence.
+        with environ(JUJU_API_ADDRESSES=self.env_address):
+            with self.agent_file([self.agent_address]) as (unit_dir, _):
+                self.assertEqual(self.env_address, get_api_address(unit_dir))
+
+    def test_retrieving_address_from_agent_file(self):
+        # The API address is correctly retrieved from the machiner agent file.
+        with self.agent_file([self.agent_address]) as (unit_dir, _):
+            self.assertEqual(self.agent_address, get_api_address(unit_dir))
+
+    def test_multiple_addresses_in_agent_file(self):
+        # If multiple API addresses are listed in the agent file, the first
+        # one is returned.
+        addresses = [self.agent_address, 'foo.example.com:42']
+        with self.agent_file(addresses) as (unit_dir, _):
+            self.assertEqual(self.agent_address, get_api_address(unit_dir))
+
+    def test_missing_env_and_agent_file(self):
         # An IOError is raised if the agent configuration file is not found.
-        os.mkdir(self.machine_dir)
-        self.assertRaises(IOError, get_api_address, self.unit_dir)
+        with self.agent_file() as (unit_dir, machine_dir):
+            os.mkdir(machine_dir)
+            self.assertRaises(IOError, get_api_address, unit_dir)
 
-    def test_missing_directory(self):
+    def test_missing_env_and_agent_directory(self):
         # An IOError is raised if the machine directory is not found.
-        self.assertRaises(IOError, get_api_address, self.unit_dir)
+        with self.agent_file() as (unit_dir, _):
+            self.assertRaises(IOError, get_api_address, unit_dir)
 
 
 class TestLegacyJuju(unittest.TestCase):
