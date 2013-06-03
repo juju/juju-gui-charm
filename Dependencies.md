@@ -38,25 +38,3 @@ local network.  Typically those environments require all external software to
 be downloaded to a local server and used from there.  Our devel PPA provides a
 single starting place to obtain QA'd software.  Dev ops can grab the subset of
 packages they need, audit, test, and then server them locally.
-
-# List of dependencies #
-
-Source				Package			Use	version / repo
-----------------------------	----------------	---	----------
-ppa:chris-lea/node.js-legacy	nodejs	 		base	0.8.23-1chl1~precise1
-				npm			base	1.2.18-1chl1~precise1
-
-ppa:juju-gui/ppa		haproxy			gui	1.5-dev17-1
-
-ppa:juju/pkgs			python-charmhelpers	base	0.3+bzr178-3~precise1 (deprecated)
-				python-shelltoolbox[1]	base	0.2.1+bzr17-1~precise1~ppa1
-
-ubuntu repositories		python-yaml		go	3.10-2 / main
-				python-apt		base	0.8.3ubuntu7.1 / main
-				python-launchpadlib	base	1.9.12-1 / main
-				python-tempita		base	0.5.1-1build1 / main
-				zookeeper		improv	3.3.5+dfsg1-1ubuntu1 / universe
-
-[1] The version of python-shelltoolbox in universe is 0.2.1+bzr17-1.  There is
-probably no reason it cannot be pulled from there rather than ppa:juju/pkgs.
-
