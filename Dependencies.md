@@ -23,10 +23,13 @@ versions of external software that are in the process of being tested.
 
 # Selecting the PPA #
 
-In the charm configuration file (config.yaml) there is an entry `gui_ppa` that
-defaults to `juju-gui/charm_stable`.  You can change that in your config.yaml
-file or do a `juju set juju-gui ppa_version=juju-gui/charm_devel`, for
-instance, immediately after deploying the GUI charm to pull from the devel
+In the charm configuration file (config.yaml) there is an entry
+`repository-location` that defaults to `juju-gui/charm_stable`.  You can
+change that in your config.yaml file or do a
+
+`juju set juju-gui repository-location=ppa:juju-gui/charm_devel`,
+
+for instance, immediately after deploying the GUI charm to pull from the devel
 version.  Only Juju GUI developers doing QA for the new PPA should ever need
 to select the devel version.
 
@@ -37,4 +40,7 @@ requirement to not allow the installation of software from outside of their
 local network.  Typically those environments require all external software to
 be downloaded to a local server and used from there.  Our devel PPA provides a
 single starting place to obtain QA'd software.  Dev ops can grab the subset of
-packages they need, audit, test, and then server them locally.
+packages they need, audit, test, and then serve them locally.  The
+`repository-location` config variable can be used to point to the local repo.
+
+
