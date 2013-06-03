@@ -115,13 +115,24 @@ def _get_build_dependencies():
     cmd_log(apt_get_install(*DEB_BUILD_DEPENDENCIES))
 
 
-def get_api_address(unit_dir):
-    """Return the Juju API address stored in the uniter agent.conf file."""
+def get_api_address(unit_dir=None):
+    """Return the Juju API address.
+
+    If not present in the hook context as an environment variable, try to
+    retrieve the address parsing the machiner agent.conf file.
+    """
+    api_addresses = os.getenv("JUJU_API_ADDRESSES")
+    if api_addresses is not None:
+        return api_addresses.split()[0]
+    # The JUJU_API_ADDRESSES environment variable is not included in the hooks
+    # context in older releases of juju-core.  Retrieve it from the machiner
+    # agent file instead.
     import yaml  # python-yaml is only installed if juju-core is used.
-    # XXX 2013-03-27 frankban bug=1161443:
-        # currently the uniter agent.conf file does not include the API
-        # address. For now retrieve it from the machine agent file.
-    base_dir = os.path.abspath(os.path.join(unit_dir, '..'))
+    if unit_dir is None:
+        base_dir = os.path.join(CURRENT_DIR, '..', '..')
+    else:
+        base_dir = os.path.join(unit_dir, '..')
+    base_dir = os.path.abspath(base_dir)
     for dirname in os.listdir(base_dir):
         if dirname.startswith('machine-'):
             agent_conf = os.path.join(base_dir, dirname, 'agent.conf')
@@ -390,7 +401,7 @@ def start_gui(
         api_address = '127.0.0.1:{0}'.format(API_PORT)
     else:
         # Retrieve the juju-core API server address.
-        api_address = get_api_address(os.path.join(CURRENT_DIR, '..'))
+        api_address = get_api_address()
     context = {
         'api_address': api_address,
         'api_pem': JUJU_PEM,
