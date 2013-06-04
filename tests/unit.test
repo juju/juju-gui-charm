@@ -8,4 +8,5 @@ import unittest
 
 runner = unittest.TextTestRunner(verbosity=2)
 suite = unittest.TestLoader().discover(os.path.dirname(__file__))
-sys.exit(runner.run(suite))
+result = runner.run(suite)
+sys.exit(not result.wasSuccessful())
