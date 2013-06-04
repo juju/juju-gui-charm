@@ -1,30 +1,34 @@
 #!/usr/bin/env python2
 #-*- python -*-
 
-import os
 import unittest
 import urlparse
 
 from charmhelpers import make_charm_config_file
 from selenium.webdriver import Firefox
 from selenium.webdriver.support import ui
-from shelltoolbox import command
 from xvfbwrapper import Xvfb
 
+from helpers import (
+    legacy_juju,
+    juju,
+    jujuenv,
+    ssh,
+    wait_for_service,
+)
 
-JUJU_GUI_SOURCE = os.getenv('JUJU_GUI_SOURCE')
+
 JUJU_GUI_TEST_BRANCH = 'lp:~juju-gui/juju-gui/charm-tests-branch'
 STAGING_SERVICES = ('haproxy', 'mediawiki', 'memcached', 'mysql', 'wordpress')
-jitsu = command('jitsu')
-juju = command('juju')
-ssh = command('ssh')
+is_legacy_juju = legacy_juju()
 
 
 class DeployTestMixin(object):
 
+    charm = 'juju-gui'
+    port = '443'
+
     def setUp(self):
-        self.charm = 'juju-gui'
-        self.port = '443'
         # Perform all graphical operations in memory.
         vdisplay = Xvfb(width=1280, height=720)
         vdisplay.start()
@@ -34,7 +38,7 @@ class DeployTestMixin(object):
         self.addCleanup(selenium.quit)
 
     def tearDown(self):
-        juju('destroy-service', self.charm)
+        juju('destroy-service', '-e', jujuenv, self.charm)
 
     def assertEnvironmentIsConnected(self):
         """Assert the GUI environment is connected to the Juju API agent."""
@@ -47,14 +51,11 @@ class DeployTestMixin(object):
 
         Return the created config file object.
 
-        The Juju GUI source can be provided by setting the environment variable
-        *JUJU_GUI_SOURCE*. This is just a simple wrapper around
+        This is just a simple wrapper around
         ``charmhelpers.make_charm_config_file``.
         """
         if options is None:
             options = {}
-        if JUJU_GUI_SOURCE is not None:
-            options.setdefault('juju-gui-source', JUJU_GUI_SOURCE)
         return make_charm_config_file({self.charm: options})
 
     def handle_browser_warning(self):
@@ -135,8 +136,8 @@ class DeployTestMixin(object):
             # Just invoking ``juju destroy-service juju-gui`` in tearDown
             # should execute the ``stop`` hook, stopping all the services
             # started by the charm in the machine. Right now this does not
-            # work, so the same behavior is accomplished keeping track of
-            # started services and manually stopping them here.
+            # work in pyJuju, so the same behavior is accomplished keeping
+            # track of started services and manually stopping them here.
         target = 'ubuntu@{0}'.format(hostname)
         for service in services:
             ssh(target, 'sudo', 'service', service, 'stop')
@@ -144,33 +145,39 @@ class DeployTestMixin(object):
 
 class DeployTest(DeployTestMixin, unittest.TestCase):
 
-    def deploy(self, config=None):
+    def deploy(self, config=None, force_machine=None):
         """Deploy and expose the Juju GUI charm. Return the service host name.
 
-        Also wait until the service is started.
-        If *config_path* is provided, it will be used when deploying the charm.
+        Also wait until the service is exposed and the unit started.
+        If config_path is provided, it will be used when deploying the charm.
+        If force_machine is not None, the unit will be deployed in the
+        specified machine.
         """
-        config_file = self.make_config_file(config)
-        juju('deploy', 'local:{0}'.format(self.charm),
-             '--config', config_file.name)
-        juju('expose', self.charm)
-        jitsu(
-            'watch', '--failfast', self.charm,
-            '--state', 'started', '--open-port', self.port)
-        address = jitsu('get-service-info', self.charm, 'public-address')
-        return address.strip().split(':')[1]
+        args = ['deploy', '-e', jujuenv]
+        if config is not None:
+            config_file = self.make_config_file(config)
+            args.extend(['--config', config_file.name])
+        if force_machine is not None:
+            args.extend('--force-machine', str(force_machine))
+        args.append('local:{0}'.format(self.charm))
+        juju(*args)
+        juju('expose', '-e', jujuenv, self.charm)
+        address = wait_for_service()
+        return address
 
     def test_api_agent(self):
         # Ensure the Juju GUI and API agent services are correctly set up.
         hostname = self.deploy()
-        # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
-        self.addCleanup(
-            self.stop_services,
-            hostname, ['haproxy', 'apache2', 'juju-api-agent'])
+        if is_legacy_juju:
+            # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
+            self.addCleanup(
+                self.stop_services,
+                hostname, ['haproxy', 'apache2', 'juju-api-agent'])
         self.navigate_to(hostname)
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()
 
+    @unittest.skipUnless(is_legacy_juju, 'staging only works in pyJuju')
     def test_staging(self):
         # Ensure the Juju GUI and improv services are correctly set up.
         hostname = self.deploy({'staging': 'true'})
@@ -187,42 +194,19 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
     def test_branch_source(self):
         # Ensure the Juju GUI is correctly deployed from a Bazaar branch.
         hostname = self.deploy({'juju-gui-source': JUJU_GUI_TEST_BRANCH})
-        # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
-        self.addCleanup(
-            self.stop_services,
-            hostname, ['haproxy', 'apache2', 'juju-api-agent'])
+        if is_legacy_juju:
+            # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
+            self.addCleanup(
+                self.stop_services,
+                hostname, ['haproxy', 'apache2', 'juju-api-agent'])
         self.navigate_to(hostname)
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()
 
-
-class DeployToTest(DeployTestMixin, unittest.TestCase):
-
-    def deploy_to(self):
-        """Deploy the Juju GUI charm in the Juju bootstrap node.
-
-        Expose it and return the service host name.
-        Also wait until the service is started.
-        """
-        config_file = self.make_config_file()
-        # The id of the bootstrap node is 0 (the first node started by Juju).
-        jitsu('deploy-to', '0', 'local:{0}'.format(self.charm),
-              '--config', config_file.name)
-        juju('expose', self.charm)
-        jitsu(
-            'watch', '--failfast', self.charm,
-            '--state', 'started', '--open-port', self.port)
-        address = jitsu('get-service-info', self.charm, 'public-address')
-        return address.strip().split(':')[1]
-
-    def test_api_agent(self):
-        # Ensure the Juju GUI and API agent services are correctly set up in
-        # the Juju bootstrap node.
-        hostname = self.deploy_to()
-        # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
-        self.addCleanup(
-            self.stop_services,
-            hostname, ['haproxy', 'apache2', 'juju-api-agent'])
+    @unittest.skipIf(is_legacy_juju, 'force-machine only works in juju-core')
+    def test_force_machine(self):
+        # Ensure the Juju GUI is correctly set up in the Juju bootstrap node.
+        hostname = self.deploy(force_machine=0)
         self.navigate_to(hostname)
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()
