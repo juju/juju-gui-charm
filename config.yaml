@@ -18,26 +18,26 @@ options:
     default: stable
   juju-api-branch:
     description: |
-      The Juju API Bazaar branch (implementing the WebSocket server).
-      Since juju-core includes the WebSocket API server out of the box, this
-      option is ignored if the charm is deployed using juju-core.
+      The Juju API Bazaar branch (implementing the WebSocket server).  Since
+      juju-core includes the WebSocket API server out of the box, this option
+      is ignored if the charm is deployed using juju-core.
     type: string
     default: lp:~hazmat/juju/rapi-rollup
   staging:
     description: |
-      Connect the Juju GUI to the staging backend
-      (i.e. a simulated Juju environment).
-      Currently juju-core does not support the staging backend. For this
-      reason, this option is ignored if the charm is deployed using juju-core.
+      Connect the Juju GUI to the staging backend (i.e. a simulated Juju
+      environment).  Currently juju-core does not support the staging
+      backend. For this reason, this option is ignored if the charm is
+      deployed using juju-core.
     type: boolean
     default: false
   staging-environment:
     description: |
       The environment JSON export used by the staging server. This option can
       be used to change the topology of the simulated Juju environment.
-      Possible values are 'sample' and 'large'.
-      Currently juju-core does not support the staging backend. For this
-      reason, this option is ignored if the charm is deployed using juju-core.
+      Possible values are 'sample' and 'large'.  Currently juju-core does not
+      support the staging backend. For this reason, this option is ignored if
+      the charm is deployed using juju-core.
     type: string
     default: sample
   juju-gui-console-enabled:
@@ -47,8 +47,8 @@ options:
     default: false
   command-log-file:
     description: |
-      The log file where stdout and stderr should be sent for all
-      commands that are run by charm hooks.
+      The log file where stdout and stderr should be sent for all commands
+      that are run by charm hooks.
     type: string
     default: /var/log/juju/juju-gui.log
   ssl-cert-path:
@@ -79,43 +79,48 @@ options:
     description: |
       Whether or not the GUI is in read-only mode. Note that read-only mode is
       advisory, and enforced only in the client. If someone can access the
-      websocket and has the password, they can send commands over the websocket
-      to mutate the environment.
+      websocket and has the password, they can send commands over the
+      websocket to mutate the environment.
     type: boolean
     default: false
   serve-tests:
     description: |
-      Whether or not the GUI unit tests are exposed. If this option is enabled,
-      unit tests can be run in the browser by visiting the URL
+      Whether or not the GUI unit tests are exposed. If this option is
+      enabled, unit tests can be run in the browser by visiting the URL
       "https://[Juju GUI address]/test/".
     type: boolean
     default: false
   secure:
     description: |
-      In order to run the GUI over a non secure connection (HTTP) set this flag
-      to false. Do not set this property unless you understand and accept the
-      risks.
+      In order to run the GUI over a non secure connection (HTTP) set this
+      flag to false. Do not set this property unless you understand and accept
+      the risks.
     type: boolean
     default: true
   sandbox:
     description: |
-      Run using an in-memory sandbox rather than a real (or even improv) Juju backend.
-      Sandbox is a client side construct running entirely in the client. Sandbox doesn't
-      currently support imported environment simulation and is exclusive to the staging: true
-      configuration. If staging is true it will be used in preference to sandbox at this time.
+      Run using an in-memory sandbox rather than a real (or even improv) Juju
+      backend.  Sandbox is a client side construct running entirely in the
+      client. Sandbox does not currently support imported environment
+      simulation and is exclusive to the staging: true configuration. If
+      staging is true it will be used in preference to sandbox at this time.
     type: boolean
     default: false
-  allow-additional-deb-repositories:
-    description: |
-      Allow access to remote PPAs. If this is False then you must have somehow
-      configured the configured package sources to include the packages that
-      the GUI needs.  This will be made more explicit soon.  For now, look in
-      the source: hooks/install and hooks/backend.py in particular.
-    type: boolean
-    default: true
   charmworld-url:
     description: |
-      The URL of the charm catalog site ("charmworld") from which charm catalog
-      data will be drawn.
+      The URL of the charm catalog site ("charmworld") from which charm
+      catalog data will be drawn.
     type: string
     default: https://manage.jujucharms.com
+  repository-location:
+    description: |
+      The charm depends on several software packages that are not packaged in
+      Ubuntu.  In order to ensure that only versions known to work with our
+      charm are used, there is a single PPA where all packages are kept.  The
+      juju-gui-charmers team supports 'stable' and 'devel' versions.  Only
+      stable should be used for production.  For enterprise deployments that
+      do not allow access to resources outside of their control, the location
+      can be any specification as long as it is recognizable by
+      'add-apt-repository'.
+    type: string
+    default: ppa:juju-gui-charmers/stable
