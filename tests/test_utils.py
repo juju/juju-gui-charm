@@ -1,5 +1,7 @@
 #!/usr/bin/env python2
 
+"""Juju GUI utils tests."""
+
 from contextlib import contextmanager
 import os
 import shutil

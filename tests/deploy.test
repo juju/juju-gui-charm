@@ -158,11 +158,11 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
             config_file = self.make_config_file(config)
             args.extend(['--config', config_file.name])
         if force_machine is not None:
-            args.extend('--force-machine', str(force_machine))
+            args.extend(['--force-machine', str(force_machine)])
         args.append('local:{0}'.format(self.charm))
         juju(*args)
         juju('expose', '-e', jujuenv, self.charm)
-        address = wait_for_service()
+        address = wait_for_service(self.charm)
         return address
 
     def test_api_agent(self):
