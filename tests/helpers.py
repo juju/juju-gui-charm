@@ -1,0 +1,105 @@
+"""Juju GUI test helpers."""
+
+import json
+import os
+import subprocess
+
+
+class ProcessError(subprocess.CalledProcessError):
+    """Error running a shell command."""
+
+    def __init__(self, retcode, cmd, output, error):
+        super(ProcessError, self).__init__(retcode, cmd, output)
+        self.error = error
+
+    def __str__(self):
+        msg = super(ProcessError, self).__str__()
+        return '{}. Output: {} Error: {}'.format(msg, self.output, self.error)
+
+
+def command(*base_args):
+    """Return a callable that will run the given command with any arguments.
+
+    The first argument is the path to the command to run, subsequent arguments
+    are command-line arguments to "bake into" the returned callable.
+
+    The callable runs the given executable and also takes arguments that will
+    be appeneded to the "baked in" arguments.
+
+    For example, this code will list a file named "foo" (if it exists):
+
+        ls_foo = command('/bin/ls', 'foo')
+        ls_foo()
+
+    While this invocation will list "foo" and "bar" (assuming they exist):
+
+        ls_foo('bar')
+    """
+    PIPE = subprocess.PIPE
+
+    def runner(*args, **kwargs):
+        cmd = base_args + args
+        process = subprocess.Popen(cmd, stdout=PIPE, stderr=PIPE, **kwargs)
+        output, error = process.communicate()
+        retcode = process.poll()
+        if retcode:
+            raise ProcessError(retcode, cmd, output, error)
+        return output
+
+    return runner
+
+
+juju = command('juju')
+ssh = command('ssh')
+jujuenv = os.getenv('JUJU_ENV')  # This is propagated by juju-test.
+
+
+def legacy_juju():
+    """Return True if pyJuju is being used, False otherwise."""
+    try:
+        juju('--version')
+    except ProcessError:
+        return False
+    return True
+
+
+def juju_status():
+    """Return the Juju status as a dictionary."""
+    status = juju('status', '-e', jujuenv, '--format', 'json')
+    return json.loads(status)
+
+
+def wait_for_service(sevice):
+    """Wait for the given service to be deployed and exposed.
+
+    Also wait for the first unit in the service to be started.
+
+    Raise a RuntimeError if the unit is found in an error state.
+    The juju_status call can raise a ProcessError. In this case, retry two
+    times before raising the last process error encountered. This way it is
+    possible to handle temporary failures caused, e.g., by disconnections.
+
+    Return the public address of the first unit.
+    """
+    process_errors = 0
+    while True:
+        try:
+            status = juju_status()
+        except ProcessError:
+            process_errors += 1
+            if process_errors > 2:
+                raise
+            continue
+        service = status.get('services', {}).get(sevice)
+        if service is None or not service.get('exposed'):
+            continue
+        units = service.get('units', {})
+        if not len(units):
+            continue
+        unit = units.values()[0]
+        state = unit['agent-state']
+        if 'error' in state:
+            raise RuntimeError(
+                'the service unit is in an error state: {}'.format(state))
+        if state == 'started':
+            return unit['public-address']
