@@ -1,8 +1,12 @@
 """Juju GUI test helpers."""
 
+from functools import wraps
 import json
 import os
 import subprocess
+import time
+
+from charmhelpers import make_charm_config_file
 
 
 class ProcessError(subprocess.CalledProcessError):
@@ -63,6 +67,61 @@ def legacy_juju():
     return True
 
 
+def retry(exception, tries=10, delay=1):
+    """If the decorated function raises the exception, wait and try it again.
+
+    Raise the exception raised by the last call if the function does not
+    exit normally after the specified number of tries.
+
+    Original from http://wiki.python.org/moin/PythonDecoratorLibrary#Retry.
+    """
+    def decorator(func):
+        @wraps(func)
+        def decorated(*args, **kwargs):
+            mtries = tries
+            while mtries:
+                try:
+                    return func(*args, **kwargs)
+                except exception as err:
+                    time.sleep(delay)
+                    mtries -= 1
+            raise err
+        return decorated
+    return decorator
+
+
+@retry(ProcessError)
+def juju_deploy(charm, options=None, force_machine=None):
+    """Deploy and expose the charm. Return the first unit's public address.
+
+    Also wait until the service is exposed and the first unit started.
+    If options are provided, they will be used when deploying the charm.
+    If force_machine is not None, create the unit in the specified machine.
+    """
+    args = ['deploy', '-e', jujuenv]
+    if options is not None:
+        config_file = make_charm_config_file({charm: options})
+        args.extend(['--config', config_file.name])
+    if force_machine is not None:
+        args.extend(['--force-machine', str(force_machine)])
+    args.append('local:{0}'.format(charm))
+    juju(*args)
+    juju('expose', '-e', jujuenv, charm)
+    address = wait_for_service(charm)
+    return address
+
+
+@retry(ProcessError)
+def juju_destroy_service(service):
+    """Destroy the given service and wait for the service to be removed."""
+    juju('destroy-service', '-e', jujuenv, service)
+    while True:
+        services = juju_status().get('services', {})
+        if service not in services:
+            return
+
+
+@retry(ProcessError)
 def juju_status():
     """Return the Juju status as a dictionary."""
     status = juju('status', '-e', jujuenv, '--format', 'json')
@@ -81,15 +140,8 @@ def wait_for_service(sevice):
 
     Return the public address of the first unit.
     """
-    process_errors = 0
     while True:
-        try:
-            status = juju_status()
-        except ProcessError:
-            process_errors += 1
-            if process_errors > 2:
-                raise
-            continue
+        status = juju_status()
         service = status.get('services', {}).get(sevice)
         if service is None or not service.get('exposed'):
             continue

@@ -1,0 +1,13 @@
+#/bin/sh
+
+TESTDIR=`dirname $0`
+VENV="$TESTDIR/.venv"
+ACTIVATE="$VENV/bin/activate"
+REQUIREMENTS="$TESTDIR/requirements.pip"
+
+# Create a virtualenv if it does not exist, or it is older than requirements.
+if [ ! -f $ACTIVATE -o $REQUIREMENTS -nt $ACTIVATE ]; then
+    virtualenv --distribute $VENV
+    . $VENV/bin/activate && pip install --use-mirrors -r $REQUIREMENTS
+    touch $VENV/bin/activate
+fi

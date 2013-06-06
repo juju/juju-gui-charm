@@ -4,17 +4,15 @@
 import unittest
 import urlparse
 
-from charmhelpers import make_charm_config_file
 from selenium.webdriver import Firefox
 from selenium.webdriver.support import ui
 from xvfbwrapper import Xvfb
 
 from helpers import (
     legacy_juju,
-    juju,
-    jujuenv,
+    juju_deploy,
+    juju_destroy_service,
     ssh,
-    wait_for_service,
 )
 
 
@@ -38,25 +36,13 @@ class DeployTestMixin(object):
         self.addCleanup(selenium.quit)
 
     def tearDown(self):
-        juju('destroy-service', '-e', jujuenv, self.charm)
+        juju_destroy_service(self.charm)
 
     def assertEnvironmentIsConnected(self):
         """Assert the GUI environment is connected to the Juju API agent."""
         self.wait_for_script(
             'return app.env.get("connected");',
             error='Environment not connected.')
-
-    def make_config_file(self, options=None):
-        """Create a charm config file adding, if required, the Juju GUI source.
-
-        Return the created config file object.
-
-        This is just a simple wrapper around
-        ``charmhelpers.make_charm_config_file``.
-        """
-        if options is None:
-            options = {}
-        return make_charm_config_file({self.charm: options})
 
     def handle_browser_warning(self):
         """Overstep the browser warning dialog if required."""
@@ -116,14 +102,6 @@ class DeployTestMixin(object):
         condition = lambda driver: driver.execute_script(script)
         return self.wait_for(condition, error=error, timeout=timeout)
 
-    def login(self, password):
-        """Log in to access the Juju GUI using the provided *password*."""
-        form = self.wait_for_css_selector('form', 'Login form not found.')
-        passwd = form.find_element_by_css_selector('input[type=password]')
-        passwd.send_keys(password)
-        submit = form.find_element_by_css_selector('input[type=submit]')
-        submit.click()
-
     def get_service_names(self):
         """Return the set of services' names displayed in the current page."""
         def services_found(driver):
@@ -145,29 +123,9 @@ class DeployTestMixin(object):
 
 class DeployTest(DeployTestMixin, unittest.TestCase):
 
-    def deploy(self, config=None, force_machine=None):
-        """Deploy and expose the Juju GUI charm. Return the service host name.
-
-        Also wait until the service is exposed and the unit started.
-        If config_path is provided, it will be used when deploying the charm.
-        If force_machine is not None, the unit will be deployed in the
-        specified machine.
-        """
-        args = ['deploy', '-e', jujuenv]
-        if config is not None:
-            config_file = self.make_config_file(config)
-            args.extend(['--config', config_file.name])
-        if force_machine is not None:
-            args.extend(['--force-machine', str(force_machine)])
-        args.append('local:{0}'.format(self.charm))
-        juju(*args)
-        juju('expose', '-e', jujuenv, self.charm)
-        address = wait_for_service(self.charm)
-        return address
-
     def test_api_agent(self):
         # Ensure the Juju GUI and API agent services are correctly set up.
-        hostname = self.deploy()
+        hostname = juju_deploy(self.charm)
         if is_legacy_juju:
             # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
             self.addCleanup(
@@ -180,7 +138,7 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
     @unittest.skipUnless(is_legacy_juju, 'staging only works in pyJuju')
     def test_staging(self):
         # Ensure the Juju GUI and improv services are correctly set up.
-        hostname = self.deploy({'staging': 'true'})
+        hostname = juju_deploy(self.charm, options={'staging': 'true'})
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
             self.stop_services,
@@ -193,7 +151,8 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
 
     def test_branch_source(self):
         # Ensure the Juju GUI is correctly deployed from a Bazaar branch.
-        hostname = self.deploy({'juju-gui-source': JUJU_GUI_TEST_BRANCH})
+        hostname = juju_deploy(
+            self.charm, options={'juju-gui-source': JUJU_GUI_TEST_BRANCH})
         if is_legacy_juju:
             # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
             self.addCleanup(
@@ -206,7 +165,7 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
     @unittest.skipIf(is_legacy_juju, 'force-machine only works in juju-core')
     def test_force_machine(self):
         # Ensure the Juju GUI is correctly set up in the Juju bootstrap node.
-        hostname = self.deploy(force_machine=0)
+        hostname = juju_deploy(self.charm, force_machine=0)
         self.navigate_to(hostname)
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()

@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-
 """Juju GUI helpers tests."""
 
 import json
@@ -9,9 +7,12 @@ import mock
 
 from helpers import (
     command,
+    juju_deploy,
+    juju_destroy_service,
     juju_status,
     legacy_juju,
     ProcessError,
+    retry,
     wait_for_service,
 )
 
@@ -53,6 +54,87 @@ class TestCommand(unittest.TestCase):
         # There is no need to quote special shell characters in commands.
         ls = command('/bin/ls')
         ls('--help', '>')
+
+
+class TestJujuDeploy(unittest.TestCase):
+
+    address = 'unit.example.com'
+    charm = 'test-charm'
+    env = 'test-env'
+    expose_call = mock.call('expose', '-e', env, charm)
+    local_charm = 'local:{}'.format(charm)
+
+    @mock.patch('helpers.juju')
+    @mock.patch('helpers.wait_for_service')
+    def call_deploy(self, mock_wait_for_service, mock_juju, **kwargs):
+        mock_wait_for_service.return_value = self.address
+        with mock.patch('helpers.jujuenv', self.env):
+            address = juju_deploy(self.charm, **kwargs)
+        # The unit address is correctly returned.
+        self.assertEqual(self.address, address)
+        self.assertEqual(1, mock_wait_for_service.call_count)
+        # Juju is called two times: deploy and expose.
+        juju_calls = mock_juju.call_args_list
+        self.assertEqual(2, len(juju_calls))
+        deploy_call, expose_call = juju_calls
+        # The juju deploy call takes no kwargs.
+        deploy_args, deploy_kwargs = deploy_call
+        self.assertEqual({}, deploy_kwargs)
+        # Check the expose call and return the deploy call args.
+        self.assertEqual(self.expose_call, expose_call)
+        return deploy_args
+
+    def test_deployment(self):
+        # The function deploys and exposes the given charm.
+        expected_deploy_args = ('deploy', '-e', self.env, self.local_charm)
+        deploy_args = self.call_deploy()
+        self.assertEqual(expected_deploy_args, deploy_args)
+
+    def test_options(self):
+        # The function handles charm options.
+        deploy_args = self.call_deploy(options={'opt1': 'v1', 'opt2': 'v2'})
+        tempfile = deploy_args[4]
+        expected_deploy_args = (
+            'deploy', '-e', self.env, '--config', tempfile, self.local_charm
+        )
+        self.assertEqual(expected_deploy_args, deploy_args)
+
+    def test_force_machine(self):
+        # The function can deploy services in a specified machine.
+        expected_deploy_args = (
+            'deploy', '-e', self.env, '--force-machine', '42', self.local_charm
+        )
+        deploy_args = self.call_deploy(force_machine=42)
+        self.assertEqual(expected_deploy_args, deploy_args)
+
+
+@mock.patch('helpers.juju')
+@mock.patch('helpers.juju_status')
+class TestJujuDestroyService(unittest.TestCase):
+
+    service = 'test-service'
+    env = 'test-env'
+
+    def test_service_destroyed(self, mock_juju_status, mock_juju):
+        # The juju destroy-service command is correctly called.
+        mock_juju_status.return_value = {}
+        with mock.patch('helpers.jujuenv', self.env):
+            juju_destroy_service(self.service)
+        self.assertEqual(1, mock_juju_status.call_count)
+        mock_juju.assert_called_once_with(
+            'destroy-service', '-e', self.env, self.service)
+
+    def test_wait_until_removed(self, mock_juju_status, mock_juju):
+        # The function waits for the service to be removed.
+        mock_juju_status.side_effect = (
+            {'services': {self.service: {}, 'another-service': {}}},
+            {'services': {'another-service': {}}},
+        )
+        with mock.patch('helpers.jujuenv', self.env):
+            juju_destroy_service(self.service)
+        self.assertEqual(2, mock_juju_status.call_count)
+        mock_juju.assert_called_once_with(
+            'destroy-service', '-e', self.env, self.service)
 
 
 class TestJujuStatus(unittest.TestCase):
@@ -105,6 +187,36 @@ class TestProcessError(unittest.TestCase):
         self.assertEqual(expected, str(err))
 
 
+class TestRetry(unittest.TestCase):
+
+    error = 'error after {} tries'
+
+    def setUp(self):
+        self.tries = 0
+
+    @retry(TypeError, tries=10, delay=0)
+    def success(self):
+        self.tries += 1
+        if self.tries == 5:
+            return True
+        raise TypeError
+
+    @retry(TypeError, tries=10, delay=0)
+    def failure(self):
+        self.tries += 1
+        raise TypeError(self.error.format(self.tries))
+
+    def test_success(self):
+        # The decorated function returns without errors after several tries.
+        self.assertTrue(self.success())
+
+    def test_failure(self):
+        # The decorated function raises the last error.
+        with self.assertRaises(TypeError) as info:
+            self.failure()
+        self.assertEqual(self.error.format(10), str(info.exception))
+
+
 @mock.patch('helpers.juju_status')
 class TestWaitForService(unittest.TestCase):
 
@@ -127,21 +239,6 @@ class TestWaitForService(unittest.TestCase):
                 },
             },
         }
-
-    def test_ignored_process_errors(self, mock_juju_status):
-        # The function ignores the first two encountered process errors.
-        error = ProcessError(1, 'error', '', '')
-        mock_juju_status.side_effect = (error, error, self.get_status())
-        address = wait_for_service(self.service)
-        self.assertEqual(self.address, address)
-        self.assertEqual(3, mock_juju_status.call_count)
-
-    def test_raised_process_error(self, mock_juju_status):
-        # The function will raise a ProcessError if the failure is persistent.
-        error = ProcessError(1, 'error', '', '')
-        mock_juju_status.side_effect = [error] * 3
-        self.assertRaises(ProcessError, wait_for_service, self.service)
-        self.assertEqual(3, mock_juju_status.call_count)
 
     def test_service_not_deployed(self, mock_juju_status):
         # The function waits until the service is deployed.
