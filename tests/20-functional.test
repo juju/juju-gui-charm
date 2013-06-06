@@ -7,9 +7,9 @@ from selenium.webdriver import Firefox
 from selenium.webdriver.support import ui
 from xvfbwrapper import Xvfb
 
+from deploy import juju_deploy
 from helpers import (
     legacy_juju,
-    juju_deploy,
     juju_destroy_service,
     ssh,
 )

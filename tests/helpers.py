@@ -6,8 +6,6 @@ import os
 import subprocess
 import time
 
-from charmhelpers import make_charm_config_file
-
 
 class ProcessError(subprocess.CalledProcessError):
     """Error running a shell command."""
@@ -88,27 +86,6 @@ def retry(exception, tries=10, delay=1):
             raise err
         return decorated
     return decorator
-
-
-@retry(ProcessError)
-def juju_deploy(charm, options=None, force_machine=None):
-    """Deploy and expose the charm. Return the first unit's public address.
-
-    Also wait until the service is exposed and the first unit started.
-    If options are provided, they will be used when deploying the charm.
-    If force_machine is not None, create the unit in the specified machine.
-    """
-    args = ['deploy', '-e', jujuenv]
-    if options is not None:
-        config_file = make_charm_config_file({charm: options})
-        args.extend(['--config', config_file.name])
-    if force_machine is not None:
-        args.extend(['--force-machine', str(force_machine)])
-    args.append('local:{0}'.format(charm))
-    juju(*args)
-    juju('expose', '-e', jujuenv, charm)
-    address = wait_for_service(charm)
-    return address
 
 
 @retry(ProcessError)

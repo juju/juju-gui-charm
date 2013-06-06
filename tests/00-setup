@@ -5,14 +5,6 @@ VENV="$TESTDIR/.venv"
 ACTIVATE="$VENV/bin/activate"
 REQUIREMENTS="$TESTDIR/requirements.pip"
 
-createrepo() {
-    # Create a Juju repository containing the Juju GUI charm.
-    source="$TESTDIR/../"
-    destination="$JUJU_REPOSITORY/precise/juju-gui"
-    mkdir -p $destination
-    rsync -av --exclude="$VENV" --exclude=".bzr" "$source" "$destination"
-    echo "Charm has been copied to $destination" >&2
-}
 
 createvenv() {
     # Create a virtualenv if it does not exist, or it is older than requirements.
@@ -24,9 +16,5 @@ createvenv() {
     fi
 }
 
-if [ "$1" != "--no-repository" ]; then
-    # If not aksed otherwise, create the Juju repository.
-    export JUJU_REPOSITORY=`mktemp -d`
-    createrepo
-fi
+
 createvenv

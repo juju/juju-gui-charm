@@ -7,7 +7,6 @@ import mock
 
 from helpers import (
     command,
-    juju_deploy,
     juju_destroy_service,
     juju_status,
     legacy_juju,
@@ -54,58 +53,6 @@ class TestCommand(unittest.TestCase):
         # There is no need to quote special shell characters in commands.
         ls = command('/bin/ls')
         ls('--help', '>')
-
-
-class TestJujuDeploy(unittest.TestCase):
-
-    address = 'unit.example.com'
-    charm = 'test-charm'
-    env = 'test-env'
-    expose_call = mock.call('expose', '-e', env, charm)
-    local_charm = 'local:{}'.format(charm)
-
-    @mock.patch('helpers.juju')
-    @mock.patch('helpers.wait_for_service')
-    def call_deploy(self, mock_wait_for_service, mock_juju, **kwargs):
-        mock_wait_for_service.return_value = self.address
-        with mock.patch('helpers.jujuenv', self.env):
-            address = juju_deploy(self.charm, **kwargs)
-        # The unit address is correctly returned.
-        self.assertEqual(self.address, address)
-        self.assertEqual(1, mock_wait_for_service.call_count)
-        # Juju is called two times: deploy and expose.
-        juju_calls = mock_juju.call_args_list
-        self.assertEqual(2, len(juju_calls))
-        deploy_call, expose_call = juju_calls
-        # The juju deploy call takes no kwargs.
-        deploy_args, deploy_kwargs = deploy_call
-        self.assertEqual({}, deploy_kwargs)
-        # Check the expose call and return the deploy call args.
-        self.assertEqual(self.expose_call, expose_call)
-        return deploy_args
-
-    def test_deployment(self):
-        # The function deploys and exposes the given charm.
-        expected_deploy_args = ('deploy', '-e', self.env, self.local_charm)
-        deploy_args = self.call_deploy()
-        self.assertEqual(expected_deploy_args, deploy_args)
-
-    def test_options(self):
-        # The function handles charm options.
-        deploy_args = self.call_deploy(options={'opt1': 'v1', 'opt2': 'v2'})
-        tempfile = deploy_args[4]
-        expected_deploy_args = (
-            'deploy', '-e', self.env, '--config', tempfile, self.local_charm
-        )
-        self.assertEqual(expected_deploy_args, deploy_args)
-
-    def test_force_machine(self):
-        # The function can deploy services in a specified machine.
-        expected_deploy_args = (
-            'deploy', '-e', self.env, '--force-machine', '42', self.local_charm
-        )
-        deploy_args = self.call_deploy(force_machine=42)
-        self.assertEqual(expected_deploy_args, deploy_args)
 
 
 @mock.patch('helpers.juju')
