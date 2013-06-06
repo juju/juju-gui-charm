@@ -33,7 +33,9 @@ class TestBackendProperties(unittest.TestCase):
         self.assertEqual(
             frozenset(('apache2', 'curl', 'haproxy', 'openssl', 'zookeeper')),
             test_backend.debs)
-        self.assertFalse(test_backend.repositories)
+        self.assertEqual(
+            frozenset(()),
+            test_backend.repositories)
         self.assertEqual(
             frozenset(('haproxy.conf',)),
             test_backend.upstart_scripts)
@@ -48,7 +50,9 @@ class TestBackendProperties(unittest.TestCase):
         self.assertEqual(
             frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
             test_backend.debs)
-        self.assertFalse(test_backend.repositories)
+        self.assertEqual(
+            frozenset(()),
+            test_backend.repositories)
         self.assertEqual(
             frozenset(('haproxy.conf',)),
             test_backend.upstart_scripts)
@@ -63,7 +67,9 @@ class TestBackendProperties(unittest.TestCase):
         self.assertEqual(
             frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
             test_backend.debs)
-        self.assertFalse(test_backend.repositories)
+        self.assertEqual(
+            frozenset(()),
+            test_backend.repositories)
         self.assertEqual(
             frozenset(('haproxy.conf',)),
             test_backend.upstart_scripts)
@@ -90,7 +96,9 @@ class TestBackendProperties(unittest.TestCase):
             frozenset(
                 ('apache2', 'curl', 'haproxy', 'openssl', 'python-yaml')),
             test_backend.debs)
-        self.assertFalse(test_backend.repositories)
+        self.assertEqual(
+            frozenset(()),
+            test_backend.repositories)
         self.assertEqual(
             frozenset(('haproxy.conf',)),
             test_backend.upstart_scripts)
