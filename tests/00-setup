@@ -1,13 +1,32 @@
-#/bin/sh
+#!/bin/sh
 
 TESTDIR=`dirname $0`
 VENV="$TESTDIR/.venv"
 ACTIVATE="$VENV/bin/activate"
 REQUIREMENTS="$TESTDIR/requirements.pip"
 
-# Create a virtualenv if it does not exist, or it is older than requirements.
-if [ ! -f $ACTIVATE -o $REQUIREMENTS -nt $ACTIVATE ]; then
-    virtualenv --distribute $VENV
-    . $VENV/bin/activate && pip install --use-mirrors -r $REQUIREMENTS
-    touch $VENV/bin/activate
+createrepo() {
+    # Create a Juju repository containing the Juju GUI charm.
+    source="$TESTDIR/../"
+    destination="$JUJU_REPOSITORY/precise/juju-gui"
+    mkdir -p $destination
+    rsync -av --exclude="$VENV" --exclude=".bzr" "$source" "$destination"
+    echo "Charm has been copied to $destination" >&2
+}
+
+createvenv() {
+    # Create a virtualenv if it does not exist, or it is older than requirements.
+    if [ ! -f "$ACTIVATE" -o "$REQUIREMENTS" -nt "$ACTIVATE" ]; then
+        virtualenv --distribute $VENV
+        . $VENV/bin/activate && \
+            yes w | pip install --use-mirrors -r $REQUIREMENTS
+        touch $VENV/bin/activate
+    fi
+}
+
+if [ "$1" != "--no-repository" ]; then
+    # If not aksed otherwise, create the Juju repository.
+    export JUJU_REPOSITORY=`mktemp -d`
+    createrepo
 fi
+createvenv

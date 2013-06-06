@@ -1,9 +1,9 @@
 """Juju GUI utils tests."""
 
 from contextlib import contextmanager
+import json
 import os
 import shutil
-from simplejson import dumps
 from subprocess import CalledProcessError
 import tempfile
 import unittest
@@ -527,7 +527,7 @@ class TestCmdLog(unittest.TestCase):
         fd, self.log_file_name = tempfile.mkstemp()
         os.close(fd)
         mock_config = {'command-log-file': self.log_file_name}
-        charmhelpers.command = lambda *args: lambda: dumps(mock_config)
+        charmhelpers.command = lambda *args: lambda: json.dumps(mock_config)
 
     def tearDown(self):
         charmhelpers.command = self.command

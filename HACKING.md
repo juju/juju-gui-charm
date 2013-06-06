@@ -17,7 +17,7 @@ is an easy way to get started.
 You'll also need some dependencies and developer basics.
 
     sudo apt-get install bzr autoconf libtool python-charmhelpers python-yaml \
-        xvfb
+        xvfb libapt-pkg-dev
 
 Next, you need the bzr branch.  We work from
 [lp:~juju-gui/charms/precise/juju-gui/trunk](https://code.launchpad.net/~juju-gui/charms/precise/juju-gui/trunk).
