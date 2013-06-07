@@ -124,7 +124,8 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
 
     def test_api_agent(self):
         # Ensure the Juju GUI and API agent services are correctly set up.
-        hostname = juju_deploy(self.charm)
+        unit_info = juju_deploy(self.charm)
+        hostname = unit_info['public-address']
         if is_legacy_juju:
             # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
             self.addCleanup(
@@ -137,7 +138,8 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
     @unittest.skipUnless(is_legacy_juju, 'staging only works in pyJuju')
     def test_staging(self):
         # Ensure the Juju GUI and improv services are correctly set up.
-        hostname = juju_deploy(self.charm, options={'staging': 'true'})
+        unit_info = juju_deploy(self.charm, options={'staging': 'true'})
+        hostname = unit_info['public-address']
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
             self.stop_services,
@@ -150,8 +152,9 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
 
     def test_branch_source(self):
         # Ensure the Juju GUI is correctly deployed from a Bazaar branch.
-        hostname = juju_deploy(
+        unit_info = juju_deploy(
             self.charm, options={'juju-gui-source': JUJU_GUI_TEST_BRANCH})
+        hostname = unit_info['public-address']
         if is_legacy_juju:
             # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
             self.addCleanup(
@@ -164,8 +167,9 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
     @unittest.skipIf(is_legacy_juju, 'force-machine only works in juju-core')
     def test_force_machine(self):
         # Ensure the Juju GUI is correctly set up in the Juju bootstrap node.
-        hostname = juju_deploy(self.charm, force_machine=0)
-        self.navigate_to(hostname)
+        unit_info = juju_deploy(self.charm, force_machine=0)
+        self.assertEqual('0', unit_info['machine'])
+        self.navigate_to(unit_info['public-address'])
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()
 

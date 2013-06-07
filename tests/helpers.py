@@ -16,7 +16,8 @@ class ProcessError(subprocess.CalledProcessError):
 
     def __str__(self):
         msg = super(ProcessError, self).__str__()
-        return '{}. Output: {} Error: {}'.format(msg, self.output, self.error)
+        return '{}. Output: {!r}. Error: {!r}.'.format(
+            msg, self.output, self.error)
 
 
 def command(*base_args):
@@ -51,15 +52,15 @@ def command(*base_args):
     return runner
 
 
-juju = command('juju')
+juju_command = command('juju')
+juju_env = lambda: os.getenv('JUJU_ENV')  # This is propagated by juju-test.
 ssh = command('ssh')
-jujuenv = os.getenv('JUJU_ENV')  # This is propagated by juju-test.
 
 
 def legacy_juju():
     """Return True if pyJuju is being used, False otherwise."""
     try:
-        juju('--version')
+        juju_command('--version')
     except ProcessError:
         return False
     return True
@@ -89,33 +90,43 @@ def retry(exception, tries=10, delay=1):
 
 
 @retry(ProcessError)
+def juju(command, *args):
+    """Call the juju command, passing the environment parameters if required.
+
+    The environment value can be provided in args, or can be found in the
+    context as JUJU_ENV.
+    """
+    arguments = [command]
+    if ('-e' not in args) and ('--environment' not in args):
+        env = juju_env()
+        if env is not None:
+            arguments.extend(['-e', env])
+    arguments.extend(args)
+    return juju_command(*arguments)
+
+
 def juju_destroy_service(service):
     """Destroy the given service and wait for the service to be removed."""
-    juju('destroy-service', '-e', jujuenv, service)
+    juju('destroy-service', service)
     while True:
         services = juju_status().get('services', {})
         if service not in services:
             return
 
 
-@retry(ProcessError)
 def juju_status():
     """Return the Juju status as a dictionary."""
-    status = juju('status', '-e', jujuenv, '--format', 'json')
+    status = juju('status', '--format', 'json')
     return json.loads(status)
 
 
-def wait_for_service(sevice):
-    """Wait for the given service to be deployed and exposed.
+def wait_for_unit(sevice):
+    """Wait for the first unit of the given service to started.
 
-    Also wait for the first unit in the service to be started.
-
+    Also wait for the the service to be exposed.
     Raise a RuntimeError if the unit is found in an error state.
-    The juju_status call can raise a ProcessError. In this case, retry two
-    times before raising the last process error encountered. This way it is
-    possible to handle temporary failures caused, e.g., by disconnections.
-
-    Return the public address of the first unit.
+    Return info about the first unit as a dict containing the following keys:
+    agent-state, machine, and public-address.
     """
     while True:
         status = juju_status()
@@ -131,4 +142,4 @@ def wait_for_service(sevice):
             raise RuntimeError(
                 'the service unit is in an error state: {}'.format(state))
         if state == 'started':
-            return unit['public-address']
+            return unit
