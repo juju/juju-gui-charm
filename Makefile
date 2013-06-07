@@ -8,14 +8,18 @@ all: setup
 setup:
 	@./tests/00-setup
 
-test:
-	$(JUJUTEST)
-
 unittest: setup
 	./tests/10-unit.test
 
 ftest: setup
 	$(JUJUTEST) 20-functional.test
+
+# This will be eventually removed when we have juju-test --clean-state.
+test: unittest ftest
+
+# This will be eventually renamed as test when we have juju-test --clean-state.
+jujutest:
+	$(JUJUTEST)
 
 lint: setup
 	@flake8 --show-source --exclude=.venv  ./hooks/ ./tests/

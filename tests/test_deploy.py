@@ -51,11 +51,14 @@ class TestSetupRepository(unittest.TestCase):
         self.assertEqual(expected, fileset)
 
     def check_repository(self, repo, series):
+        # The repository has been created in the temp directory.
         self.assertEqual(tempfile.tempdir, os.path.split(repo)[0])
         self.assert_dir_exists(repo)
+        # The repository only contains the series directory.
         self.assertEqual([series], os.listdir(repo))
         series_dir = os.path.join(repo, series)
         self.assert_dir_exists(series_dir)
+        # The series directory only contains our charm.
         self.assertEqual([self.charm_name], os.listdir(series_dir))
         self.assert_dir_exists(os.path.join(series_dir, self.charm_name))
 
@@ -70,7 +73,8 @@ class TestSetupRepository(unittest.TestCase):
         self.check_repository(repo, 'raring')
 
     def test_charm_files(self):
-        # The charm files are correctly copied inside the repository.
+        # The charm files are correctly copied inside the repository, excluding
+        # unwanted directories.
         repo = setup_repository(self.source)
         charm_dir = os.path.join(repo, 'precise', self.charm_name)
         test_dir_name = os.path.basename(self.tests_dir)

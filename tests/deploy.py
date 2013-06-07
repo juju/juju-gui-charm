@@ -39,6 +39,7 @@ def juju_deploy(charm, options=None, force_machine=None, charm_source=None):
     Also wait until the service is exposed and the first unit started.
     If options are provided, they will be used when deploying the charm.
     If force_machine is not None, create the unit in the specified machine.
+    If charm_source is None, dynamically retrieve the charm source directory.
     """
     if charm_source is None:
         # Dynamically retrieve the charm source based on the path of this file.

@@ -65,14 +65,14 @@ class TestJuju(unittest.TestCase):
     process_error = ProcessError(1, 'an error occurred', 'output', 'error')
 
     def test_e_in_args(self, mock_juju_command):
-        # The command includes the environment provided with -e.
+        # The command includes the environment if provided with -e.
         with self.patch_environ:
             juju('deploy', '-e', 'another-env', 'test-charm')
         mock_juju_command.assert_called_once_with(
             'deploy', '-e', 'another-env', 'test-charm')
 
     def test_environment_in_args(self, mock_juju_command):
-        # The command includes the environment provided with --environment.
+        # The command includes the environment if provided with --environment.
         with self.patch_environ:
             juju('deploy', '--environment', 'another-env', 'test-charm')
         mock_juju_command.assert_called_once_with(

@@ -121,12 +121,12 @@ def juju_status():
 
 
 def wait_for_unit(sevice):
-    """Wait for the first unit of the given service to started.
+    """Wait for the first unit of the given service to be started.
 
-    Also wait for the the service to be exposed.
+    Also wait for the service to be exposed.
     Raise a RuntimeError if the unit is found in an error state.
-    Return info about the first unit as a dict containing the following keys:
-    agent-state, machine, and public-address.
+    Return info about the first unit as a dict containing at least the
+    following keys: agent-state, machine, and public-address.
     """
     while True:
         status = juju_status()
