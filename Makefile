@@ -33,16 +33,17 @@ deploy: setup
 
 help:
 	@echo -e 'Juju GUI charm - list of make targets:\n'
-	@echo 'make - Set up development and testing environment.'
+	@echo -e 'make - Set up development and testing environment.\n'
 	@echo 'make test JUJU_ENV="my-juju-env" - Run functional and unit tests.'
-	@echo '  JUJU_ENV is the Juju environment that will be bootstrapped.'
-	@echo 'make unittest - Run unit tests.'
+	@echo -e '  JUJU_ENV is the Juju environment that will be bootstrapped.\n'
+	@echo -e 'make unittest - Run unit tests.\n'
 	@echo 'make ftest JUJU_ENV="my-juju-env" - Run functional tests.'
-	@echo '  JUJU_ENV is the Juju environment that will be bootstrapped.'
-	@echo 'make lint - Run linter and pep8.'
-	@echo 'make clean - Remove bytecode files and virtualenvs.'
-	@echo 'make deploy JUJU_ENV="my-juju-env" - Deploy the Juju GUI charm'
-	@echo '  setting up a temporary Juju repository.'
-	@echo '  JUJU_ENV is the Juju environment to use to deploy the charm.'
+	@echo -e '  JUJU_ENV is the Juju environment that will be bootstrapped.\n'
+	@echo -e 'make lint - Run linter and pep8.\n'
+	@echo -e 'make clean - Remove bytecode files and virtualenvs.\n'
+	@echo 'make deploy [JUJU_ENV="my-juju-env]" - Deploy and expose the Juju'
+	@echo '  GUI charm setting up a temporary Juju repository. Wait for the'
+	@echo '  service to be started.  If JUJU_ENV is not passed, the charm will'
+	@echo '  be deployed in the default Juju environment.'
 
-.PHONY: all clean deploy ftest help lint setup test unittest
+.PHONY: all clean deploy ftest help jujutest lint setup test unittest
