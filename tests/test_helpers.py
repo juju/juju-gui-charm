@@ -9,6 +9,7 @@ from helpers import (
     command,
     juju,
     juju_destroy_service,
+    juju_env,
     juju_status,
     legacy_juju,
     ProcessError,
@@ -141,6 +142,19 @@ class TestJujuDestroyService(unittest.TestCase):
         juju_destroy_service(self.service)
         self.assertEqual(2, mock_juju_status.call_count)
         mock_juju.assert_called_once_with('destroy-service', self.service)
+
+
+class TestJujuEnv(unittest.TestCase):
+
+    def test_env_in_context(self):
+        # The function returns the juju env if found in the execution context.
+        with mock.patch('os.environ', {'JUJU_ENV': 'test-env'}):
+            self.assertEqual('test-env', juju_env())
+
+    def test_env_not_in_context(self):
+        # The function returns None if JUJU_ENV is not included in the context.
+        with mock.patch('os.environ', {}):
+            self.assertIsNone(juju_env())
 
 
 class TestJujuStatus(unittest.TestCase):
