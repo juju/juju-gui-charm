@@ -16,8 +16,7 @@ is an easy way to get started.
 
 You'll also need some dependencies and developer basics.
 
-    sudo apt-get install bzr autoconf libtool python-charmhelpers python-yaml \
-        xvfb libapt-pkg-dev
+    sudo apt-get install build-essential bzr libapt-pkg-dev
 
 Next, you need the bzr branch.  We work from
 [lp:~juju-gui/charms/precise/juju-gui/trunk](https://code.launchpad.net/~juju-gui/charms/precise/juju-gui/trunk).
@@ -25,49 +24,47 @@ Next, you need the bzr branch.  We work from
 You could start hacking now, but there's a bit more to do to prepare for
 running and writing tests.
 
-We use the Jitsu test command to run our functional tests.  At the time of
-this writing it is not yet released.  To run it you must first install it
-locally.  The files may be installed globally, or into your home directory (as
-here):
+We use the juju-test test command to run our functional and unit tests.  At the
+time of this writing it is not yet released.  To run it you must first install
+it locally, e.g.:
 
-    sudo apt-get install autoconf libtool python-charmhelpers python-tempita
-    bzr branch lp:juju-jitsu juju-jitsu
-    cd juju-jitsu
-    autoreconf
-    ./configure --prefix=$HOME
-    make
-    make install
+    bzr checkout --lightweight lp:juju-plugins
 
-Functional tests make use of Selenium and xvfbwrapper. To install the latest
-version of these packages, as required by the test suite, you can use pip or
-easy_install, e.g.:
+At this point, link "juju-plugins/plugins/juju_test.py" as "juju-test"
+somewhere in your PATH, so that it is possible to execute "juju-test".
 
-    sudo pip install selenium xvfbwrapper
-
-The current incarnation of the Jitsu test command requires that the current
+The current incarnation of our testing infrastructure requires that the current
 directory name match the charm name, so you must check out the charm into a
 directory named "juju-gui":
 
     bzr branch lp:~juju-gui/charms/precise/juju-gui/trunk juju-gui
 
-The branch directory must be placed (or linked from) within a local charm
-repository. It consists of a directory, itself containing a number of
-directories, one for each distribution codename, e.g. `precise`. In turn, the
-codename directories will contain the charm directories. Therefore, you
-should put your charm in a path like this: `[REPO]/precise/juju-gui`.
+Before being able to run the suite, tests requirements need to be installed
+running the command:
 
-Now you are ready to run the functional tests (see the next section).
+    make
+
+The command above will create a ".venv" directory inside "juju-gui/tests/",
+ignored by DVCSes, containing the development virtual environment with all the
+testing dependencies.  Run "make help" to see all the available make targets.
+
+Now you are ready to run the functional and unit tests (see the next section).
 
 ## Testing ##
 
 There are two types of tests for the charm: unit tests and functional tests.
+Long story short, to run all the tests:
+
+    make test JUJU_ENV="myenv"
+
+Please read further for additional details.
 
 ### Unit Tests ###
 
 The unit tests do not require a functional Juju environment, and can be run
 with this command::
 
-    python tests/unit.test
+    make unittest
 
 Unit tests should be created in the "tests" subdirectory and be named in the
 customary way (i.e., "test_*.py").
@@ -75,33 +72,15 @@ customary way (i.e., "test_*.py").
 ### Functional Tests ###
 
 Running the functional tests requires a Juju testing environment as provided
-by the Jitsu test command (see "Getting Started", above).  All files in the
-tests directory which end with ".test" will be run in a Juju Jitsu test
-environment.
+by the juju-test command (see "Getting Started", above).
 
-Jitsu requires the charm directory to be named the same as the charm and to be
-the current working directory when the tests are run:
+To run only the functional tests:
 
-    JUJU_REPOSITORY=/path/to/charm/repo ~/bin/jitsu test juju-gui \
-        --logdir /tmp --timeout 40m
+    make ftest JUJU_ENV="myenv"
 
-This command will bootstrap the default Juju environment specified in your
-`~/.juju/environments.yaml`.
-
-Functional tests deploy, by default, the latest stable release of Juju GUI.
-However, it is possible to provide a different Juju GUI source by setting the
-environment variable `JUJU_GUI_SOURCE` while running tests, e.g.:
-
-    JUJU_GUI_SOURCE=lp:mybranch JUJU_REPOSITORY=/path/to/charm/repo \
-        ~/bin/jitsu test juju-gui ...
-
-To test a new trunk release:
-
-    JUJU_GUI_SOURCE=trunk JUJU_REPOSITORY=/path/to/charm/repo \
-        ~/bin/jitsu test juju-gui ...
-
-This can be useful to verify that a given branch works with the charm, which is
-one of the tasks that release QA should include.
+In the command above, "myenv" is the juju environment, as it is specified in
+your `~/.juju/environments.yaml`, that will be bootstrapped before running the
+tests and destroyed at the end of the test run.
 
 #### LXC ####
 
@@ -109,32 +88,33 @@ Unfortunately, we have not found LXC-based Juju environments to be reliable
 for these tests.  At this time, we recommend using other environments, such as
 OpenStack; but we will periodically check the tests in LXC environments
 because it would be great to be able to use it.  If you do want to use LXC,
-you will need to install the `apt-cacher-ng` and `lxc` packages.
-
-Currently running tests on a local environment is quite slow (with quantal
-host and precise container at least), so you may want to further increase the
-`jitsu test` command timeout.
-
-If Jitsu generates errors about not being able to bootstrap:
-
-    CalledProcessError: Command '['juju', 'bootstrap']'...
-
-or if it hangs, then you may need to bootstrap the environment yourself and
-pass the --no-bootstrap switch to Jitsu.
+you will need to install the `apt-cacher-ng` and `lxc` packages.  Also note
+that at this time juju-core does not support the local provider.
 
 ## Running the Charm From Development ##
 
-If you have set up your environment to run functional tests, you also have set
-it up to run your local development charm.  Developing and debugging with this
-is much easier than trying to develop and debug with the tests, unfortunately.
+If you have set up your environment to run you local development charm,
+deploying the charm fails if attempted after the testing virtualenv has been
+created: juju deploy exits with an error due to ".venv" directory containing
+an absolute symbolic link.  There are two ways to work around this problem.
 
-To get started, first, simply do a `juju bootstrap`.  Using a non-LXC
-environment probably will reduce frustrations.  Then, deploy your charm like
-this (again, assuming you have set up your repo the way the functional tests
-need them, as described above).
+The first one is running "make clean" before deploying the charm:
 
+    make clean
+    juju bootstrap
     juju deploy --repository=/path/to/charm/repo local:precise/juju-gui
     juju expose juju-gui
+
+The second one is just running "make deploy":
+
+    juju bootstrap
+    make deploy
+
+The "make deploy" command creates a temporary Juju repository (excluding
+the ".venv" directory), deploys the Juju GUI charm from that repository and
+exposes the juju-gui service.  Also note that "make deploy" does not require
+you to manually set up a local Juju environment, and preserves, if already
+created, the testing virtualenv.
 
 Now you are working with a test run, as described in
 <https://juju.ubuntu.com/docs/write-charm.html#test-run>.  The
