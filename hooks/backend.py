@@ -31,8 +31,6 @@ class InstallMixin(object):
         missing = utils.find_missing_packages(*backend.debs)
         if missing:
             utils.cmd_log(
-                backend.install_extra_repositories(*backend.repositories))
-            utils.cmd_log(
                 shelltoolbox.apt_get_install(*backend.debs))
 
         # If we are not using a pre-built release of the GUI (i.e., we are
@@ -87,7 +85,6 @@ class UpstartMixin(object):
 
 
 class GuiMixin(object):
-    repositories = ('ppa:juju-gui/ppa',)
 
     def start(self, backend):
         config = backend.config
@@ -190,12 +187,6 @@ class Backend(object):
             if callable(b):
                 mixins[i] = b()
         self.mixins = mixins
-
-    def install_extra_repositories(self, *packages):
-        if self.config.get('allow-additional-deb-repositories', True):
-            utils.install_extra_repositories(*packages)
-        else:
-            apt_get('update')
 
     def different(self, *keys):
         """Return a boolean indicating if the current config

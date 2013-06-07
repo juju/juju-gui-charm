@@ -34,7 +34,7 @@ class TestBackendProperties(unittest.TestCase):
             frozenset(('apache2', 'curl', 'haproxy', 'openssl', 'zookeeper')),
             test_backend.debs)
         self.assertEqual(
-            frozenset(('ppa:juju-gui/ppa',)),
+            frozenset(()),
             test_backend.repositories)
         self.assertEqual(
             frozenset(('haproxy.conf',)),
@@ -51,7 +51,7 @@ class TestBackendProperties(unittest.TestCase):
             frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
             test_backend.debs)
         self.assertEqual(
-            frozenset(('ppa:juju-gui/ppa',)),
+            frozenset(()),
             test_backend.repositories)
         self.assertEqual(
             frozenset(('haproxy.conf',)),
@@ -68,7 +68,7 @@ class TestBackendProperties(unittest.TestCase):
             frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
             test_backend.debs)
         self.assertEqual(
-            frozenset(('ppa:juju-gui/ppa',)),
+            frozenset(()),
             test_backend.repositories)
         self.assertEqual(
             frozenset(('haproxy.conf',)),
@@ -97,7 +97,7 @@ class TestBackendProperties(unittest.TestCase):
                 ('apache2', 'curl', 'haproxy', 'openssl', 'python-yaml')),
             test_backend.debs)
         self.assertEqual(
-            frozenset(('ppa:juju-gui/ppa',)),
+            frozenset(()),
             test_backend.repositories)
         self.assertEqual(
             frozenset(('haproxy.conf',)),
