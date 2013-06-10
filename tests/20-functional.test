@@ -9,8 +9,8 @@ from xvfbwrapper import Xvfb
 
 from deploy import juju_deploy
 from helpers import (
-    legacy_juju,
     juju_destroy_service,
+    legacy_juju,
     ssh,
 )
 

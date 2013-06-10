@@ -16,7 +16,8 @@ is an easy way to get started.
 
 You'll also need some dependencies and developer basics.
 
-    sudo apt-get install build-essential bzr libapt-pkg-dev
+    sudo apt-get install build-essential bzr libapt-pkg-dev python-pip \
+        python-virtualenv
 
 Next, you need the bzr branch.  We work from
 [lp:~juju-gui/charms/precise/juju-gui/trunk](https://code.launchpad.net/~juju-gui/charms/precise/juju-gui/trunk).
@@ -33,13 +34,12 @@ it locally, e.g.:
 At this point, link "juju-plugins/plugins/juju_test.py" as "juju-test"
 somewhere in your PATH, so that it is possible to execute "juju-test".
 
-The current incarnation of our testing infrastructure requires that the current
-directory name match the charm name, so you must check out the charm into a
-directory named "juju-gui":
+Our testing infrastructure requires the current directory name to match the
+charm name, so you must check out the charm into a directory named "juju-gui":
 
     bzr branch lp:~juju-gui/charms/precise/juju-gui/trunk juju-gui
 
-Before being able to run the suite, tests requirements need to be installed
+Before being able to run the suite, test requirements need to be installed
 running the command:
 
     make
@@ -56,6 +56,10 @@ There are two types of tests for the charm: unit tests and functional tests.
 Long story short, to run all the tests:
 
     make test JUJU_ENV="myenv"
+
+In the command above, "myenv" is the juju environment, as it is specified in
+your `~/.juju/environments.yaml`, that will be bootstrapped before running the
+tests and destroyed at the end of the test run.
 
 Please read further for additional details.
 
@@ -78,8 +82,8 @@ To run only the functional tests:
 
     make ftest JUJU_ENV="myenv"
 
-In the command above, "myenv" is the juju environment, as it is specified in
-your `~/.juju/environments.yaml`, that will be bootstrapped before running the
+As seen before, "myenv" is the juju environment, as it is specified in your
+`~/.juju/environments.yaml`, that will be bootstrapped before running the
 tests and destroyed at the end of the test run.
 
 #### LXC ####
@@ -93,7 +97,7 @@ that at this time juju-core does not support the local provider.
 
 ## Running the Charm From Development ##
 
-If you have set up your environment to run you local development charm,
+If you have set up your environment to run your local development charm,
 deploying the charm fails if attempted after the testing virtualenv has been
 created: juju deploy exits with an error due to ".venv" directory containing
 an absolute symbolic link.  There are two ways to work around this problem.

@@ -27,7 +27,7 @@ def command(*base_args):
     are command-line arguments to "bake into" the returned callable.
 
     The callable runs the given executable and also takes arguments that will
-    be appeneded to the "baked in" arguments.
+    be appended to the "baked in" arguments.
 
     For example, this code will list a file named "foo" (if it exists):
 
