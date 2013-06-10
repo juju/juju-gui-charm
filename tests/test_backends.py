@@ -192,14 +192,16 @@ class TestBackendCommands(unittest.TestCase):
     def test_start_agent(self):
         test_backend = backend.Backend(config=self.alwaysFalse)
         test_backend.start()
-        for mocked in ('service_control', 'start_agent', 'start_gui',
+        for mocked in (
+                'service_control', 'start_agent', 'start_gui',
                 'open_port', 'su'):
             self.assertTrue(mocked, '{} was not called'.format(mocked))
 
     def test_start_improv(self):
         test_backend = backend.Backend(config=self.alwaysTrue)
         test_backend.start()
-        for mocked in ('service_control', 'start_improv', 'start_gui',
+        for mocked in (
+                'service_control', 'start_improv', 'start_gui',
                 'open_port', 'su'):
             self.assertTrue(mocked, '{} was not called'.format(mocked))
 
