@@ -1,9 +1,9 @@
--e bzr+lp:charm-tools#egg=charm-tools
+-e bzr+http://launchpad.net/charm-tools#egg=charm-tools
 flake8==2.0
 launchpadlib==1.10.2
 mock==1.0.1
 python-apt==0.8.5
--e bzr+lp:python-shelltoolbox#egg=python-shelltoolbox
+-e bzr+http://launchpad.net/python-shelltoolbox#egg=python-shelltoolbox
 PyYAML==3.10
 selenium==2.33.0
 Tempita==0.5.1
