@@ -4,6 +4,7 @@ from collections import namedtuple
 from functools import wraps
 import json
 import os
+import re
 import subprocess
 import time
 
@@ -122,13 +123,33 @@ def juju_status():
     return json.loads(status)
 
 
+_juju_version_expression = re.compile(r"""
+    ^  # Beginning of line.
+    (?:juju\s+)?  # Optional juju prefix.
+    (\d+)\.(\d+)  # Major and minor versions.
+    (?:\.(\d+))?  # Optional patch version.
+    .*  # Optional suffix.
+    $  # End of line.
+""", re.VERBOSE)
+
+
 def juju_version():
-    """Return the version of the currently used Juju.
+    """Return the currently used Juju version.
 
     The version is returned as a named tuple (major, minor, patch).
     If the patch number is missing, it is set to zero.
     """
-    pass
+    try:
+        # In pyJuju, version info is printed to stderr.
+        output = subprocess.check_output(
+            ['juju', '--version'], stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError:
+        output = subprocess.check_output(['juju', 'version'])
+    match = _juju_version_expression.match(output)
+    if match is None:
+        raise ValueError('invalid juju version: {!r}'.format(output))
+    toint = lambda num: 0 if num is None else int(num)
+    return Version._make(map(toint, match.groups()))
 
 
 def wait_for_unit(sevice):
