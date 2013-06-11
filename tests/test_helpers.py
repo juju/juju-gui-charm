@@ -11,9 +11,11 @@ from helpers import (
     juju_destroy_service,
     juju_env,
     juju_status,
+    juju_version,
     legacy_juju,
     ProcessError,
     retry,
+    Version,
     wait_for_unit,
 )
 
@@ -175,6 +177,60 @@ class TestJujuStatus(unittest.TestCase):
         status = juju_status()
         self.assertEqual(self.status, status)
         mock_juju.assert_called_once_with('status', '--format', 'json')
+
+
+@mock.patch('helpers.juju_command')
+class TestJujuVersion(unittest.TestCase):
+
+    error = ProcessError(2, 'invalid flag', 'output', 'error')
+
+    def test_pyjuju(self, mock_juju_command):
+        # The pyJuju version is correctly retrieved.
+        mock_juju_command.return_value = '0.7.2'
+        version = juju_version()
+        self.assertEqual(Version(0, 7, 2), version)
+        mock_juju_command.assert_called_once_with('--version')
+
+    def test_juju_core(self, mock_juju_command):
+        # The juju-core version is correctly retrieved.
+        mock_juju_command.side_effect = (self.error, '1.12.3')
+        version = juju_version()
+        self.assertEqual(Version(0, 7, 2), version)
+        self.assertEqual(2, mock_juju_command.call_count)
+        first_call, second_call = mock_juju_command.call_args_list
+        self.assertEqual(mock.call('--version'), first_call)
+        self.assertEqual(mock.call('version'), second_call)
+
+    def test_missing_patch(self, mock_juju_command):
+        # If the patch number is missing, it is set to zero.
+        mock_juju_command.return_value = '0.7'
+        version = juju_version()
+        self.assertEqual(Version(0, 7, 0), version)
+
+    def test_prefix(self, mock_juju_command):
+        # The function handles versions returned as "juju x.y.z".
+        mock_juju_command.return_value = 'juju 0.8.3'
+        version = juju_version()
+        self.assertEqual(Version(0, 8, 3), version)
+
+    def test_suffix(self, mock_juju_command):
+        # The function handles versions returned as "x.y.z-series-arch".
+        mock_juju_command.return_value = '1.10.3-raring-amd64'
+        version = juju_version()
+        self.assertEqual(Version(1, 10, 3), version)
+
+    def test_all(self, mock_juju_command):
+        # All the oddities are correctly handled.
+        mock_juju_command.side_effect = (self.error, 'juju 1.234-precise-i386')
+        version = juju_version()
+        self.assertEqual(Version(1, 234, 0), version)
+        self.assertEqual(2, mock_juju_command.call_count)
+
+    def test_failure(self, mock_juju_command):
+        # A ProcessError is raised if the juju version cannot be found.
+        mock_juju_command.side_effect = (self.error, self.error)
+        self.assertRaises(self.error, juju_version)
+        self.assertEqual(2, mock_juju_command.call_count)
 
 
 @mock.patch('helpers.juju_command')

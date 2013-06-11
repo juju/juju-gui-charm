@@ -1,5 +1,6 @@
 """Juju GUI test helpers."""
 
+from collections import namedtuple
 from functools import wraps
 import json
 import os
@@ -55,6 +56,7 @@ def command(*base_args):
 juju_command = command('juju')
 juju_env = lambda: os.getenv('JUJU_ENV')  # This is propagated by juju-test.
 ssh = command('ssh')
+Version = namedtuple('Version', 'major minor patch')
 
 
 def legacy_juju():
@@ -118,6 +120,15 @@ def juju_status():
     """Return the Juju status as a dictionary."""
     status = juju('status', '--format', 'json')
     return json.loads(status)
+
+
+def juju_version():
+    """Return the version of the currently used Juju.
+
+    The version is returned as a named tuple (major, minor, patch).
+    If the patch number is missing, it is set to zero.
+    """
+    pass
 
 
 def wait_for_unit(sevice):
