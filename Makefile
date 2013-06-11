@@ -22,7 +22,7 @@ jujutest:
 	$(JUJUTEST)
 
 lint: setup
-	@flake8 --show-source --exclude=.venv  ./hooks/ ./tests/
+	@$(VENV)/bin/flake8 --show-source --exclude=.venv  ./hooks/ ./tests/
 
 clean:
 	find . -name '*.pyc' -delete
