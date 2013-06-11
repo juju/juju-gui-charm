@@ -15,10 +15,11 @@ from deploy import (
 
 class TestSetupRepository(unittest.TestCase):
 
+    name = 'test-charm'
+
     def setUp(self):
         # Create a directory structure for the charm source.
         self.source = tempfile.mkdtemp()
-        self.charm_name = os.path.basename(self.source)
         self.addCleanup(shutil.rmtree, self.source)
         # Create a file in the source dir.
         _, self.root_file = tempfile.mkstemp(dir=self.source)
@@ -59,24 +60,24 @@ class TestSetupRepository(unittest.TestCase):
         series_dir = os.path.join(repo, series)
         self.assert_dir_exists(series_dir)
         # The series directory only contains our charm.
-        self.assertEqual([self.charm_name], os.listdir(series_dir))
-        self.assert_dir_exists(os.path.join(series_dir, self.charm_name))
+        self.assertEqual([self.name], os.listdir(series_dir))
+        self.assert_dir_exists(os.path.join(series_dir, self.name))
 
     def test_repository(self):
         # The charm repository is correctly created with the default series.
-        repo = setup_repository(self.source)
+        repo = setup_repository(self.name, self.source)
         self.check_repository(repo, 'precise')
 
     def test_series(self):
         # The charm repository is created with the given series.
-        repo = setup_repository(self.source, series='raring')
+        repo = setup_repository(self.name, self.source, series='raring')
         self.check_repository(repo, 'raring')
 
     def test_charm_files(self):
         # The charm files are correctly copied inside the repository, excluding
         # unwanted directories.
-        repo = setup_repository(self.source)
-        charm_dir = os.path.join(repo, 'precise', self.charm_name)
+        repo = setup_repository(self.name, self.source)
+        charm_dir = os.path.join(repo, 'precise', self.name)
         test_dir_name = os.path.basename(self.tests_dir)
         expected = set([
             os.path.basename(self.root_file),
@@ -91,7 +92,7 @@ class TestJujuDeploy(unittest.TestCase):
     unit_info = {'public-address': 'unit.example.com'}
     charm = 'test-charm'
     expose_call = mock.call('expose', charm)
-    local_charm = 'local:{}'.format(charm)
+    local_charm = 'local:precise/{}'.format(charm)
     repo = '/tmp/repo/'
 
     @mock.patch('deploy.juju')
@@ -99,13 +100,19 @@ class TestJujuDeploy(unittest.TestCase):
     @mock.patch('deploy.setup_repository')
     def call_deploy(
             self, mock_setup_repository, mock_wait_for_unit, mock_juju,
-            **kwargs):
+            options=None, force_machine=None, charm_source=None,
+            series='precise'):
         mock_setup_repository.return_value = self.repo
         mock_wait_for_unit.return_value = self.unit_info
-        charm_source = kwargs.setdefault(
-            'charm_source', os.path.join(os.path.dirname(__file__), '..'))
-        unit_info = juju_deploy(self.charm, **kwargs)
-        mock_setup_repository.assert_called_once_with(charm_source)
+        if charm_source is None:
+            expected_source = os.path.join(os.path.dirname(__file__), '..')
+        else:
+            expected_source = charm_source
+        unit_info = juju_deploy(
+            self.charm, options=options, force_machine=force_machine,
+            charm_source=charm_source, series=series)
+        mock_setup_repository.assert_called_once_with(
+            self.charm, expected_source, series=series)
         # The unit address is correctly returned.
         self.assertEqual(self.unit_info, unit_info)
         self.assertEqual(1, mock_wait_for_unit.call_count)
@@ -160,4 +167,14 @@ class TestJujuDeploy(unittest.TestCase):
             self.local_charm,
         )
         deploy_call = self.call_deploy(charm_source='/tmp/source/')
+        self.assertEqual(expected_deploy_call, deploy_call)
+
+    def test_series(self):
+        # The function can deploy a charm from a specific series.
+        expected_deploy_call = mock.call(
+            'deploy',
+            '--repository', self.repo,
+            'local:raring/{}'.format(self.charm)
+        )
+        deploy_call = self.call_deploy(series='raring')
         self.assertEqual(expected_deploy_call, deploy_call)
