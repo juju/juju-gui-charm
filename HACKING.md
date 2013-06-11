@@ -34,11 +34,6 @@ it locally, e.g.:
 At this point, link "juju-plugins/plugins/juju_test.py" as "juju-test"
 somewhere in your PATH, so that it is possible to execute "juju-test".
 
-Our testing infrastructure requires the current directory name to match the
-charm name, so you must check out the charm into a directory named "juju-gui":
-
-    bzr branch lp:~juju-gui/charms/precise/juju-gui/trunk juju-gui
-
 Before being able to run the suite, test requirements need to be installed
 running the command:
 
