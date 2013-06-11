@@ -239,7 +239,7 @@ class TestJujuVersion(unittest.TestCase):
         self.assertEqual("invalid juju version: '42'", str(info.exception))
 
     def test_failure(self, mock_check_output):
-        # A CalledProcessError is raised if the juju version cannot be found.
+        # A CalledProcessError is raised if the Juju version cannot be found.
         mock_check_output.side_effect = (self.error, self.error)
         with self.assertRaises(subprocess.CalledProcessError) as info:
             juju_version()
