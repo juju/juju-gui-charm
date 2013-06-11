@@ -10,14 +10,14 @@ from xvfbwrapper import Xvfb
 from deploy import juju_deploy
 from helpers import (
     juju_destroy_service,
-    legacy_juju,
+    juju_version,
     ssh,
 )
 
 
 JUJU_GUI_TEST_BRANCH = 'lp:~juju-gui/juju-gui/charm-tests-branch'
 STAGING_SERVICES = ('haproxy', 'mediawiki', 'memcached', 'mysql', 'wordpress')
-is_legacy_juju = legacy_juju()
+is_legacy_juju = juju_version().major == 0
 
 
 class DeployTestMixin(object):

@@ -60,15 +60,6 @@ ssh = command('ssh')
 Version = namedtuple('Version', 'major minor patch')
 
 
-def legacy_juju():
-    """Return True if pyJuju is being used, False otherwise."""
-    try:
-        juju_command('--version')
-    except ProcessError:
-        return False
-    return True
-
-
 def retry(exception, tries=10, delay=1):
     """If the decorated function raises the exception, wait and try it again.
 

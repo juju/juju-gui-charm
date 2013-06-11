@@ -13,7 +13,6 @@ from helpers import (
     juju_env,
     juju_status,
     juju_version,
-    legacy_juju,
     ProcessError,
     retry,
     Version,
@@ -226,7 +225,7 @@ class TestJujuVersion(unittest.TestCase):
         self.assertEqual(Version(1, 10, 3), version)
 
     def test_all(self, mock_check_output):
-        # All the oddities are correctly handled.
+        # Additional information is correctly handled.
         mock_check_output.side_effect = (self.error, 'juju 1.234-precise-i386')
         version = juju_version()
         self.assertEqual(Version(1, 234, 0), version)
@@ -246,22 +245,6 @@ class TestJujuVersion(unittest.TestCase):
             juju_version()
         self.assertIs(self.error, info.exception)
         self.assertEqual(2, mock_check_output.call_count)
-
-
-@mock.patch('helpers.juju_command')
-class TestLegacyJuju(unittest.TestCase):
-
-    def test_pyjuju(self, mock_juju_command):
-        # Legacy Juju is correctly recognized.
-        mock_juju_command.return_value = '0.7.0'
-        self.assertTrue(legacy_juju())
-        mock_juju_command.assert_called_once_with('--version')
-
-    def test_juju_core(self, mock_juju_command):
-        # juju-core is correctly recognized.
-        mock_juju_command.side_effect = ProcessError(1, 'failed', '', '')
-        self.assertFalse(legacy_juju())
-        mock_juju_command.assert_called_once_with('--version')
 
 
 class TestProcessError(unittest.TestCase):
