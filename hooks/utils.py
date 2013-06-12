@@ -1,5 +1,3 @@
-"""Juju GUI charm utilities."""
-
 # This file is part of the Juju GUI, which lets users view and manage Juju
 # environments within a graphical interface (https://launchpad.net/juju-gui).
 # Copyright (C) 2012-2013 Canonical Ltd.
@@ -15,6 +13,8 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""Juju GUI charm utilities."""
 
 __all__ = [
     'AGENT',

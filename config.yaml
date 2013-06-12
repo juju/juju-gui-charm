@@ -127,7 +127,7 @@ options:
       The URL of the charm catalog site ("charmworld") from which charm
       catalog data will be drawn.
     type: string
-    default: https://manage.jujucharms.com
+    default: https://manage.jujucharms.com/
   repository-location:
     description: |
       The charm depends on several software packages that are not packaged in
