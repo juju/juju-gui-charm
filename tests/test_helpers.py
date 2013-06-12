@@ -206,7 +206,7 @@ class TestJujuVersion(unittest.TestCase):
         )
         self.assertEqual(mock.call(['juju', 'version']), second_call)
 
-    def test_not_semantic(self, mock_check_output):
+    def test_not_semantic_versioning(self, mock_check_output):
         # If the patch number is missing, it is set to zero.
         mock_check_output.return_value = '0.7'
         version = juju_version()

@@ -135,12 +135,13 @@ def juju_version():
         output = subprocess.check_output(
             ['juju', '--version'], stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError:
+        # Current juju-core exposes a version subcommand.
         output = subprocess.check_output(['juju', 'version'])
     match = _juju_version_expression.match(output)
     if match is None:
         raise ValueError('invalid juju version: {!r}'.format(output))
-    toint = lambda num: 0 if num is None else int(num)
-    return Version._make(map(toint, match.groups()))
+    to_int = lambda num: 0 if num is None else int(num)
+    return Version._make(map(to_int, match.groups()))
 
 
 def wait_for_unit(sevice):
