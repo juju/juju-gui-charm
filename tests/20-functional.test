@@ -26,14 +26,14 @@ from xvfbwrapper import Xvfb
 from deploy import juju_deploy
 from helpers import (
     juju_destroy_service,
-    legacy_juju,
+    juju_version,
     ssh,
 )
 
 
 JUJU_GUI_TEST_BRANCH = 'lp:~juju-gui/juju-gui/charm-tests-branch'
 STAGING_SERVICES = ('haproxy', 'mediawiki', 'memcached', 'mysql', 'wordpress')
-is_legacy_juju = legacy_juju()
+is_legacy_juju = juju_version().major == 0
 
 
 class DeployTestMixin(object):
@@ -56,7 +56,7 @@ class DeployTestMixin(object):
     def assertEnvironmentIsConnected(self):
         """Assert the GUI environment is connected to the Juju API agent."""
         self.wait_for_script(
-            'return app.env.get("connected");',
+            'return app && app.env && app.env.get("connected");',
             error='Environment not connected.')
 
     def handle_browser_warning(self):
@@ -87,7 +87,7 @@ class DeployTestMixin(object):
             return driver.title == 'Juju Admin'
         self.wait_for(page_ready, error='Juju GUI not found.')
 
-    def wait_for(self, condition, error=None, timeout=20):
+    def wait_for(self, condition, error=None, timeout=30):
         """Wait for condition to be True.
 
         The argument condition is a callable accepting a driver object.
@@ -97,7 +97,7 @@ class DeployTestMixin(object):
         wait = ui.WebDriverWait(self.selenium, timeout)
         return wait.until(condition, error)
 
-    def wait_for_css_selector(self, selector, error=None, timeout=20):
+    def wait_for_css_selector(self, selector, error=None, timeout=30):
         """Wait until the provided CSS selector is found.
 
         Fail printing the provided error if timeout is exceeded.
@@ -108,7 +108,7 @@ class DeployTestMixin(object):
         elements = self.wait_for(condition, error=error, timeout=timeout)
         return elements[0]
 
-    def wait_for_script(self, script, error=None, timeout=20):
+    def wait_for_script(self, script, error=None, timeout=30):
         """Wait for the given JavaScript snippet to return a True value.
 
         Fail printing the provided error if timeout is exceeded.

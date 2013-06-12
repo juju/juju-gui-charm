@@ -33,23 +33,25 @@ from helpers import (
 rsync = command('rsync', '-a', '--exclude', '.bzr', '--exclude', '.venv')
 
 
-def setup_repository(source, series='precise'):
+def setup_repository(name, source, series='precise'):
     """Create a temporary Juju repository to use for charm deployment.
 
-    Copy the charm files in source in the precise repository section, excluding
-    the virtualenv and Bazaar directories.
+    Copy the charm files in source in the precise repository section, using the
+    provided charm name and excluding the virtualenv and Bazaar directories.
 
     Return the repository path.
     """
-    source = os.path.abspath(source)
+    source = os.path.abspath(source) + os.path.sep
     repo = tempfile.mkdtemp()
-    destination = os.path.join(repo, series)
+    destination = os.path.join(repo, series, name)
     os.makedirs(destination)
     rsync(source, destination)
     return repo
 
 
-def juju_deploy(charm, options=None, force_machine=None, charm_source=None):
+def juju_deploy(
+        charm, options=None, force_machine=None, charm_source=None,
+        series='precise'):
     """Deploy and expose the charm. Return the first unit's public address.
 
     Also wait until the service is exposed and the first unit started.
@@ -60,14 +62,14 @@ def juju_deploy(charm, options=None, force_machine=None, charm_source=None):
     if charm_source is None:
         # Dynamically retrieve the charm source based on the path of this file.
         charm_source = os.path.join(os.path.dirname(__file__), '..')
-    repo = setup_repository(charm_source)
+    repo = setup_repository(charm, charm_source, series=series)
     args = ['deploy', '--repository', repo]
     if options is not None:
         config_file = make_charm_config_file({charm: options})
         args.extend(['--config', config_file.name])
     if force_machine is not None:
         args.extend(['--force-machine', str(force_machine)])
-    args.append('local:{0}'.format(charm))
+    args.append('local:{}/{}'.format(series, charm))
     juju(*args)
     juju('expose', charm)
     return wait_for_unit(charm)

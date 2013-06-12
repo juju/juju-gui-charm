@@ -16,9 +16,11 @@
 
 """Juju GUI test helpers."""
 
+from collections import namedtuple
 from functools import wraps
 import json
 import os
+import re
 import subprocess
 import time
 
@@ -71,15 +73,7 @@ def command(*base_args):
 juju_command = command('juju')
 juju_env = lambda: os.getenv('JUJU_ENV')  # This is propagated by juju-test.
 ssh = command('ssh')
-
-
-def legacy_juju():
-    """Return True if pyJuju is being used, False otherwise."""
-    try:
-        juju_command('--version')
-    except ProcessError:
-        return False
-    return True
+Version = namedtuple('Version', 'major minor patch')
 
 
 def retry(exception, tries=10, delay=1):
@@ -134,6 +128,36 @@ def juju_status():
     """Return the Juju status as a dictionary."""
     status = juju('status', '--format', 'json')
     return json.loads(status)
+
+
+_juju_version_expression = re.compile(r"""
+    ^  # Beginning of line.
+    (?:juju\s+)?  # Optional juju prefix.
+    (\d+)\.(\d+)  # Major and minor versions.
+    (?:\.(\d+))?  # Optional patch version.
+    .*  # Optional suffix.
+    $  # End of line.
+""", re.VERBOSE)
+
+
+def juju_version():
+    """Return the currently used Juju version.
+
+    The version is returned as a named tuple (major, minor, patch).
+    If the patch number is missing, it is set to zero.
+    """
+    try:
+        # In pyJuju, version info is printed to stderr.
+        output = subprocess.check_output(
+            ['juju', '--version'], stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError:
+        # Current juju-core exposes a version subcommand.
+        output = subprocess.check_output(['juju', 'version'])
+    match = _juju_version_expression.match(output)
+    if match is None:
+        raise ValueError('invalid juju version: {!r}'.format(output))
+    to_int = lambda num: 0 if num is None else int(num)
+    return Version._make(map(to_int, match.groups()))
 
 
 def wait_for_unit(sevice):
