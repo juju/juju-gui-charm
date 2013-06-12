@@ -1,3 +1,12 @@
+<!--
+Dependencies.md
+Copyright 2013 Canonical Ltd.
+This work is licensed under the Creative Commons Attribution-Share Alike 3.0
+Unported License. To view a copy of this license, visit
+http://creativecommons.org/licenses/by-sa/3.0/ or send a letter to Creative
+Commons, 171 Second Street, Suite 300, San Francisco, California, 94105, USA.
+-->
+
 # Juju GUI Charm external dependencies #
 
 The Juju GUI has a number of external dependencies including packages that are
@@ -42,5 +51,3 @@ be downloaded to a local server and used from there.  Our devel PPA provides a
 single starting place to obtain QA'd software.  Dev ops can grab the subset of
 packages they need, audit, test, and then serve them locally.  The
 `repository-location` config variable can be used to point to the local repo.
-
-
