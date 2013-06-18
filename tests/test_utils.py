@@ -637,7 +637,7 @@ class TestStartStop(unittest.TestCase):
         start_gui(
             False, 'This is login help.', True, True, ssl_cert_path,
             charmworld_url, True, haproxy_path='haproxy',
-            config_js_path='config')
+            config_js_path='config', use_analytics=True)
         haproxy_conf = self.files['haproxy']
         self.assertIn('ca-base {0}'.format(ssl_cert_path), haproxy_conf)
         self.assertIn('crt-base {0}'.format(ssl_cert_path), haproxy_conf)
@@ -655,6 +655,7 @@ class TestStartStop(unittest.TestCase):
         self.assertIn("socket_url: 'wss://", js_conf)
         self.assertIn('socket_protocol: "wss"', js_conf)
         self.assertIn('charmworldURL: "http://charmworld.example"', js_conf)
+        self.assertIn('useAnalytics: true', js_conf)
         apache_conf = self.files['juju-gui']
         self.assertIn('juju-gui/build-', apache_conf)
         self.assertIn('VirtualHost *:{0}'.format(WEB_PORT), apache_conf)
@@ -686,6 +687,16 @@ class TestStartStop(unittest.TestCase):
         self.assertIn('sandbox: true', js_conf)
         self.assertIn('user: "admin"', js_conf)
         self.assertIn('password: "admin"', js_conf)
+
+    def test_start_gui_no_analytics(self):
+        ssl_cert_path = '/tmp/certificates/'
+        charmworld_url = 'http://charmworld.example'
+        start_gui(
+            False, 'This is login help.', False, False, ssl_cert_path,
+            charmworld_url, True, haproxy_path='haproxy',
+            config_js_path='config', use_analytics=False)
+        js_conf = self.files['config']
+        self.assertIn('useAnalytics: false', js_conf)
 
 
 class TestNpmCache(unittest.TestCase):

@@ -140,3 +140,13 @@ options:
       'add-apt-repository'.
     type: string
     default: ppa:juju-gui-charmers/stable
+  use-analytics:
+    description: |
+      The team developing the Juju GUI benefits from understanding how
+      different deployments use the tool.  By enabling this setting,
+      anonymized usage data is reported back using Google Analytics.  The type
+      of data collected includes the charms that are deployed and the number
+      of units per service.  Use of analytics is optional but we hope you will
+      allow us to improve our tool based on your experience.
+    type: boolean
+    default: true
