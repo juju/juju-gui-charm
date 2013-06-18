@@ -108,7 +108,8 @@ class GuiMixin(object):
             config['juju-gui-console-enabled'], config['login-help'],
             config['read-only'], config['staging'], config['ssl-cert-path'],
             config['charmworld-url'], config['serve-tests'],
-            secure=config['secure'], sandbox=config['sandbox'])
+            secure=config['secure'], sandbox=config['sandbox'],
+            use_analytics=config['use-analytics'])
         charmhelpers.open_port(80)
         charmhelpers.open_port(443)
 
