@@ -20,7 +20,7 @@ You'll also need some dependencies and developer basics.
         xvfb
 
 Next, you need the bzr branch.  We work from
-[lp:~juju-gui/charms/precise/juju-gui/trunk](https://code.launchpad.net/~juju-gui/charms/precise/juju-gui/trunk).
+[lp:~juju-gui-charmers/charms/precise/juju-gui/trunk](https://code.launchpad.net/~juju-gui-charmers/charms/precise/juju-gui/trunk).
 
 You could start hacking now, but there's a bit more to do to prepare for
 running and writing tests.
@@ -48,7 +48,7 @@ The current incarnation of the Jitsu test command requires that the current
 directory name match the charm name, so you must check out the charm into a
 directory named "juju-gui":
 
-    bzr branch lp:~juju-gui/charms/precise/juju-gui/trunk juju-gui
+    bzr branch lp:~juju-gui-charmers/charms/precise/juju-gui/trunk juju-gui
 
 The branch directory must be placed (or linked from) within a local charm
 repository. It consists of a directory, itself containing a number of
