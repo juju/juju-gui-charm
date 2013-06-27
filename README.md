@@ -23,7 +23,7 @@ and then run the usual bootstrap command.
 Next, you simply need to deploy the charm and expose it.  (See also "Deploying
 with Jitsu" below, for another option.)
 
-    juju deploy cs:~juju-gui/precise/juju-gui
+    juju deploy cs:precise/juju-gui
     juju expose juju-gui
 
 Finally, you need to identify the GUI's URL. It can take a few minutes for the
@@ -37,7 +37,7 @@ this:
 
     services:
       juju-gui:
-        charm: cs:~juju-gui/precise/juju-gui-7
+        charm: cs:precise/juju-gui-7
         exposed: true
         relations: {}
         units:
@@ -74,10 +74,10 @@ The instructions differ depending on the Juju implementation.
 
 #### juju-core ####
 
-Replace "juju deploy cs:~juju-gui/precise/juju-gui" from the previous
+Replace "juju deploy cs:precise/juju-gui" from the previous
 instructions with this:
 
-    juju deploy --force-machine 0 cs:~juju-gui/precise/juju-gui
+    juju deploy --force-machine 0 cs:precise/juju-gui
 
 #### pyjuju ####
 
@@ -86,10 +86,10 @@ activate it, you will need to install Jitsu:
 
     sudo apt-get install juju-jitsu
 
-and then replace "juju deploy cs:~juju-gui/precise/juju-gui" from the previous
+and then replace "juju deploy cs:precise/juju-gui" from the previous
 instructions with this:
 
-    jitsu deploy-to 0 cs:~juju-gui/precise/juju-gui
+    jitsu deploy-to 0 cs:precise/juju-gui
 
 ## Contacting the Developers ##
 
