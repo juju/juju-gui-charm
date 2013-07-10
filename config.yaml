@@ -150,3 +150,13 @@ options:
       allow us to improve our tool based on your experience.
     type: boolean
     default: true
+  default-viewmode:
+    description: |
+      What the charmbrowser's default viewmode should be. Possible options are:
+      - 'sidebar' (default): the charmwbrowser will appear as a sidebar. This
+        is also known as build mode.
+      - 'fullscreen': the charmbrowser will appear in full screen, hiding the
+        canvas. This is also known as browse mode.
+      - 'minimized': the charmbrowser will be minimized by default, and hidden.
+    type: string
+    default: sidebar 
