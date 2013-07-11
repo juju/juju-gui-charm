@@ -709,6 +709,7 @@ class TestStartStop(unittest.TestCase):
         js_conf = self.files['config']
         self.assertIn('defaultViewmode: "fullscreen"', js_conf)
 
+
 class TestNpmCache(unittest.TestCase):
     """To speed building from a branch we prepopulate the NPM cache."""
 
