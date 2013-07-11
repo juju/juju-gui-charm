@@ -39,7 +39,8 @@ class InstallMixin(object):
         if backend.different('juju-gui-source'):
             # Get a tarball somehow and install it.
             release_tarball = utils.fetch_gui(
-                config['juju-gui-source'], config['command-log-file'])
+                backend.config['juju-gui-source'],
+                backend.config['command-log-file'])
             utils.setup_gui(release_tarball)
 
 
