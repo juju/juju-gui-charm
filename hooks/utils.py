@@ -447,10 +447,14 @@ def fetch_gui(juju_gui_source, logpath):
     # Retrieve a Juju GUI release.
     origin, version_or_branch = parse_source(juju_gui_source)
     if origin == 'branch':
+        # If we are not using a pre-built release of the GUI (i.e., we are
+        # using a branch) then we need to build a release archive to use.
         branch_url, revision = version_or_branch
         # Make sure we have the dependencies necessary for us to actually make
         # a build.
         _get_build_dependencies()
+        # Inject NPM packages into the cache for faster building.
+        prime_npm_cache(get_npm_cache_archive_url())
         # Create a release starting from a branch.
         juju_gui_source_dir = os.path.join(CURRENT_DIR, 'juju-gui-source')
         if revision is None:
