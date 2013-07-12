@@ -698,6 +698,17 @@ class TestStartStop(unittest.TestCase):
         js_conf = self.files['config']
         self.assertIn('useAnalytics: false', js_conf)
 
+    def test_start_gui_fullscreen(self):
+        ssl_cert_path = '/tmp/certificates/'
+        charmworld_url = 'http://charmworld.example'
+        start_gui(
+            False, 'This is login help.', False, False, ssl_cert_path,
+            charmworld_url, True, haproxy_path='haproxy',
+            config_js_path='config', sandbox=True,
+            default_viewmode='fullscreen')
+        js_conf = self.files['config']
+        self.assertIn('defaultViewmode: "fullscreen"', js_conf)
+
 
 class TestNpmCache(unittest.TestCase):
     """To speed building from a branch we prepopulate the NPM cache."""

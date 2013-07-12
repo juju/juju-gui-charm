@@ -23,5 +23,6 @@ var juju_config = {
   readOnly: {{readonly}},
   sandbox: {{sandbox}},
   useAnalytics: {{use_analytics}},
-  login_help: {{login_help}}
+  login_help: {{login_help}},
+  defaultViewmode: {{default_viewmode}}
 };

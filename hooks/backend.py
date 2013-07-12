@@ -109,7 +109,8 @@ class GuiMixin(object):
             config['read-only'], config['staging'], config['ssl-cert-path'],
             config['charmworld-url'], config['serve-tests'],
             secure=config['secure'], sandbox=config['sandbox'],
-            use_analytics=config['use-analytics'])
+            use_analytics=config['use-analytics'],
+            default_viewmode=config['default-viewmode'])
         charmhelpers.open_port(80)
         charmhelpers.open_port(443)
 
