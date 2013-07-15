@@ -110,7 +110,9 @@ class GuiMixin(object):
             config['charmworld-url'], config['serve-tests'],
             secure=config['secure'], sandbox=config['sandbox'],
             use_analytics=config['use-analytics'],
-            default_viewmode=config['default-viewmode'])
+            default_viewmode=config['default-viewmode'],
+            show_juju_button=config['show-juju-button'])
+
         charmhelpers.open_port(80)
         charmhelpers.open_port(443)
 

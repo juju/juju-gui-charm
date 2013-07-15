@@ -160,3 +160,10 @@ options:
       - 'minimized': the charmbrowser will be minimized by default, and hidden.
     type: string
     default: sidebar 
+  show-juju-button:
+    description: |
+      There are deployment modes for Juju GUI which are not intended as regular
+      use mode. In these cases, login/logout are disabled and instead there is a
+      link to juju.ubuntu.com
+    type: boolean
+    default: false
