@@ -716,9 +716,9 @@ class TestStartStop(unittest.TestCase):
             False, 'This is login help.', False, False, ssl_cert_path,
             charmworld_url, True, haproxy_path='haproxy',
             config_js_path='config', sandbox=True,
-            show_juju_button=True)
+            show_get_juju_button=True)
         js_conf = self.files['config']
-        self.assertIn('showJujuButton: true', js_conf)
+        self.assertIn('showGetJujuButton: true', js_conf)
 
 
 class TestNpmCache(unittest.TestCase):

@@ -25,5 +25,5 @@ var juju_config = {
   useAnalytics: {{use_analytics}},
   login_help: {{login_help}},
   defaultViewmode: {{default_viewmode}},
-  showJujuButton: {{show_juju_button}}
+  showGetJujuButton: {{show_get_juju_button}}
 };

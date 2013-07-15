@@ -361,7 +361,7 @@ def start_gui(
         console_enabled, login_help, readonly, in_staging, ssl_cert_path,
         charmworld_url, serve_tests, haproxy_path='/etc/haproxy/haproxy.cfg',
         config_js_path=None, secure=True, sandbox=False, use_analytics=False,
-        default_viewmode='sidebar', show_juju_button=False):
+        default_viewmode='sidebar', show_get_juju_button=False):
     """Set up and start the Juju GUI server."""
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
@@ -403,7 +403,7 @@ def start_gui(
         'charmworld_url': json.dumps(charmworld_url),
         'use_analytics': json.dumps(use_analytics),
         'default_viewmode': json.dumps(default_viewmode),
-        'show_juju_button': json.dumps(show_juju_button),
+        'show_get_juju_button': json.dumps(show_get_juju_button),
     }
     if config_js_path is None:
         config_js_path = os.path.join(
