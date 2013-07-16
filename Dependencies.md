@@ -47,7 +47,7 @@ to select the devel version.
 Organizations deploying the charm for their enterprise may have the
 requirement to not allow the installation of software from outside of their
 local network.  Typically those environments require all external software to
-be downloaded to a local server and used from there.  Our devel PPA provides a
+be downloaded to a local server and used from there.  Our stable PPA provides a
 single starting place to obtain QA'd software.  Dev ops can grab the subset of
 packages they need, audit, test, and then serve them locally.  The
 `repository-location` config variable can be used to point to the local repo.
