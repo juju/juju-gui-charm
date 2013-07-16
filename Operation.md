@@ -11,29 +11,36 @@ Commons, 171 Second Street, Suite 300, San Francisco, California, 94105, USA.
 
 ## How it works ##
 
-The Juju GUI is a client-side, JavaScript application that runs inside a web
-browser. The browser connects to a single server deployed by the charm.
+The Juju GUI is a client-side, JavaScript application that runs inside a
+web browser. The browser connects to a custom-made server deployed by
+the charm.
 
 ## Server ##
 
-
 The server directly serves static files to the browser, including
-images, HTML, CSS and JavaScript files via an HTTPS connection.
+images, HTML, CSS and JavaScript files via an HTTPS connection to port
+443. HTTP connections to the 80 port are redirected to the former one.
+All other URLs serve the common `index.html` file.
 
-It also acts as a proxy between the browser and the Juju installation that
-performs the actual deployment work. Both browser-server and server-Juju
-connections are bidirectional via the WebSocket protocol, allowing changes
-in the Juju installation to be propagated and shown immediately by the browser.
+It also acts as a proxy between the browser and the Juju API server that
+performs the actual orchestration work. Both browser-server and server-
+Juju connections are bidirectional, using the WebSocket protocol on the
+same port as the HTTPS connection, allowing changes in the Juju
+environment to be propagated and shown immediately by the browser.
 
 
+[*** PACKAGE DOCSTRING STARTS HERE ***]
 
 The GUI server is a custom-made application based on the
 [Tornado](http://www.tornadoweb.org/) framework.
 
-It directly serves static files to the browser, including images, HTML,
-CSS and JavaScript files via an HTTPS connection.
+It directly serves static files to the browser, including
+images, HTML, CSS and JavaScript files via an HTTPS connection to port
+443. HTTP connections to the 80 port are redirected to the former one.
+All other URLs serve the common `index.html` file.
 
-It also acts as a proxy between the browser and the Juju installation that
-performs the actual deployment work. Both browser-server and server-Juju
-connections are bidirectional via the WebSocket protocol, allowing changes
-in the Juju installation to be propagated and shown immediately by the browser.
+It also acts as a proxy between the browser and the Juju API server that
+performs the actual orchestration work. Both browser-server and server-
+Juju connections are bidirectional, using the WebSocket protocol on the
+same port as the HTTPS connection, allowing changes in the Juju
+environment to be propagated and shown immediately by the browser.
