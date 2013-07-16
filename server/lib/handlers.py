@@ -1,0 +1,66 @@
+# This file is part of the Juju GUI, which lets users view and manage Juju
+# environments within a graphical interface (https://launchpad.net/juju-gui).
+# Copyright (C) 2013 Canonical Ltd.
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License version 3, as published by
+# the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranties of MERCHANTABILITY,
+# SATISFACTORY QUALITY, or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""Juju GUI server HTTP handlers."""
+
+import logging
+import os
+
+from tornado import (
+    web,
+    websocket,
+)
+
+from lib.clients import WebSocketClient
+
+
+class WebSocketHandler(websocket.WebSocketHandler):
+
+    def __init__(self, *args, **kwargs):
+        # Avoid module level import so that options can be properly set up.
+        from tornado.options import options
+        super(WebSocketHandler, self).__init__(*args, **kwargs)
+        logging.debug('ws server: connecting to juju')
+        self.jujuconn = WebSocketClient(options.jujuapi, self.on_juju_message)
+        self.jujuconn.connect()
+
+    def on_message(self, message):
+        logging.debug('ws server: browser --> juju: {}'.format(message))
+        self.jujuconn.write_message(message)
+
+    def on_juju_message(self, message):
+        logging.debug('ws server: juju --> browser: {}'.format(message))
+        self.write_message(message)
+
+    def on_close(self):
+        logging.debug('ws server: connection closed')
+        self.jujuconn.close_connection()
+        self.jujuconn = None
+
+
+class IndexHandler(web.StaticFileHandler):
+
+    @classmethod
+    def get_absolute_path(cls, root, path):
+        return os.path.join(root, 'index.html')
+
+
+class HttpsRedirectHandler(web.RequestHandler):
+
+    def get(self):
+        request = self.request
+        url = 'https://{}{}'.format(request.host, request.uri)
+        self.redirect(url, permanent=True)
