@@ -1,3 +1,12 @@
+<!--
+README.md
+Copyright 2013 Canonical Ltd.
+This work is licensed under the Creative Commons Attribution-Share Alike 3.0
+Unported License. To view a copy of this license, visit
+http://creativecommons.org/licenses/by-sa/3.0/ or send a letter to Creative
+Commons, 171 Second Street, Suite 300, San Francisco, California, 94105, USA.
+-->
+
 # Juju GUI Charm #
 
 This charm makes it easy to deploy a Juju GUI into an existing environment.
@@ -23,7 +32,7 @@ and then run the usual bootstrap command.
 Next, you simply need to deploy the charm and expose it.  (See also "Deploying
 with Jitsu" below, for another option.)
 
-    juju deploy cs:precise/juju-gui
+    juju deploy juju-gui
     juju expose juju-gui
 
 Finally, you need to identify the GUI's URL. It can take a few minutes for the

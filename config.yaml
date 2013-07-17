@@ -1,3 +1,19 @@
+# This file is part of the Juju GUI, which lets users view and manage Juju
+# environments within a graphical interface (https://launchpad.net/juju-gui).
+# Copyright (C) 2012-2013 Canonical Ltd.
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License version 3, as published by
+# the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranties of MERCHANTABILITY,
+# SATISFACTORY QUALITY, or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 options:
   juju-gui-source:
     description: |
@@ -111,7 +127,7 @@ options:
       The URL of the charm catalog site ("charmworld") from which charm
       catalog data will be drawn.
     type: string
-    default: https://manage.jujucharms.com
+    default: https://manage.jujucharms.com/
   repository-location:
     description: |
       The charm depends on several software packages that are not packaged in
@@ -124,3 +140,30 @@ options:
       'add-apt-repository'.
     type: string
     default: ppa:juju-gui-charmers/stable
+  use-analytics:
+    description: |
+      The team developing the Juju GUI benefits from understanding how
+      different deployments use the tool.  By enabling this setting,
+      anonymized usage data is reported back using Google Analytics.  The type
+      of data collected includes the charms that are deployed and the number
+      of units per service.  Use of analytics is optional but we hope you will
+      allow us to improve our tool based on your experience.
+    type: boolean
+    default: true
+  default-viewmode:
+    description: |
+      What the charmbrowser's default viewmode should be. Possible options are:
+      - 'sidebar' (default): the charmwbrowser will appear as a sidebar. This
+        is also known as build mode.
+      - 'fullscreen': the charmbrowser will appear in full screen, hiding the
+        canvas. This is also known as browse mode.
+      - 'minimized': the charmbrowser will be minimized by default, and hidden.
+    type: string
+    default: sidebar 
+  show-get-juju-button:
+    description: |
+      There are deployment modes for Juju GUI which are not intended as regular
+      use mode. In these cases, login/logout are disabled and instead there is a
+      link to juju.ubuntu.com
+    type: boolean
+    default: false

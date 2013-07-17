@@ -2,3 +2,4 @@
 tags
 exec.d/*
 npm-cache.tgz
+tests/.venv

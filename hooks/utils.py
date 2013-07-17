@@ -1,3 +1,19 @@
+# This file is part of the Juju GUI, which lets users view and manage Juju
+# environments within a graphical interface (https://launchpad.net/juju-gui).
+# Copyright (C) 2012-2013 Canonical Ltd.
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License version 3, as published by
+# the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranties of MERCHANTABILITY,
+# SATISFACTORY QUALITY, or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 """Juju GUI charm utilities."""
 
 __all__ = [
@@ -112,13 +128,24 @@ def _get_build_dependencies():
     cmd_log(apt_get_install(*DEB_BUILD_DEPENDENCIES))
 
 
-def get_api_address(unit_dir):
-    """Return the Juju API address stored in the uniter agent.conf file."""
+def get_api_address(unit_dir=None):
+    """Return the Juju API address.
+
+    If not present in the hook context as an environment variable, try to
+    retrieve the address parsing the machiner agent.conf file.
+    """
+    api_addresses = os.getenv("JUJU_API_ADDRESSES")
+    if api_addresses is not None:
+        return api_addresses.split()[0]
+    # The JUJU_API_ADDRESSES environment variable is not included in the hooks
+    # context in older releases of juju-core.  Retrieve it from the machiner
+    # agent file instead.
     import yaml  # python-yaml is only installed if juju-core is used.
-    # XXX 2013-03-27 frankban bug=1161443:
-        # currently the uniter agent.conf file does not include the API
-        # address. For now retrieve it from the machine agent file.
-    base_dir = os.path.abspath(os.path.join(unit_dir, '..'))
+    if unit_dir is None:
+        base_dir = os.path.join(CURRENT_DIR, '..', '..')
+    else:
+        base_dir = os.path.join(unit_dir, '..')
+    base_dir = os.path.abspath(base_dir)
     for dirname in os.listdir(base_dir):
         if dirname.startswith('machine-'):
             agent_conf = os.path.join(base_dir, dirname, 'agent.conf')
@@ -333,11 +360,12 @@ def start_agent(
 def start_gui(
         console_enabled, login_help, readonly, in_staging, ssl_cert_path,
         charmworld_url, serve_tests, haproxy_path='/etc/haproxy/haproxy.cfg',
-        config_js_path=None, secure=True, sandbox=False):
+        config_js_path=None, secure=True, sandbox=False, use_analytics=False,
+        default_viewmode='sidebar', show_get_juju_button=False):
     """Set up and start the Juju GUI server."""
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
-    # XXX 2013-02-05 frankban bug=1116320:
+        # XXX 2013-02-05 frankban bug=1116320:
         # External insecure resources are still loaded when testing in the
         # debug environment. For now, switch to the production environment if
         # the charm is configured to serve tests.
@@ -373,6 +401,9 @@ def start_gui(
         'protocol': json.dumps(protocol),
         'sandbox': json.dumps(sandbox),
         'charmworld_url': json.dumps(charmworld_url),
+        'use_analytics': json.dumps(use_analytics),
+        'default_viewmode': json.dumps(default_viewmode),
+        'show_get_juju_button': json.dumps(show_get_juju_button),
     }
     if config_js_path is None:
         config_js_path = os.path.join(
@@ -387,7 +418,7 @@ def start_gui(
         api_address = '127.0.0.1:{0}'.format(API_PORT)
     else:
         # Retrieve the juju-core API server address.
-        api_address = get_api_address(os.path.join(CURRENT_DIR, '..'))
+        api_address = get_api_address()
     context = {
         'api_address': api_address,
         'api_pem': JUJU_PEM,

@@ -1,14 +1,31 @@
-#!/usr/bin/env python2
+# This file is part of the Juju GUI, which lets users view and manage Juju
+# environments within a graphical interface (https://launchpad.net/juju-gui).
+# Copyright (C) 2012-2013 Canonical Ltd.
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License version 3, as published by
+# the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranties of MERCHANTABILITY,
+# SATISFACTORY QUALITY, or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""Juju GUI utils tests."""
 
 from contextlib import contextmanager
+import json
 import os
 import shutil
-from simplejson import dumps
 from subprocess import CalledProcessError
 import tempfile
 import unittest
 
 import charmhelpers
+from shelltoolbox import environ
 import tempita
 import yaml
 
@@ -86,28 +103,70 @@ class TestFirstPathInDir(unittest.TestCase):
 
 class TestGetApiAddress(unittest.TestCase):
 
-    def setUp(self):
-        self.base_dir = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, self.base_dir)
-        self.unit_dir = tempfile.mkdtemp(dir=self.base_dir)
-        self.machine_dir = os.path.join(self.base_dir, 'machine-1')
+    env_address = 'env.example.com:17070'
+    agent_address = 'agent.example.com:17070'
 
-    def test_retrieving_address(self):
-        # The API address is correctly returned.
-        address = 'example.com:17070'
-        os.mkdir(self.machine_dir)
-        with open(os.path.join(self.machine_dir, 'agent.conf'), 'w') as conf:
-            yaml.dump({'apiinfo': {'addrs': [address]}}, conf)
-        self.assertEqual(address, get_api_address(self.unit_dir))
+    @contextmanager
+    def agent_file(self, addresses=None):
+        """Set up a directory structure similar to the one created by juju.
 
-    def test_missing_file(self):
+        If addresses are provided, also create a machiner directory and an
+        agent file containing the addresses.
+        Remove the directory structure when exiting from the context manager.
+        """
+        base_dir = tempfile.mkdtemp()
+        unit_dir = tempfile.mkdtemp(dir=base_dir)
+        machine_dir = os.path.join(base_dir, 'machine-1')
+        if addresses is not None:
+            os.mkdir(machine_dir)
+            with open(os.path.join(machine_dir, 'agent.conf'), 'w') as conf:
+                yaml.dump({'apiinfo': {'addrs': addresses}}, conf)
+        try:
+            yield unit_dir, machine_dir
+        finally:
+            shutil.rmtree(base_dir)
+
+    def test_retrieving_address_from_env(self):
+        # The API address is correctly retrieved from the environment.
+        with environ(JUJU_API_ADDRESSES=self.env_address):
+            self.assertEqual(self.env_address, get_api_address())
+
+    def test_multiple_addresses_in_env(self):
+        # If multiple API addresses are listed in the environment variable,
+        # the first one is returned.
+        addresses = '{} foo.example.com:42'.format(self.env_address)
+        with environ(JUJU_API_ADDRESSES=addresses):
+            self.assertEqual(self.env_address, get_api_address())
+
+    def test_both_env_and_agent_file(self):
+        # If the API address is included in both the environment and the
+        # agent.conf file, the environment variable takes precedence.
+        with environ(JUJU_API_ADDRESSES=self.env_address):
+            with self.agent_file([self.agent_address]) as (unit_dir, _):
+                self.assertEqual(self.env_address, get_api_address(unit_dir))
+
+    def test_retrieving_address_from_agent_file(self):
+        # The API address is correctly retrieved from the machiner agent file.
+        with self.agent_file([self.agent_address]) as (unit_dir, _):
+            self.assertEqual(self.agent_address, get_api_address(unit_dir))
+
+    def test_multiple_addresses_in_agent_file(self):
+        # If multiple API addresses are listed in the agent file, the first
+        # one is returned.
+        addresses = [self.agent_address, 'foo.example.com:42']
+        with self.agent_file(addresses) as (unit_dir, _):
+            self.assertEqual(self.agent_address, get_api_address(unit_dir))
+
+    def test_missing_env_and_agent_file(self):
         # An IOError is raised if the agent configuration file is not found.
-        os.mkdir(self.machine_dir)
-        self.assertRaises(IOError, get_api_address, self.unit_dir)
+        with self.agent_file() as (unit_dir, machine_dir):
+            os.mkdir(machine_dir)
+            self.assertRaises(IOError, get_api_address, unit_dir)
 
-    def test_missing_directory(self):
+    def test_missing_env_and_agent_directory(self):
         # An IOError is raised if the machine directory is not found.
-        self.assertRaises(IOError, get_api_address, self.unit_dir)
+        with self.agent_file() as (unit_dir, _):
+            self.assertRaises(IOError, get_api_address, unit_dir)
 
 
 class TestLegacyJuju(unittest.TestCase):
@@ -484,7 +543,7 @@ class TestCmdLog(unittest.TestCase):
         fd, self.log_file_name = tempfile.mkstemp()
         os.close(fd)
         mock_config = {'command-log-file': self.log_file_name}
-        charmhelpers.command = lambda *args: lambda: dumps(mock_config)
+        charmhelpers.command = lambda *args: lambda: json.dumps(mock_config)
 
     def tearDown(self):
         charmhelpers.command = self.command
@@ -578,7 +637,7 @@ class TestStartStop(unittest.TestCase):
         start_gui(
             False, 'This is login help.', True, True, ssl_cert_path,
             charmworld_url, True, haproxy_path='haproxy',
-            config_js_path='config')
+            config_js_path='config', use_analytics=True)
         haproxy_conf = self.files['haproxy']
         self.assertIn('ca-base {0}'.format(ssl_cert_path), haproxy_conf)
         self.assertIn('crt-base {0}'.format(ssl_cert_path), haproxy_conf)
@@ -596,6 +655,7 @@ class TestStartStop(unittest.TestCase):
         self.assertIn("socket_url: 'wss://", js_conf)
         self.assertIn('socket_protocol: "wss"', js_conf)
         self.assertIn('charmworldURL: "http://charmworld.example"', js_conf)
+        self.assertIn('useAnalytics: true', js_conf)
         apache_conf = self.files['juju-gui']
         self.assertIn('juju-gui/build-', apache_conf)
         self.assertIn('VirtualHost *:{0}'.format(WEB_PORT), apache_conf)
@@ -627,6 +687,38 @@ class TestStartStop(unittest.TestCase):
         self.assertIn('sandbox: true', js_conf)
         self.assertIn('user: "admin"', js_conf)
         self.assertIn('password: "admin"', js_conf)
+
+    def test_start_gui_no_analytics(self):
+        ssl_cert_path = '/tmp/certificates/'
+        charmworld_url = 'http://charmworld.example'
+        start_gui(
+            False, 'This is login help.', False, False, ssl_cert_path,
+            charmworld_url, True, haproxy_path='haproxy',
+            config_js_path='config', use_analytics=False)
+        js_conf = self.files['config']
+        self.assertIn('useAnalytics: false', js_conf)
+
+    def test_start_gui_fullscreen(self):
+        ssl_cert_path = '/tmp/certificates/'
+        charmworld_url = 'http://charmworld.example'
+        start_gui(
+            False, 'This is login help.', False, False, ssl_cert_path,
+            charmworld_url, True, haproxy_path='haproxy',
+            config_js_path='config', sandbox=True,
+            default_viewmode='fullscreen')
+        js_conf = self.files['config']
+        self.assertIn('defaultViewmode: "fullscreen"', js_conf)
+
+    def test_start_gui_with_button(self):
+        ssl_cert_path = '/tmp/certificates/'
+        charmworld_url = 'http://charmworld.example'
+        start_gui(
+            False, 'This is login help.', False, False, ssl_cert_path,
+            charmworld_url, True, haproxy_path='haproxy',
+            config_js_path='config', sandbox=True,
+            show_get_juju_button=True)
+        js_conf = self.files['config']
+        self.assertIn('showGetJujuButton: true', js_conf)
 
 
 class TestNpmCache(unittest.TestCase):

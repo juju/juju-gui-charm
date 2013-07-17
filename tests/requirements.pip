@@ -1,5 +1,4 @@
-#!/usr/bin/env python2
-#-*- python -*-
+# Juju GUI test requirements.
 
 # This file is part of the Juju GUI, which lets users view and manage Juju
 # environments within a graphical interface (https://launchpad.net/juju-gui).
@@ -17,15 +16,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from backend import Backend
-from utils import log_hook
-
-
-def main():
-    backend = Backend()
-    backend.stop()
-
-
-if __name__ == '__main__':
-    with log_hook():
-        main()
+-e bzr+http://launchpad.net/charm-tools#egg=charm-tools
+flake8==2.0
+launchpadlib==1.10.2
+mock==1.0.1
+python-apt==0.8.5
+-e bzr+http://launchpad.net/python-shelltoolbox#egg=python-shelltoolbox
+PyYAML==3.10
+selenium==2.33.0
+Tempita==0.5.1
+xvfbwrapper==0.2.2

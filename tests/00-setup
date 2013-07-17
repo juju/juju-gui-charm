@@ -1,5 +1,4 @@
-#!/usr/bin/env python2
-#-*- python -*-
+#!/bin/sh
 
 # This file is part of the Juju GUI, which lets users view and manage Juju
 # environments within a graphical interface (https://launchpad.net/juju-gui).
@@ -17,15 +16,21 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from backend import Backend
-from utils import log_hook
+TESTDIR=`dirname $0`
+VENV="$TESTDIR/.venv"
+ACTIVATE="$VENV/bin/activate"
+REQUIREMENTS="$TESTDIR/requirements.pip"
 
 
-def main():
-    backend = Backend()
-    backend.stop()
+createvenv() {
+    # Create a virtualenv if it does not exist, or it is older than requirements.
+    if [ ! -f "$ACTIVATE" -o "$REQUIREMENTS" -nt "$ACTIVATE" ]; then
+        virtualenv --distribute $VENV
+        . $VENV/bin/activate && \
+            yes w | pip install --use-mirrors -r $REQUIREMENTS
+        touch $VENV/bin/activate
+    fi
+}
 
 
-if __name__ == '__main__':
-    with log_hook():
-        main()
+createvenv

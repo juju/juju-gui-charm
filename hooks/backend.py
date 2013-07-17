@@ -1,3 +1,19 @@
+# This file is part of the Juju GUI, which lets users view and manage Juju
+# environments within a graphical interface (https://launchpad.net/juju-gui).
+# Copyright (C) 2012-2013 Canonical Ltd.
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License version 3, as published by
+# the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranties of MERCHANTABILITY,
+# SATISFACTORY QUALITY, or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 """
 A composition system for creating backend objects.
 
@@ -84,7 +100,11 @@ class GuiMixin(object):
             config['juju-gui-console-enabled'], config['login-help'],
             config['read-only'], config['staging'], config['ssl-cert-path'],
             config['charmworld-url'], config['serve-tests'],
-            secure=config['secure'], sandbox=config['sandbox'])
+            secure=config['secure'], sandbox=config['sandbox'],
+            use_analytics=config['use-analytics'],
+            default_viewmode=config['default-viewmode'],
+            show_get_juju_button=config['show-get-juju-button'])
+
         charmhelpers.open_port(80)
         charmhelpers.open_port(443)
 

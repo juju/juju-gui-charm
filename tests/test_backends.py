@@ -1,3 +1,19 @@
+# This file is part of the Juju GUI, which lets users view and manage Juju
+# environments within a graphical interface (https://launchpad.net/juju-gui).
+# Copyright (C) 2012-2013 Canonical Ltd.
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License version 3, as published by
+# the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranties of MERCHANTABILITY,
+# SATISFACTORY QUALITY, or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 from collections import defaultdict
 from contextlib import contextmanager
 import os
@@ -34,7 +50,7 @@ class TestBackendProperties(unittest.TestCase):
             frozenset(('apache2', 'curl', 'haproxy', 'openssl', 'zookeeper')),
             test_backend.debs)
         self.assertEqual(
-            frozenset(('ppa:juju-gui/ppa',)),
+            frozenset(()),
             test_backend.repositories)
         self.assertEqual(
             frozenset(('haproxy.conf',)),
@@ -51,7 +67,7 @@ class TestBackendProperties(unittest.TestCase):
             frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
             test_backend.debs)
         self.assertEqual(
-            frozenset(('ppa:juju-gui/ppa',)),
+            frozenset(()),
             test_backend.repositories)
         self.assertEqual(
             frozenset(('haproxy.conf',)),
@@ -68,7 +84,7 @@ class TestBackendProperties(unittest.TestCase):
             frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
             test_backend.debs)
         self.assertEqual(
-            frozenset(('ppa:juju-gui/ppa',)),
+            frozenset(()),
             test_backend.repositories)
         self.assertEqual(
             frozenset(('haproxy.conf',)),
@@ -97,7 +113,7 @@ class TestBackendProperties(unittest.TestCase):
                 ('apache2', 'curl', 'haproxy', 'openssl', 'python-yaml')),
             test_backend.debs)
         self.assertEqual(
-            frozenset(('ppa:juju-gui/ppa',)),
+            frozenset(()),
             test_backend.repositories)
         self.assertEqual(
             frozenset(('haproxy.conf',)),
@@ -192,14 +208,16 @@ class TestBackendCommands(unittest.TestCase):
     def test_start_agent(self):
         test_backend = backend.Backend(config=self.alwaysFalse)
         test_backend.start()
-        for mocked in ('service_control', 'start_agent', 'start_gui',
+        for mocked in (
+                'service_control', 'start_agent', 'start_gui',
                 'open_port', 'su'):
             self.assertTrue(mocked, '{} was not called'.format(mocked))
 
     def test_start_improv(self):
         test_backend = backend.Backend(config=self.alwaysTrue)
         test_backend.start()
-        for mocked in ('service_control', 'start_improv', 'start_gui',
+        for mocked in (
+                'service_control', 'start_improv', 'start_gui',
                 'open_port', 'su'):
             self.assertTrue(mocked, '{} was not called'.format(mocked))
 

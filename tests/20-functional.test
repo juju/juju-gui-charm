@@ -1,30 +1,47 @@
-#!/usr/bin/env python2
-#-*- python -*-
+#!tests/.venv/bin/python
 
-import os
+# This file is part of the Juju GUI, which lets users view and manage Juju
+# environments within a graphical interface (https://launchpad.net/juju-gui).
+# Copyright (C) 2012-2013 Canonical Ltd.
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License version 3, as published by
+# the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranties of MERCHANTABILITY,
+# SATISFACTORY QUALITY, or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import unittest
 import urlparse
 
-from charmhelpers import make_charm_config_file
 from selenium.webdriver import Firefox
 from selenium.webdriver.support import ui
-from shelltoolbox import command
 from xvfbwrapper import Xvfb
 
+from deploy import juju_deploy
+from helpers import (
+    juju_destroy_service,
+    juju_version,
+    ssh,
+)
 
-JUJU_GUI_SOURCE = os.getenv('JUJU_GUI_SOURCE')
+
 JUJU_GUI_TEST_BRANCH = 'lp:~juju-gui/juju-gui/charm-tests-branch'
 STAGING_SERVICES = ('haproxy', 'mediawiki', 'memcached', 'mysql', 'wordpress')
-jitsu = command('jitsu')
-juju = command('juju')
-ssh = command('ssh')
+is_legacy_juju = juju_version().major == 0
 
 
 class DeployTestMixin(object):
 
+    charm = 'juju-gui'
+    port = '443'
+
     def setUp(self):
-        self.charm = 'juju-gui'
-        self.port = '443'
         # Perform all graphical operations in memory.
         vdisplay = Xvfb(width=1280, height=720)
         vdisplay.start()
@@ -34,28 +51,13 @@ class DeployTestMixin(object):
         self.addCleanup(selenium.quit)
 
     def tearDown(self):
-        juju('destroy-service', self.charm)
+        juju_destroy_service(self.charm)
 
     def assertEnvironmentIsConnected(self):
         """Assert the GUI environment is connected to the Juju API agent."""
         self.wait_for_script(
-            'return app.env.get("connected");',
+            'return app && app.env && app.env.get("connected");',
             error='Environment not connected.')
-
-    def make_config_file(self, options=None):
-        """Create a charm config file adding, if required, the Juju GUI source.
-
-        Return the created config file object.
-
-        The Juju GUI source can be provided by setting the environment variable
-        *JUJU_GUI_SOURCE*. This is just a simple wrapper around
-        ``charmhelpers.make_charm_config_file``.
-        """
-        if options is None:
-            options = {}
-        if JUJU_GUI_SOURCE is not None:
-            options.setdefault('juju-gui-source', JUJU_GUI_SOURCE)
-        return make_charm_config_file({self.charm: options})
 
     def handle_browser_warning(self):
         """Overstep the browser warning dialog if required."""
@@ -85,7 +87,7 @@ class DeployTestMixin(object):
             return driver.title == 'Juju Admin'
         self.wait_for(page_ready, error='Juju GUI not found.')
 
-    def wait_for(self, condition, error=None, timeout=20):
+    def wait_for(self, condition, error=None, timeout=30):
         """Wait for condition to be True.
 
         The argument condition is a callable accepting a driver object.
@@ -95,7 +97,7 @@ class DeployTestMixin(object):
         wait = ui.WebDriverWait(self.selenium, timeout)
         return wait.until(condition, error)
 
-    def wait_for_css_selector(self, selector, error=None, timeout=20):
+    def wait_for_css_selector(self, selector, error=None, timeout=30):
         """Wait until the provided CSS selector is found.
 
         Fail printing the provided error if timeout is exceeded.
@@ -106,7 +108,7 @@ class DeployTestMixin(object):
         elements = self.wait_for(condition, error=error, timeout=timeout)
         return elements[0]
 
-    def wait_for_script(self, script, error=None, timeout=20):
+    def wait_for_script(self, script, error=None, timeout=30):
         """Wait for the given JavaScript snippet to return a True value.
 
         Fail printing the provided error if timeout is exceeded.
@@ -114,14 +116,6 @@ class DeployTestMixin(object):
         """
         condition = lambda driver: driver.execute_script(script)
         return self.wait_for(condition, error=error, timeout=timeout)
-
-    def login(self, password):
-        """Log in to access the Juju GUI using the provided *password*."""
-        form = self.wait_for_css_selector('form', 'Login form not found.')
-        passwd = form.find_element_by_css_selector('input[type=password]')
-        passwd.send_keys(password)
-        submit = form.find_element_by_css_selector('input[type=submit]')
-        submit.click()
 
     def get_service_names(self):
         """Return the set of services' names displayed in the current page."""
@@ -135,8 +129,8 @@ class DeployTestMixin(object):
             # Just invoking ``juju destroy-service juju-gui`` in tearDown
             # should execute the ``stop`` hook, stopping all the services
             # started by the charm in the machine. Right now this does not
-            # work, so the same behavior is accomplished keeping track of
-            # started services and manually stopping them here.
+            # work in pyJuju, so the same behavior is accomplished keeping
+            # track of started services and manually stopping them here.
         target = 'ubuntu@{0}'.format(hostname)
         for service in services:
             ssh(target, 'sudo', 'service', service, 'stop')
@@ -144,36 +138,24 @@ class DeployTestMixin(object):
 
 class DeployTest(DeployTestMixin, unittest.TestCase):
 
-    def deploy(self, config=None):
-        """Deploy and expose the Juju GUI charm. Return the service host name.
-
-        Also wait until the service is started.
-        If *config_path* is provided, it will be used when deploying the charm.
-        """
-        config_file = self.make_config_file(config)
-        juju('deploy', 'local:{0}'.format(self.charm),
-             '--config', config_file.name)
-        juju('expose', self.charm)
-        jitsu(
-            'watch', '--failfast', self.charm,
-            '--state', 'started', '--open-port', self.port)
-        address = jitsu('get-service-info', self.charm, 'public-address')
-        return address.strip().split(':')[1]
-
     def test_api_agent(self):
         # Ensure the Juju GUI and API agent services are correctly set up.
-        hostname = self.deploy()
-        # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
-        self.addCleanup(
-            self.stop_services,
-            hostname, ['haproxy', 'apache2', 'juju-api-agent'])
+        unit_info = juju_deploy(self.charm)
+        hostname = unit_info['public-address']
+        if is_legacy_juju:
+            # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
+            self.addCleanup(
+                self.stop_services,
+                hostname, ['haproxy', 'apache2', 'juju-api-agent'])
         self.navigate_to(hostname)
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()
 
+    @unittest.skipUnless(is_legacy_juju, 'staging only works in pyJuju')
     def test_staging(self):
         # Ensure the Juju GUI and improv services are correctly set up.
-        hostname = self.deploy({'staging': 'true'})
+        unit_info = juju_deploy(self.charm, options={'staging': 'true'})
+        hostname = unit_info['public-address']
         # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         self.addCleanup(
             self.stop_services,
@@ -186,44 +168,24 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
 
     def test_branch_source(self):
         # Ensure the Juju GUI is correctly deployed from a Bazaar branch.
-        hostname = self.deploy({'juju-gui-source': JUJU_GUI_TEST_BRANCH})
-        # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
-        self.addCleanup(
-            self.stop_services,
-            hostname, ['haproxy', 'apache2', 'juju-api-agent'])
+        unit_info = juju_deploy(
+            self.charm, options={'juju-gui-source': JUJU_GUI_TEST_BRANCH})
+        hostname = unit_info['public-address']
+        if is_legacy_juju:
+            # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
+            self.addCleanup(
+                self.stop_services,
+                hostname, ['haproxy', 'apache2', 'juju-api-agent'])
         self.navigate_to(hostname)
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()
 
-
-class DeployToTest(DeployTestMixin, unittest.TestCase):
-
-    def deploy_to(self):
-        """Deploy the Juju GUI charm in the Juju bootstrap node.
-
-        Expose it and return the service host name.
-        Also wait until the service is started.
-        """
-        config_file = self.make_config_file()
-        # The id of the bootstrap node is 0 (the first node started by Juju).
-        jitsu('deploy-to', '0', 'local:{0}'.format(self.charm),
-              '--config', config_file.name)
-        juju('expose', self.charm)
-        jitsu(
-            'watch', '--failfast', self.charm,
-            '--state', 'started', '--open-port', self.port)
-        address = jitsu('get-service-info', self.charm, 'public-address')
-        return address.strip().split(':')[1]
-
-    def test_api_agent(self):
-        # Ensure the Juju GUI and API agent services are correctly set up in
-        # the Juju bootstrap node.
-        hostname = self.deploy_to()
-        # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
-        self.addCleanup(
-            self.stop_services,
-            hostname, ['haproxy', 'apache2', 'juju-api-agent'])
-        self.navigate_to(hostname)
+    @unittest.skipIf(is_legacy_juju, 'force-machine only works in juju-core')
+    def test_force_machine(self):
+        # Ensure the Juju GUI is correctly set up in the Juju bootstrap node.
+        unit_info = juju_deploy(self.charm, force_machine=0)
+        self.assertEqual('0', unit_info['machine'])
+        self.navigate_to(unit_info['public-address'])
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()
 
