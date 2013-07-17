@@ -15,3 +15,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """Tests for the Juju GUI server management helpers."""
+
+import unittest
+
+
+class TestExample(unittest.TestCase):
+
+    def test_example(self):
+        self.assertTrue(True)

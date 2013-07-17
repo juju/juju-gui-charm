@@ -24,6 +24,7 @@ setup:
 
 unittest: setup
 	./tests/10-unit.test
+	./tests/11-server.test
 
 ftest: setup
 	$(JUJUTEST) 20-functional.test
@@ -36,7 +37,8 @@ jujutest:
 	$(JUJUTEST)
 
 lint: setup
-	@$(VENV)/bin/flake8 --show-source --exclude=.venv  ./hooks/ ./tests/
+	@$(VENV)/bin/flake8 --show-source --exclude=.venv \
+		./hooks/ ./tests/ ./server/
 
 clean:
 	find . -name '*.pyc' -delete

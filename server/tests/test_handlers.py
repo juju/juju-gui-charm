@@ -15,3 +15,34 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """Tests for the Juju GUI server handlers."""
+
+from tornado import web
+from tornado.testing import AsyncHTTPTestCase
+
+from lib import handlers
+
+
+class TestHttpsRedirectHandler(AsyncHTTPTestCase):
+
+    def get_app(self):
+        return web.Application([(r'.*', handlers.HttpsRedirectHandler)])
+
+    def assert_redirected(self, response, path):
+        """Ensure the given response is a permanent redirect to the given path.
+
+        Also check that the URL schema is HTTPS.
+        """
+        self.assertEqual(301, response.code)
+        expected = 'https://localhost:{}{}'.format(self.get_http_port(), path)
+        self.assertEqual(expected, response.headers['location'])
+
+    def test_redirection(self):
+        # The HTTP traffic is redirected to HTTPS.
+        response = self.fetch('/',  follow_redirects=False)
+        self.assert_redirected(response, '/')
+
+    def test_page_redirection(self):
+        # The path and query parts of the URL are preserved,
+        url = '/my/page?my=query'
+        response = self.fetch(url, follow_redirects=False)
+        self.assert_redirected(response, url)
