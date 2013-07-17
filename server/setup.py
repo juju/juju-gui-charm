@@ -15,3 +15,39 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """Juju GUI server distribution file."""
+
+from distutils.core import setup
+import os
+
+
+ROOT = os.path.abspath(os.path.dirname(__file__))
+PROJECT_NAME = 'guiserver'
+
+project = __import__(PROJECT_NAME)
+readme_path = os.path.join(ROOT, '..', 'README.md')
+
+os.chdir(ROOT)
+setup(
+    name=PROJECT_NAME,
+    version=project.get_version(),
+    description=project.__doc__,
+    long_description=open(readme_path).read(),
+    author='The Juju GUI team',
+    author_email='juju-gui@lists.ubuntu.com',
+    url='https://launchpad.net/juju-gui',
+    keywords='juju gui server',
+    packages=[
+        PROJECT_NAME,
+        '{0}.tests'.format(PROJECT_NAME),
+    ],
+    scripts=['runserver.py'],
+    classifiers=[
+        'Development Status :: 3 - Alpha',
+        'Environment :: Web Environment',
+        'Intended Audience :: System Administrators',
+        'License :: OSI Approved :: GNU Affero General Public License v3',
+        'Operating System :: POSIX',
+        'Programming Language :: Python',
+        'Topic :: System :: Installation/Setup',
+    ],
+)
