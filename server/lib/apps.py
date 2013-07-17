@@ -24,6 +24,11 @@ from lib import handlers
 
 
 def server():
+    """Return the main server application.
+
+    The server app is responsible for serving the WebSocket connection, the
+    Juju GUI static files and the main index file for dynamic URLs.
+    """
     # Avoid module level import so that options can be properly set up.
     from tornado.options import options
     static_path = os.path.join(options.guiroot, 'juju-ui')
@@ -39,6 +44,10 @@ def server():
 
 
 def redirector():
+    """Return the redirector application.
+
+    The redirector app is responsible for redirecting HTTP traffic to HTTPS.
+    """
     # Avoid module level import so that options can be properly set up.
     from tornado.options import options
     return web.Application([

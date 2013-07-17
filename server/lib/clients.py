@@ -23,14 +23,23 @@ from ws4py.client import tornadoclient
 
 
 class WebSocketClient(tornadoclient.TornadoWebSocketClient):
+    """WebSocket client implementation supporting secure WebSockets."""
 
     def __init__(self, url, on_message_received, *args, **kwargs):
+        """Client initializer.
+
+        The WebSocket client receives two arguments:
+          - url: the WebSocket URL to use for the connection;
+          - on_message_received: a callback that will be called each time a
+            new message is received by the client.
+        """
         super(WebSocketClient, self).__init__(url, *args, **kwargs)
         self.connected = False
         self._queue = deque()
         self._on_message_received = on_message_received
 
     def opened(self):
+        """Hook called when the connection is initially established."""
         logging.debug('ws client: connected')
         self.connected = True
         queue = self._queue
@@ -38,21 +47,29 @@ class WebSocketClient(tornadoclient.TornadoWebSocketClient):
             self.send(queue.popleft())
 
     def received_message(self, message):
+        """Hook called when a new message is received."""
         logging.debug('ws client: received message: {}'.format(message))
         # FIXME: why message.data and not just message?
         self._on_message_received(message.data)
 
     def send(self, message, *args, **kwargs):
+        """Send a message on the WebSocket connection."""
         logging.debug('ws client: send message: {}'.format(message))
         # FIXME: why do we have to redefine self.sock here?
         self.sock = self.io.socket
         super(WebSocketClient, self).send(message, *args, **kwargs)
 
     def closed(self, code, reason=None):
+        """Hook called when the connection is terminated."""
         logging.debug('ws client: closed ({})'.format(code))
         self.connected = False
 
     def write_message(self, message):
+        """Send a message on the WebSocket connection.
+
+        Wrap self.send so that messages sent before the connection is
+        established are queued for later delivery.
+        """
         if self.connected:
             return self.send(message)
         logging.debug('ws client: queue message: {}'.format(message))

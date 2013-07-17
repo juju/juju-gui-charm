@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Juju GUI server HTTP handlers."""
+"""Juju GUI server HTTP/HTTPS handlers."""
 
 import logging
 import os
@@ -28,8 +28,18 @@ from lib.clients import WebSocketClient
 
 
 class WebSocketHandler(websocket.WebSocketHandler):
+    """WebSocket handler supporting secure WebSockets.
+
+    This handler acts as a proxy between the browser connection and the
+    Juju API server.
+    """
 
     def __init__(self, *args, **kwargs):
+        """Handler initializer.
+
+        When a new handler is instantiated a new WebSocket client is created
+        and connected to the Juju API server.
+        """
         # Avoid module level import so that options can be properly set up.
         from tornado.options import options
         super(WebSocketHandler, self).__init__(*args, **kwargs)
@@ -38,29 +48,43 @@ class WebSocketHandler(websocket.WebSocketHandler):
         self.jujuconn.connect()
 
     def on_message(self, message):
+        """Hook called when a new message is received from the browser.
+
+        The message is propagated to the Juju API server.
+        """
         logging.debug('ws server: browser --> juju: {}'.format(message))
         self.jujuconn.write_message(message)
 
     def on_juju_message(self, message):
+        """Hook called when a new message is received from the Juju API server.
+
+        The message is propagated to the browser.
+        """
         logging.debug('ws server: juju --> browser: {}'.format(message))
         self.write_message(message)
 
     def on_close(self):
+        """Hook called when the WebSocket connection is terminated."""
         logging.debug('ws server: connection closed')
         self.jujuconn.close_connection()
         self.jujuconn = None
 
 
 class IndexHandler(web.StaticFileHandler):
+    """Serve all requests using the index.html file placed in the static root.
+    """
 
     @classmethod
     def get_absolute_path(cls, root, path):
+        """See tornado.web.StaticFileHandler.get_absolute_path."""
         return os.path.join(root, 'index.html')
 
 
 class HttpsRedirectHandler(web.RequestHandler):
+    """Permanently redirect all the requests to the equivalent HTTPS URL."""
 
     def get(self):
+        """Handle GET requests."""
         request = self.request
         url = 'https://{}{}'.format(request.host, request.uri)
         self.redirect(url, permanent=True)

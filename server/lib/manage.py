@@ -40,11 +40,19 @@ SSL_OPTIONS = {
 
 
 def _add_debug(logger):
+    """Add a debug option to the option parser.
+
+    The debug option is True if --logging=DEBUG is passed, False otherwise.
+    """
     debug = logger.level == logging.DEBUG
     options.define('debug', default=debug)
 
 
 def _validate_required(*args):
+    """Validate required arguments.
+
+    Exit with an error if a mandatory argument is missing.
+    """
     for name in args:
         value = options[name] or ''
         if not value.strip():

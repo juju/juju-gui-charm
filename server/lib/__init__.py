@@ -14,7 +14,22 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Juju GUI server."""
+"""Juju GUI server.
+
+The GUI server is a custom-made application based on the
+[Tornado](http://www.tornadoweb.org/) framework.
+
+It directly serves static files to the browser, including
+images, HTML, CSS and JavaScript files via an HTTPS connection to port
+443. HTTP connections to the 80 port are redirected to the former one.
+All other URLs serve the common `index.html` file.
+
+It also acts as a proxy between the browser and the Juju API server that
+performs the actual orchestration work. Both browser-server and server-
+Juju connections are bidirectional, using the WebSocket protocol on the
+same port as the HTTPS connection, allowing changes in the Juju
+environment to be propagated and shown immediately by the browser.
+"""
 
 from __future__ import unicode_literals
 
