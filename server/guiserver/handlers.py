@@ -24,7 +24,7 @@ from tornado import (
     websocket,
 )
 
-from lib.clients import WebSocketClient
+from guiserver.clients import WebSocketClient
 
 
 class WebSocketHandler(websocket.WebSocketHandler):

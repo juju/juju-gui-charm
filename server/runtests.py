@@ -24,6 +24,10 @@ from tornado import testing
 
 
 def all():
+    """This is required by the Tornado test runner.
+
+    See <http://www.tornadoweb.org/en/stable/testing.html#test-runner>.
+    """
     path = os.path.dirname(__file__)
     return unittest.defaultTestLoader.discover(path)
 

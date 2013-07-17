@@ -16,7 +16,7 @@
 
 """Juju GUI server entry point."""
 
-from lib import manage
+from guiserver import manage
 
 
 if __name__ == '__main__':

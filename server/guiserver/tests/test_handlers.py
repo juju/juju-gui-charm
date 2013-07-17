@@ -23,7 +23,7 @@ import tempfile
 from tornado import web
 from tornado.testing import AsyncHTTPTestCase
 
-from lib import handlers
+from guiserver import handlers
 
 
 class TestIndexHandler(AsyncHTTPTestCase):

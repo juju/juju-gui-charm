@@ -26,8 +26,8 @@ from tornado.options import (
     parse_command_line,
 )
 
-import lib
-from lib.apps import (
+import guiserver
+from guiserver.apps import (
     redirector,
     server,
 )
@@ -76,5 +76,6 @@ def run():
     """Run the server"""
     server().listen(443, ssl_options=SSL_OPTIONS)
     redirector().listen(80)
-    logging.info('starting Juju GUI server v{}'.format(lib.get_version()))
+    version = guiserver.get_version()
+    logging.info('starting Juju GUI server v{}'.format(version))
     IOLoop.instance().start()

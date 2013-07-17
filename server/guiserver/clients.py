@@ -49,7 +49,6 @@ class WebSocketClient(tornadoclient.TornadoWebSocketClient):
     def received_message(self, message):
         """Hook called when a new message is received."""
         logging.debug('ws client: received message: {}'.format(message))
-        # FIXME: why message.data and not just message?
         self._on_message_received(message.data)
 
     def send(self, message, *args, **kwargs):

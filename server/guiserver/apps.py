@@ -20,7 +20,7 @@ import os
 
 from tornado import web
 
-from lib import handlers
+from guiserver import handlers
 
 
 def server():

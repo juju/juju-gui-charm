@@ -15,3 +15,33 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """Tests for the Juju GUI server clients."""
+
+from tornado.concurrent import Future
+from tornado.testing import (
+    AsyncHTTPSTestCase,
+    gen_test,
+)
+
+from guiserver import clients
+from guiserver.tests.utils import echoapp
+
+
+class TestWebSocketClient(AsyncHTTPSTestCase):
+
+    def setUp(self):
+        self.close_future = Future()
+        super(TestWebSocketClient, self).setUp()
+        self.received = []
+        # Now the app is set up, and we can connect the client.
+        url = self.get_url('/').replace('https://', 'wss://')
+        self.client = clients.WebSocketClient(url, self.received.append)
+        self.client.connect()
+
+    def get_app(self):
+        return echoapp(self.close_future)
+
+    @gen_test
+    def test_send(self):
+        self.client.send('hello')
+
+        import pdb; pdb.set_trace()

@@ -22,10 +22,10 @@ import unittest
 
 import mock
 
-from lib import manage
+from guiserver import manage
 
 
-@mock.patch('lib.manage.options')
+@mock.patch('guiserver.manage.options')
 class TestAddDebug(unittest.TestCase):
 
     def test_debug_enabled(self, mock_options):
@@ -56,36 +56,36 @@ class TestValidateRequired(unittest.TestCase):
 
     def test_success(self):
         # The validation passes if the args are correctly found.
-        with mock.patch('lib.manage.options', {'arg1': 'value1'}):
+        with mock.patch('guiserver.manage.options', {'arg1': 'value1'}):
             manage._validate_required('arg1')
 
     def test_success_multiple_args(self):
         options = {'arg1': 'value1', 'arg2': 'value2'}
-        with mock.patch('lib.manage.options', options):
+        with mock.patch('guiserver.manage.options', options):
             manage._validate_required(*options.keys())
 
     def test_failure(self):
-        with mock.patch('lib.manage.options', {'arg1': ''}):
+        with mock.patch('guiserver.manage.options', {'arg1': ''}):
             with self.assert_sysexit('arg1'):
                 manage._validate_required('arg1')
 
     def test_failure_multiple_args(self):
         options = {'arg1': 'value1', 'arg2': ''}
-        with mock.patch('lib.manage.options', options):
+        with mock.patch('guiserver.manage.options', options):
             with self.assert_sysexit('arg2'):
                 manage._validate_required(*options.keys())
 
     def test_failure_missing(self):
-        with mock.patch('lib.manage.options', {'arg1': None}):
+        with mock.patch('guiserver.manage.options', {'arg1': None}):
             with self.assert_sysexit('arg1'):
                 manage._validate_required('arg1')
 
     def test_failure_empty(self):
-        with mock.patch('lib.manage.options', {'arg1': ' '}):
+        with mock.patch('guiserver.manage.options', {'arg1': ' '}):
             with self.assert_sysexit('arg1'):
                 manage._validate_required('arg1')
 
     def test_failure_invalid_type(self):
-        with mock.patch('lib.manage.options', {'arg1': 42}):
+        with mock.patch('guiserver.manage.options', {'arg1': 42}):
             with self.assert_sysexit('arg1'):
                 manage._validate_required('arg1')
