@@ -55,6 +55,7 @@ def setup():
     """Set up options and logger."""
     define('guiroot', type=str, help='the Juju GUI static files path')
     define('jujuapi', type=str, help='the Juju WebSocket server address')
+    # In Tornado, parsing the options also sets up the default logger.
     parse_command_line()
     _validate_required('guiroot', 'jujuapi')
     _add_debug(logging.getLogger())
