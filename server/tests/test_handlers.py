@@ -16,10 +16,50 @@
 
 """Tests for the Juju GUI server handlers."""
 
+import os
+import shutil
+import tempfile
+
 from tornado import web
 from tornado.testing import AsyncHTTPTestCase
 
 from lib import handlers
+
+
+class TestIndexHandler(AsyncHTTPTestCase):
+
+    def setUp(self):
+        # Set up a static path with an index.html in it.
+        self.path = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.path)
+        self.index_contents = 'We are the Borg!'
+        index_path = os.path.join(self.path, 'index.html')
+        with open(index_path, 'w') as index_file:
+            index_file.write(self.index_contents)
+        super(TestIndexHandler, self).setUp()
+
+    def get_app(self):
+        return web.Application([
+            (r'/(.*)', handlers.IndexHandler, {'path': self.path}),
+        ])
+
+    def ensure_index(self, path):
+        """Ensure the index contents are returned requesting the given path."""
+        response = self.fetch(path)
+        self.assertEqual(200, response.code)
+        self.assertEqual(self.index_contents, response.body)
+
+    def test_root(self):
+        # Requests for the root path are served by the index file.
+        self.ensure_index('/')
+
+    def test_page(self):
+        # Requests for internal pages are served by the index file.
+        self.ensure_index('/resistance/is/futile')
+
+    def test_page_with_flags_and_queries(self):
+        # Requests including flags and queries are served by the index file.
+        self.ensure_index('/:flag:/activated/?my=query')
 
 
 class TestHttpsRedirectHandler(AsyncHTTPTestCase):
@@ -38,11 +78,11 @@ class TestHttpsRedirectHandler(AsyncHTTPTestCase):
 
     def test_redirection(self):
         # The HTTP traffic is redirected to HTTPS.
-        response = self.fetch('/',  follow_redirects=False)
+        response = self.fetch('/', follow_redirects=False)
         self.assert_redirected(response, '/')
 
     def test_page_redirection(self):
         # The path and query parts of the URL are preserved,
-        url = '/my/page?my=query'
-        response = self.fetch(url, follow_redirects=False)
-        self.assert_redirected(response, url)
+        path_and_query = '/my/page?my=query'
+        response = self.fetch(path_and_query, follow_redirects=False)
+        self.assert_redirected(response, path_and_query)

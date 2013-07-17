@@ -54,8 +54,11 @@ def _validate_required(*args):
     Exit with an error if a mandatory argument is missing.
     """
     for name in args:
-        value = options[name] or ''
-        if not value.strip():
+        try:
+            value = options[name].strip()
+        except AttributeError:
+            value = ''
+        if not value:
             sys.exit('error: the {} argument is required'.format(name))
 
 
