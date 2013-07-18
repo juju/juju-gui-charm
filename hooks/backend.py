@@ -150,6 +150,10 @@ class GoMixin(object):
     debs = ('python-yaml',)
 
     def install(self, backend):
+        # When juju-core deploys the charm, the charm directory (which hosts
+        # the GUI itself) is permissioned too strictly; set the perms on that
+        # directory to be friendly for Apache.
+        # Bug: 1202772
         utils.cmd_log(shelltoolbox.run('chmod', '+x', utils.CURRENT_DIR))
 
 
