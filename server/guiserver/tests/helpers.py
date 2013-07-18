@@ -18,7 +18,6 @@
 
 from tornado import (
     concurrent,
-    gen,
     websocket,
 )
 
