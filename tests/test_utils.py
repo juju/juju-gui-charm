@@ -29,7 +29,6 @@ from shelltoolbox import environ
 import tempita
 import yaml
 
-from backend import InstallMixin
 from utils import (
     API_PORT,
     JUJU_GUI_DIR,
