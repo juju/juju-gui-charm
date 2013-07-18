@@ -58,11 +58,6 @@ class WebSocketClient(clients.WebSocketClient):
         super(WebSocketClient, self).received_message(message, *args, **kwargs)
         self._message_received_future.set_result(message.data)
 
-    @gen.coroutine
-    def process_received(self, number):
-        for i in range(number):
-            yield self._message_received_future
-
 
 class WSSTestMixin(object):
     """Add some helper methods for testing secure WebSocket handlers."""

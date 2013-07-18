@@ -38,9 +38,8 @@ class WebSocketHandler(websocket.WebSocketHandler):
     @gen.coroutine
     def initialize(self, jujuapi):
         """Create a new WebSocket client and connect it to the Juju API."""
-        self.jujuapi = jujuapi
         logging.debug('ws server: connecting to juju')
-        self.jujuconn = WebSocketClient(self.jujuapi, self.on_juju_message)
+        self.jujuconn = WebSocketClient(jujuapi, self.on_juju_message)
         yield self.jujuconn.connect()
         logging.debug('ws server: connected to juju')
 

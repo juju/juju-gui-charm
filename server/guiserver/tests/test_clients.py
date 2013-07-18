@@ -39,8 +39,8 @@ class TestWebSocketClient(AsyncHTTPSTestCase, helpers.WSSTestMixin):
             self.get_wss_url('/'), self.received.append, io_loop=self.io_loop)
 
     def get_app(self):
-        # In this test case, the WebSocket client is connected to a WebSocket
-        # echo server, returning each message is received.
+        # In this test case the WebSocket client is connected to a WebSocket
+        # echo server returning received messages.
         options = {'close_future': self.server_closed_future}
         return web.Application([(r'/', helpers.EchoWebSocketHandler, options)])
 
@@ -79,7 +79,7 @@ class TestWebSocketClient(AsyncHTTPSTestCase, helpers.WSSTestMixin):
 
     @gen_test
     def test_connection_close(self):
-        # The client connection can be correctly terminated.
+        # The client connection is correctly terminated.
         yield self.client.connect()
         yield self.client.close()
         self.assertFalse(self.client.connected)

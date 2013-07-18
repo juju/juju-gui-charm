@@ -50,7 +50,8 @@ class WebSocketClient(tornadoclient.TornadoWebSocketClient):
         logging.debug('ws client: connected')
         self._connected_future.set_result(None)
         self.connected = True
-        # Send all the messages in the queue.
+        # Send all the messages that have been enqueued before the connection
+        # was established.
         queue = self._queue
         while self.connected and len(queue):
             self.send(queue.popleft())

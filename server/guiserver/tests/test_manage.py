@@ -47,7 +47,7 @@ class TestValidateRequired(unittest.TestCase):
     def assert_sysexit(self, option):
         """Ensure the code in the context manager block produces a system exit.
 
-        Also check the given error refers to the given option.
+        Also check that the given error refers to the given option.
         """
         expected_error = 'error: the {} argument is required'.format(option)
         with mock.patch('sys.exit') as mock_exit:

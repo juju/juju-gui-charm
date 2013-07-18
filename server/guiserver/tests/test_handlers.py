@@ -41,21 +41,11 @@ from guiserver.tests import helpers
 
 class TestWebSocketHandler(AsyncHTTPSTestCase, helpers.WSSTestMixin):
 
-    def setUp(self):
-
-        super(TestWebSocketHandler, self).setUp()
-        # Now that the app is set up, we can create the WebSocket client.
-
-        self.client = helpers.WebSocketClient(
-            self.get_wss_url('/ws'),
-            lambda message: None,
-            io_loop=self.io_loop)
-
     def get_app(self):
-        # In this test case, the WebSocket server creates a new client on each
-        # request. This client should forward messages to a WebSocket echo
-        # server. In order to test the communication, another client is created
-        # and connected to the server, e.g.:
+        # In this test case a WebSocket server is created. The server creates a
+        # new client on each request. This client should forward messages to a
+        # WebSocket echo server. In order to test the communication, some of
+        # the tests create another client that connects to the server, e.g.:
         #   ws-client -> ws-server -> ws-forwarding-client -> ws-echo-server
         # Messages arriving to the echo server are returned back to the client:
         #   ws-echo-server -> ws-forwarding-client -> ws-server -> ws-client
