@@ -149,6 +149,9 @@ class ImprovMixin(object):
 class GoMixin(object):
     debs = ('python-yaml',)
 
+    def install(self, backend):
+        utils.cmd_log(shelltoolbox.run('chmod', '+x', utils.CURRENT_DIR))
+
 
 class Backend(object):
     """Compose methods and policy needed to interact with a Juju backend."""
