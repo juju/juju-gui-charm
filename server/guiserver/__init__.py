@@ -31,9 +31,6 @@ same port as the HTTPS connection, allowing changes in the Juju
 environment to be propagated and shown immediately by the browser.
 """
 
-from __future__ import unicode_literals
-
-
 VERSION = (0, 0, 1)
 
 
