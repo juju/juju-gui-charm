@@ -49,23 +49,15 @@ class InstallMixin(object):
             utils.cmd_log(
                 shelltoolbox.apt_get_install(*backend.debs))
 
-        # If we are not using a pre-built release of the GUI (i.e., we are
-        # using a branch) then we need to build a release archive to use.
+        # If the source setting has changed since the last time this was run,
+        # get the code, from either a static release or a branch as specified
+        # by the souce setting, and install it.
         if backend.different('juju-gui-source'):
-            # Inject NPM packages into the cache for faster building.
-            self._prime_npm_cache()
-            # Build a release from the branch.
-            self._build_and_install_from_branch(backend.config)
-
-    def _prime_npm_cache(self):
-        # This is a separate method so it can be easily overridden for testing.
-        utils.prime_npm_cache(utils.get_npm_cache_archive_url())
-
-    def _build_and_install_from_branch(self, config):
-        # This is a separate method so it can be easily overridden for testing.
-        release_tarball = utils.fetch_gui(
-            config['juju-gui-source'], config['command-log-file'])
-        utils.setup_gui(release_tarball)
+            # Get a tarball somehow and install it.
+            release_tarball = utils.fetch_gui(
+                backend.config['juju-gui-source'],
+                backend.config['command-log-file'])
+            utils.setup_gui(release_tarball)
 
 
 class UpstartMixin(object):
