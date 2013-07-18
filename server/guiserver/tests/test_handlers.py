@@ -20,6 +20,7 @@ import os
 import shutil
 import tempfile
 
+import mock
 from tornado import (
     concurrent,
     web,
@@ -31,16 +32,20 @@ from tornado.testing import (
     LogTrapTestCase,
 )
 
-from guiserver import handlers
+from guiserver import (
+    clients,
+    handlers,
+)
 from guiserver.tests import helpers
 
 
 class TestWebSocketHandler(AsyncHTTPSTestCase, helpers.WSSTestMixin):
 
     def setUp(self):
-        self.echo_server_closed_future = concurrent.Future()
+
         super(TestWebSocketHandler, self).setUp()
         # Now that the app is set up, we can create the WebSocket client.
+
         self.client = helpers.WebSocketClient(
             self.get_wss_url('/ws'),
             lambda message: None,
@@ -54,27 +59,76 @@ class TestWebSocketHandler(AsyncHTTPSTestCase, helpers.WSSTestMixin):
         #   ws-client -> ws-server -> ws-forwarding-client -> ws-echo-server
         # Messages arriving to the echo server are returned back to the client:
         #   ws-echo-server -> ws-forwarding-client -> ws-server -> ws-client
+        self.echo_server_address = self.get_wss_url('/echo')
+        self.echo_server_closed_future = concurrent.Future()
         echo_options = {'close_future': self.echo_server_closed_future}
-        ws_options = {'jujuapi': self.get_wss_url('/echo')}
+        ws_options = {'jujuapi': self.echo_server_address}
         return web.Application([
             (r'/echo', helpers.EchoWebSocketHandler, echo_options),
             (r'/ws', handlers.WebSocketHandler, ws_options),
         ])
 
+    def make_client(self):
+        """Return a WebSocket client ready to be connected to the server."""
+        url = self.get_wss_url('/ws')
+        # The client callback is tested elsewhere.
+        callback = lambda message: None
+        return helpers.WebSocketClient(url, callback, io_loop=self.io_loop)
+
+    def make_handler(self):
+        """Create and return a WebSocketHandler instance."""
+        request = mock.Mock()
+        return handlers.WebSocketHandler(self.get_app(), request)
+
     @gen_test
-    def test_proxy(self):
+    def test_initialization(self):
+        # A WebSocket client is created and connected when the handler is
+        # initialized.
+        handler = self.make_handler()
+        yield handler.initialize(self.echo_server_address)
+        self.assertIsInstance(handler.jujuconn, clients.WebSocketClient)
+        self.assertTrue(handler.jujuconn.connected)
+
+    def test_client_callback(self):
+        # The WebSocket client is created passing the proper callback.
+        handler = self.make_handler()
+        with mock.patch('guiserver.handlers.WebSocketClient') as mock_client:
+            handler.initialize(self.echo_server_address)
+            mock_client.assert_called_once_with(
+                self.echo_server_address, handler.on_juju_message)
+
+    def test_from_browser_to_juju(self):
+        # A message from the browser is forwarded to the remote server.
+        handler = self.make_handler()
+        with mock.patch('guiserver.handlers.WebSocketClient'):
+            handler.initialize(self.echo_server_address)
+        handler.on_message('hello')
+        handler.jujuconn.write_message.assert_called_once_with('hello')
+
+    def test_from_juju_to_browser(self):
+        # A message from the remote server is returned to the browser.
+        handler = self.make_handler()
+        handler.initialize(self.echo_server_address)
+        with mock.patch('guiserver.handlers.WebSocketHandler.write_message'):
+            handler.on_juju_message('hello')
+            handler.write_message.assert_called_once_with('hello')
+
+    @gen_test
+    def test_end_to_end_proxy(self):
         # Messages are correctly forwarded from the client to the echo server
         # and back to the client.
-        yield self.client.connect()
-        message = yield self.client.send('hello')
+        client = self.make_client()
+        yield client.connect()
+        message = yield client.send('hello')
         self.assertEqual('hello', message)
 
     @gen_test
     def test_connection_close(self):
         # The proxy connection is terminated when the client disconnects.
-        yield self.client.connect()
-        yield self.client.close()
-        self.assertFalse(self.client.connected)
+        client = self.make_client()
+        yield client.connect()
+        yield client.close()
+        self.assertFalse(client.connected)
         yield self.echo_server_closed_future
 
 
