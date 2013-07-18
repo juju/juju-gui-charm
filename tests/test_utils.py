@@ -755,55 +755,6 @@ class TestNpmCache(unittest.TestCase):
         url = get_npm_cache_archive_url(Launchpad=FauxLaunchpadFactory())
         self.assertEqual(url, 'http://launchpad.example/path/to/cache/file')
 
-    def test_InstallMixin_primes_npm_cache(self):
-        # The InstallMixin.install() method primes the NPM cache before
-        # building (and installing) the GUI from a branch.
-        assertFalse = self.assertFalse
-        assertTrue = self.assertTrue
-
-        class TestableInstallMixin(InstallMixin):
-            """An InstallMixin that records actions instead of taking them."""
-            cache_primed = False
-            branch_installed = False
-
-            def _prime_npm_cache(self):
-                # The cache is primed before the branch is installed.
-                assertFalse(self.branch_installed)
-                self.cache_primed = True
-
-            def _build_and_install_from_branch(self, config):
-                # The cache is primed before the branch is installed.
-                assertTrue(self.cache_primed)
-                self.branch_installed = True
-
-        class FauxBackend(object):
-            """A test backend."""
-            config = None
-            debs = ('DEBS',)
-
-            @classmethod
-            def different(cls, key):
-                self.assertEqual(key, 'juju-gui-source')
-                return True
-
-        def faux_find_missing_packages(*debs):
-            self.assertEqual(('DEBS',), debs)
-            return False
-
-        mixin = TestableInstallMixin()
-        # Monkeypatch.
-        orig_find_missing_packages = utils.find_missing_packages
-        utils.find_missing_packages = faux_find_missing_packages
-        # Prior to "install" the NPM cache has not been primed.
-        self.assertFalse(mixin.cache_primed)
-        self.assertFalse(mixin.branch_installed)
-        mixin.install(FauxBackend())
-        # After "install" the NPM cache has been primed.
-        self.assertTrue(mixin.cache_primed)
-        self.assertTrue(mixin.branch_installed)
-        # Restore.
-        utils.find_missing_packages = orig_find_missing_packages
-
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
