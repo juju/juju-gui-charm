@@ -20,13 +20,65 @@ import os
 import shutil
 import tempfile
 
-from tornado import web
-from tornado.testing import AsyncHTTPTestCase
+from tornado import (
+    concurrent,
+    web,
+)
+from tornado.testing import (
+    AsyncHTTPTestCase,
+    AsyncHTTPSTestCase,
+    gen_test,
+    LogTrapTestCase,
+)
 
 from guiserver import handlers
+from guiserver.tests import helpers
 
 
-class TestIndexHandler(AsyncHTTPTestCase):
+class TestWebSocketHandler(AsyncHTTPSTestCase, helpers.WSSTestMixin):
+
+    def setUp(self):
+        self.echo_server_closed_future = concurrent.Future()
+        super(TestWebSocketHandler, self).setUp()
+        # Now that the app is set up, we can create the WebSocket client.
+        self.client = helpers.WebSocketClient(
+            self.get_wss_url('/ws'),
+            lambda message: None,
+            io_loop=self.io_loop)
+
+    def get_app(self):
+        # In this test case, the WebSocket server creates a new client on each
+        # request. This client should forward messages to a WebSocket echo
+        # server. In order to test the communication, another client is created
+        # and connected to the server, e.g.:
+        #   ws-client -> ws-server -> ws-forwarding-client -> ws-echo-server
+        # Messages arriving to the echo server are returned back to the client:
+        #   ws-echo-server -> ws-forwarding-client -> ws-server -> ws-client
+        echo_options = {'close_future': self.echo_server_closed_future}
+        ws_options = {'jujuapi': self.get_wss_url('/echo')}
+        return web.Application([
+            (r'/echo', helpers.EchoWebSocketHandler, echo_options),
+            (r'/ws', handlers.WebSocketHandler, ws_options),
+        ])
+
+    @gen_test
+    def test_proxy(self):
+        # Messages are correctly forwarded from the client to the echo server
+        # and back to the client.
+        yield self.client.connect()
+        message = yield self.client.send('hello')
+        self.assertEqual('hello', message)
+
+    @gen_test
+    def test_connection_close(self):
+        # The proxy connection is terminated when the client disconnects.
+        yield self.client.connect()
+        yield self.client.close()
+        self.assertFalse(self.client.connected)
+        yield self.echo_server_closed_future
+
+
+class TestIndexHandler(AsyncHTTPTestCase, LogTrapTestCase):
 
     def setUp(self):
         # Set up a static path with an index.html in it.
@@ -62,7 +114,7 @@ class TestIndexHandler(AsyncHTTPTestCase):
         self.ensure_index('/:flag:/activated/?my=query')
 
 
-class TestHttpsRedirectHandler(AsyncHTTPTestCase):
+class TestHttpsRedirectHandler(AsyncHTTPTestCase, LogTrapTestCase):
 
     def get_app(self):
         return web.Application([(r'.*', handlers.HttpsRedirectHandler)])

@@ -14,7 +14,12 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Juju GUI server entry point."""
+"""Juju GUI server entry point.
+
+Arguments example:
+    --guiroot="/var/lib/juju/agents/unit-juju-gui-0/charm/juju-gui/build-prod"
+    --jujuapi="wss://ec2-75-101-177-185.compute-1.example.com:17070"
+"""
 
 from guiserver import manage
 

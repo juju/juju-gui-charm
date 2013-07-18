@@ -20,6 +20,7 @@ import logging
 import os
 
 from tornado import (
+    gen,
     web,
     websocket,
 )
@@ -34,18 +35,14 @@ class WebSocketHandler(websocket.WebSocketHandler):
     Juju API server.
     """
 
-    def __init__(self, *args, **kwargs):
-        """Handler initializer.
-
-        When a new handler is instantiated a new WebSocket client is created
-        and connected to the Juju API server.
-        """
-        # Avoid module level import so that options can be properly set up.
-        from tornado.options import options
-        super(WebSocketHandler, self).__init__(*args, **kwargs)
+    @gen.coroutine
+    def initialize(self, jujuapi):
+        """Create a new WebSocket client and connect it to the Juju API."""
+        self.jujuapi = jujuapi
         logging.debug('ws server: connecting to juju')
-        self.jujuconn = WebSocketClient(options.jujuapi, self.on_juju_message)
-        self.jujuconn.connect()
+        self.jujuconn = WebSocketClient(self.jujuapi, self.on_juju_message)
+        yield self.jujuconn.connect()
+        logging.debug('ws server: connected to juju')
 
     def on_message(self, message):
         """Hook called when a new message is received from the browser.
@@ -63,10 +60,11 @@ class WebSocketHandler(websocket.WebSocketHandler):
         logging.debug('ws server: juju --> browser: {}'.format(message))
         self.write_message(message)
 
+    @gen.coroutine
     def on_close(self):
         """Hook called when the WebSocket connection is terminated."""
         logging.debug('ws server: connection closed')
-        self.jujuconn.close_connection()
+        yield self.jujuconn.close()
         self.jujuconn = None
 
 

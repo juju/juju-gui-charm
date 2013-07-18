@@ -19,6 +19,7 @@
 from collections import deque
 import logging
 
+from tornado.concurrent import Future
 from ws4py.client import tornadoclient
 
 
@@ -35,33 +36,31 @@ class WebSocketClient(tornadoclient.TornadoWebSocketClient):
         """
         super(WebSocketClient, self).__init__(url, *args, **kwargs)
         self.connected = False
+        self._connected_future = Future()
+        self._closed_future = Future()
         self._queue = deque()
         self._on_message_received = on_message_received
+
+    def connect(self, *args, **kwargs):
+        super(WebSocketClient, self).connect(*args, **kwargs)
+        return self._connected_future
 
     def opened(self):
         """Hook called when the connection is initially established."""
         logging.debug('ws client: connected')
+        self._connected_future.set_result(None)
         self.connected = True
+        # Send all the messages in the queue.
         queue = self._queue
         while self.connected and len(queue):
             self.send(queue.popleft())
 
-    def received_message(self, message):
-        """Hook called when a new message is received."""
-        logging.debug('ws client: received message: {}'.format(message))
-        self._on_message_received(message.data)
-
     def send(self, message, *args, **kwargs):
-        """Send a message on the WebSocket connection."""
-        logging.debug('ws client: send message: {}'.format(message))
-        # FIXME: why do we have to redefine self.sock here?
+        """Override to fix the socket problem."""
+        # FIXME: find a way to avoid redifining self.sock here.
         self.sock = self.io.socket
+        logging.debug('ws client: send message: {}'.format(message))
         super(WebSocketClient, self).send(message, *args, **kwargs)
-
-    def closed(self, code, reason=None):
-        """Hook called when the connection is terminated."""
-        logging.debug('ws client: closed ({})'.format(code))
-        self.connected = False
 
     def write_message(self, message):
         """Send a message on the WebSocket connection.
@@ -70,9 +69,29 @@ class WebSocketClient(tornadoclient.TornadoWebSocketClient):
         established are queued for later delivery.
         """
         if self.connected:
+            logging.debug('ws client: send message: {}'.format(message))
             return self.send(message)
         logging.debug('ws client: queue message: {}'.format(message))
         self._queue.append(message)
+
+    def received_message(self, message):
+        """Hook called when a new message is received."""
+        logging.debug('ws client: received message: {}'.format(message))
+        self._on_message_received(message.data)
+
+    def close(self, *args, **kwargs):
+        # FIXME: find a way to avoid redifining self.sock here.
+        self.sock = self.io.socket
+        super(WebSocketClient, self).close(*args, **kwargs)
+        return self._closed_future
+
+    def closed(self, code, reason=None):
+        """Hook called when the connection is terminated."""
+        logging.debug('ws client: closed ({})'.format(code))
+        # FIXME: closed should be called only once.
+        if not self._closed_future.done():
+            self._closed_future.set_result(None)
+        self.connected = False
 
     def _cleanup(self, *args, **kwargs):
         # FIXME: this seems clearly an error in ws4py.

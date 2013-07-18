@@ -31,15 +31,16 @@ def server():
     """
     # Avoid module level import so that options can be properly set up.
     from tornado.options import options
-    static_path = os.path.join(options.guiroot, 'juju-ui')
+    guiroot = options.guiroot
+    static_path = os.path.join(guiroot, 'juju-ui')
     return web.Application([
         # Handle WebSocket connections.
-        (r'/ws', handlers.WebSocketHandler),
+        (r'^/ws$', handlers.WebSocketHandler, {'jujuapi': options.jujuapi}),
         # Handle static files.
-        (r'/juju-ui/(.*)', web.StaticFileHandler, {'path': static_path}),
-        (r'/(favicon\.ico)', web.StaticFileHandler, {'path': options.guiroot}),
+        (r'^/juju-ui/(.*)', web.StaticFileHandler, {'path': static_path}),
+        (r'^/(favicon\.ico)$', web.StaticFileHandler, {'path': guiroot}),
         # Any other path is served by index.html.
-        (r'/(.*)', handlers.IndexHandler, {'path': options.guiroot}),
+        (r'^/(.*)', handlers.IndexHandler, {'path': guiroot}),
     ], debug=options.debug)
 
 
