@@ -33,6 +33,9 @@ class WebSocketClient(tornadoclient.TornadoWebSocketClient):
           - url: the WebSocket URL to use for the connection;
           - on_message_received: a callback that will be called each time a
             new message is received by the client.
+
+        It also accepts all the args and kwargs accepted by
+        ws4py.client.tornadoclient.TornadoWebSocketClient.
         """
         super(WebSocketClient, self).__init__(url, *args, **kwargs)
         self.connected = False
@@ -58,7 +61,7 @@ class WebSocketClient(tornadoclient.TornadoWebSocketClient):
 
     def send(self, message, *args, **kwargs):
         """Override to fix the socket problem."""
-        # FIXME: find a way to avoid redifining self.sock here.
+        # FIXME: find a way to avoid redefining self.sock here.
         self.sock = self.io.socket
         logging.debug('ws client: send message: {}'.format(message))
         super(WebSocketClient, self).send(message, *args, **kwargs)
@@ -81,7 +84,7 @@ class WebSocketClient(tornadoclient.TornadoWebSocketClient):
         self._on_message_received(message.data)
 
     def close(self, *args, **kwargs):
-        # FIXME: find a way to avoid redifining self.sock here.
+        # FIXME: find a way to avoid redefining self.sock here.
         self.sock = self.io.socket
         super(WebSocketClient, self).close(*args, **kwargs)
         return self._closed_future
@@ -95,5 +98,7 @@ class WebSocketClient(tornadoclient.TornadoWebSocketClient):
         self.connected = False
 
     def _cleanup(self, *args, **kwargs):
-        # FIXME: this seems clearly an error in ws4py.
+        # FIXME: this seems clearly an error in ws4py. The internal
+        # TornadoWebSocketClient.__stream_closed method calls an undefined
+        # self._cleanup().
         pass

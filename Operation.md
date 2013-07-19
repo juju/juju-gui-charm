@@ -19,7 +19,7 @@ the charm.
 
 The server directly serves static files to the browser, including
 images, HTML, CSS and JavaScript files via an HTTPS connection to port
-443. HTTP connections to the 80 port are redirected to the former one.
+443. HTTP connections to port 80 are redirected to the former one.
 All other URLs serve the common `index.html` file.
 
 It also acts as a proxy between the browser and the Juju API server that

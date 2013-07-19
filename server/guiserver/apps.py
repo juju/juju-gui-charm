@@ -19,6 +19,7 @@
 import os
 
 from tornado import web
+from tornado.options import options
 
 from guiserver import handlers
 
@@ -29,8 +30,6 @@ def server():
     The server app is responsible for serving the WebSocket connection, the
     Juju GUI static files and the main index file for dynamic URLs.
     """
-    # Avoid module level import so that options can be properly set up.
-    from tornado.options import options
     guiroot = options.guiroot
     static_path = os.path.join(guiroot, 'juju-ui')
     return web.Application([
@@ -49,8 +48,6 @@ def redirector():
 
     The redirector app is responsible for redirecting HTTP traffic to HTTPS.
     """
-    # Avoid module level import so that options can be properly set up.
-    from tornado.options import options
     return web.Application([
         # Redirect all HTTP traffic to HTTPS.
         (r'.*', handlers.HttpsRedirectHandler),

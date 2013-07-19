@@ -25,7 +25,7 @@ JavaScript files via an HTTPS connection to port 443. HTTP connections to port
 `index.html` file.
 
 It also acts as a proxy between the browser and the Juju API server that
-performs the actual orchestration work. Both browser-server and server- Juju
+performs the actual orchestration work. Both browser-server and server-Juju
 connections are bidirectional, using the WebSocket protocol on the same port as
 the HTTPS connection, allowing changes in the Juju environment to be propagated
 and shown immediately by the browser. """
