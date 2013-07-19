@@ -13,7 +13,8 @@ This charm makes it easy to deploy a Juju GUI into an existing environment.
 
 ## Supported Browsers ##
 
-The Juju GUI supports recent releases of Chrome, Chromium and Firefox.
+The Juju GUI supports recent releases of the Chrome, Chromium and Firefox web
+browsers.
 
 ## Demo/Staging Server ##
 

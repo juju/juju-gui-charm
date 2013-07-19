@@ -1,8 +1,6 @@
-# Juju GUI test requirements.
-
 # This file is part of the Juju GUI, which lets users view and manage Juju
 # environments within a graphical interface (https://launchpad.net/juju-gui).
-# Copyright (C) 2012-2013 Canonical Ltd.
+# Copyright (C) 2013 Canonical Ltd.
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU Affero General Public License version 3, as published by
@@ -16,15 +14,23 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
--e bzr+http://launchpad.net/charm-tools#egg=charm-tools
-flake8==2.0
-launchpadlib==1.10.2
-mock==1.0.1
-python-apt==0.8.5
--e bzr+http://launchpad.net/python-shelltoolbox#egg=python-shelltoolbox
-PyYAML==3.10
-selenium==2.33.0
-Tempita==0.5.1
-tornado==3.1
-ws4py==0.3.0-beta
-xvfbwrapper==0.2.2
+
+"""Juju GUI server test suite entry point."""
+
+import os
+import unittest
+
+from tornado import testing
+
+
+def all():
+    """This is required by the Tornado test runner.
+
+    See <http://www.tornadoweb.org/en/stable/testing.html#test-runner>.
+    """
+    path = os.path.dirname(__file__)
+    return unittest.defaultTestLoader.discover(path)
+
+
+if __name__ == '__main__':
+    testing.main(verbosity=2)

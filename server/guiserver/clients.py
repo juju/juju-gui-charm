@@ -1,0 +1,104 @@
+# This file is part of the Juju GUI, which lets users view and manage Juju
+# environments within a graphical interface (https://launchpad.net/juju-gui).
+# Copyright (C) 2013 Canonical Ltd.
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License version 3, as published by
+# the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranties of MERCHANTABILITY,
+# SATISFACTORY QUALITY, or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""Juju GUI server websocket clients."""
+
+from collections import deque
+import logging
+
+from tornado.concurrent import Future
+from ws4py.client import tornadoclient
+
+
+class WebSocketClient(tornadoclient.TornadoWebSocketClient):
+    """WebSocket client implementation supporting secure WebSockets."""
+
+    def __init__(self, url, on_message_received, *args, **kwargs):
+        """Client initializer.
+
+        The WebSocket client receives two arguments:
+          - url: the WebSocket URL to use for the connection;
+          - on_message_received: a callback that will be called each time a
+            new message is received by the client.
+
+        It also accepts all the args and kwargs accepted by
+        ws4py.client.tornadoclient.TornadoWebSocketClient.
+        """
+        super(WebSocketClient, self).__init__(url, *args, **kwargs)
+        self.connected = False
+        self._connected_future = Future()
+        self._closed_future = Future()
+        self._queue = deque()
+        self._on_message_received = on_message_received
+
+    def connect(self, *args, **kwargs):
+        super(WebSocketClient, self).connect(*args, **kwargs)
+        return self._connected_future
+
+    def opened(self):
+        """Hook called when the connection is initially established."""
+        logging.debug('ws client: connected')
+        self._connected_future.set_result(None)
+        self.connected = True
+        # Send all the messages that have been enqueued before the connection
+        # was established.
+        queue = self._queue
+        while self.connected and len(queue):
+            self.send(queue.popleft())
+
+    def send(self, message, *args, **kwargs):
+        """Override to fix the socket problem."""
+        # FIXME: find a way to avoid redefining self.sock here.
+        self.sock = self.io.socket
+        logging.debug('ws client: send message: {}'.format(message))
+        super(WebSocketClient, self).send(message, *args, **kwargs)
+
+    def write_message(self, message):
+        """Send a message on the WebSocket connection.
+
+        Wrap self.send so that messages sent before the connection is
+        established are queued for later delivery.
+        """
+        if self.connected:
+            logging.debug('ws client: send message: {}'.format(message))
+            return self.send(message)
+        logging.debug('ws client: queue message: {}'.format(message))
+        self._queue.append(message)
+
+    def received_message(self, message):
+        """Hook called when a new message is received."""
+        logging.debug('ws client: received message: {}'.format(message))
+        self._on_message_received(message.data)
+
+    def close(self, *args, **kwargs):
+        # FIXME: find a way to avoid redefining self.sock here.
+        self.sock = self.io.socket
+        super(WebSocketClient, self).close(*args, **kwargs)
+        return self._closed_future
+
+    def closed(self, code, reason=None):
+        """Hook called when the connection is terminated."""
+        logging.debug('ws client: closed ({})'.format(code))
+        # FIXME: closed should be called only once.
+        if not self._closed_future.done():
+            self._closed_future.set_result(None)
+        self.connected = False
+
+    def _cleanup(self, *args, **kwargs):
+        # FIXME: this seems clearly an error in ws4py. The internal
+        # TornadoWebSocketClient.__stream_closed method calls an undefined
+        # self._cleanup().
+        pass
