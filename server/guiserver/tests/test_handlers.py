@@ -41,6 +41,18 @@ from guiserver.tests import helpers
 
 class TestWebSocketHandler(AsyncHTTPSTestCase, helpers.WSSTestMixin):
 
+    # TODO: test queue messages.
+    # @gen_test
+    # def __test_queued_messages(self):
+    #     # Messages sent before the connection is established are preserved
+    #     # and sent right after the connection is opened.
+    #     self.client.write_message('hello')
+    #     yield self.client.connect()
+    #     yield self.client.write_message('world')
+    #     yield self.client.close()
+    #     self.assertEqual(['hello', 'world'], self.received)
+    # TODO: review all those tests.
+
     def get_app(self):
         # In this test case a WebSocket server is created. The server creates a
         # new client on each request. This client should forward messages to a
@@ -51,8 +63,14 @@ class TestWebSocketHandler(AsyncHTTPSTestCase, helpers.WSSTestMixin):
         #   ws-echo-server -> ws-forwarding-client -> ws-server -> ws-client
         self.echo_server_address = self.get_wss_url('/echo')
         self.echo_server_closed_future = concurrent.Future()
-        echo_options = {'close_future': self.echo_server_closed_future}
-        ws_options = {'jujuapi': self.echo_server_address}
+        echo_options = {
+            'close_future': self.echo_server_closed_future,
+            'io_loop': self.io_loop,
+        }
+        ws_options = {
+            'jujuapi': self.echo_server_address,
+            'io_loop': self.io_loop,
+        }
         return web.Application([
             (r'/echo', helpers.EchoWebSocketHandler, echo_options),
             (r'/ws', handlers.WebSocketHandler, ws_options),
@@ -63,7 +81,7 @@ class TestWebSocketHandler(AsyncHTTPSTestCase, helpers.WSSTestMixin):
         url = self.get_wss_url('/ws')
         # The client callback is tested elsewhere.
         callback = lambda message: None
-        return helpers.WebSocketClient(url, callback, io_loop=self.io_loop)
+        return clients.websocket_connect(url, callback, self.io_loop)
 
     def make_handler(self):
         """Create and return a WebSocketHandler instance."""
@@ -75,25 +93,39 @@ class TestWebSocketHandler(AsyncHTTPSTestCase, helpers.WSSTestMixin):
         # A WebSocket client is created and connected when the handler is
         # initialized.
         handler = self.make_handler()
-        yield handler.initialize(self.echo_server_address)
-        self.assertIsInstance(handler.jujuconn, clients.WebSocketClient)
-        self.assertTrue(handler.jujuconn.connected)
+        yield handler.initialize(self.echo_server_address, self.io_loop)
+        self.assertTrue(handler.connected)
+        self.assertTrue(handler.juju_connected)
+        self.assertIsInstance(
+            handler.juju_connection, clients.WebSocketClientConnection)
+        self.assertEqual(
+            self.get_url('/echo'), handler.juju_connection.request.url)
+        self.assertTrue(handler.juju_connected)
 
-    def test_client_callback(self):
-        # The WebSocket client is created passing the proper callback.
+    @gen_test
+    def test_juju_connection_request_headers(self):
+        # The Origin header is included in the client connection handshake.
         handler = self.make_handler()
-        with mock.patch('guiserver.handlers.WebSocketClient') as mock_client:
-            handler.initialize(self.echo_server_address)
-            mock_client.assert_called_once_with(
-                self.echo_server_address, handler.on_juju_message)
+        yield handler.initialize(self.echo_server_address, self.io_loop)
+        self.assertIn('Origin', handler.juju_connection.request.headers)
 
-    def test_from_browser_to_juju(self):
+    @mock.patch('guiserver.handlers.websocket_connect')
+    def test_client_callback(self, mock_websocket_connect):
+        # The WebSocket client is created passing the proper arguments.
+        handler = self.make_handler()
+        handler.initialize(self.echo_server_address)
+        mock_websocket_connect.assert_called_once_with(
+            self.echo_server_address, handler.on_juju_message,
+            # TODO: real origin.
+            self.io_loop, headers={'Origin': 'https://example.com'})
+
+    @mock.patch('guiserver.clients.WebSocketClientConnection')
+    def test_from_browser_to_juju(self, mock_juju_connection):
         # A message from the browser is forwarded to the remote server.
         handler = self.make_handler()
-        with mock.patch('guiserver.handlers.WebSocketClient'):
-            handler.initialize(self.echo_server_address)
+        handler.initialize(self.echo_server_address,)
         handler.on_message('hello')
-        handler.jujuconn.write_message.assert_called_once_with('hello')
+        mock_juju_connection.write_message.assert_called_once_with('hello')
 
     def test_from_juju_to_browser(self):
         # A message from the remote server is returned to the browser.
@@ -107,19 +139,26 @@ class TestWebSocketHandler(AsyncHTTPSTestCase, helpers.WSSTestMixin):
     def test_end_to_end_proxy(self):
         # Messages are correctly forwarded from the client to the echo server
         # and back to the client.
-        client = self.make_client()
-        yield client.connect()
-        message = yield client.send('hello')
-        self.assertEqual('hello', message)
+        client = yield self.make_client()
+        client.write_message('boomerang')
+        message = yield client.read_message()
+        self.assertEqual('boomerang', message)
 
     @gen_test
-    def test_connection_close(self):
+    def test_connection_closed_by_client(self):
         # The proxy connection is terminated when the client disconnects.
-        client = self.make_client()
-        yield client.connect()
+        client = yield self.make_client()
         yield client.close()
-        self.assertFalse(client.connected)
         yield self.echo_server_closed_future
+
+    @gen_test
+    def test_connection_closed_by_server(self):
+        # The proxy connection is terminated when the server disconnects.
+        client = yield self.make_client()
+        # Fire the future in order to force an echo server disconnection.
+        self.echo_server_closed_future.set_result(None)
+        message = yield client.read_message()
+        self.assertIsNone(message)
 
 
 class TestIndexHandler(AsyncHTTPTestCase, LogTrapTestCase):

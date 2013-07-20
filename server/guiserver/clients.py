@@ -16,89 +16,67 @@
 
 """Juju GUI server websocket clients."""
 
-from collections import deque
-import logging
+from tornado import (
+    concurrent,
+    httpclient,
+    websocket,
+)
 
-from tornado.concurrent import Future
-from ws4py.client import tornadoclient
+
+def websocket_connect(
+        url, on_message_callback, io_loop, headers=None):
+    """Websocket client connection factory.
+
+    The client factory receives the following arguments:
+        - url: the WebSocket URL to use for the connection;
+        - on_message_callback: a callback that will be called each time
+          a new message is received by the client;
+        - io_loop: the Tornado IO loop instance;
+        - headers (optional): a dict of additional headers to include in the
+          client handshake.
+
+    Return a future whose result is a WebSocketClient.
+    """
+    request = httpclient.HTTPRequest(
+        url, validate_cert=False, request_timeout=100)
+    if headers is not None:
+        request.headers.update(headers)
+    conn = WebSocketClientConnection(io_loop, request, on_message_callback)
+    return conn.connect_future
 
 
-class WebSocketClient(tornadoclient.TornadoWebSocketClient):
-    """WebSocket client implementation supporting secure WebSockets."""
+class WebSocketClientConnection(websocket.WebSocketClientConnection):
+    """WebSocket client connection supporting secure WebSockets."""
 
-    def __init__(self, url, on_message_received, *args, **kwargs):
+    def __init__(
+            self, io_loop, request, on_message_callback):
         """Client initializer.
 
-        The WebSocket client receives two arguments:
-          - url: the WebSocket URL to use for the connection;
-          - on_message_received: a callback that will be called each time a
-            new message is received by the client.
-
-        It also accepts all the args and kwargs accepted by
-        ws4py.client.tornadoclient.TornadoWebSocketClient.
+        The WebSocket client receives all the arguments accepted by
+        websocket.WebSocketClientConnection and a callback that will be called
+        each time a new message is received by the client.
         """
-        super(WebSocketClient, self).__init__(url, *args, **kwargs)
-        self.connected = False
-        self._connected_future = Future()
-        self._closed_future = Future()
-        self._queue = deque()
-        self._on_message_received = on_message_received
+        super(WebSocketClientConnection, self).__init__(io_loop, request)
+        self._on_message_callback = on_message_callback
+        self.close_future = concurrent.Future()
 
-    def connect(self, *args, **kwargs):
-        super(WebSocketClient, self).connect(*args, **kwargs)
-        return self._connected_future
+    def on_message(self, message):
+        """Hook called when a new message is received.
 
-    def opened(self):
-        """Hook called when the connection is initially established."""
-        logging.debug('ws client: connected')
-        self._connected_future.set_result(None)
-        self.connected = True
-        # Send all the messages that have been enqueued before the connection
-        # was established.
-        queue = self._queue
-        while self.connected and len(queue):
-            self.send(queue.popleft())
-
-    def send(self, message, *args, **kwargs):
-        """Override to fix the socket problem."""
-        # FIXME: find a way to avoid redefining self.sock here.
-        self.sock = self.io.socket
-        logging.debug('ws client: send message: {}'.format(message))
-        super(WebSocketClient, self).send(message, *args, **kwargs)
-
-    def write_message(self, message):
-        """Send a message on the WebSocket connection.
-
-        Wrap self.send so that messages sent before the connection is
-        established are queued for later delivery.
+        The on_message_callback is called passing the message.
         """
-        if self.connected:
-            logging.debug('ws client: send message: {}'.format(message))
-            return self.send(message)
-        logging.debug('ws client: queue message: {}'.format(message))
-        self._queue.append(message)
+        super(WebSocketClientConnection, self).on_message(message)
+        self._on_message_callback(message)
 
-    def received_message(self, message):
-        """Hook called when a new message is received."""
-        logging.debug('ws client: received message: {}'.format(message))
-        self._on_message_received(message.data)
+    def close(self):
+        """Close the client connection.
 
-    def close(self, *args, **kwargs):
-        # FIXME: find a way to avoid redefining self.sock here.
-        self.sock = self.io.socket
-        super(WebSocketClient, self).close(*args, **kwargs)
-        return self._closed_future
+        Return a future that is fired when the connection is terminated.
+        """
+        self.stream.close()
+        return self.close_future
 
-    def closed(self, code, reason=None):
-        """Hook called when the connection is terminated."""
-        logging.debug('ws client: closed ({})'.format(code))
-        # FIXME: closed should be called only once.
-        if not self._closed_future.done():
-            self._closed_future.set_result(None)
-        self.connected = False
-
-    def _cleanup(self, *args, **kwargs):
-        # FIXME: this seems clearly an error in ws4py. The internal
-        # TornadoWebSocketClient.__stream_closed method calls an undefined
-        # self._cleanup().
-        pass
+    def _on_close(self):
+        """Fire the close_future and send a None message."""
+        super(WebSocketClientConnection, self)._on_close()
+        self.close_future.set_result(None)

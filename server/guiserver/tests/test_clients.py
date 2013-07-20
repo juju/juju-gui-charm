@@ -25,62 +25,69 @@ from tornado.testing import (
     gen_test,
 )
 
+from guiserver import clients
 from guiserver.tests import helpers
 
 
 class TestWebSocketClient(AsyncHTTPSTestCase, helpers.WSSTestMixin):
 
-    def setUp(self):
-        self.received = []
-        self.server_closed_future = concurrent.Future()
-        super(TestWebSocketClient, self).setUp()
-        # Now that the app is set up, we can create the WebSocket client.
-        self.client = helpers.WebSocketClient(
-            self.get_wss_url('/'), self.received.append, io_loop=self.io_loop)
-
     def get_app(self):
         # In this test case the WebSocket client is connected to a WebSocket
         # echo server returning received messages.
-        options = {'close_future': self.server_closed_future}
+        self.received = []
+        self.server_closed_future = concurrent.Future()
+        options = {
+            'close_future': self.server_closed_future,
+            'io_loop': self.io_loop,
+        }
         return web.Application([(r'/', helpers.EchoWebSocketHandler, options)])
+
+    def connect(self):
+        """Return a future whose result is a connected client."""
+        return clients.websocket_connect(
+            self.get_wss_url('/'), self.received.append, self.io_loop,
+            headers={'Origin': self.get_url('/')})
 
     @gen_test
     def test_initial_connection(self):
         # The client correctly establishes a connection to the server.
-        yield self.client.connect()
-        self.assertTrue(self.client.connected)
+        yield self.connect()
 
     @gen_test
     def test_send_receive(self):
         # The client correctly sends and receives messages on the secure
         # WebSocket connection.
-        yield self.client.connect()
-        message = yield self.client.write_message('hello')
+        client = yield self.connect()
+        client.write_message('hello')
+        message = yield client.read_message()
         self.assertEqual('hello', message)
 
     @gen_test
     def test_callback(self):
         # The client executes the given callback each time a message is
         # received.
-        yield self.client.connect()
-        yield self.client.write_message('hello')
-        yield self.client.write_message('world')
+        client = yield self.connect()
+        client.write_message('hello')
+        client.write_message('world')
+        # Read the two messages.
+        yield client.read_message()
+        yield client.read_message()
+        # Ensure the provided callback has been called both times.
         self.assertEqual(['hello', 'world'], self.received)
 
     @gen_test
-    def test_queued_messages(self):
-        # Messages sent before the connection is established are preserved and
-        # sent right after the connection is opened.
-        self.client.write_message('hello')
-        yield self.client.connect()
-        yield self.client.write_message('world')
-        yield self.client.close()
-        self.assertEqual(['hello', 'world'], self.received)
+    def test_customized_headers(self):
+        # Customized headers can be passed when connecting the WebSocket.
+        client = yield self.connect()
+        headers = client.request.headers
+        self.assertIn('Origin', headers)
+        self.assertEqual(self.get_url('/'), headers['Origin'])
 
     @gen_test
     def test_connection_close(self):
         # The client connection is correctly terminated.
-        yield self.client.connect()
-        yield self.client.close()
-        self.assertFalse(self.client.connected)
+        client = yield self.connect()
+        yield client.close()
+        message = yield client.read_message()
+        self.assertIsNone(message)
         yield self.server_closed_future

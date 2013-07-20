@@ -16,46 +16,37 @@
 
 """Juju GUI server test utilities."""
 
-from tornado import (
-    concurrent,
-    websocket,
-)
-
-from guiserver import clients
+from tornado import websocket
 
 
 class EchoWebSocketHandler(websocket.WebSocketHandler):
     """A WebSocket server echoing back messages."""
 
-    def initialize(self, close_future):
-        """The given future will be fired when the connection is terminated."""
+    def initialize(self, close_future, io_loop):
+        """Echo WebSocket server initializer.
+
+        The handler receives a close future and the current Tornado IO loop.
+        The close future is fired when the connection is closed.
+        The close future can also be used to force a connection termination by
+        manually firing it.
+        """
         self._closed_future = close_future
+        self._connected = True
+        io_loop.add_future(close_future, self.force_close)
+
+    def force_close(self, future):
+        if self._connected:
+            self.close()
 
     def on_message(self, message):
+        """Echo back the received message."""
         self.write_message(message, isinstance(message, bytes))
 
     def on_close(self):
-        self._closed_future.set_result(None)
-
-
-class WebSocketClient(clients.WebSocketClient):
-    """Used to test the guiserver.clients.WebSocketClient."""
-
-    _message_received_future = None
-
-    def send(self, *args, **kwargs):
-        super(WebSocketClient, self).send(*args, **kwargs)
-        self._message_received_future = concurrent.Future()
-        return self._message_received_future
-
-    def write_message(self, *args, **kwargs):
-        super(WebSocketClient, self).write_message(*args, **kwargs)
-        self._message_received_future = concurrent.Future()
-        return self._message_received_future
-
-    def received_message(self, message, *args, **kwargs):
-        super(WebSocketClient, self).received_message(message, *args, **kwargs)
-        self._message_received_future.set_result(message.data)
+        """Fire the _closed_future if not already done."""
+        self._connected = False
+        if not self._closed_future.done():
+            self._closed_future.set_result(None)
 
 
 class WSSTestMixin(object):

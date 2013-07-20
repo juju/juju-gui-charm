@@ -16,6 +16,7 @@
 
 """Juju GUI server HTTP/HTTPS handlers."""
 
+from collections import deque
 import logging
 import os
 
@@ -24,8 +25,9 @@ from tornado import (
     web,
     websocket,
 )
+from tornado.ioloop import IOLoop
 
-from guiserver.clients import WebSocketClient
+from guiserver.clients import websocket_connect
 
 
 class WebSocketHandler(websocket.WebSocketHandler):
@@ -35,36 +37,81 @@ class WebSocketHandler(websocket.WebSocketHandler):
     Juju API server.
     """
 
+    # TODO: client information in logging, see static handler.
+
     @gen.coroutine
-    def initialize(self, jujuapi):
+    def initialize(self, jujuapi, io_loop=None):
         """Create a new WebSocket client and connect it to the Juju API."""
-        logging.debug('ws server: connecting to juju')
-        self.jujuconn = WebSocketClient(jujuapi, self.on_juju_message)
-        yield self.jujuconn.connect()
-        logging.debug('ws server: connected to juju')
+        logging.info('ws server: client connected')
+        logging.info(self.request.headers.get('Origin'))
+        self._io_loop = io_loop or IOLoop.current()
+        self.connected = True
+        self.juju_connected = False
+        self._juju_message_queue = queue = deque()
+        # Juju requires the Origin header to be included in the WebSocket
+        # client handshake request. Propagate the client origin if present;
+        # use the Juju API server as origin otherwise.
+        # TODO: origin in a function.
+        headers = {'Origin': self.request.headers.get('Origin', 'https://example.com')}
+        # TODO: handle connection errors.
+        self._juju_connected_future = websocket_connect(
+            jujuapi, self.on_juju_message, self._io_loop, headers=headers)
+        self.juju_connection = yield self._juju_connected_future
+        self.juju_connected = True
+        logging.info('ws server: Juju API connected')
+        # Send all the messages that have been enqueued before the connection
+        # to the Juju API server was established.
+        while self.connected and self.juju_connected and len(queue):
+            message = queue.popleft()
+            logging.debug('ws server: queue --> juju: {}'.format(message))
+            self.juju_connection.write_message(message)
 
     def on_message(self, message):
         """Hook called when a new message is received from the browser.
 
         The message is propagated to the Juju API server.
+        Messages sent before the client connection to the Juju API server is
+        established are queued for later delivery.
         """
-        logging.debug('ws server: browser --> juju: {}'.format(message))
-        self.jujuconn.write_message(message)
+        if self.juju_connected:
+            logging.debug('ws server: browser --> juju: {}'.format(message))
+            return self.juju_connection.write_message(message)
+        logging.debug('ws server: queue message: {}'.format(message))
+        self._juju_message_queue.append(message)
 
     def on_juju_message(self, message):
         """Hook called when a new message is received from the Juju API server.
 
         The message is propagated to the browser.
         """
-        logging.debug('ws server: juju --> browser: {}'.format(message))
-        self.write_message(message)
+        if message is None:
+            return self.on_juju_close()
+        else:
+            logging.debug('ws server: juju --> browser: {}'.format(message))
+            self.write_message(message)
 
-    @gen.coroutine
     def on_close(self):
         """Hook called when the WebSocket connection is terminated."""
-        logging.debug('ws server: connection closed')
-        yield self.jujuconn.close()
-        self.jujuconn = None
+        logging.info('ws server: browser connection closed')
+        self.connected = False
+        # At this point the WebSocket client connection to the Juju API server
+        # could be not yet established. For this reason the connection is
+        # terminated adding a callback to the future.
+        callback = lambda _: self.juju_connection.close()
+        self._io_loop.add_future(self._juju_connected_future, callback)
+
+    def on_juju_close(self):
+        """Hook called when the WebSocket connection to Juju is terminated."""
+        logging.info('ws server: Juju API connection closed')
+        self.juju_connected = False
+        self.juju_connection = None
+        # Usually the Juju API connection is terminated as a consequence of a
+        # browser disconnection. The current browser connection is closed if
+        # instead the browser is still connected. This should not happen and
+        # it's worth of printing an error in the log.
+        if self.connected:
+            logging.error('ws server: Juju API unexpectedly disconnected')
+            self.close()
 
 
 class IndexHandler(web.StaticFileHandler):
