@@ -35,6 +35,7 @@ class EchoWebSocketHandler(websocket.WebSocketHandler):
         io_loop.add_future(close_future, self.force_close)
 
     def force_close(self, future):
+        """Close the connection to the client."""
         if self._connected:
             self.close()
 

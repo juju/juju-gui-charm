@@ -29,7 +29,7 @@ from guiserver import clients
 from guiserver.tests import helpers
 
 
-class TestWebSocketClient(AsyncHTTPSTestCase, helpers.WSSTestMixin):
+class TestWebSocketClientConnection(AsyncHTTPSTestCase, helpers.WSSTestMixin):
 
     def get_app(self):
         # In this test case the WebSocket client is connected to a WebSocket
@@ -42,11 +42,11 @@ class TestWebSocketClient(AsyncHTTPSTestCase, helpers.WSSTestMixin):
         }
         return web.Application([(r'/', helpers.EchoWebSocketHandler, options)])
 
-    def connect(self):
+    def connect(self, headers=None):
         """Return a future whose result is a connected client."""
         return clients.websocket_connect(
-            self.get_wss_url('/'), self.received.append, self.io_loop,
-            headers={'Origin': self.get_url('/')})
+            self.io_loop, self.get_wss_url('/'), self.received.append,
+            headers=headers)
 
     @gen_test
     def test_initial_connection(self):
@@ -78,10 +78,11 @@ class TestWebSocketClient(AsyncHTTPSTestCase, helpers.WSSTestMixin):
     @gen_test
     def test_customized_headers(self):
         # Customized headers can be passed when connecting the WebSocket.
-        client = yield self.connect()
+        origin = self.get_url('/')
+        client = yield self.connect(headers={'Origin': origin})
         headers = client.request.headers
         self.assertIn('Origin', headers)
-        self.assertEqual(self.get_url('/'), headers['Origin'])
+        self.assertEqual(origin, headers['Origin'])
 
     @gen_test
     def test_connection_close(self):

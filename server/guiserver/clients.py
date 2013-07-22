@@ -24,18 +24,18 @@ from tornado import (
 
 
 def websocket_connect(
-        url, on_message_callback, io_loop, headers=None):
-    """Websocket client connection factory.
+        io_loop, url, on_message_callback, headers=None):
+    """WebSocket client connection factory.
 
     The client factory receives the following arguments:
+        - io_loop: the Tornado IO loop instance;
         - url: the WebSocket URL to use for the connection;
         - on_message_callback: a callback that will be called each time
           a new message is received by the client;
-        - io_loop: the Tornado IO loop instance;
         - headers (optional): a dict of additional headers to include in the
           client handshake.
 
-    Return a future whose result is a WebSocketClient.
+    Return a future whose result is a WebSocketClientConnection.
     """
     request = httpclient.HTTPRequest(
         url, validate_cert=False, request_timeout=100)
@@ -46,15 +46,19 @@ def websocket_connect(
 
 
 class WebSocketClientConnection(websocket.WebSocketClientConnection):
-    """WebSocket client connection supporting secure WebSockets."""
+    """WebSocket client connection supporting secure WebSockets.
+
+    Use this connection as described in
+    <http://www.tornadoweb.org/en/stable/websocket.html#client-side-support>.
+    """
 
     def __init__(
             self, io_loop, request, on_message_callback):
         """Client initializer.
 
         The WebSocket client receives all the arguments accepted by
-        websocket.WebSocketClientConnection and a callback that will be called
-        each time a new message is received by the client.
+        tornado.websocket.WebSocketClientConnection and a callback that will be
+        called each time a new message is received by the client.
         """
         super(WebSocketClientConnection, self).__init__(io_loop, request)
         self._on_message_callback = on_message_callback
