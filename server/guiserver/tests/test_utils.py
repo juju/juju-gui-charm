@@ -39,6 +39,15 @@ class TestGetHeaders(unittest.TestCase):
         self.assertEqual({'Origin': 'https://server.example.com'}, headers)
 
 
+class TestRequestSummary(unittest.TestCase):
+
+    def test_summary(self):
+        # The summary includes the request method, URI and remote IP.
+        request = mock.Mock(method='GET', uri='/path', remote_ip='127.0.0.1')
+        summary = utils.request_summary(request)
+        self.assertEqual('GET /path (127.0.0.1)', summary)
+
+
 class TestWsToHttp(unittest.TestCase):
 
     def test_websocket(self):

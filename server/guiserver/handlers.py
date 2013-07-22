@@ -68,7 +68,6 @@ class WebSocketHandler(websocket.WebSocketHandler):
         self.connected = True
         self.juju_connected = False
         self._juju_message_queue = queue = deque()
-        # TODO: live test with and without origin.
         # Juju requires the Origin header to be included in the WebSocket
         # client handshake request. Propagate the client origin if present;
         # use the Juju API server as origin otherwise.
