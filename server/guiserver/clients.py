@@ -23,8 +23,7 @@ from tornado import (
 )
 
 
-def websocket_connect(
-        io_loop, url, on_message_callback, headers=None):
+def websocket_connect(io_loop, url, on_message_callback, headers=None):
     """WebSocket client connection factory.
 
     The client factory receives the following arguments:
@@ -52,8 +51,7 @@ class WebSocketClientConnection(websocket.WebSocketClientConnection):
     <http://www.tornadoweb.org/en/stable/websocket.html#client-side-support>.
     """
 
-    def __init__(
-            self, io_loop, request, on_message_callback):
+    def __init__(self, io_loop, request, on_message_callback):
         """Client initializer.
 
         The WebSocket client receives all the arguments accepted by

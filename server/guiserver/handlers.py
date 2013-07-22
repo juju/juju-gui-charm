@@ -44,14 +44,14 @@ class WebSocketHandler(websocket.WebSocketHandler):
 
       - connected: True if the current browser is connected, False otherwise;
       - juju_connected: True if the Juju API is connected, False otherwise;
-      - juju_connection: the WebSocket client connection to the Juju API;
+      - juju_connection: the WebSocket client connection to the Juju API.
 
     Callbacks:
 
       - on_message(message): called when a message arrives from the browser;
       - on_juju_message(message): called when a message arrives from Juju;
       - on_close(): called when the browser closes the connection;
-      - on_juju_close(): called when juju closes the connection;
+      - on_juju_close(): called when juju closes the connection.
 
     Methods:
       - write_message(message): send a message to the browser;
@@ -62,9 +62,11 @@ class WebSocketHandler(websocket.WebSocketHandler):
     @gen.coroutine
     def initialize(self, jujuapi, io_loop=None):
         """Create a new WebSocket client and connect it to the Juju API."""
+        if io_loop is None:
+            io_loop = IOLoop.current()
+        self._io_loop = io_loop
         self._summary = request_summary(self.request) + ' '
         logging.info(self._summary + 'client connected')
-        self._io_loop = io_loop or IOLoop.current()
         self.connected = True
         self.juju_connected = False
         self._juju_message_queue = queue = deque()
@@ -72,8 +74,9 @@ class WebSocketHandler(websocket.WebSocketHandler):
         # client handshake request. Propagate the client origin if present;
         # use the Juju API server as origin otherwise.
         headers = get_headers(self.request, jujuapi)
+        # Connect the WebSocket client to the Juju API server.
         self._juju_connected_future = websocket_connect(
-            self._io_loop, jujuapi, self.on_juju_message, headers=headers)
+            io_loop, jujuapi, self.on_juju_message, headers=headers)
         try:
             self.juju_connection = yield self._juju_connected_future
         except Exception as err:
@@ -81,6 +84,7 @@ class WebSocketHandler(websocket.WebSocketHandler):
             logging.exception(err)
             self.connected = False
             raise gen.Return()
+        # At this point the Juju API is successfully connected.
         self.juju_connected = True
         logging.info(self._summary + 'Juju API connected')
         # Send all the messages that have been enqueued before the connection
@@ -109,10 +113,10 @@ class WebSocketHandler(websocket.WebSocketHandler):
         The message is propagated to the browser.
         """
         if message is None:
+            # The Juju API closed the connection.
             return self.on_juju_close()
-        else:
-            logging.debug(self._summary + 'juju -> client: {}'.format(message))
-            self.write_message(message)
+        logging.debug(self._summary + 'juju -> client: {}'.format(message))
+        self.write_message(message)
 
     def on_close(self):
         """Hook called when the WebSocket connection is terminated."""
