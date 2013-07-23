@@ -34,7 +34,7 @@ def websocket_connect(io_loop, url, on_message_callback, headers=None):
         - headers (optional): a dict of additional headers to include in the
           client handshake.
 
-    Return a future whose result is a WebSocketClientConnection.
+    Return a Future whose result is a WebSocketClientConnection.
     """
     request = httpclient.HTTPRequest(
         url, validate_cert=False, request_timeout=100)
@@ -65,7 +65,7 @@ class WebSocketClientConnection(websocket.WebSocketClientConnection):
     def on_message(self, message):
         """Hook called when a new message is received.
 
-        The on_message_callback is called passing the message.
+        The on_message_callback is called passing it the message.
         """
         super(WebSocketClientConnection, self).on_message(message)
         self._on_message_callback(message)
@@ -73,7 +73,7 @@ class WebSocketClientConnection(websocket.WebSocketClientConnection):
     def close(self):
         """Close the client connection.
 
-        Return a future that is fired when the connection is terminated.
+        Return a Future that is fired when the connection is terminated.
         """
         self.stream.close()
         return self.close_future
@@ -81,4 +81,5 @@ class WebSocketClientConnection(websocket.WebSocketClientConnection):
     def _on_close(self):
         """Fire the close_future and send a None message."""
         super(WebSocketClientConnection, self)._on_close()
+        # Since this is just a notification the Future result is set to None.
         self.close_future.set_result(None)

@@ -123,7 +123,7 @@ class WebSocketHandler(websocket.WebSocketHandler):
         logging.info(self._summary + 'client connection closed')
         self.connected = False
         # At this point the WebSocket client connection to the Juju API server
-        # could be not yet established. For this reason the connection is
+        # might not yet be established. For this reason the connection is
         # terminated adding a callback to the corresponding future.
         callback = lambda _: self.juju_connection.close()
         self._io_loop.add_future(self._juju_connected_future, callback)

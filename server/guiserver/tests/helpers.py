@@ -25,9 +25,9 @@ class EchoWebSocketHandler(websocket.WebSocketHandler):
     def initialize(self, close_future, io_loop):
         """Echo WebSocket server initializer.
 
-        The handler receives a close future and the current Tornado IO loop.
-        The close future is fired when the connection is closed.
-        The close future can also be used to force a connection termination by
+        The handler receives a close Future and the current Tornado IO loop.
+        The close Future is fired when the connection is closed.
+        The close Future can also be used to force a connection termination by
         manually firing it.
         """
         self._closed_future = close_future

@@ -186,7 +186,7 @@ class TestWebSocketHandler(
         # A server disconnection is logged as an error.
         expected_log = '.*Juju API unexpectedly disconnected'
         with ExpectLog('', expected_log, required=True):
-            # Fire the future in order to force an echo server disconnection.
+            # Fire the Future in order to force an echo server disconnection.
             self.echo_server_closed_future.set_result(None)
             message = yield client.read_message()
         self.assertIsNone(message)
