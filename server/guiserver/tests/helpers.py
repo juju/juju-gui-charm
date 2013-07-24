@@ -78,7 +78,7 @@ class GoAPITestMixin(object):
 
     def make_login_response(
             self, request_id=42, successful=True, encoded=False):
-        """Create and return a JSON encoded login response message.
+        """Create and return a login response message.
 
         If encoded is set to True, the returned message will be JSON encoded.
         By default, a successful response is returned. Set successful to False
@@ -114,7 +114,7 @@ class PythonAPITestMixin(object):
 
     def make_login_response(
             self, request_id=42, successful=True, encoded=False):
-        """Create and return a JSON encoded login response message.
+        """Create and return a login response message.
 
         If encoded is set to True, the returned message will be JSON encoded.
         By default, a successful response is returned. Set successful to False

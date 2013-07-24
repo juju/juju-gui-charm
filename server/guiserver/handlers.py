@@ -112,7 +112,6 @@ class WebSocketHandler(websocket.WebSocketHandler):
         data = json_decode_dict(message)
         if (data is not None) and (not self.user.is_authenticated):
             self.auth.process_request(data)
-        logging.info('********************* USER: {!r}'.format(self.user))
         if self.juju_connected:
             logging.debug(self._summary + 'client -> juju: {}'.format(message))
             return self.juju_connection.write_message(message)

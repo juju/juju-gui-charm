@@ -161,12 +161,12 @@ class BackendTestMixin(object):
         self.assertEqual('passwd', password)
 
     def test_login_succeeded(self):
-        # True is returned if the log in succeeded.
+        # True is returned if the log in attempt succeeded.
         response = self.make_login_response()
         self.assertTrue(self.backend.login_succeeded(response))
 
     def test_login_failed(self):
-        # False is returned if the log in failed.
+        # False is returned if the log in attempt failed.
         response = self.make_login_response(successful=False)
         self.assertFalse(self.backend.login_succeeded(response))
 

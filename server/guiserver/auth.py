@@ -42,10 +42,10 @@ class User(object):
 
     def __init__(self, username='', password='', is_authenticated=False):
         self.is_authenticated = is_authenticated
-        # YAGNI: the username/password attributes are not required for now, but
-        # they can help to handle the HA story, i.e. in the process of
-        # re-authenticating to the API after switching from one Juju state/API
-        # server to another.
+        # XXX (frankban) YAGNI: the username/password attributes are not
+        # required for now, but they will help to handle the HA story, i.e. in
+        # the process of re-authenticating to the API after switching from one
+        # Juju state/API server to another.
         self.username = username
         self.password = password
 

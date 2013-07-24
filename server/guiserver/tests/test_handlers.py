@@ -231,7 +231,7 @@ class TestWebSocketHandlerProxy(
 
     @gen_test
     def test_not_a_dict(self):
-        # A warning is logged if the message is not valid JSON.
+        # A warning is logged if the decoded message is not a dict.
         client = yield self.make_client()
         expected_log = 'JSON decoder: message is not a dict: "not-a-dict"'
         with ExpectLog('', expected_log, required=True):
