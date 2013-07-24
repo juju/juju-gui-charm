@@ -41,18 +41,23 @@ class TestAddDebug(unittest.TestCase):
         mock_options.define.assert_called_once_with('debug', default=False)
 
 
-class TestValidateRequired(unittest.TestCase):
+class ValidatorTestMixin(object):
+    """Add methods for testing functions producing a system exit."""
 
     @contextmanager
-    def assert_sysexit(self, option):
+    def assert_sysexit(self, error):
         """Ensure the code in the context manager block produces a system exit.
 
-        Also check that the given error refers to the given option.
+        Also check that the given error is returned.
         """
-        expected_error = 'error: the {} argument is required'.format(option)
         with mock.patch('sys.exit') as mock_exit:
             yield
-            mock_exit.assert_called_once_with(expected_error)
+            mock_exit.assert_called_once_with(error)
+
+
+class TestValidateRequired(ValidatorTestMixin, unittest.TestCase):
+
+    error = 'error: the {} argument is required'
 
     def test_success(self):
         # The validation passes if the args are correctly found.
@@ -66,26 +71,48 @@ class TestValidateRequired(unittest.TestCase):
 
     def test_failure(self):
         with mock.patch('guiserver.manage.options', {'arg1': ''}):
-            with self.assert_sysexit('arg1'):
+            with self.assert_sysexit(self.error.format('arg1')):
                 manage._validate_required('arg1')
 
     def test_failure_multiple_args(self):
         options = {'arg1': 'value1', 'arg2': ''}
         with mock.patch('guiserver.manage.options', options):
-            with self.assert_sysexit('arg2'):
+            with self.assert_sysexit(self.error.format('arg2')):
                 manage._validate_required(*options.keys())
 
     def test_failure_missing(self):
         with mock.patch('guiserver.manage.options', {'arg1': None}):
-            with self.assert_sysexit('arg1'):
+            with self.assert_sysexit(self.error.format('arg1')):
                 manage._validate_required('arg1')
 
     def test_failure_empty(self):
         with mock.patch('guiserver.manage.options', {'arg1': ' '}):
-            with self.assert_sysexit('arg1'):
+            with self.assert_sysexit(self.error.format('arg1')):
                 manage._validate_required('arg1')
 
     def test_failure_invalid_type(self):
         with mock.patch('guiserver.manage.options', {'arg1': 42}):
-            with self.assert_sysexit('arg1'):
+            with self.assert_sysexit(self.error.format('arg1')):
                 manage._validate_required('arg1')
+
+
+class TestValidateChoices(ValidatorTestMixin, unittest.TestCase):
+
+    choices = ('choice1', 'choice2')
+    error = 'error: accepted values for the {} argument are: choice1, choice2'
+
+    def test_success(self):
+        # The validation passes if the value is included in the choices.
+        with mock.patch('guiserver.manage.options', {'arg1': 'choice1'}):
+            manage._validate_choices('arg1', self.choices)
+
+    def test_failure_invalid_choice(self):
+        # The validation fails if the value is not in choices
+        with mock.patch('guiserver.manage.options', {'arg1': 'not-a-choice'}):
+            with self.assert_sysexit(self.error.format('arg1')):
+                manage._validate_choices('arg1', self.choices)
+
+    def test_failure_missing(self):
+        with mock.patch('guiserver.manage.options', {'arg1': None}):
+            with self.assert_sysexit(self.error.format('arg1')):
+                manage._validate_choices('arg1', self.choices)

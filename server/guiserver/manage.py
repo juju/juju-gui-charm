@@ -70,7 +70,7 @@ def _validate_choices(option_name, choices):
     """
     value = options[option_name]
     if value not in choices:
-        sys.exit('error: accepred values for the {} argument are: {}'.format(
+        sys.exit('error: accepted values for the {} argument are: {}'.format(
             option_name, ', '.join(choices)))
 
 
