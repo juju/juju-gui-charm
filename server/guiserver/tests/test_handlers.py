@@ -253,9 +253,10 @@ class TestWebSocketHandlerAuthentication(
         request = self.make_login_request(encoded=True)
         self.handler.on_message(request)
 
-    def send_login_response(self, succeeded):
+    def send_login_response(self, successful):
         """Create a log in response and send it to the handler."""
-        response = self.make_login_response(succeeded=succeeded, encoded=True)
+        response = self.make_login_response(
+            successful=successful, encoded=True)
         self.handler.on_juju_message(response)
 
     def test_authentication_success(self):

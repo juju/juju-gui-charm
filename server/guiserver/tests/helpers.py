@@ -20,6 +20,8 @@ import json
 
 from tornado import websocket
 
+from guiserver import auth
+
 
 class EchoWebSocketHandler(websocket.WebSocketHandler):
     """A WebSocket server echoing back messages."""
@@ -55,6 +57,10 @@ class EchoWebSocketHandler(websocket.WebSocketHandler):
 class GoAPITestMixin(object):
     """Add helper methods for testing the Go API implementation."""
 
+    def get_auth_backend(self):
+        """Return an authentication backend suitable for the Go API."""
+        return auth.get_backend('go')
+
     def make_login_request(
             self, request_id=42, username='user', password='passwd',
             encoded=False):
@@ -71,16 +77,54 @@ class GoAPITestMixin(object):
         return json.dumps(data) if encoded else data
 
     def make_login_response(
-            self, request_id=42, succeeded=True, encoded=False):
+            self, request_id=42, successful=True, encoded=False):
         """Create and return a JSON encoded login response message.
 
         If encoded is set to True, the returned message will be JSON encoded.
-        By default, a successful response is returned. Set succeeded to False
+        By default, a successful response is returned. Set successful to False
         to return an authentication failure.
         """
         data = {'RequestId': request_id, 'Response': {}}
-        if not succeeded:
+        if not successful:
             data['Error'] = 'invalid entity name or password'
+        return json.dumps(data) if encoded else data
+
+
+class PythonAPITestMixin(object):
+    """Add helper methods for testing the Python API implementation."""
+
+    def get_auth_backend(self):
+        """Return an authentication backend suitable for the Python API."""
+        return auth.get_backend('python')
+
+    def make_login_request(
+            self, request_id=42, username='user', password='passwd',
+            encoded=False):
+        """Create and return a login request message.
+
+        If encoded is set to True, the returned message will be JSON encoded.
+        """
+        data = {
+            'request_id': request_id,
+            'op': 'login',
+            'user': username,
+            'password': password,
+        }
+        return json.dumps(data) if encoded else data
+
+    def make_login_response(
+            self, request_id=42, successful=True, encoded=False):
+        """Create and return a JSON encoded login response message.
+
+        If encoded is set to True, the returned message will be JSON encoded.
+        By default, a successful response is returned. Set successful to False
+        to return an authentication failure.
+        """
+        data = {'request_id': request_id, 'op': 'login'}
+        if successful:
+            data['result'] = True
+        else:
+            data['err'] = True
         return json.dumps(data) if encoded else data
 
 

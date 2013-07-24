@@ -50,8 +50,12 @@ class User(object):
         self.password = password
 
     def __repr__(self):
-        auth_repr = 'authenticated' if self.is_authenticated else 'anonymous'
-        return '<User: {!r} {}>'.format(self.username, auth_repr)
+        if self.is_authenticated:
+            status = 'authenticated'
+        else:
+            status = 'not authenticated'
+        username = self.username or 'anonymous'
+        return '<User: {} ({})>'.format(username, status)
 
 
 class AuthMiddleware(object):
