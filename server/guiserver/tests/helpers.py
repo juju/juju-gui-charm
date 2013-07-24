@@ -16,6 +16,8 @@
 
 """Juju GUI server test utilities."""
 
+import json
+
 from tornado import websocket
 
 
@@ -48,6 +50,38 @@ class EchoWebSocketHandler(websocket.WebSocketHandler):
         self._connected = False
         if not self._closed_future.done():
             self._closed_future.set_result(None)
+
+
+class GoAPITestMixin(object):
+    """Add helper methods for testing the Go API implementation."""
+
+    def make_login_request(
+            self, request_id=42, username='user', password='passwd',
+            encoded=False):
+        """Create and return a login request message.
+
+        If encoded is set to True, the returned message will be JSON encoded.
+        """
+        data = {
+            'RequestId': request_id,
+            'Type': 'Admin',
+            'Request': 'Login',
+            'Params': {'AuthTag': username, 'Password': password},
+        }
+        return json.dumps(data) if encoded else data
+
+    def make_login_response(
+            self, request_id=42, succeeded=True, encoded=False):
+        """Create and return a JSON encoded login response message.
+
+        If encoded is set to True, the returned message will be JSON encoded.
+        By default, a successful response is returned. Set succeeded to False
+        to return an authentication failure.
+        """
+        data = {'RequestId': request_id, 'Response': {}}
+        if not succeeded:
+            data['Error'] = 'invalid entity name or password'
+        return json.dumps(data) if encoded else data
 
 
 class WSSTestMixin(object):

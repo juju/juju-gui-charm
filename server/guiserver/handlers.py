@@ -27,9 +27,14 @@ from tornado import (
 )
 from tornado.ioloop import IOLoop
 
+from guiserver.auth import (
+    AuthMiddleware,
+    User,
+)
 from guiserver.clients import websocket_connect
 from guiserver.utils import (
     get_headers,
+    json_decode_dict,
     request_summary,
 )
 
@@ -56,11 +61,10 @@ class WebSocketHandler(websocket.WebSocketHandler):
     Methods:
       - write_message(message): send a message to the browser;
       - close(): terminate the browser connection.
-
     """
 
     @gen.coroutine
-    def initialize(self, jujuapi, io_loop=None):
+    def initialize(self, apiurl, io_loop=None):
         """Create a new WebSocket client and connect it to the Juju API."""
         if io_loop is None:
             io_loop = IOLoop.current()
@@ -70,13 +74,17 @@ class WebSocketHandler(websocket.WebSocketHandler):
         self.connected = True
         self.juju_connected = False
         self._juju_message_queue = queue = deque()
+        # Set up the authentication infrastructure.
+        self.user = User()
+        auth_backend = self.application.settings['auth_backend']
+        self.auth = AuthMiddleware(self.user, auth_backend)
         # Juju requires the Origin header to be included in the WebSocket
         # client handshake request. Propagate the client origin if present;
         # use the Juju API server as origin otherwise.
-        headers = get_headers(self.request, jujuapi)
+        headers = get_headers(self.request, apiurl)
         # Connect the WebSocket client to the Juju API server.
         self._juju_connected_future = websocket_connect(
-            io_loop, jujuapi, self.on_juju_message, headers=headers)
+            io_loop, apiurl, self.on_juju_message, headers=headers)
         try:
             self.juju_connection = yield self._juju_connected_future
         except Exception as err:
@@ -101,6 +109,10 @@ class WebSocketHandler(websocket.WebSocketHandler):
         Messages sent before the client connection to the Juju API server is
         established are queued for later delivery.
         """
+        data = json_decode_dict(message)
+        if (data is not None) and (not self.user.is_authenticated):
+            self.auth.process_request(data)
+        logging.info('********************* USER: {!r}'.format(self.user))
         if self.juju_connected:
             logging.debug(self._summary + 'client -> juju: {}'.format(message))
             return self.juju_connection.write_message(message)
@@ -115,6 +127,9 @@ class WebSocketHandler(websocket.WebSocketHandler):
         if message is None:
             # The Juju API closed the connection.
             return self.on_juju_close()
+        data = json_decode_dict(message)
+        if (data is not None) and self.auth.in_progress():
+            self.auth.process_response(data)
         logging.debug(self._summary + 'juju -> client: {}'.format(message))
         self.write_message(message)
 

@@ -33,6 +33,7 @@ from guiserver.apps import (
 )
 
 
+DEFAULT_API_VERSION = 'go'
 SSL_OPTIONS = {
     'certfile': '/etc/ssl/juju-gui/juju.crt',
     'keyfile': '/etc/ssl/juju-gui/juju.key',
@@ -62,13 +63,36 @@ def _validate_required(*args):
             sys.exit('error: the {} argument is required'.format(name))
 
 
+def _validate_choices(option_name, choices):
+    """Ensure the value passed for the given option is included in the choices.
+
+    Exit with an error if the value is not in the accepted ones.
+    """
+    value = options[option_name]
+    if value not in choices:
+        sys.exit('error: accepred values for the {} argument are: {}'.format(
+            option_name, ', '.join(choices)))
+
+
 def setup():
     """Set up options and logger."""
-    define('guiroot', type=str, help='the Juju GUI static files path')
-    define('jujuapi', type=str, help='the Juju WebSocket server address')
+    define(
+        'guiroot', type=str,
+        help='The Juju GUI static files path, e.g.: '
+             '/var/lib/juju/agents/unit-juju-gui-0/charm/juju-gui/build-prod')
+    define(
+        'apiurl', type=str,
+        help='The Juju WebSocket server address. This is usually the address '
+             'of the bootstrap/state node as returned by juju status.')
+    # Optional parameters.
+    define(
+        'apiversion', type=str, default=DEFAULT_API_VERSION,
+        help='the Juju API version/implementation. Currently the possible '
+             'values are "go" (default) or "python".')
     # In Tornado, parsing the options also sets up the default logger.
     parse_command_line()
-    _validate_required('guiroot', 'jujuapi')
+    _validate_required('guiroot', 'apiurl')
+    _validate_choices('apiversion', ('go', 'python'))
     _add_debug(logging.getLogger())
 
 
