@@ -107,12 +107,13 @@ class TestValidateChoices(ValidatorTestMixin, unittest.TestCase):
             manage._validate_choices('arg1', self.choices)
 
     def test_failure_invalid_choice(self):
-        # The validation fails if the value is not in choices
+        # The validation fails if the value is not in choices.
         with mock.patch('guiserver.manage.options', {'arg1': 'not-a-choice'}):
             with self.assert_sysexit(self.error.format('arg1')):
                 manage._validate_choices('arg1', self.choices)
 
     def test_failure_missing(self):
+        # The validation fails if the value is missing.
         with mock.patch('guiserver.manage.options', {'arg1': None}):
             with self.assert_sysexit(self.error.format('arg1')):
                 manage._validate_choices('arg1', self.choices)
