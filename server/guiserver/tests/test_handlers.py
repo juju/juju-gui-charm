@@ -249,12 +249,12 @@ class TestWebSocketHandlerAuthentication(
         self.handler.initialize(self.echo_server_address, self.io_loop)
 
     def send_login_request(self):
-        """Create a log in request and send it to the handler."""
+        """Create a login request and send it to the handler."""
         request = self.make_login_request(encoded=True)
         self.handler.on_message(request)
 
     def send_login_response(self, successful):
-        """Create a log in response and send it to the handler."""
+        """Create a login response and send it to the handler."""
         response = self.make_login_response(
             successful=successful, encoded=True)
         self.handler.on_juju_message(response)
