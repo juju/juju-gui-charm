@@ -16,9 +16,11 @@
 
 """Tests for the Juju GUI server utilities."""
 
+import json
 import unittest
 
 import mock
+from tornado.testing import ExpectLog
 
 from guiserver import utils
 
@@ -37,6 +39,29 @@ class TestGetHeaders(unittest.TestCase):
         request = mock.Mock(headers={})
         headers = utils.get_headers(request, 'wss://server.example.com')
         self.assertEqual({'Origin': 'https://server.example.com'}, headers)
+
+
+class TestJsonDecodeDict(unittest.TestCase):
+
+    def test_valid(self):
+        # A valid JSON is decoded without errors.
+        data = {'key1': 'value1', 'key2': 'value2'}
+        message = json.dumps(data)
+        self.assertEqual(data, utils.json_decode_dict(message))
+
+    def test_invalid_json(self):
+        # If the message is not a valid JSON string, a warning is logged and
+        # None is returned.
+        expected_log = 'JSON decoder: message is not valid JSON: not-json'
+        with ExpectLog('', expected_log, required=True):
+            self.assertIsNone(utils.json_decode_dict('not-json'))
+
+    def test_invalid_type(self):
+        # If the resulting object is not a dict-like object, a warning is
+        # logged and None is returned.
+        expected_log = 'JSON decoder: message is not a dict: "not-a-dict"'
+        with ExpectLog('', expected_log, required=True):
+            self.assertIsNone(utils.json_decode_dict('"not-a-dict"'))
 
 
 class TestRequestSummary(unittest.TestCase):

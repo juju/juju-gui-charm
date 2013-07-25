@@ -16,7 +16,11 @@
 
 """Juju GUI server utility functions and classes."""
 
+import collections
+import logging
 import urlparse
+
+from tornado import escape
 
 
 def get_headers(request, websocket_url):
@@ -30,6 +34,25 @@ def get_headers(request, websocket_url):
     if origin is None:
         origin = ws_to_http(websocket_url)
     return {'Origin': origin}
+
+
+def json_decode_dict(message):
+    """Decode the given JSON message, returning a Python dict.
+
+    If the message is not a valid JSON string, or if the resulting object is
+    not a dict-like object, log a warning and return None.
+    """
+    try:
+        data = escape.json_decode(message)
+    except ValueError:
+        msg = 'JSON decoder: message is not valid JSON: {}'.format(message)
+        logging.warning(msg)
+        return None
+    if not isinstance(data, collections.Mapping):
+        msg = 'JSON decoder: message is not a dict: {}'.format(message)
+        logging.warning(msg)
+        return None
+    return data
 
 
 def request_summary(request):

@@ -21,7 +21,10 @@ import os
 from tornado import web
 from tornado.options import options
 
-from guiserver import handlers
+from guiserver import (
+    auth,
+    handlers,
+)
 
 
 def server():
@@ -30,17 +33,20 @@ def server():
     The server app is responsible for serving the WebSocket connection, the
     Juju GUI static files and the main index file for dynamic URLs.
     """
+    # Set up static paths.
     guiroot = options.guiroot
     static_path = os.path.join(guiroot, 'juju-ui')
+    # Set up the authentication backend.
+    auth_backend = auth.get_backend(options.apiversion)
     return web.Application([
         # Handle WebSocket connections.
-        (r'^/ws$', handlers.WebSocketHandler, {'jujuapi': options.jujuapi}),
+        (r'^/ws$', handlers.WebSocketHandler, {'apiurl': options.apiurl}),
         # Handle static files.
         (r'^/juju-ui/(.*)', web.StaticFileHandler, {'path': static_path}),
         (r'^/(favicon\.ico)$', web.StaticFileHandler, {'path': guiroot}),
         # Any other path is served by index.html.
         (r'^/(.*)', handlers.IndexHandler, {'path': guiroot}),
-    ], debug=options.debug)
+    ], debug=options.debug, auth_backend=auth_backend)
 
 
 def redirector():

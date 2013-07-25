@@ -18,7 +18,8 @@
 
 Arguments example:
     --guiroot="/var/lib/juju/agents/unit-juju-gui-0/charm/juju-gui/build-prod"
-    --jujuapi="wss://ec2-75-101-177-185.compute-1.example.com:17070"
+    --apiurl="wss://ec2-75-101-177-185.compute-1.example.com:17070"
+    --apiversion="go"
 """
 
 from guiserver import manage
