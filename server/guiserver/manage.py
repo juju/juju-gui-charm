@@ -83,7 +83,7 @@ def setup():
     define(
         'apiurl', type=str,
         help='The Juju WebSocket server address. This is usually the address '
-             'of the bootstrap/state node as returned by juju status.')
+             'of the bootstrap/state node as returned by "juju status".')
     # Optional parameters.
     define(
         'apiversion', type=str, default=DEFAULT_API_VERSION,

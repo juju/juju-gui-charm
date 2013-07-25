@@ -63,7 +63,7 @@ class AuthMiddlewareTestMixin(object):
         self.assertEqual(is_authenticated, user.is_authenticated)
 
     def test_login_request(self):
-        # The authentication process starts if a log in request is processed.
+        # The authentication process starts if a login request is processed.
         request = self.make_login_request(username='user', password='passwd')
         self.auth.process_request(request)
         self.assertTrue(self.auth.in_progress())
@@ -149,24 +149,24 @@ class BackendTestMixin(object):
         self.assertIsNone(self.backend.get_request_id({}))
 
     def test_request_is_login(self):
-        # True is returned if a log in request is passed.
+        # True is returned if a login request is passed.
         request = self.make_login_request()
         self.assertTrue(self.backend.request_is_login(request))
 
     def test_get_credentials(self):
-        # The user name and password are returned parsing the log in request.
+        # The user name and password are returned parsing the login request.
         request = self.make_login_request(username='user', password='passwd')
         username, password = self.backend.get_credentials(request)
         self.assertEqual('user', username)
         self.assertEqual('passwd', password)
 
     def test_login_succeeded(self):
-        # True is returned if the log in attempt succeeded.
+        # True is returned if the login attempt succeeded.
         response = self.make_login_response()
         self.assertTrue(self.backend.login_succeeded(response))
 
     def test_login_failed(self):
-        # False is returned if the log in attempt failed.
+        # False is returned if the login attempt failed.
         response = self.make_login_response(successful=False)
         self.assertFalse(self.backend.login_succeeded(response))
 
@@ -175,7 +175,7 @@ class TestGoBackend(
         helpers.GoAPITestMixin, BackendTestMixin, unittest.TestCase):
 
     def test_request_is_not_login(self):
-        # False is returned if the passed data is not a log in request.
+        # False is returned if the passed data is not a login request.
         requests = (
             {},
             {
@@ -206,7 +206,7 @@ class TestPythonBackend(
         helpers.PythonAPITestMixin, BackendTestMixin, unittest.TestCase):
 
     def test_request_is_not_login(self):
-        # False is returned if the passed data is not a log in request.
+        # False is returned if the passed data is not a login request.
         requests = (
             {},
             {

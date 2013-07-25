@@ -79,7 +79,7 @@ class AuthMiddleware(object):
     def process_request(self, data):
         """Parse the WebSocket data arriving from the client.
 
-        Start the authentication process if data represents a log in request
+        Start the authentication process if data represents a login request
         performed by the GUI user.
         """
         backend = self._backend
@@ -93,9 +93,8 @@ class AuthMiddleware(object):
         """Parse the WebSocket data arriving from the Juju API server.
 
         Complete the authentication process if data represents the response
-        to a log in request previously initiated. Authenticate the user if
-        the authentication succeeded.
-
+        to a login request previously initiated. Authenticate the user if the
+        authentication succeeded.
         """
         request_id = self._backend.get_request_id(data)
         if request_id == self._request_id:
@@ -138,7 +137,7 @@ class GoBackend(object):
         return data.get('RequestId')
 
     def request_is_login(self, data):
-        """Return True if data represents a log in request, False otherwise."""
+        """Return True if data represents a login request, False otherwise."""
         params = data.get('Params', {})
         return (
             data.get('Type') == 'Admin' and
@@ -148,12 +147,12 @@ class GoBackend(object):
         )
 
     def get_credentials(self, data):
-        """Parse the provided log in data and return username and password."""
+        """Parse the provided login data and return username and password."""
         params = data['Params']
         return params['AuthTag'], params['Password']
 
     def login_succeeded(self, data):
-        """Return True if data represents a successful log in, False otherwise.
+        """Return True if data represents a successful login, False otherwise.
         """
         return 'Error' not in data
 
@@ -196,16 +195,16 @@ class PythonBackend(object):
         return data.get('request_id')
 
     def request_is_login(self, data):
-        """Return True if data represents a log in request, False otherwise."""
+        """Return True if data represents a login request, False otherwise."""
         op = data.get('op')
         return (op == 'login') and ('user' in data) and ('password' in data)
 
     def get_credentials(self, data):
-        """Parse the provided log in data and return username and password."""
+        """Parse the provided login data and return username and password."""
         return data['user'], data['password']
 
     def login_succeeded(self, data):
-        """Return True if data represents a successful log in, False otherwise.
+        """Return True if data represents a successful login, False otherwise.
         """
         return data.get('result') and not data.get('err')
 
