@@ -116,3 +116,16 @@ class TestValidateChoices(ValidatorTestMixin, unittest.TestCase):
         with mock.patch('guiserver.manage.options', {'arg1': None}):
             with self.assert_sysexit(self.error.format('arg1')):
                 manage._validate_choices('arg1', self.choices)
+
+
+class TestGetSslOptions(unittest.TestCase):
+
+    def test_options(self):
+        # The SSL options are correctly returned.
+        mock_options = mock.Mock(sslpath='/my/path')
+        expected = {
+            'certfile': '/my/path/juju.crt',
+            'keyfile': '/my/path/juju.key',
+        }
+        with mock.patch('guiserver.manage.options', mock_options):
+            self.assertEqual(expected, manage._get_ssl_options())

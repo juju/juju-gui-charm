@@ -38,15 +38,26 @@ def server():
     static_path = os.path.join(guiroot, 'juju-ui')
     # Set up the authentication backend.
     auth_backend = auth.get_backend(options.apiversion)
-    return web.Application([
+    # Set up handlers.
+    server_handlers = [
         # Handle WebSocket connections.
         (r'^/ws$', handlers.WebSocketHandler, {'apiurl': options.apiurl}),
         # Handle static files.
         (r'^/juju-ui/(.*)', web.StaticFileHandler, {'path': static_path}),
         (r'^/(favicon\.ico)$', web.StaticFileHandler, {'path': guiroot}),
+    ]
+    if options.servetests:
+        params = {'path': options.servetests, 'default_filename': 'index.html'}
+        server_handlers.append(
+            # Serve the Juju GUI tests.
+            (r'^/test/(.*)', web.StaticFileHandler, params),
+        )
+    server_handlers.append(
         # Any other path is served by index.html.
         (r'^/(.*)', handlers.IndexHandler, {'path': guiroot}),
-    ], debug=options.debug, auth_backend=auth_backend)
+    )
+    return web.Application(
+        server_handlers, debug=options.debug, auth_backend=auth_backend)
 
 
 def redirector():
