@@ -101,7 +101,7 @@ def setup():
              'values are "go" (default) or "python".')
     define(
         'servetests', type=str,
-        help='The Juju GUI tests path. If not provided, tests are not served')
+        help='The Juju GUI tests path. If not provided, tests are not served.')
     define(
         'sslpath', type=str, default=DEFAULT_SSL_PATH,
         help='The path where the SSL certificates are stored.')
