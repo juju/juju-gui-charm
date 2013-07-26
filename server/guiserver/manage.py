@@ -17,6 +17,7 @@
 """Juju GUI server management."""
 
 import logging
+import os
 import sys
 
 from tornado.ioloop import IOLoop
@@ -34,10 +35,7 @@ from guiserver.apps import (
 
 
 DEFAULT_API_VERSION = 'go'
-SSL_OPTIONS = {
-    'certfile': '/etc/ssl/juju-gui/juju.crt',
-    'keyfile': '/etc/ssl/juju-gui/juju.key',
-}
+DEFAULT_SSL_PATH = '/etc/ssl/juju-gui'
 
 
 def _add_debug(logger):
@@ -74,6 +72,18 @@ def _validate_choices(option_name, choices):
             option_name, ', '.join(choices)))
 
 
+def _get_ssl_options():
+    """Return a Tornado SSL options dict.
+
+    The certificate and key file paths are generated using the base SSL path
+    included in the options.
+    """
+    return {
+        'certfile': os.path.join(options.sslpath, 'juju.crt'),
+        'keyfile': os.path.join(options.sslpath, 'juju.key'),
+    }
+
+
 def setup():
     """Set up options and logger."""
     define(
@@ -89,6 +99,12 @@ def setup():
         'apiversion', type=str, default=DEFAULT_API_VERSION,
         help='the Juju API version/implementation. Currently the possible '
              'values are "go" (default) or "python".')
+    define(
+        'servetests', type=str,
+        help='The Juju GUI tests path. If not provided, tests are not served.')
+    define(
+        'sslpath', type=str, default=DEFAULT_SSL_PATH,
+        help='The path where the SSL certificates are stored.')
     # In Tornado, parsing the options also sets up the default logger.
     parse_command_line()
     _validate_required('guiroot', 'apiurl')
@@ -98,7 +114,7 @@ def setup():
 
 def run():
     """Run the server"""
-    server().listen(443, ssl_options=SSL_OPTIONS)
+    server().listen(443, ssl_options=_get_ssl_options())
     redirector().listen(80)
     version = guiserver.get_version()
     logging.info('starting Juju GUI server v{}'.format(version))

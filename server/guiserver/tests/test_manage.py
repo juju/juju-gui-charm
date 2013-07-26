@@ -65,32 +65,38 @@ class TestValidateRequired(ValidatorTestMixin, unittest.TestCase):
             manage._validate_required('arg1')
 
     def test_success_multiple_args(self):
+        # The validation passes for multiple args.
         options = {'arg1': 'value1', 'arg2': 'value2'}
         with mock.patch('guiserver.manage.options', options):
             manage._validate_required(*options.keys())
 
     def test_failure(self):
+        # The validation fails if the arg value is an empty string.
         with mock.patch('guiserver.manage.options', {'arg1': ''}):
             with self.assert_sysexit(self.error.format('arg1')):
                 manage._validate_required('arg1')
 
     def test_failure_multiple_args(self):
+        # The validation fails if one of the arg values is an empty string.
         options = {'arg1': 'value1', 'arg2': ''}
         with mock.patch('guiserver.manage.options', options):
             with self.assert_sysexit(self.error.format('arg2')):
                 manage._validate_required(*options.keys())
 
     def test_failure_missing(self):
+        # The validation fails if the value is missing.
         with mock.patch('guiserver.manage.options', {'arg1': None}):
             with self.assert_sysexit(self.error.format('arg1')):
                 manage._validate_required('arg1')
 
     def test_failure_empty(self):
+        # The validation fails if the stripped value is an empty string.
         with mock.patch('guiserver.manage.options', {'arg1': ' '}):
             with self.assert_sysexit(self.error.format('arg1')):
                 manage._validate_required('arg1')
 
     def test_failure_invalid_type(self):
+        # The validation fails if the arg value is not a string.
         with mock.patch('guiserver.manage.options', {'arg1': 42}):
             with self.assert_sysexit(self.error.format('arg1')):
                 manage._validate_required('arg1')
@@ -117,3 +123,16 @@ class TestValidateChoices(ValidatorTestMixin, unittest.TestCase):
         with mock.patch('guiserver.manage.options', {'arg1': None}):
             with self.assert_sysexit(self.error.format('arg1')):
                 manage._validate_choices('arg1', self.choices)
+
+
+class TestGetSslOptions(unittest.TestCase):
+
+    def test_options(self):
+        # The SSL options are correctly returned.
+        mock_options = mock.Mock(sslpath='/my/path')
+        expected = {
+            'certfile': '/my/path/juju.crt',
+            'keyfile': '/my/path/juju.key',
+        }
+        with mock.patch('guiserver.manage.options', mock_options):
+            self.assertEqual(expected, manage._get_ssl_options())
