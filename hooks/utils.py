@@ -19,13 +19,13 @@
 __all__ = [
     'AGENT',
     'APACHE',
+    'APACHE_SITE',
     'API_PORT',
     'CURRENT_DIR',
     'HAPROXY',
     'IMPROV',
     'JUJU_DIR',
     'JUJU_GUI_DIR',
-    'JUJU_GUI_SITE',
     'JUJU_PEM',
     'WEB_PORT',
     'bzr_checkout',
@@ -100,8 +100,8 @@ WEB_PORT = 8000
 CURRENT_DIR = os.getcwd()
 JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
-JUJU_GUI_SITE = '/etc/apache2/sites-available/juju-gui'
-JUJU_GUI_PORTS = '/etc/apache2/ports.conf'
+APACHE_SITE = '/etc/apache2/sites-available/juju-gui'
+APACHE_PORTS = '/etc/apache2/ports.conf'
 JUJU_PEM = 'juju.includes-private-key.pem'
 DEB_BUILD_DEPENDENCIES = (
     'bzr', 'imagemagick', 'make',  'nodejs', 'npm',
@@ -443,8 +443,8 @@ def write_apache_config(build_dir, serve_tests=False):
         'server_root': build_dir,
         'tests_root': os.path.join(JUJU_GUI_DIR, 'test', ''),
     }
-    render_to_file('apache-ports.template', context, JUJU_GUI_PORTS)
-    render_to_file('apache-site.template', context, JUJU_GUI_SITE)
+    render_to_file('apache-ports.template', context, APACHE_PORTS)
+    render_to_file('apache-site.template', context, APACHE_SITE)
 
 
 def get_npm_cache_archive_url(Launchpad=Launchpad):
@@ -548,16 +548,16 @@ def setup_gui(release_tarball):
 def setup_apache():
     """Set up apache."""
     log('Setting up apache.')
-    if not os.path.exists(JUJU_GUI_SITE):
-        cmd_log(run('touch', JUJU_GUI_SITE))
-        cmd_log(run('chown', 'ubuntu:', JUJU_GUI_SITE))
+    if not os.path.exists(APACHE_SITE):
+        cmd_log(run('touch', APACHE_SITE))
+        cmd_log(run('chown', 'ubuntu:', APACHE_SITE))
         cmd_log(
-            run('ln', '-s', JUJU_GUI_SITE,
+            run('ln', '-s', APACHE_SITE,
                 '/etc/apache2/sites-enabled/juju-gui'))
 
-    if not os.path.exists(JUJU_GUI_PORTS):
-        cmd_log(run('touch', JUJU_GUI_PORTS))
-        cmd_log(run('chown', 'ubuntu:', JUJU_GUI_PORTS))
+    if not os.path.exists(APACHE_PORTS):
+        cmd_log(run('touch', APACHE_PORTS))
+        cmd_log(run('chown', 'ubuntu:', APACHE_PORTS))
 
     with su('root'):
         run('a2dissite', 'default')
@@ -617,39 +617,3 @@ def find_missing_packages(*packages):
             continue
         missing.add(pkg_name)
     return missing
-
-
-## Backend support decorators
-
-def chain(name):
-    """Helper method to compose a set of mixin objects into a callable.
-
-    Each method is called in the context of its mixin instance, and its
-    argument is the Backend instance.
-    """
-    # Chain method calls through all implementing mixins.
-    def method(self):
-        for mixin in self.mixins:
-            a_callable = getattr(type(mixin), name, None)
-            if a_callable:
-                a_callable(mixin, self)
-
-    method.__name__ = name
-    return method
-
-
-def merge(name):
-    """Helper to merge a property from a set of strategy objects
-    into a unified set.
-    """
-    # Return merged property from every providing mixin as a set.
-    @property
-    def method(self):
-        result = set()
-        for mixin in self.mixins:
-            segment = getattr(type(mixin), name, None)
-            if segment and isinstance(segment, (list, tuple, set)):
-                result |= set(segment)
-
-        return result
-    return method

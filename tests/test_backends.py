@@ -14,6 +14,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+"""Backend tests."""
+
+
 from collections import defaultdict
 from contextlib import contextmanager
 import os
@@ -44,7 +47,7 @@ class TestBackendProperties(unittest.TestCase):
             config={'sandbox': False, 'staging': True})
         mixin_names = get_mixin_names(test_backend)
         self.assertEqual(
-            ('InstallMixin', 'ImprovMixin', 'GuiMixin', 'UpstartMixin'),
+            ('GuiInstallMixin', 'ImprovMixin', 'GuiStartMixin', 'HaproxyApacheMixin'),
             mixin_names)
         self.assertEqual(
             frozenset(('apache2', 'curl', 'haproxy', 'openssl', 'zookeeper')),
@@ -61,7 +64,7 @@ class TestBackendProperties(unittest.TestCase):
             config={'sandbox': True, 'staging': False})
         mixin_names = get_mixin_names(test_backend)
         self.assertEqual(
-            ('InstallMixin', 'SandboxMixin', 'GuiMixin', 'UpstartMixin'),
+            ('GuiInstallMixin', 'SandboxMixin', 'GuiStartMixin', 'HaproxyApacheMixin'),
             mixin_names)
         self.assertEqual(
             frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
@@ -78,7 +81,7 @@ class TestBackendProperties(unittest.TestCase):
             config={'sandbox': False, 'staging': False})
         mixin_names = get_mixin_names(test_backend)
         self.assertEqual(
-            ('InstallMixin', 'PythonMixin', 'GuiMixin', 'UpstartMixin'),
+            ('GuiInstallMixin', 'PythonMixin', 'GuiStartMixin', 'HaproxyApacheMixin'),
             mixin_names)
         self.assertEqual(
             frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
@@ -106,7 +109,7 @@ class TestBackendProperties(unittest.TestCase):
         # Tests
         mixin_names = get_mixin_names(test_backend)
         self.assertEqual(
-            ('InstallMixin', 'GoMixin', 'GuiMixin', 'UpstartMixin'),
+            ('GuiInstallMixin', 'GoMixin', 'GuiStartMixin', 'HaproxyApacheMixin'),
             mixin_names)
         self.assertEqual(
             frozenset(

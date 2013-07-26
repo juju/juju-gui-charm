@@ -12,8 +12,8 @@ Commons, 171 Second Street, Suite 300, San Francisco, California, 94105, USA.
 ## How it works ##
 
 The Juju GUI is a client-side, JavaScript application that runs inside a
-web browser. The browser connects to a custom-made server deployed by
-the charm.
+web browser. The browser connects to a built-in server deployed by the
+charm.
 
 ## Server ##
 

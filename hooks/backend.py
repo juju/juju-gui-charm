@@ -17,7 +17,7 @@
 """
 A composition system for creating backend objects.
 
-Backends implement start(), stop() and install() methods. A backend is composed
+Backends implement install(), start() and stop() methods. A backend is composed
 of many mixins and each mixin will implement any/all of those methods and all
 will be called. Backends additionally provide for collecting property values
 from each mixin into a single final property on the backend. There is also a
@@ -25,19 +25,19 @@ feature for determining if configuration values have changed between old and
 new configurations so we can selectively take action.
 """
 
+import os
+import shutil
+
 import charmhelpers
 import shelltoolbox
 import utils
-
-import os
-import shutil
 
 
 apt_get = shelltoolbox.command('apt-get')
 SYS_INIT_DIR = '/etc/init/'
 
 
-class InstallMixin(object):
+class GuiInstallMixin(object):
     """Provide for the GUI and its dependencies to be installed."""
 
     def install(self, backend):
@@ -60,16 +60,16 @@ class InstallMixin(object):
             utils.setup_gui(release_tarball)
 
 
-class UpstartMixin(object):
-    """Manage (install, start, stop, etc.) some service via Upstart."""
+class HaproxyApacheMixin(object):
+    """Manage (install, start, stop, etc.) haproxy and Apache via Upstart."""
 
     upstart_scripts = ('haproxy.conf',)
     debs = ('curl', 'openssl', 'haproxy', 'apache2')
 
     def install(self, backend):
-        """Set up haproxy and Apache upstart configuration files."""
+        """Set up haproxy and Apache startup configuration files."""
         utils.setup_apache()
-        charmhelpers.log('Setting up haproxy and Apache start up scripts.')
+        charmhelpers.log('Setting up haproxy and Apache startup scripts.')
         config = backend.config
         if backend.different(
                 'ssl-cert-path', 'ssl-cert-contents', 'ssl-key-contents'):
@@ -92,7 +92,8 @@ class UpstartMixin(object):
             charmhelpers.service_control(utils.APACHE, charmhelpers.STOP)
 
 
-class GuiMixin(object):
+class GuiStartMixin(object):
+    """Start the GUI and expose it."""
 
     def start(self, backend):
         config = backend.config
@@ -114,6 +115,7 @@ class SandboxMixin(object):
 
 
 class PythonMixin(object):
+    """Manage the real PyJuju backend."""
 
     def install(self, backend):
         config = backend.config
@@ -129,6 +131,8 @@ class PythonMixin(object):
 
 
 class ImprovMixin(object):
+    """Manage the improv backend when on staging."""
+
     debs = ('zookeeper',)
 
     def install(self, backend):
@@ -147,6 +151,8 @@ class ImprovMixin(object):
 
 
 class GoMixin(object):
+    """Manage the real Go juju-core backend."""
+
     debs = ('python-yaml',)
 
     def install(self, backend):
@@ -155,6 +161,39 @@ class GoMixin(object):
         # directory to be friendly for Apache.
         # Bug: 1202772
         utils.cmd_log(shelltoolbox.run('chmod', '+x', utils.CURRENT_DIR))
+
+
+def chain_methods(name):
+    """Helper to compose a set of mixin objects into a callable.
+
+    Each method is called in the context of its mixin instance, and its
+    argument is the Backend instance.
+    """
+    # Chain method calls through all implementing mixins.
+    def method(self):
+        for mixin in self.mixins:
+            a_callable = getattr(type(mixin), name, None)
+            if a_callable:
+                a_callable(mixin, self)
+
+    method.__name__ = name
+    return method
+
+
+def merge_properties(name):
+    """Helper to merge a property from a set of mixin objects into a unified
+    set.
+    """
+    @property
+    def method(self):
+        result = set()
+        for mixin in self.mixins:
+            segment = getattr(type(mixin), name, None)
+            if segment and isinstance(segment, (list, tuple, set)):
+                result |= set(segment)
+
+        return result
+    return method
 
 
 class Backend(object):
@@ -177,7 +216,7 @@ class Backend(object):
         self.prev_config = prev_config
 
         # We always install the GUI.
-        mixins = [InstallMixin]
+        mixins = [GuiInstallMixin]
 
         sandbox = config.get('sandbox', False)
         staging = config.get('staging', False)
@@ -198,8 +237,8 @@ class Backend(object):
 
         # All backends need to install, start, and stop the services that
         # provide the GUI.
-        mixins.append(GuiMixin)
-        mixins.append(UpstartMixin)
+        mixins.append(GuiStartMixin)
+        mixins.append(HaproxyApacheMixin)
 
         # Record our choice mapping classes to instances.
         for i, b in enumerate(mixins):
@@ -217,15 +256,15 @@ class Backend(object):
         return any(current(key) != previous(key) for key in keys)
 
     ## Composed Methods
-    install = utils.chain('install')
-    start = utils.chain('start')
-    stop = utils.chain('stop')
+    install = chain_methods('install')
+    start = chain_methods('start')
+    stop = chain_methods('stop')
 
     ## Merged Properties
-    dependencies = utils.merge('dependencies')
-    build_dependencies = utils.merge('build_dependencies')
-    staging_dependencies = utils.merge('staging_dependencies')
+    dependencies = merge_properties('dependencies')
+    build_dependencies = merge_properties('build_dependencies')
+    staging_dependencies = merge_properties('staging_dependencies')
 
-    repositories = utils.merge('repositories')
-    debs = utils.merge('debs')
-    upstart_scripts = utils.merge('upstart_scripts')
+    repositories = merge_properties('repositories')
+    debs = merge_properties('debs')
+    upstart_scripts = merge_properties('upstart_scripts')
