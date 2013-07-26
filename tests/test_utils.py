@@ -47,7 +47,6 @@ from utils import (
     render_to_file,
     save_or_create_certificates,
     start_agent,
-    start_gui,
     start_improv,
 )
 # Import the whole utils package for monkey patching.
@@ -629,6 +628,18 @@ class TestStartStop(unittest.TestCase):
         self.assertEqual(self.svc_ctl_call_count, 1)
         self.assertEqual(self.service_names, ['juju-api-agent'])
         self.assertEqual(self.actions, [charmhelpers.START])
+
+        # console_enabled, login_help, readonly, in_staging, ssl_cert_path,
+        # charmworld_url, serve_tests, haproxy_path='/etc/haproxy/haproxy.cfg',
+        # secure=True, sandbox=False, use_analytics=False,
+        # default_viewmode='sidebar', show_get_juju_button=False,
+        # config_js_path=None
+
+        # console_enabled, login_help, readonly, in_staging,
+        # charmworld_url, build_dir,
+        # secure=True, sandbox=False, use_analytics=False,
+        # default_viewmode='sidebar', show_get_juju_button=False,
+        # config_js_path=None
 
     def test_start_gui(self):
         ssl_cert_path = '/tmp/certificates/'

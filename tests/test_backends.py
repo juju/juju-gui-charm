@@ -35,19 +35,22 @@ def get_mixin_names(test_backend):
     return tuple(b.__class__.__name__ for b in test_backend.mixins)
 
 
+class GotEmAllDict(defaultdict):
+    """A dictionary that returns the same default value for all given keys."""
+
+    def get(self, key, default=None):
+        return self.default_factory()
+
+
 class TestBackendProperties(unittest.TestCase):
-    """
-    As the number of configurations this charm supports increases it becomes
-    desirable to move to Strategy pattern objects to implement features
-    per backend. These tests insure the basic factory code works.
-    """
+    """Ensure the correct mixins and property values are collected."""
 
     def test_staging_backend(self):
         test_backend = backend.Backend(
             config={'sandbox': False, 'staging': True})
         mixin_names = get_mixin_names(test_backend)
         self.assertEqual(
-            ('GuiInstallMixin', 'ImprovMixin', 'GuiStartMixin', 'HaproxyApacheMixin'),
+            ('ImprovMixin', 'GuiMixin', 'HaproxyApacheMixin'),
             mixin_names)
         self.assertEqual(
             frozenset(('apache2', 'curl', 'haproxy', 'openssl', 'zookeeper')),
@@ -64,7 +67,7 @@ class TestBackendProperties(unittest.TestCase):
             config={'sandbox': True, 'staging': False})
         mixin_names = get_mixin_names(test_backend)
         self.assertEqual(
-            ('GuiInstallMixin', 'SandboxMixin', 'GuiStartMixin', 'HaproxyApacheMixin'),
+            ('SandboxMixin', 'GuiMixin', 'HaproxyApacheMixin'),
             mixin_names)
         self.assertEqual(
             frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
@@ -81,7 +84,7 @@ class TestBackendProperties(unittest.TestCase):
             config={'sandbox': False, 'staging': False})
         mixin_names = get_mixin_names(test_backend)
         self.assertEqual(
-            ('GuiInstallMixin', 'PythonMixin', 'GuiStartMixin', 'HaproxyApacheMixin'),
+            ('PythonMixin', 'GuiMixin', 'HaproxyApacheMixin'),
             mixin_names)
         self.assertEqual(
             frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
@@ -109,7 +112,7 @@ class TestBackendProperties(unittest.TestCase):
         # Tests
         mixin_names = get_mixin_names(test_backend)
         self.assertEqual(
-            ('GuiInstallMixin', 'GoMixin', 'GuiStartMixin', 'HaproxyApacheMixin'),
+            ('GoMixin', 'GuiMixin', 'HaproxyApacheMixin'),
             mixin_names)
         self.assertEqual(
             frozenset(
@@ -123,13 +126,6 @@ class TestBackendProperties(unittest.TestCase):
             test_backend.upstart_scripts)
 
 
-class GotEmAllDict(defaultdict):
-    """A dictionary that returns the same default value for all given keys."""
-
-    def get(self, key, default=None):
-        return self.default_factory()
-
-
 class TestBackendCommands(unittest.TestCase):
 
     def setUp(self):
@@ -139,17 +135,22 @@ class TestBackendCommands(unittest.TestCase):
 
         # Monkeypatch functions.
         self.utils_mocks = {
-            'setup_apache': utils.setup_apache,
+            'compute_build_dir': utils.compute_build_dir,
             'fetch_api': utils.fetch_api,
-            'fetch_gui': utils.fetch_gui,
-            'setup_gui': utils.setup_gui,
-            'save_or_create_certificates': utils.save_or_create_certificates,
+            'fetch_gui_from_branch': utils.fetch_gui_from_branch,
+            'fetch_gui_release': utils.fetch_gui_release,
             'find_missing_packages': utils.find_missing_packages,
-            'prime_npm_cache': utils.prime_npm_cache,
+            'generate_gui_config': utils.generate_gui_config,
+            'generate_haproxy_config': utils.generate_haproxy_config,
             'get_npm_cache_archive_url': utils.get_npm_cache_archive_url,
-            'start_gui': utils.start_gui,
+            'parse_source': utils.parse_source,
+            'prime_npm_cache': utils.prime_npm_cache,
+            'save_or_create_certificates': utils.save_or_create_certificates,
+            'setup_apache': utils.setup_apache,
+            'setup_gui': utils.setup_gui,
             'start_agent': utils.start_agent,
             'start_improv': utils.start_improv,
+            'write_apache_config': utils.write_apache_config,
         }
         self.charmhelpers_mocks = {
             'log': charmhelpers.log,
@@ -160,6 +161,7 @@ class TestBackendCommands(unittest.TestCase):
         def make_mock_function(name):
             def mock_function(*args, **kwargs):
                 self.called[name] = True
+                return (None, None)
             mock_function.__name__ = name
             return mock_function
 
@@ -175,6 +177,11 @@ class TestBackendCommands(unittest.TestCase):
         self.orig_su = shelltoolbox.su
         shelltoolbox.su = mock_su
 
+        def mock_apt_get_install(*debs):
+            self.called['apt_get_install'] = True
+        self.orig_apt_get_install = shelltoolbox.apt_get_install
+        shelltoolbox.apt_get_install = mock_apt_get_install
+
         # Monkeypatch directories.
         self.orig_juju_dir = utils.JUJU_DIR
         self.orig_sys_init_dir = backend.SYS_INIT_DIR
@@ -188,6 +195,7 @@ class TestBackendCommands(unittest.TestCase):
         utils.JUJU_DIR = self.orig_juju_dir
         shutil.rmtree(self.temp_dir)
         # Undo the monkeypatching.
+        shelltoolbox.apt_get_install = self.orig_apt_get_install
         shelltoolbox.su = self.orig_su
         for name, orig_fun in self.charmhelpers_mocks.items():
             setattr(charmhelpers, name, orig_fun)
@@ -197,38 +205,45 @@ class TestBackendCommands(unittest.TestCase):
     def test_install_python(self):
         test_backend = backend.Backend(config=self.alwaysFalse)
         test_backend.install()
-        for mocked in (
-                'find_missing_packages', 'setup_apache', 'fetch_api', 'log'):
-            self.assertTrue(mocked, '{} was not called'.format(mocked))
+        for mocked in ('apt_get_install', 'find_missing_packages',
+                'setup_apache', 'fetch_api', 'log'):
+            self.assertTrue(self.called[mocked],
+                '{} was not called'.format(mocked))
 
     def test_install_improv(self):
         test_backend = backend.Backend(config=self.alwaysTrue)
         test_backend.install()
-        for mocked in (
-                'find_missing_packages', 'setup_apache', 'fetch_api', 'log'):
-            self.assertTrue(mocked, '{} was not called'.format(mocked))
+        for mocked in ('apt_get_install', 'find_missing_packages',
+                'setup_apache', 'fetch_api', 'log'):
+            self.assertTrue(self.called[mocked],
+                '{} was not called'.format(mocked))
 
     def test_start_agent(self):
         test_backend = backend.Backend(config=self.alwaysFalse)
         test_backend.start()
         for mocked in (
-                'service_control', 'start_agent', 'start_gui',
-                'open_port', 'su'):
-            self.assertTrue(mocked, '{} was not called'.format(mocked))
+                'service_control', 'start_agent', 'open_port', 'su',
+                'compute_build_dir', 'generate_gui_config',
+                'generate_haproxy_config', 'write_apache_config'):
+            self.assertTrue(self.called[mocked],
+                '{} was not called'.format(mocked))
 
     def test_start_improv(self):
         test_backend = backend.Backend(config=self.alwaysTrue)
         test_backend.start()
         for mocked in (
-                'service_control', 'start_improv', 'start_gui',
-                'open_port', 'su'):
-            self.assertTrue(mocked, '{} was not called'.format(mocked))
+                'service_control', 'start_improv', 'open_port', 'su',
+                'compute_build_dir', 'generate_gui_config',
+                'generate_haproxy_config', 'write_apache_config'):
+            self.assertTrue(self.called[mocked],
+                '{} was not called'.format(mocked))
 
     def test_stop(self):
         test_backend = backend.Backend(config=self.alwaysFalse)
         test_backend.stop()
         for mocked in ('service_control', 'su'):
-            self.assertTrue(mocked, '{} was not called'.format(mocked))
+            self.assertTrue(self.called[mocked],
+                '{} was not called'.format(mocked))
 
 
 class TestBackendUtils(unittest.TestCase):
