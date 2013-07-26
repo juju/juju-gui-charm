@@ -37,7 +37,7 @@ class AppsTestMixin(object):
         """Return the app URL specification with the given regex pattern.
 
         Return None if the URL specification is not found.
-        See web.tornado.URLSpec.
+        See tornado.web.URLSpec.
         """
         for spec in app.handlers[0][1]:
             if spec.regex.pattern == pattern:
