@@ -126,17 +126,17 @@ class GuiMixin(object):
         config = backend.config
         build_dir = utils.compute_build_dir(
             config['staging'], config['serve-tests'])
-        utils.generate_gui_config(
+        utils.write_gui_config(
             config['juju-gui-console-enabled'], config['login-help'],
             config['read-only'], config['staging'], config['charmworld-url'],
             build_dir, secure=config['secure'], sandbox=config['sandbox'],
             use_analytics=config['use-analytics'],
             default_viewmode=config['default-viewmode'],
             show_get_juju_button=config['show-get-juju-button'])
-        utils.generate_haproxy_config(
+        utils.write_haproxy_config(
             config['ssl-cert-path'], secure=config['secure'])
         utils.write_apache_config(build_dir, config['serve-tests'])
-
+        # Expose the service.
         charmhelpers.open_port(80)
         charmhelpers.open_port(443)
 

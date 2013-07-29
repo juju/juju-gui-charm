@@ -140,8 +140,6 @@ class TestBackendCommands(unittest.TestCase):
             'fetch_gui_from_branch': utils.fetch_gui_from_branch,
             'fetch_gui_release': utils.fetch_gui_release,
             'find_missing_packages': utils.find_missing_packages,
-            'generate_gui_config': utils.generate_gui_config,
-            'generate_haproxy_config': utils.generate_haproxy_config,
             'get_npm_cache_archive_url': utils.get_npm_cache_archive_url,
             'parse_source': utils.parse_source,
             'prime_npm_cache': utils.prime_npm_cache,
@@ -151,6 +149,8 @@ class TestBackendCommands(unittest.TestCase):
             'start_agent': utils.start_agent,
             'start_improv': utils.start_improv,
             'write_apache_config': utils.write_apache_config,
+            'write_gui_config': utils.write_gui_config,
+            'write_haproxy_config': utils.write_haproxy_config,
         }
         self.charmhelpers_mocks = {
             'log': charmhelpers.log,
@@ -205,45 +205,53 @@ class TestBackendCommands(unittest.TestCase):
     def test_install_python(self):
         test_backend = backend.Backend(config=self.alwaysFalse)
         test_backend.install()
-        for mocked in ('apt_get_install', 'find_missing_packages',
-                'setup_apache', 'fetch_api', 'log'):
-            self.assertTrue(self.called[mocked],
-                '{} was not called'.format(mocked))
+        for mocked in (
+            'apt_get_install', 'fetch_api', 'find_missing_packages', 'log',
+            'setup_apache'
+        ):
+            self.assertTrue(
+                self.called[mocked], '{} was not called'.format(mocked))
 
     def test_install_improv(self):
         test_backend = backend.Backend(config=self.alwaysTrue)
         test_backend.install()
-        for mocked in ('apt_get_install', 'find_missing_packages',
-                'setup_apache', 'fetch_api', 'log'):
-            self.assertTrue(self.called[mocked],
-                '{} was not called'.format(mocked))
+        for mocked in (
+            'apt_get_install', 'fetch_api', 'find_missing_packages', 'log',
+            'setup_apache',
+        ):
+            self.assertTrue(
+                self.called[mocked], '{} was not called'.format(mocked))
 
     def test_start_agent(self):
         test_backend = backend.Backend(config=self.alwaysFalse)
         test_backend.start()
         for mocked in (
-                'service_control', 'start_agent', 'open_port', 'su',
-                'compute_build_dir', 'generate_gui_config',
-                'generate_haproxy_config', 'write_apache_config'):
-            self.assertTrue(self.called[mocked],
-                '{} was not called'.format(mocked))
+            'compute_build_dir', 'open_port', 'service_control', 'start_agent',
+            'su', 'write_apache_config', 'write_gui_config',
+            'write_haproxy_config',
+        ):
+            self.assertTrue(
+                self.called[mocked], '{} was not called'.format(mocked))
 
     def test_start_improv(self):
         test_backend = backend.Backend(config=self.alwaysTrue)
         test_backend.start()
         for mocked in (
-                'service_control', 'start_improv', 'open_port', 'su',
-                'compute_build_dir', 'generate_gui_config',
-                'generate_haproxy_config', 'write_apache_config'):
-            self.assertTrue(self.called[mocked],
-                '{} was not called'.format(mocked))
+            'compute_build_dir', 'open_port', 'service_control',
+            'start_improv', 'su', 'write_apache_config', 'write_gui_config',
+            'write_haproxy_config',
+        ):
+            self.assertTrue(
+                self.called[mocked], '{} was not called'.format(mocked))
 
     def test_stop(self):
         test_backend = backend.Backend(config=self.alwaysFalse)
         test_backend.stop()
-        for mocked in ('service_control', 'su'):
-            self.assertTrue(self.called[mocked],
-                '{} was not called'.format(mocked))
+        for mocked in (
+            'service_control', 'su'
+        ):
+            self.assertTrue(
+                self.called[mocked], '{} was not called'.format(mocked))
 
 
 class TestBackendUtils(unittest.TestCase):

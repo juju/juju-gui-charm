@@ -36,8 +36,6 @@ __all__ = [
     'fetch_gui_release',
     'find_missing_packages',
     'first_path_in_dir',
-    'generate_gui_config',
-    'generate_haproxy_config',
     'get_api_address',
     'get_npm_cache_archive_url',
     'get_release_file_url',
@@ -54,6 +52,8 @@ __all__ = [
     'start_agent',
     'start_improv',
     'write_apache_config',
+    'write_gui_config',
+    'write_haproxy_config',
 ]
 
 from contextlib import contextmanager
@@ -371,7 +371,7 @@ def compute_build_dir(in_staging, serve_tests):
     return os.path.join(JUJU_GUI_DIR, build_dirname)
 
 
-def generate_gui_config(
+def write_gui_config(
         console_enabled, login_help, readonly, in_staging, charmworld_url,
         build_dir, secure=True, sandbox=False, use_analytics=False,
         default_viewmode='sidebar', show_get_juju_button=False,
@@ -412,7 +412,7 @@ def generate_gui_config(
     render_to_file('config.js.template', context, config_js_path)
 
 
-def generate_haproxy_config(
+def write_haproxy_config(
         ssl_cert_path, secure=True, haproxy_path='/etc/haproxy/haproxy.cfg'):
     """Generate the haproxy configuration file."""
     log('Generating haproxy configuration file.')
