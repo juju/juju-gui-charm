@@ -3,9 +3,6 @@ SITE_CONF='/etc/apache2/sites-available/juju-gui'
 ADDRESS='https://127.0.0.1:443/'
 LIFE_SIGN='loading on a slow connection'
 
-#SITE_CONF='/etc/hosts'
-#ADDRESS='https://jujucharms.com:443/'
-
 if [[ ! -f $SITE_CONF ]]; then
     echo Apache is not configured serve juju-gui.
     exit 2
