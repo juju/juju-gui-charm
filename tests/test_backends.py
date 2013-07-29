@@ -14,9 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Backend tests."""
-
-
 from collections import defaultdict
 from contextlib import contextmanager
 import os
@@ -35,15 +32,12 @@ def get_mixin_names(test_backend):
     return tuple(b.__class__.__name__ for b in test_backend.mixins)
 
 
-class GotEmAllDict(defaultdict):
-    """A dictionary that returns the same default value for all given keys."""
-
-    def get(self, key, default=None):
-        return self.default_factory()
-
-
 class TestBackendProperties(unittest.TestCase):
-    """Ensure the correct mixins and property values are collected."""
+    """
+    As the number of configurations this charm supports increases it becomes
+    desirable to move to Strategy pattern objects to implement features
+    per backend. These tests insure the basic factory code works.
+    """
 
     def test_staging_backend(self):
         test_backend = backend.Backend(
@@ -124,6 +118,13 @@ class TestBackendProperties(unittest.TestCase):
         self.assertEqual(
             frozenset(('haproxy.conf',)),
             test_backend.upstart_scripts)
+
+
+class GotEmAllDict(defaultdict):
+    """A dictionary that returns the same default value for all given keys."""
+
+    def get(self, key, default=None):
+        return self.default_factory()
 
 
 class TestBackendCommands(unittest.TestCase):

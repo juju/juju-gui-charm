@@ -122,15 +122,6 @@ bzr_checkout = command('bzr', 'co', '--lightweight')
 legacy_juju = lambda: not os.path.exists(
     os.path.join(CURRENT_DIR, '..', 'agent.conf'))
 
-bzr_url_expression = re.compile(r"""
-    ^  # Beginning of line.
-    ((?:lp:|http:\/\/)[^:]+)  # Branch URL (scheme + domain/path).
-    (?::(\d+))?  # Optional branch revision.
-    $  # End of line.
-""", re.VERBOSE)
-
-results_log = None
-
 
 def _get_build_dependencies():
     """Install deb dependencies for building."""
@@ -246,6 +237,14 @@ def log_hook():
         log("<<< Exiting {}".format(script))
 
 
+bzr_url_expression = re.compile(r"""
+    ^  # Beginning of line.
+    ((?:lp:|http:\/\/)[^:]+)  # Branch URL (scheme + domain/path).
+    (?::(\d+))?  # Optional branch revision.
+    $  # End of line.
+""", re.VERBOSE)
+
+
 def parse_source(source):
     """Parse the ``juju-gui-source`` option.
 
@@ -293,6 +292,9 @@ def render_to_file(template_name, context, destination):
     template = tempita.Template.from_filename(template_path)
     with open(destination, 'w') as stream:
         stream.write(template.substitute(context))
+
+
+results_log = None
 
 
 def _setupLogging():
@@ -384,12 +386,14 @@ def write_gui_config(
         user, password = 'admin', 'admin'
     else:
         user, password = None, None
+
     api_backend = 'python' if is_legacy_juju else 'go'
     if secure:
         protocol = 'wss'
     else:
         log('Running in insecure mode! Port 80 will serve unencrypted.')
         protocol = 'ws'
+
     context = {
         'raw_protocol': protocol,
         'address': unit_get('public-address'),

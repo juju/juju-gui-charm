@@ -515,20 +515,20 @@ class TestSaveOrCreateCertificates(unittest.TestCase):
         self.cert_file = os.path.join(self.cert_path, 'juju.crt')
         self.key_file = os.path.join(self.cert_path, 'juju.key')
 
-    def xtest_generation(self):
+    def test_generation(self):
         # Ensure certificates are correctly generated.
         save_or_create_certificates(
             self.cert_path, 'some ignored contents', None)
         self.assertIn('CERTIFICATE', open(self.cert_file).read())
         self.assertIn('PRIVATE KEY', open(self.key_file).read())
 
-    def xtest_provided_certificates(self):
+    def test_provided_certificates(self):
         # Ensure files are correctly saved if their contents are provided.
         save_or_create_certificates(self.cert_path, 'mycert', 'mykey')
         self.assertIn('mycert', open(self.cert_file).read())
         self.assertIn('mykey', open(self.key_file).read())
 
-    def xtest_pem_file(self):
+    def test_pem_file(self):
         # Ensure the pem file is created concatenating the key and cert files.
         save_or_create_certificates(self.cert_path, 'Certificate', 'Key')
         pem_file = os.path.join(self.cert_path, JUJU_PEM)
@@ -565,9 +565,9 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.fake_zk_address = '192.168.5.26'
         self.build_dir = 'juju-gui/build-'
         self.charmworld_url = 'http://charmworld.example'
-        self.ssl_cert_path = 'ssl/cert/path'
 
         # Monkey patches.
+        self.command = charmhelpers.command
 
         def service_control_mock(service_name, action):
             self.svc_ctl_call_count += 1
@@ -606,10 +606,13 @@ class TestStartImprovAgentGui(unittest.TestCase):
         for fn, fcns in self.functions.items():
             setattr(utils, fn, fcns[1])
 
+        self.ssl_cert_path = 'ssl/cert/path'
+
     def tearDown(self):
         # Undo all of the monkey patching.
         for fn, fcns in self.functions.items():
             setattr(utils, fn, fcns[0])
+        charmhelpers.command = self.command
 
     def test_start_improv(self):
         staging_env = 'large'

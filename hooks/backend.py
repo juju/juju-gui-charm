@@ -17,7 +17,7 @@
 """
 A composition system for creating backend objects.
 
-Backends implement install(), start() and stop() methods. A backend is composed
+Backends implement start(), stop() and install() methods. A backend is composed
 of many mixins and each mixin will implement any/all of those methods and all
 will be called. Backends additionally provide for collecting property values
 from each mixin into a single final property on the backend. There is also a
@@ -25,13 +25,12 @@ feature for determining if configuration values have changed between old and
 new configurations so we can selectively take action.
 """
 
-import os
-import shutil
-
 import charmhelpers
 import shelltoolbox
-
 import utils
+
+import os
+import shutil
 
 
 apt_get = shelltoolbox.command('apt-get')
@@ -148,9 +147,9 @@ class HaproxyApacheMixin(object):
     debs = ('curl', 'openssl', 'haproxy', 'apache2')
 
     def install(self, backend):
-        """Set up haproxy and Apache startup configuration files."""
+        """Set up haproxy and Apache upstart configuration files."""
         utils.setup_apache()
-        charmhelpers.log('Setting up haproxy and Apache startup scripts.')
+        charmhelpers.log('Setting up haproxy and Apache start up scripts.')
         config = backend.config
         if backend.different(
                 'ssl-cert-path', 'ssl-cert-contents', 'ssl-key-contents'):
@@ -201,10 +200,7 @@ def merge_properties(name):
 
 
 class Backend(object):
-    """
-    Support many configurations by composing methods and policy to interact
-    with a Juju backend, collecting them from Strategy pattern mixin objects.
-    """
+    """Compose methods and policy needed to interact with a Juju backend."""
 
     def __init__(self, config=None, prev_config=None):
         """Generate a list of mixin classes that implement the backend, working
