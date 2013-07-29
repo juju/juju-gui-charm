@@ -167,3 +167,8 @@ options:
       link to juju.ubuntu.com
     type: boolean
     default: false
+  builtin-server:
+    description: |
+      Enable the built-in server, disable both haproxy and Apache.
+    type: boolean
+    default: false

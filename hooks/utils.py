@@ -92,6 +92,7 @@ from charmhelpers import (
 
 AGENT = 'juju-api-agent'
 APACHE = 'apache2'
+BUILTIN_SERVER = 'guiserver'
 IMPROV = 'juju-api-improv'
 HAPROXY = 'haproxy'
 
@@ -103,6 +104,7 @@ JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
 APACHE_SITE = '/etc/apache2/sites-available/juju-gui'
 APACHE_PORTS = '/etc/apache2/ports.conf'
+BUILTIN_SERVER_STARTUP = '/etc/init/guiserver.conf'
 JUJU_PEM = 'juju.includes-private-key.pem'
 DEB_BUILD_DEPENDENCIES = (
     'bzr', 'imagemagick', 'make',  'nodejs', 'npm',
@@ -448,6 +450,18 @@ def write_apache_config(build_dir, serve_tests=False):
     }
     render_to_file('apache-ports.template', context, APACHE_PORTS)
     render_to_file('apache-site.template', context, APACHE_SITE)
+
+
+def write_builtin_server_startup(gui_root, juju_api):
+    log('Generating the builtin server startup file.')
+    context = {
+        'gui_root': gui_root,
+        'juju_api': juju_api,
+        # TODO: make the builtin server also serve tests
+#        'serve_tests': serve_tests,
+#        'tests_root': os.path.join(JUJU_GUI_DIR, 'test', ''),
+    }
+    render_to_file('guiserver.conf.template', context, BUILTIN_SERVER_STARTUP)
 
 
 def get_npm_cache_archive_url(Launchpad=Launchpad):
