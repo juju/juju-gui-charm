@@ -19,20 +19,21 @@
 __all__ = [
     'AGENT',
     'APACHE',
+    'APACHE_SITE',
     'API_PORT',
     'CURRENT_DIR',
     'HAPROXY',
     'IMPROV',
     'JUJU_DIR',
     'JUJU_GUI_DIR',
-    'JUJU_GUI_SITE',
     'JUJU_PEM',
     'WEB_PORT',
     'bzr_checkout',
-    'chain',
     'cmd_log',
+    'compute_build_dir',
     'fetch_api',
-    'fetch_gui',
+    'fetch_gui_from_branch',
+    'fetch_gui_release',
     'find_missing_packages',
     'first_path_in_dir',
     'get_api_address',
@@ -42,7 +43,6 @@ __all__ = [
     'get_zookeeper_address',
     'legacy_juju',
     'log_hook',
-    'merge',
     'parse_source',
     'prime_npm_cache',
     'render_to_file',
@@ -50,9 +50,10 @@ __all__ = [
     'setup_apache',
     'setup_gui',
     'start_agent',
-    'start_gui',
     'start_improv',
     'write_apache_config',
+    'write_gui_config',
+    'write_haproxy_config',
 ]
 
 from contextlib import contextmanager
@@ -100,8 +101,8 @@ WEB_PORT = 8000
 CURRENT_DIR = os.getcwd()
 JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
-JUJU_GUI_SITE = '/etc/apache2/sites-available/juju-gui'
-JUJU_GUI_PORTS = '/etc/apache2/ports.conf'
+APACHE_SITE = '/etc/apache2/sites-available/juju-gui'
+APACHE_PORTS = '/etc/apache2/ports.conf'
 JUJU_PEM = 'juju.includes-private-key.pem'
 DEB_BUILD_DEPENDENCIES = (
     'bzr', 'imagemagick', 'make',  'nodejs', 'npm',
@@ -357,12 +358,8 @@ def start_agent(
         service_control(AGENT, START)
 
 
-def start_gui(
-        console_enabled, login_help, readonly, in_staging, ssl_cert_path,
-        charmworld_url, serve_tests, haproxy_path='/etc/haproxy/haproxy.cfg',
-        config_js_path=None, secure=True, sandbox=False, use_analytics=False,
-        default_viewmode='sidebar', show_get_juju_button=False):
-    """Set up and start the Juju GUI server."""
+def compute_build_dir(in_staging, serve_tests):
+    """Compute the build directory."""
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
         # XXX 2013-02-05 frankban bug=1116320:
@@ -373,7 +370,15 @@ def start_gui(
         build_dirname = 'build-debug'
     else:
         build_dirname = 'build-prod'
-    build_dir = os.path.join(JUJU_GUI_DIR, build_dirname)
+    return os.path.join(JUJU_GUI_DIR, build_dirname)
+
+
+def write_gui_config(
+        console_enabled, login_help, readonly, in_staging, charmworld_url,
+        build_dir, secure=True, sandbox=False, use_analytics=False,
+        default_viewmode='sidebar', show_get_juju_button=False,
+        config_js_path=None):
+    """Generate the GUI configuration file."""
     log('Generating the Juju GUI configuration file.')
     is_legacy_juju = legacy_juju()
     user, password = None, None
@@ -410,9 +415,12 @@ def start_gui(
             build_dir, 'juju-ui', 'assets', 'config.js')
     render_to_file('config.js.template', context, config_js_path)
 
-    write_apache_config(build_dir, serve_tests)
 
+def write_haproxy_config(
+        ssl_cert_path, secure=True, haproxy_path='/etc/haproxy/haproxy.cfg'):
+    """Generate the haproxy configuration file."""
     log('Generating haproxy configuration file.')
+    is_legacy_juju = legacy_juju()
     if is_legacy_juju:
         # The PyJuju API agent is listening on localhost.
         api_address = '127.0.0.1:{0}'.format(API_PORT)
@@ -432,7 +440,6 @@ def start_gui(
         'secure': secure
     }
     render_to_file('haproxy.cfg.template', context, haproxy_path)
-    log('Starting Juju GUI.')
 
 
 def write_apache_config(build_dir, serve_tests=False):
@@ -443,8 +450,8 @@ def write_apache_config(build_dir, serve_tests=False):
         'server_root': build_dir,
         'tests_root': os.path.join(JUJU_GUI_DIR, 'test', ''),
     }
-    render_to_file('apache-ports.template', context, JUJU_GUI_PORTS)
-    render_to_file('apache-site.template', context, JUJU_GUI_SITE)
+    render_to_file('apache-ports.template', context, APACHE_PORTS)
+    render_to_file('apache-site.template', context, APACHE_SITE)
 
 
 def get_npm_cache_archive_url(Launchpad=Launchpad):
@@ -473,54 +480,46 @@ def prime_npm_cache(npm_cache_url):
     cmd_log(uncompress(npm_cache_archive))
 
 
-def fetch_gui(juju_gui_source, logpath):
-    """Retrieve the Juju GUI release/branch."""
-    # Retrieve a Juju GUI release.
-    origin, version_or_branch = parse_source(juju_gui_source)
-    if origin == 'branch':
-        # If we are not using a pre-built release of the GUI (i.e., we are
-        # using a branch) then we need to build a release archive to use.
-        branch_url, revision = version_or_branch
-        # Make sure we have the dependencies necessary for us to actually make
-        # a build.
-        _get_build_dependencies()
-        # Inject NPM packages into the cache for faster building.
-        prime_npm_cache(get_npm_cache_archive_url())
-        # Create a release starting from a branch.
-        juju_gui_source_dir = os.path.join(CURRENT_DIR, 'juju-gui-source')
-        if revision is None:
-            checkout_args = []
-            revno = 'latest revno'
-        else:
-            checkout_args = ['--revision', revision]
-            revno = 'revno {}'.format(revision)
-        log('Retrieving Juju GUI source checkout from {} ({}).'.format(
-            branch_url, revno))
-        cmd_log(run('rm', '-rf', juju_gui_source_dir))
-        checkout_args.extend([branch_url, juju_gui_source_dir])
-        cmd_log(bzr_checkout(*checkout_args))
-        log('Preparing a Juju GUI release.')
-        logdir = os.path.dirname(logpath)
-        fd, name = tempfile.mkstemp(prefix='make-distfile-', dir=logdir)
-        log('Output from "make distfile" sent to %s' % name)
-        with environ(NO_BZR='1'):
-            run('make', '-C', juju_gui_source_dir, 'distfile',
-                stdout=fd, stderr=fd)
-        release_tarball = first_path_in_dir(
-            os.path.join(juju_gui_source_dir, 'releases'))
+def fetch_gui_from_branch(branch_url, revision, logpath):
+    """Retrieve the Juju GUI from a branch and build a release archive."""
+    # Make sure we have the needed dependencies.
+    _get_build_dependencies()
+    # Inject NPM packages into the cache for faster building.
+    prime_npm_cache(get_npm_cache_archive_url())
+    # Create a release starting from a branch.
+    juju_gui_source_dir = os.path.join(CURRENT_DIR, 'juju-gui-source')
+    checkout_args, revno = ([], 'latest revno') if revision is None else (
+        ['--revision', revision], 'revno {}'.format(revision))
+    log('Retrieving Juju GUI source checkout from {} ({}).'.format(
+        branch_url, revno))
+    cmd_log(run('rm', '-rf', juju_gui_source_dir))
+    checkout_args.extend([branch_url, juju_gui_source_dir])
+    cmd_log(bzr_checkout(*checkout_args))
+    log('Preparing a Juju GUI release.')
+    logdir = os.path.dirname(logpath)
+    fd, name = tempfile.mkstemp(prefix='make-distfile-', dir=logdir)
+    log('Output from "make distfile" sent to %s' % name)
+    with environ(NO_BZR='1'):
+        run('make', '-C', juju_gui_source_dir, 'distfile',
+            stdout=fd, stderr=fd)
+    return first_path_in_dir(
+        os.path.join(juju_gui_source_dir, 'releases'))
+
+
+def fetch_gui_release(origin, version):
+    """Retrieve a Juju GUI release."""
+    log('Retrieving Juju GUI release.')
+    if origin == 'url':
+        file_url = version
     else:
-        log('Retrieving Juju GUI release.')
-        if origin == 'url':
-            file_url = version_or_branch
-        else:
-            # Retrieve a release from Launchpad.
-            launchpad = Launchpad.login_anonymously(
-                'Juju GUI charm', 'production')
-            project = launchpad.projects['juju-gui']
-            file_url = get_release_file_url(project, origin, version_or_branch)
-        log('Downloading release file from %s.' % file_url)
-        release_tarball = os.path.join(CURRENT_DIR, 'release.tgz')
-        cmd_log(run('curl', '-L', '-o', release_tarball, file_url))
+        # Retrieve a release from Launchpad.
+        launchpad = Launchpad.login_anonymously(
+            'Juju GUI charm', 'production')
+        project = launchpad.projects['juju-gui']
+        file_url = get_release_file_url(project, origin, version)
+    log('Downloading release file from %s.' % file_url)
+    release_tarball = os.path.join(CURRENT_DIR, 'release.tgz')
+    cmd_log(run('curl', '-L', '-o', release_tarball, file_url))
     return release_tarball
 
 
@@ -548,16 +547,16 @@ def setup_gui(release_tarball):
 def setup_apache():
     """Set up apache."""
     log('Setting up apache.')
-    if not os.path.exists(JUJU_GUI_SITE):
-        cmd_log(run('touch', JUJU_GUI_SITE))
-        cmd_log(run('chown', 'ubuntu:', JUJU_GUI_SITE))
+    if not os.path.exists(APACHE_SITE):
+        cmd_log(run('touch', APACHE_SITE))
+        cmd_log(run('chown', 'ubuntu:', APACHE_SITE))
         cmd_log(
-            run('ln', '-s', JUJU_GUI_SITE,
+            run('ln', '-s', APACHE_SITE,
                 '/etc/apache2/sites-enabled/juju-gui'))
 
-    if not os.path.exists(JUJU_GUI_PORTS):
-        cmd_log(run('touch', JUJU_GUI_PORTS))
-        cmd_log(run('chown', 'ubuntu:', JUJU_GUI_PORTS))
+    if not os.path.exists(APACHE_PORTS):
+        cmd_log(run('touch', APACHE_PORTS))
+        cmd_log(run('chown', 'ubuntu:', APACHE_PORTS))
 
     with su('root'):
         run('a2dissite', 'default')
@@ -617,39 +616,3 @@ def find_missing_packages(*packages):
             continue
         missing.add(pkg_name)
     return missing
-
-
-## Backend support decorators
-
-def chain(name):
-    """Helper method to compose a set of mixin objects into a callable.
-
-    Each method is called in the context of its mixin instance, and its
-    argument is the Backend instance.
-    """
-    # Chain method calls through all implementing mixins.
-    def method(self):
-        for mixin in self.mixins:
-            a_callable = getattr(type(mixin), name, None)
-            if a_callable:
-                a_callable(mixin, self)
-
-    method.__name__ = name
-    return method
-
-
-def merge(name):
-    """Helper to merge a property from a set of strategy objects
-    into a unified set.
-    """
-    # Return merged property from every providing mixin as a set.
-    @property
-    def method(self):
-        result = set()
-        for mixin in self.mixins:
-            segment = getattr(type(mixin), name, None)
-            if segment and isinstance(segment, (list, tuple, set)):
-                result |= set(segment)
-
-        return result
-    return method

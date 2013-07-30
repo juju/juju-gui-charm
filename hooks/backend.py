@@ -20,9 +20,13 @@ A composition system for creating backend objects.
 Backends implement start(), stop() and install() methods. A backend is composed
 of many mixins and each mixin will implement any/all of those methods and all
 will be called. Backends additionally provide for collecting property values
-from each mixin into a single final property on the backend. There is also a
-feature for determining if configuration values have changed between old and
-new configurations so we can selectively take action.
+from each mixin into a single final property on the backend.
+
+There is also a feature for determining if configuration values have changed
+between old and new configurations so we can selectively take action.
+
+The mixins appear in the code in the order they are instantiated by the
+backend. Keeping them that way is useful.
 """
 
 import charmhelpers
@@ -37,8 +41,59 @@ apt_get = shelltoolbox.command('apt-get')
 SYS_INIT_DIR = '/etc/init/'
 
 
-class InstallMixin(object):
-    """Provide for the GUI and its dependencies to be installed."""
+class PythonInstallMixinBase(object):
+    """Provide a common "install" method to ImprovMixin and PythonMixin."""
+
+    def install(self, backend):
+        config = backend.config
+        if (not os.path.exists(utils.JUJU_DIR) or
+                backend.different('staging', 'juju-api-branch')):
+            utils.fetch_api(config['juju-api-branch'])
+
+
+class ImprovMixin(PythonInstallMixinBase):
+    """Manage the improv backend when on staging."""
+
+    debs = ('zookeeper',)
+
+    def start(self, backend):
+        config = backend.config
+        utils.start_improv(
+            config['staging-environment'], config['ssl-cert-path'])
+
+    def stop(self, backend):
+        charmhelpers.service_control(utils.IMPROV, charmhelpers.STOP)
+
+
+class SandboxMixin(object):
+    pass
+
+
+class PythonMixin(PythonInstallMixinBase):
+    """Manage the real PyJuju backend."""
+
+    def start(self, backend):
+        utils.start_agent(backend.config['ssl-cert-path'])
+
+    def stop(self, backend):
+        charmhelpers.service_control(utils.AGENT, charmhelpers.STOP)
+
+
+class GoMixin(object):
+    """Manage the real Go juju-core backend."""
+
+    debs = ('python-yaml',)
+
+    def install(self, backend):
+        # When juju-core deploys the charm, the charm directory (which hosts
+        # the GUI itself) is permissioned too strictly; set the perms on that
+        # directory to be friendly for Apache.
+        # Bug: 1202772
+        utils.cmd_log(shelltoolbox.run('chmod', '+x', utils.CURRENT_DIR))
+
+
+class GuiMixin(object):
+    """Install and start the GUI and its dependencies."""
 
     def install(self, backend):
         """Install the GUI and dependencies."""
@@ -53,15 +108,42 @@ class InstallMixin(object):
         # get the code, from either a static release or a branch as specified
         # by the souce setting, and install it.
         if backend.different('juju-gui-source'):
-            # Get a tarball somehow and install it.
-            release_tarball = utils.fetch_gui(
-                backend.config['juju-gui-source'],
-                backend.config['command-log-file'])
-            utils.setup_gui(release_tarball)
+            # Get a tarball somehow.
+            logpath = backend.config['command-log-file']
+            origin, version_or_branch = utils.parse_source(
+                backend.config['juju-gui-source'])
+            if origin == 'branch':
+                branch_url, revision = version_or_branch
+                release_tarball_path = utils.fetch_gui_from_branch(
+                    branch_url, revision, logpath)
+            else:
+                release_tarball_path = utils.fetch_gui_release(
+                    origin, version_or_branch)
+            # Install the tarball.
+            utils.setup_gui(release_tarball_path)
+
+    def start(self, backend):
+        charmhelpers.log('Starting Juju GUI.')
+        config = backend.config
+        build_dir = utils.compute_build_dir(
+            config['staging'], config['serve-tests'])
+        utils.write_gui_config(
+            config['juju-gui-console-enabled'], config['login-help'],
+            config['read-only'], config['staging'], config['charmworld-url'],
+            build_dir, secure=config['secure'], sandbox=config['sandbox'],
+            use_analytics=config['use-analytics'],
+            default_viewmode=config['default-viewmode'],
+            show_get_juju_button=config['show-get-juju-button'])
+        utils.write_haproxy_config(
+            config['ssl-cert-path'], secure=config['secure'])
+        utils.write_apache_config(build_dir, config['serve-tests'])
+        # Expose the service.
+        charmhelpers.open_port(80)
+        charmhelpers.open_port(443)
 
 
-class UpstartMixin(object):
-    """Manage (install, start, stop, etc.) some service via Upstart."""
+class HaproxyApacheMixin(object):
+    """Manage (install, start, stop, etc.) haproxy and Apache via Upstart."""
 
     upstart_scripts = ('haproxy.conf',)
     debs = ('curl', 'openssl', 'haproxy', 'apache2')
@@ -92,69 +174,31 @@ class UpstartMixin(object):
             charmhelpers.service_control(utils.APACHE, charmhelpers.STOP)
 
 
-class GuiMixin(object):
+def chain_methods(name):
+    """Helper to compose a set of mixin objects into a callable.
 
-    def start(self, backend):
-        config = backend.config
-        utils.start_gui(
-            config['juju-gui-console-enabled'], config['login-help'],
-            config['read-only'], config['staging'], config['ssl-cert-path'],
-            config['charmworld-url'], config['serve-tests'],
-            secure=config['secure'], sandbox=config['sandbox'],
-            use_analytics=config['use-analytics'],
-            default_viewmode=config['default-viewmode'],
-            show_get_juju_button=config['show-get-juju-button'])
-
-        charmhelpers.open_port(80)
-        charmhelpers.open_port(443)
-
-
-class SandboxMixin(object):
-    pass
+    Each method is called in the context of its mixin instance, and its
+    argument is the Backend instance.
+    """
+    # Chain method calls through all implementing mixins.
+    def method(self):
+        for mixin in self.mixins:
+            a_callable = getattr(type(mixin), name, None)
+            if a_callable is not None:
+                a_callable(mixin, self)
+    method.__name__ = name
+    return method
 
 
-class PythonMixin(object):
-
-    def install(self, backend):
-        config = backend.config
-        if (not os.path.exists(utils.JUJU_DIR) or
-                backend.different('staging', 'juju-api-branch')):
-            utils.fetch_api(config['juju-api-branch'])
-
-    def start(self, backend):
-        utils.start_agent(backend.config['ssl-cert-path'])
-
-    def stop(self, backend):
-        charmhelpers.service_control(utils.AGENT, charmhelpers.STOP)
-
-
-class ImprovMixin(object):
-    debs = ('zookeeper',)
-
-    def install(self, backend):
-        config = backend.config
-        if (not os.path.exists(utils.JUJU_DIR) or
-                backend.different('staging', 'juju-api-branch')):
-            utils.fetch_api(config['juju-api-branch'])
-
-    def start(self, backend):
-        config = backend.config
-        utils.start_improv(
-            config['staging-environment'], config['ssl-cert-path'])
-
-    def stop(self, backend):
-        charmhelpers.service_control(utils.IMPROV, charmhelpers.STOP)
-
-
-class GoMixin(object):
-    debs = ('python-yaml',)
-
-    def install(self, backend):
-        # When juju-core deploys the charm, the charm directory (which hosts
-        # the GUI itself) is permissioned too strictly; set the perms on that
-        # directory to be friendly for Apache.
-        # Bug: 1202772
-        utils.cmd_log(shelltoolbox.run('chmod', '+x', utils.CURRENT_DIR))
+def merge_properties(name):
+    """Helper to merge one property from mixin objects into a unified set."""
+    @property
+    def method(self):
+        result = set()
+        for mixin in self.mixins:
+            result |= set(getattr(type(mixin), name, frozenset()))
+        return result
+    return method
 
 
 class Backend(object):
@@ -175,37 +219,29 @@ class Backend(object):
         if prev_config is None:
             prev_config = {}
         self.prev_config = prev_config
-
-        # We always install the GUI.
-        mixins = [InstallMixin]
+        self.mixins = []
 
         sandbox = config.get('sandbox', False)
         staging = config.get('staging', False)
 
         if utils.legacy_juju():
             if staging:
-                mixins.append(ImprovMixin)
+                self.mixins.append(ImprovMixin())
             elif sandbox:
-                mixins.append(SandboxMixin)
+                self.mixins.append(SandboxMixin())
             else:
-                mixins.append(PythonMixin)
+                self.mixins.append(PythonMixin())
         else:
             if staging:
                 raise ValueError('Unable to use staging with go backend')
             elif sandbox:
                 raise ValueError('Unable to use sandbox with go backend')
-            mixins.append(GoMixin)
+            self.mixins.append(GoMixin())
 
         # All backends need to install, start, and stop the services that
         # provide the GUI.
-        mixins.append(GuiMixin)
-        mixins.append(UpstartMixin)
-
-        # Record our choice mapping classes to instances.
-        for i, b in enumerate(mixins):
-            if callable(b):
-                mixins[i] = b()
-        self.mixins = mixins
+        self.mixins.append(GuiMixin())
+        self.mixins.append(HaproxyApacheMixin())
 
     def different(self, *keys):
         """Return a boolean indicating if the current config
@@ -216,16 +252,16 @@ class Backend(object):
         current, previous = self.config.get, self.prev_config.get
         return any(current(key) != previous(key) for key in keys)
 
-    ## Composed Methods
-    install = utils.chain('install')
-    start = utils.chain('start')
-    stop = utils.chain('stop')
+    # Composed methods.
+    install = chain_methods('install')
+    start = chain_methods('start')
+    stop = chain_methods('stop')
 
-    ## Merged Properties
-    dependencies = utils.merge('dependencies')
-    build_dependencies = utils.merge('build_dependencies')
-    staging_dependencies = utils.merge('staging_dependencies')
+    # Merged properties.
+    dependencies = merge_properties('dependencies')
+    build_dependencies = merge_properties('build_dependencies')
+    staging_dependencies = merge_properties('staging_dependencies')
 
-    repositories = utils.merge('repositories')
-    debs = utils.merge('debs')
-    upstart_scripts = utils.merge('upstart_scripts')
+    repositories = merge_properties('repositories')
+    debs = merge_properties('debs')
+    upstart_scripts = merge_properties('upstart_scripts')
