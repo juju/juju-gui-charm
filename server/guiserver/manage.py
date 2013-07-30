@@ -105,6 +105,11 @@ def setup():
     define(
         'sslpath', type=str, default=DEFAULT_SSL_PATH,
         help='The path where the SSL certificates are stored.')
+    define(
+        'http', type=bool, default=False,
+        help='In order to run the GUI over a non secure connection (HTTP) set '
+             'this flag to True. Do not set this property unless you '
+             'understand and accept the risks.')
     # In Tornado, parsing the options also sets up the default logger.
     parse_command_line()
     _validate_required('guiroot', 'apiurl')
@@ -114,8 +119,13 @@ def setup():
 
 def run():
     """Run the server"""
-    server().listen(443, ssl_options=_get_ssl_options())
-    redirector().listen(80)
+    if options.http:
+        # Run the server over HTTP.
+        server().listen(80)
+    else:
+        # Default configuration: run the server using a secure connection.
+        server().listen(443, ssl_options=_get_ssl_options())
+        redirector().listen(80)
     version = guiserver.get_version()
     logging.info('starting Juju GUI server v{}'.format(version))
     IOLoop.instance().start()
