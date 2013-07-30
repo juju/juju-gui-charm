@@ -78,11 +78,17 @@ environment's `admin-secret`, found in `~/.juju/environments.yaml`.
 
 ### Deploying behind a firewall ###
 
-This charm pulls the latest release from the Juju GUI page on Launchpad.  If you
+While we may change this in the future to make firewall deploys simpler, this
+charm pulls the latest release from the Juju GUI page on Launchpad.  If you
 are behind a firewall, however, this may not be available to you.  In this case,
 you can configure the charm to pull the GUI release from a location you specify.
+
+For both Juju Core and PyJuju, you must simply do the following steps.  Note
+that PyJuju must do these steps, plus another set described further below.
+
 The config variable `juju-gui-source` allows a `url:` prefix which understands
-both `http://` and `file://` protocols.
+both `http://` and `file://` protocols.  We will use this to load a local copy
+of the GUI source.
 
 1. Download the latest release of the Juju GUI Source from [the Launchpad
 downloads page](https://launchpad.net/juju-gui/+download) and save it to a
@@ -99,6 +105,17 @@ to not being able to retrieve the source, you may also need to retry the unit
 with the following command (using the unit the GUI is deployed on):
 
     `juju resolved --retry juju-gui/0`
+
+These steps are sufficient for Juju Core.  If you are using PyJuju, you need to
+do another set of steps in addition.
+
+1. Use bzr to branch lp:~hazmat/juju/rapi-rollup locally ("bzr branch
+lp:~hazmat/juju/rapi-rollup") and copy the branch to the gui service machine.
+
+2. Use "juju set juju-gui juju-api-branch=PATH_TO_LOCAL_BZR_BRANCH" (where the
+path is *not* a file:// URI).
+
+3. Retry as described in the step 3 above (`juju resolved --retry juju-gui/0`).
 
 ### Deploying to a chosen machine ###
 
