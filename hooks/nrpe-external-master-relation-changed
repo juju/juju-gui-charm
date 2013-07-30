@@ -1,2 +1,1 @@
-#!/bin/sh
-scripts/update-nrpe.py
+../scripts/update-nrpe.py
