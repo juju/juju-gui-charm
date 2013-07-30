@@ -16,7 +16,10 @@
 
 """Tests for the Juju GUI server management helpers."""
 
-from contextlib import contextmanager
+from contextlib import (
+    contextmanager,
+    nested,
+)
 import logging
 import unittest
 
@@ -136,3 +139,49 @@ class TestGetSslOptions(unittest.TestCase):
         }
         with mock.patch('guiserver.manage.options', mock_options):
             self.assertEqual(expected, manage._get_ssl_options())
+
+
+class TestRun(unittest.TestCase):
+
+    def mock_and_run(self, **kwargs):
+        """Run the application after mocking the IO loop and the options/apps.
+
+        Additional options can be specified using kwargs.
+        """
+        options = {
+            'apiversion': 'go',
+            'guiroot': '/my/guiroot',
+            'sslpath': '/my/sslpath',
+        }
+        options.update(kwargs)
+        managers = nested(
+            mock.patch('guiserver.manage.IOLoop'),
+            mock.patch('guiserver.manage.options', mock.Mock(**options)),
+            mock.patch('guiserver.manage.redirector'),
+            mock.patch('guiserver.manage.server'),
+        )
+        with managers as (ioloop, _, redirector, server):
+            manage.run()
+        return ioloop.instance().start, redirector().listen, server().listen
+
+    def test_secure_mode(self):
+        # The application is correctly run in secure mode.
+        _, redirector_listen, server_listen = self.mock_and_run(http=False)
+        expected_ssl_options = {
+            'certfile': '/my/sslpath/juju.crt',
+            'keyfile': '/my/sslpath/juju.key',
+        }
+        server_listen.assert_called_once_with(
+            443, ssl_options=expected_ssl_options)
+        redirector_listen.assert_called_once_with(80)
+
+    def test_http_mode(self):
+        # The application is correctly run in HTTP mode.
+        _, redirector_listen, server_listen = self.mock_and_run(http=True)
+        server_listen.assert_called_once_with(80)
+        self.assertEqual(0, redirector_listen.call_count)
+
+    def test_ioloop_started(self):
+        # The IO loop instance is started when the application is run.
+        ioloop_start, _, _ = self.mock_and_run()
+        ioloop_start.assert_called_once_with()
