@@ -123,7 +123,7 @@ def run():
         # Run the server over HTTP.
         server().listen(80)
     else:
-        # Default configuration: run the server using a secure connection.
+        # Default configuration: run the server over a secure connection.
         server().listen(443, ssl_options=_get_ssl_options())
         redirector().listen(80)
     version = guiserver.get_version()
