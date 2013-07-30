@@ -20,9 +20,13 @@ A composition system for creating backend objects.
 Backends implement install(), start() and stop() methods. A backend is composed
 of many mixins and each mixin will implement any/all of those methods and all
 will be called. Backends additionally provide for collecting property values
-from each mixin into a single final property on the backend. There is also a
-feature for determining if configuration values have changed between old and
-new configurations so we can selectively take action.
+from each mixin into a single final property on the backend.
+
+There is also a feature for determining if configuration values have changed
+between old and new configurations so we can selectively take action.
+
+The mixins appear in the code in the order they are instantiated by the
+backend. Keeping them that way is useful.
 """
 
 import os
@@ -38,16 +42,20 @@ apt_get = shelltoolbox.command('apt-get')
 SYS_INIT_DIR = '/etc/init/'
 
 
-class ImprovMixin(object):
-    """Manage the improv backend when on staging."""
-
-    debs = ('zookeeper',)
+class PythonInstallMixinBase(object):
+    """Provide a common "install" method to ImprovMixin and PythonMixin."""
 
     def install(self, backend):
         config = backend.config
         if (not os.path.exists(utils.JUJU_DIR) or
                 backend.different('staging', 'juju-api-branch')):
             utils.fetch_api(config['juju-api-branch'])
+
+
+class ImprovMixin(PythonInstallMixinBase):
+    """Manage the improv backend when on staging."""
+
+    debs = ('zookeeper',)
 
     def start(self, backend):
         config = backend.config
@@ -62,14 +70,8 @@ class SandboxMixin(object):
     pass
 
 
-class PythonMixin(object):
+class PythonMixin(PythonInstallMixinBase):
     """Manage the real PyJuju backend."""
-
-    def install(self, backend):
-        config = backend.config
-        if (not os.path.exists(utils.JUJU_DIR) or
-                backend.different('staging', 'juju-api-branch')):
-            utils.fetch_api(config['juju-api-branch'])
 
     def start(self, backend):
         utils.start_agent(backend.config['ssl-cert-path'])
