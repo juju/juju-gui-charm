@@ -93,6 +93,8 @@ from charmhelpers import (
 AGENT = 'juju-api-agent'
 APACHE = 'apache2'
 BUILTIN_SERVER = 'guiserver'
+DEFAULT_API_VERSION = 'go'
+DEFAULT_SSL_PATH = '/etc/ssl/juju-gui'
 IMPROV = 'juju-api-improv'
 HAPROXY = 'haproxy'
 
@@ -452,14 +454,16 @@ def write_apache_config(build_dir, serve_tests=False):
     render_to_file('apache-site.template', context, APACHE_SITE)
 
 
-def write_builtin_server_startup(gui_root, juju_api):
+def write_builtin_server_startup(gui_root, api_url,
+        api_version=DEFAULT_API_VERSION, serve_tests=False,
+        ssl_path=DEFAULT_SSL_PATH):
     log('Generating the builtin server startup file.')
     context = {
         'gui_root': gui_root,
-        'juju_api': juju_api,
-        # TODO: make the builtin server also serve tests
-#        'serve_tests': serve_tests,
-#        'tests_root': os.path.join(JUJU_GUI_DIR, 'test', ''),
+        'api_url': api_url,
+        'api_version': api_version,
+        'serve_tests': serve_tests,
+        'ssl_path': ssl_path,
     }
     render_to_file('guiserver.conf.template', context, BUILTIN_SERVER_STARTUP)
 

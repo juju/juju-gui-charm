@@ -108,9 +108,8 @@ options:
     default: false
   secure:
     description: |
-      In order to run the GUI over a non secure connection (HTTP) set this
-      flag to false. Do not set this property unless you understand and accept
-      the risks.
+      Set to false to serve the GUI over an insecure HTTP connection.
+      Do not set unless you understand and accept the risks.
     type: boolean
     default: true
   sandbox:
@@ -169,6 +168,6 @@ options:
     default: false
   builtin-server:
     description: |
-      Enable the built-in server, disable both haproxy and Apache.
+      Enable the built-in server, disabling both haproxy and Apache.
     type: boolean
     default: false

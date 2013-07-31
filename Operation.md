@@ -30,11 +30,11 @@ environment to be propagated and shown immediately by the browser.
 
 ## Activation ##
 
-Until now the Juju GUI has been served by a combination of an haproxy
-and Apache instances, specifically deployed and configured by the charm.
+Previously the Juju GUI has been served by a combination of haproxy and
+Apache, specifically deployed and configured by the charm.
 
-The new built-in server replaces them both, and can be enabled by
+The new built-in server replaces them both and can be enabled by
 setting the config option `builtin-server` to `true`.
 
-In the future the built-in server will remain and haproxy, Apache and
-the mentioned config option will be removed.
+In the future haproxy, Apache and the mentioned config option will be
+removed, only the built-in server will remain.

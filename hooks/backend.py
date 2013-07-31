@@ -143,8 +143,27 @@ class GuiMixin(object):
         charmhelpers.open_port(443)
 
 
-class HaproxyApacheMixin(object):
-    """Manage (install, start, stop, etc.) haproxy and Apache via Upstart."""
+class ServerInstallMixinBase(object):
+    """
+    Provide a common "_post_install" method to HaproxyApacheMixin and
+    BuiltinServerMixin.
+    """
+
+    def _post_install(self, backend):
+        config = backend.config
+        if backend.different(
+                'ssl-cert-path', 'ssl-cert-contents', 'ssl-key-contents'):
+            utils.save_or_create_certificates(
+                config['ssl-cert-path'], config.get('ssl-cert-contents'),
+                config.get('ssl-key-contents'))
+        charmhelpers.log('Setting up startup scripts.')
+        source_dir = os.path.join(os.path.dirname(__file__),  '..', 'config')
+        for config_file in backend.upstart_scripts:
+            shutil.copy(os.path.join(source_dir, config_file), SYS_INIT_DIR)
+
+
+class HaproxyApacheMixin(ServerInstallMixinBase):
+    """Manage haproxy and Apache via Upstart."""
 
     upstart_scripts = ('haproxy.conf',)
     debs = ('curl', 'openssl', 'haproxy', 'apache2')
@@ -152,17 +171,7 @@ class HaproxyApacheMixin(object):
     def install(self, backend):
         """Set up haproxy and Apache startup configuration files."""
         utils.setup_apache()
-        charmhelpers.log('Setting up haproxy and Apache startup scripts.')
-        config = backend.config
-        if backend.different(
-                'ssl-cert-path', 'ssl-cert-contents', 'ssl-key-contents'):
-            utils.save_or_create_certificates(
-                config['ssl-cert-path'], config.get('ssl-cert-contents'),
-                config.get('ssl-key-contents'))
-
-        source_dir = os.path.join(os.path.dirname(__file__),  '..', 'config')
-        for config_file in backend.upstart_scripts:
-            shutil.copy(os.path.join(source_dir, config_file), SYS_INIT_DIR)
+        self._post_install(backend)
 
     def start(self, backend):
         with shelltoolbox.su('root'):
@@ -175,25 +184,15 @@ class HaproxyApacheMixin(object):
             charmhelpers.service_control(utils.APACHE, charmhelpers.STOP)
 
 
-class BuiltinServerMixin(object):
-    """Manage (install, start, stop, etc.) the builtin server via Upstart."""
+class BuiltinServerMixin(ServerInstallMixinBase):
+    """Manage the builtin server via Upstart."""
 
-    upstart_scripts = ()
-    debs = ('curl', 'openssl')
+    debs = ('curl', 'openssl', 'python-pip')
 
     def install(self, backend):
         """Set up the builtin server startup configuration file."""
         # TODO: install Tornado from egg
-        config = backend.config
-        if backend.different(
-                'ssl-cert-path', 'ssl-cert-contents', 'ssl-key-contents'):
-            utils.save_or_create_certificates(
-                config['ssl-cert-path'], config.get('ssl-cert-contents'),
-                config.get('ssl-key-contents'))
-
-        source_dir = os.path.join(os.path.dirname(__file__),  '..', 'config')
-        for config_file in backend.upstart_scripts:
-            shutil.copy(os.path.join(source_dir, config_file), SYS_INIT_DIR)
+        self._post_install(backend)
 
     def start(self, backend):
         with shelltoolbox.su('root'):
@@ -276,11 +275,11 @@ class Backend(object):
         # All backends need to install, start, and stop the services that
         # provide the GUI.
         self.mixins.append(GuiMixin())
-        self.mixins.append(HaproxyApacheMixin())
+        # TODO: eventually the option, haproxy and Apache will go away
         if config.get('builtin-server', False):
-            self.mixins.append(HaproxyApacheMixin)
+            self.mixins.append(BuiltinServerMixin())
         else:
-            self.mixins.append(BuiltinServerMixin)
+            self.mixins.append(HaproxyApacheMixin())
 
     def different(self, *keys):
         """Return a boolean indicating if the current config

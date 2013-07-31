@@ -210,17 +210,16 @@ class TestBackendCommands(unittest.TestCase):
             'setup_apache'
         ):
             self.assertTrue(
-                self.called[mocked], '{} was not called'.format(mocked))
+                self.called.get(mocked), '{} was not called'.format(mocked))
 
-    def test_install_improv(self):
+    def test_install_improv_builtin(self):
         test_backend = backend.Backend(config=self.alwaysTrue)
         test_backend.install()
         for mocked in (
             'apt_get_install', 'fetch_api', 'find_missing_packages', 'log',
-            'setup_apache',
         ):
             self.assertTrue(
-                self.called[mocked], '{} was not called'.format(mocked))
+                self.called.get(mocked), '{} was not called'.format(mocked))
 
     def test_start_agent(self):
         test_backend = backend.Backend(config=self.alwaysFalse)
@@ -231,7 +230,7 @@ class TestBackendCommands(unittest.TestCase):
             'write_haproxy_config',
         ):
             self.assertTrue(
-                self.called[mocked], '{} was not called'.format(mocked))
+                self.called.get(mocked), '{} was not called'.format(mocked))
 
     def test_start_improv(self):
         test_backend = backend.Backend(config=self.alwaysTrue)
@@ -242,7 +241,7 @@ class TestBackendCommands(unittest.TestCase):
             'write_haproxy_config',
         ):
             self.assertTrue(
-                self.called[mocked], '{} was not called'.format(mocked))
+                self.called.get(mocked), '{} was not called'.format(mocked))
 
     def test_stop(self):
         test_backend = backend.Backend(config=self.alwaysFalse)
@@ -251,7 +250,7 @@ class TestBackendCommands(unittest.TestCase):
             'service_control', 'su'
         ):
             self.assertTrue(
-                self.called[mocked], '{} was not called'.format(mocked))
+                self.called.get(mocked), '{} was not called'.format(mocked))
 
 
 class TestBackendUtils(unittest.TestCase):
