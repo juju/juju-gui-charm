@@ -13,11 +13,17 @@ This charm makes it easy to deploy a Juju GUI into an existing environment.
 
 ## Supported Browsers ##
 
-The Juju GUI supports recent releases of Chrome, Chromium and Firefox.
+The Juju GUI supports recent releases of the Chrome, Chromium and Firefox web
+browsers.
 
-## Demo/Staging Server ##
+## Demo and Staging Servers ##
 
-A [demo/staging server](http://uistage.jujucharms.com:8080/) is available.
+The Juju GUI runs the Juju Charm Store on 
+[jujucharms.com](http://jujucharms.com).  From there,  you can browse charms,
+try the GUI, and build an example environment to export for use elsewhere.
+
+A [staging server](http://comingsoon.jujucharms.com/) is also available,
+running the latest and greatest version.
 
 ## Deploying the Juju GUI ##
 
@@ -69,6 +75,47 @@ you to accept a security exception once.
 You will see a login form with the username fixed to "user-admin" (for juju-
 core) or "admin" (for pyjuju). The password is the same as your Juju
 environment's `admin-secret`, found in `~/.juju/environments.yaml`.
+
+### Deploying behind a firewall ###
+
+While we may change this in the future to make firewall deploys simpler, this
+charm pulls the latest release from the Juju GUI page on Launchpad.  If you
+are behind a firewall, however, this may not be available to you.  In this case,
+you can configure the charm to pull the GUI release from a location you specify.
+
+For both Juju Core and PyJuju, you must simply do the following steps.  Note
+that PyJuju must do these steps, plus another set described further below.
+
+The config variable `juju-gui-source` allows a `url:` prefix which understands
+both `http://` and `file://` protocols.  We will use this to load a local copy
+of the GUI source.
+
+1. Download the latest release of the Juju GUI Source from [the Launchpad
+downloads page](https://launchpad.net/juju-gui/+download) and save it to a
+location that will be accessible to the *unit* either via filesystem or HTTP.
+2. Set the config variable to that location using a command such as
+
+    `juju set juju-gui juju-gui-source=url:...`
+
+    where the ellipsis after the `url:` is your `http://` or `file://` URI.  This
+    may also be done during the deploy step using `--config`.
+
+3. If you had already tried to deploy the GUI and received an install error due
+to not being able to retrieve the source, you may also need to retry the unit
+with the following command (using the unit the GUI is deployed on):
+
+    `juju resolved --retry juju-gui/0`
+
+These steps are sufficient for Juju Core.  If you are using PyJuju, you need to
+do another set of steps in addition.
+
+1. Use bzr to branch lp:~hazmat/juju/rapi-rollup locally ("bzr branch
+lp:~hazmat/juju/rapi-rollup") and copy the branch to the gui service machine.
+
+2. Use "juju set juju-gui juju-api-branch=PATH_TO_LOCAL_BZR_BRANCH" (where the
+path is *not* a file:// URI).
+
+3. Retry as described in the step 3 above (`juju resolved --retry juju-gui/0`).
 
 ### Deploying to a chosen machine ###
 
