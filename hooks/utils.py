@@ -454,9 +454,9 @@ def write_apache_config(build_dir, serve_tests=False):
     render_to_file('apache-site.template', context, APACHE_SITE)
 
 
-def write_builtin_server_startup(gui_root, api_url,
-        api_version=DEFAULT_API_VERSION, serve_tests=False,
-        ssl_path=DEFAULT_SSL_PATH, insecure=False):
+def write_builtin_server_startup(
+        gui_root, api_url, api_version=DEFAULT_API_VERSION,
+        serve_tests=False, ssl_path=DEFAULT_SSL_PATH, insecure=False):
     log('Generating the builtin server startup file.')
     context = {
         'gui_root': gui_root,

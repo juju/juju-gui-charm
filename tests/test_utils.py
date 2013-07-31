@@ -681,9 +681,9 @@ class TestStartImprovAgentGui(unittest.TestCase):
             'Alias /test {0}/test/'.format(JUJU_GUI_DIR), apache_conf)
 
     def test_write_builtin_server_startup(self):
-        write_builtin_server_startup(JUJU_GUI_DIR, 'api_url',
-            api_version='go', serve_tests=True, ssl_path=self.ssl_cert_path,
-            insecure=True)
+        write_builtin_server_startup(
+            JUJU_GUI_DIR, 'api_url', api_version='go', serve_tests=True,
+            ssl_path=self.ssl_cert_path, insecure=True)
         guiserver_conf = self.files['guiserver.conf']
         self.assertIn('description "GUIServer"', guiserver_conf)
         self.assertIn('--apiurl="api_url"', guiserver_conf)

@@ -139,9 +139,9 @@ class GuiMixin(object):
         # TODO: eventually the option, haproxy and Apache will go away
         api_version = 'python' if utils.legacy_juju() else 'go'
         if config.get('builtin-server', False):
-            utils.write_builtin_server_startup(utils.JUJU_GUI_DIR,
-                utils.get_api_address(), api_version=api_version,
-                serve_tests=config['serve-tests'],
+            utils.write_builtin_server_startup(
+                utils.JUJU_GUI_DIR, utils.get_api_address(),
+                api_version=api_version, serve_tests=config['serve-tests'],
                 ssl_path=config['ssl-cert-path'],
                 insecure=not config['secure'])
         else:
