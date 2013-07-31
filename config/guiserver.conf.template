@@ -4,5 +4,13 @@ author "Canonical"
 start on (filesystem and net-device-up IFACE=lo)
 stop on runlevel [!2345]
 
-exec runserver.py --guiroot="{{gui_root}}" --apiurl="{{api_url}}" \
-    --apiversion="{{api_version}}" --servetests --sslpath="{{ssl_path}}"
+exec runserver.py --guiroot="{{gui_root}}" \
+    --apiurl="{{api_url}}" \
+    {{if api_version}}
+        --apiversion="{{api_version}}" \
+    {{endif}}
+    {{if ssl_path}}
+        --sslpath="{{ssl_path}}" \
+    {{endif}}
+    {{if serve_tests}} --servetests \ {{endif}}
+    {{if insecure}} --insecure {{endif}}

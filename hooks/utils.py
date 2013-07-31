@@ -456,7 +456,7 @@ def write_apache_config(build_dir, serve_tests=False):
 
 def write_builtin_server_startup(gui_root, api_url,
         api_version=DEFAULT_API_VERSION, serve_tests=False,
-        ssl_path=DEFAULT_SSL_PATH):
+        ssl_path=DEFAULT_SSL_PATH, insecure=False):
     log('Generating the builtin server startup file.')
     context = {
         'gui_root': gui_root,
@@ -464,6 +464,7 @@ def write_builtin_server_startup(gui_root, api_url,
         'api_version': api_version,
         'serve_tests': serve_tests,
         'ssl_path': ssl_path,
+        'insecure': insecure,
     }
     render_to_file('guiserver.conf.template', context, BUILTIN_SERVER_STARTUP)
 

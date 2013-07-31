@@ -40,6 +40,7 @@ import utils
 
 apt_get = shelltoolbox.command('apt-get')
 SYS_INIT_DIR = '/etc/init/'
+TORNADO_TARBALL = 'tornado-3.1.tar.gz'
 
 
 class PythonInstallMixinBase(object):
@@ -135,9 +136,18 @@ class GuiMixin(object):
             use_analytics=config['use-analytics'],
             default_viewmode=config['default-viewmode'],
             show_get_juju_button=config['show-get-juju-button'])
-        utils.write_haproxy_config(
-            config['ssl-cert-path'], secure=config['secure'])
-        utils.write_apache_config(build_dir, config['serve-tests'])
+        # TODO: eventually the option, haproxy and Apache will go away
+        api_version = 'python' if utils.legacy_juju() else 'go'
+        if config.get('builtin-server', False):
+            utils.write_builtin_server_startup(utils.JUJU_GUI_DIR,
+                utils.get_api_address(), api_version=api_version,
+                serve_tests=config['serve-tests'],
+                ssl_path=config['ssl-cert-path'],
+                insecure=not config['secure'])
+        else:
+            utils.write_haproxy_config(
+                config['ssl-cert-path'], secure=config['secure'])
+            utils.write_apache_config(build_dir, config['serve-tests'])
         # Expose the service.
         charmhelpers.open_port(80)
         charmhelpers.open_port(443)
@@ -191,7 +201,10 @@ class BuiltinServerMixin(ServerInstallMixinBase):
 
     def install(self, backend):
         """Set up the builtin server startup configuration file."""
-        # TODO: install Tornado from egg
+        # Install Tornado from a local tarball.
+        tornado_path = os.path.join(
+            os.path.dirname(__file__),  '..', 'deps', TORNADO_TARBALL)
+        shelltoolbox.run('pip', 'install', tornado_path)
         self._post_install(backend)
 
     def start(self, backend):

@@ -50,6 +50,7 @@ from utils import (
     start_agent,
     start_improv,
     write_apache_config,
+    write_builtin_server_startup,
     write_gui_config,
     write_haproxy_config,
 )
@@ -678,6 +679,17 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertIn('VirtualHost *:{0}'.format(WEB_PORT), apache_conf)
         self.assertIn(
             'Alias /test {0}/test/'.format(JUJU_GUI_DIR), apache_conf)
+
+    def test_write_builtin_server_startup(self):
+        write_builtin_server_startup(JUJU_GUI_DIR, 'api_url',
+            api_version='go', serve_tests=True, ssl_path=self.ssl_cert_path,
+            insecure=True)
+        guiserver_conf = self.files['guiserver.conf']
+        self.assertIn('description "GUIServer"', guiserver_conf)
+        self.assertIn('--apiurl="api_url"', guiserver_conf)
+        self.assertIn('--apiversion="go"', guiserver_conf)
+        self.assertIn('--servetests', guiserver_conf)
+        self.assertIn('--insecure', guiserver_conf)
 
     def test_write_gui_config_insecure(self):
         write_gui_config(

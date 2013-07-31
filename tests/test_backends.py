@@ -140,6 +140,7 @@ class TestBackendCommands(unittest.TestCase):
             'fetch_gui_from_branch': utils.fetch_gui_from_branch,
             'fetch_gui_release': utils.fetch_gui_release,
             'find_missing_packages': utils.find_missing_packages,
+            'get_api_address': utils.get_api_address,
             'get_npm_cache_archive_url': utils.get_npm_cache_archive_url,
             'parse_source': utils.parse_source,
             'prime_npm_cache': utils.prime_npm_cache,
@@ -149,6 +150,7 @@ class TestBackendCommands(unittest.TestCase):
             'start_agent': utils.start_agent,
             'start_improv': utils.start_improv,
             'write_apache_config': utils.write_apache_config,
+            'write_builtin_server_startup': utils.write_builtin_server_startup,
             'write_gui_config': utils.write_gui_config,
             'write_haproxy_config': utils.write_haproxy_config,
         }
@@ -182,6 +184,11 @@ class TestBackendCommands(unittest.TestCase):
         self.orig_apt_get_install = shelltoolbox.apt_get_install
         shelltoolbox.apt_get_install = mock_apt_get_install
 
+        def mock_run(*debs):
+            self.called['run'] = True
+        self.orig_run = shelltoolbox.run
+        shelltoolbox.run = mock_run
+
         # Monkeypatch directories.
         self.orig_juju_dir = utils.JUJU_DIR
         self.orig_sys_init_dir = backend.SYS_INIT_DIR
@@ -195,6 +202,7 @@ class TestBackendCommands(unittest.TestCase):
         utils.JUJU_DIR = self.orig_juju_dir
         shutil.rmtree(self.temp_dir)
         # Undo the monkeypatching.
+        shelltoolbox.run = self.orig_run
         shelltoolbox.apt_get_install = self.orig_apt_get_install
         shelltoolbox.su = self.orig_su
         for name, orig_fun in self.charmhelpers_mocks.items():
@@ -217,6 +225,7 @@ class TestBackendCommands(unittest.TestCase):
         test_backend.install()
         for mocked in (
             'apt_get_install', 'fetch_api', 'find_missing_packages', 'log',
+            'run',
         ):
             self.assertTrue(
                 self.called.get(mocked), '{} was not called'.format(mocked))
@@ -232,13 +241,13 @@ class TestBackendCommands(unittest.TestCase):
             self.assertTrue(
                 self.called.get(mocked), '{} was not called'.format(mocked))
 
-    def test_start_improv(self):
+    def test_start_improv_builtin(self):
         test_backend = backend.Backend(config=self.alwaysTrue)
         test_backend.start()
         for mocked in (
             'compute_build_dir', 'open_port', 'service_control',
-            'start_improv', 'su', 'write_apache_config', 'write_gui_config',
-            'write_haproxy_config',
+            'start_improv', 'su', 'write_builtin_server_startup',
+            'write_gui_config',
         ):
             self.assertTrue(
                 self.called.get(mocked), '{} was not called'.format(mocked))
