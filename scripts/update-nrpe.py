@@ -5,7 +5,7 @@ from charmsupport import nrpe
 def update_nrpe_config():
     nrpe_compat = nrpe.NRPE()
     nrpe_compat.add_check(
-        'front-page', 'Check font page loads', 'check-front-paget.sh')
+        'front-page', 'Check font page loads', 'check-front-page.sh')
     nrpe_compat.write()
 
 
