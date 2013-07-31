@@ -16,10 +16,7 @@
 
 """Tests for the Juju GUI server management helpers."""
 
-from contextlib import (
-    contextmanager,
-    nested,
-)
+from contextlib import contextmanager
 import logging
 import unittest
 
@@ -154,13 +151,11 @@ class TestRun(unittest.TestCase):
             'sslpath': '/my/sslpath',
         }
         options.update(kwargs)
-        managers = nested(
-            mock.patch('guiserver.manage.IOLoop'),
-            mock.patch('guiserver.manage.options', mock.Mock(**options)),
-            mock.patch('guiserver.manage.redirector'),
-            mock.patch('guiserver.manage.server'),
-        )
-        with managers as (ioloop, _, redirector, server):
+        with \
+                mock.patch('guiserver.manage.IOLoop') as ioloop, \
+                mock.patch('guiserver.manage.options', mock.Mock(**options)), \
+                mock.patch('guiserver.manage.redirector') as redirector, \
+                mock.patch('guiserver.manage.server') as server:
             manage.run()
         return ioloop.instance().start, redirector().listen, server().listen
 
@@ -171,15 +166,15 @@ class TestRun(unittest.TestCase):
             'certfile': '/my/sslpath/juju.crt',
             'keyfile': '/my/sslpath/juju.key',
         }
+        redirector_listen.assert_called_once_with(80)
         server_listen.assert_called_once_with(
             443, ssl_options=expected_ssl_options)
-        redirector_listen.assert_called_once_with(80)
 
     def test_http_mode(self):
         # The application is correctly run in HTTP mode.
         _, redirector_listen, server_listen = self.mock_and_run(http=True)
-        server_listen.assert_called_once_with(80)
         self.assertEqual(0, redirector_listen.call_count)
+        server_listen.assert_called_once_with(80)
 
     def test_ioloop_started(self):
         # The IO loop instance is started when the application is run.
