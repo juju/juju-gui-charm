@@ -136,3 +136,47 @@ class TestGetSslOptions(unittest.TestCase):
         }
         with mock.patch('guiserver.manage.options', mock_options):
             self.assertEqual(expected, manage._get_ssl_options())
+
+
+class TestRun(unittest.TestCase):
+
+    def mock_and_run(self, **kwargs):
+        """Run the application after mocking the IO loop and the options/apps.
+
+        Additional options can be specified using kwargs.
+        """
+        options = {
+            'apiversion': 'go',
+            'guiroot': '/my/guiroot',
+            'sslpath': '/my/sslpath',
+        }
+        options.update(kwargs)
+        with \
+                mock.patch('guiserver.manage.IOLoop') as ioloop, \
+                mock.patch('guiserver.manage.options', mock.Mock(**options)), \
+                mock.patch('guiserver.manage.redirector') as redirector, \
+                mock.patch('guiserver.manage.server') as server:
+            manage.run()
+        return ioloop.instance().start, redirector().listen, server().listen
+
+    def test_secure_mode(self):
+        # The application is correctly run in secure mode.
+        _, redirector_listen, server_listen = self.mock_and_run(http=False)
+        expected_ssl_options = {
+            'certfile': '/my/sslpath/juju.crt',
+            'keyfile': '/my/sslpath/juju.key',
+        }
+        redirector_listen.assert_called_once_with(80)
+        server_listen.assert_called_once_with(
+            443, ssl_options=expected_ssl_options)
+
+    def test_http_mode(self):
+        # The application is correctly run in HTTP mode.
+        _, redirector_listen, server_listen = self.mock_and_run(http=True)
+        self.assertEqual(0, redirector_listen.call_count)
+        server_listen.assert_called_once_with(80)
+
+    def test_ioloop_started(self):
+        # The IO loop instance is started when the application is run.
+        ioloop_start, _, _ = self.mock_and_run()
+        ioloop_start.assert_called_once_with()
