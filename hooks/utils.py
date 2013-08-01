@@ -562,6 +562,7 @@ def setup_apache():
     with su('root'):
         run('a2dissite', 'default')
         run('a2ensite', 'juju-gui')
+        run('a2enmod', 'headers')
 
 
 def save_or_create_certificates(
