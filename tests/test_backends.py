@@ -46,8 +46,8 @@ class TestBackendProperties(unittest.TestCase):
     """Ensure the correct mixins and property values are collected."""
 
     def test_staging_backend(self):
-        test_backend = backend.Backend(
-            config={'sandbox': False, 'staging': True})
+        test_backend = backend.Backend(config={
+            'sandbox': False, 'staging': True, 'builtin-server': False})
         mixin_names = get_mixin_names(test_backend)
         self.assertEqual(
             ('ImprovMixin', 'GuiMixin', 'HaproxyApacheMixin'),
@@ -63,8 +63,8 @@ class TestBackendProperties(unittest.TestCase):
             test_backend.upstart_scripts)
 
     def test_sandbox_backend(self):
-        test_backend = backend.Backend(
-            config={'sandbox': True, 'staging': False})
+        test_backend = backend.Backend(config={
+            'sandbox': True, 'staging': False, 'builtin-server': False})
         mixin_names = get_mixin_names(test_backend)
         self.assertEqual(
             ('SandboxMixin', 'GuiMixin', 'HaproxyApacheMixin'),
@@ -80,8 +80,8 @@ class TestBackendProperties(unittest.TestCase):
             test_backend.upstart_scripts)
 
     def test_python_backend(self):
-        test_backend = backend.Backend(
-            config={'sandbox': False, 'staging': False})
+        test_backend = backend.Backend(config={
+            'sandbox': False, 'staging': False, 'builtin-server': False})
         mixin_names = get_mixin_names(test_backend)
         self.assertEqual(
             ('PythonMixin', 'GuiMixin', 'HaproxyApacheMixin'),
@@ -104,8 +104,8 @@ class TestBackendProperties(unittest.TestCase):
         # Create a fake agent file.
         agent_path = os.path.join(base_dir, 'agent.conf')
         open(agent_path, 'w').close()
-        test_backend = backend.Backend(
-            config={'sandbox': False, 'staging': False})
+        test_backend = backend.Backend(config={
+            'sandbox': False, 'staging': False, 'builtin-server': False})
         # Cleanup.
         utils.CURRENT_DIR = orig_current_dir
         shutil.rmtree(base_dir)
@@ -266,16 +266,20 @@ class TestBackendUtils(unittest.TestCase):
 
     def test_same_config(self):
         test_backend = backend.Backend(
-            config={'sandbox': False, 'staging': False},
-            prev_config={'sandbox': False, 'staging': False},
+            config={
+                'sandbox': False, 'staging': False, 'builtin-server': False},
+            prev_config={
+                'sandbox': False, 'staging': False, 'builtin-server': False},
         )
         self.assertFalse(test_backend.different('sandbox'))
         self.assertFalse(test_backend.different('staging'))
 
     def test_different_config(self):
         test_backend = backend.Backend(
-            config={'sandbox': False, 'staging': False},
-            prev_config={'sandbox': True, 'staging': False},
+            config={
+                'sandbox': False, 'staging': False, 'builtin-server': False},
+            prev_config={
+                'sandbox': True, 'staging': False, 'builtin-server': False},
         )
         self.assertTrue(test_backend.different('sandbox'))
         self.assertFalse(test_backend.different('staging'))

@@ -106,6 +106,8 @@ class GoMixin(object):
 class GuiMixin(object):
     """Install and start the GUI and its dependencies."""
 
+    debs = ('curl',)
+
     def install(self, backend):
         """Install the GUI and dependencies."""
         # If the given installable thing ("backend") requires one or more debs
@@ -114,7 +116,6 @@ class GuiMixin(object):
         if missing:
             utils.cmd_log(
                 shelltoolbox.apt_get_install(*backend.debs))
-
         # If the source setting has changed since the last time this was run,
         # get the code, from either a static release or a branch as specified
         # by the souce setting, and install it.
@@ -147,8 +148,8 @@ class GuiMixin(object):
             show_get_juju_button=config['show-get-juju-button'])
         # TODO: eventually this option will go away, as well as haproxy and
         # Apache.
-        api_version = 'python' if utils.legacy_juju() else 'go'
-        if config.get('builtin-server', False):
+        if config['builtin-server']:
+            api_version = 'python' if utils.legacy_juju() else 'go'
             utils.write_builtin_server_startup(
                 utils.JUJU_GUI_DIR, utils.get_api_address(),
                 api_version=api_version, serve_tests=config['serve-tests'],
@@ -186,7 +187,7 @@ class HaproxyApacheMixin(ServerInstallMixinBase):
     """Manage haproxy and Apache via Upstart."""
 
     upstart_scripts = ('haproxy.conf',)
-    debs = ('curl', 'openssl', 'haproxy', 'apache2')
+    debs = ('openssl', 'haproxy', 'apache2')
 
     def install(self, backend):
         """Set up haproxy and Apache startup configuration files."""
@@ -207,7 +208,7 @@ class HaproxyApacheMixin(ServerInstallMixinBase):
 class BuiltinServerMixin(ServerInstallMixinBase):
     """Manage the builtin server via Upstart."""
 
-    debs = ('curl', 'openssl', 'python-pip')
+    debs = ('openssl', 'python-pip')
 
     def install(self, backend):
         """Set up the builtin server startup configuration file."""
@@ -278,8 +279,8 @@ class Backend(object):
         self.prev_config = prev_config
         self.mixins = []
 
-        sandbox = config.get('sandbox', False)
-        staging = config.get('staging', False)
+        sandbox = config['sandbox']
+        staging = config['staging']
 
         if utils.legacy_juju():
             if staging:
@@ -300,7 +301,7 @@ class Backend(object):
         self.mixins.append(GuiMixin())
         # TODO: eventually this option will go away, as well as haproxy and
         # Apache.
-        if config.get('builtin-server', False):
+        if config['builtin-server']:
             self.mixins.append(BuiltinServerMixin())
         else:
             self.mixins.append(HaproxyApacheMixin())
