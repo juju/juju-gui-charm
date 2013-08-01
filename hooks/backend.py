@@ -22,6 +22,15 @@ of many mixins and each mixin will implement any/all of those methods and all
 will be called. Backends additionally provide for collecting property values
 from each mixin into a single final property on the backend.
 
+Mixins are not actually mixed in to the backend class using Python inheritance
+machinery. Instead, each mixin is instantiated and collected in the Backend
+__init__, as needed. Then the install(), start(), and stop() methods have a
+"self" that is the simple instantiated mixin, and a "backend" argument that is
+the backend instance. Python inheritance machinery is somewhat mimicked in that
+certain properties and methods are explicitly aggregated on the backend
+instance: see the chain_methods and merge_properties functions, and their
+usages.
+
 There is also a feature for determining if configuration values have changed
 between old and new configurations so we can selectively take action.
 
@@ -136,7 +145,8 @@ class GuiMixin(object):
             use_analytics=config['use-analytics'],
             default_viewmode=config['default-viewmode'],
             show_get_juju_button=config['show-get-juju-button'])
-        # TODO: eventually the option, haproxy and Apache will go away
+        # TODO: eventually this option will go away, as well as haproxy and
+        # Apache.
         api_version = 'python' if utils.legacy_juju() else 'go'
         if config.get('builtin-server', False):
             utils.write_builtin_server_startup(
@@ -288,7 +298,8 @@ class Backend(object):
         # All backends need to install, start, and stop the services that
         # provide the GUI.
         self.mixins.append(GuiMixin())
-        # TODO: eventually the option, haproxy and Apache will go away
+        # TODO: eventually this option will go away, as well as haproxy and
+        # Apache.
         if config.get('builtin-server', False):
             self.mixins.append(BuiltinServerMixin())
         else:

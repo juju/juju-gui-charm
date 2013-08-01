@@ -162,12 +162,14 @@ options:
   show-get-juju-button:
     description: |
       There are deployment modes for Juju GUI which are not intended as regular
-      use mode. In these cases, login/logout are disabled and instead there is a
-      link to juju.ubuntu.com
+      use mode. In these cases, login/logout are disabled and instead there is
+      a link to juju.ubuntu.com
     type: boolean
     default: false
   builtin-server:
     description: |
       Enable the built-in server, disabling both haproxy and Apache.
+      This is a temporary option: the built-in server will be
+      the only server in the future.
     type: boolean
     default: false

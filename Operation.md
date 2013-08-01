@@ -37,4 +37,4 @@ The new built-in server replaces them both and can be enabled by
 setting the config option `builtin-server` to `true`.
 
 In the future haproxy, Apache and the mentioned config option will be
-removed, only the built-in server will remain.
+removed; only the built-in server will remain.
