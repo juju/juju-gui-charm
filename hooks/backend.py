@@ -149,11 +149,9 @@ class GuiMixin(object):
         # TODO: eventually this option will go away, as well as haproxy and
         # Apache.
         if config['builtin-server']:
-            api_version = 'python' if utils.legacy_juju() else 'go'
             utils.write_builtin_server_startup(
-                utils.JUJU_GUI_DIR, utils.get_api_address(),
-                api_version=api_version, serve_tests=config['serve-tests'],
-                ssl_path=config['ssl-cert-path'],
+                build_dir, config['ssl-cert-path'],
+                serve_tests=config['serve-tests'],
                 insecure=not config['secure'])
         else:
             utils.write_haproxy_config(

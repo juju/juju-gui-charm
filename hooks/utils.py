@@ -93,8 +93,6 @@ from charmhelpers import (
 AGENT = 'juju-api-agent'
 APACHE = 'apache2'
 BUILTIN_SERVER = 'guiserver'
-DEFAULT_API_VERSION = 'go'
-DEFAULT_SSL_PATH = '/etc/ssl/juju-gui'
 IMPROV = 'juju-api-improv'
 HAPROXY = 'haproxy'
 
@@ -148,7 +146,7 @@ def get_api_address(unit_dir=None):
     If not present in the hook context as an environment variable, try to
     retrieve the address parsing the machiner agent.conf file.
     """
-    api_addresses = os.getenv("JUJU_API_ADDRESSES")
+    api_addresses = os.getenv('JUJU_API_ADDRESSES')
     if api_addresses is not None:
         return api_addresses.split()[0]
     # The JUJU_API_ADDRESSES environment variable is not included in the hooks
@@ -443,6 +441,7 @@ def write_haproxy_config(
 
 
 def write_apache_config(build_dir, serve_tests=False):
+    """Generate the Apache configuration file."""
     log('Generating the apache site configuration file.')
     context = {
         'port': WEB_PORT,
@@ -455,15 +454,20 @@ def write_apache_config(build_dir, serve_tests=False):
 
 
 def write_builtin_server_startup(
-        gui_root, api_url, api_version=DEFAULT_API_VERSION,
-        serve_tests=False, ssl_path=DEFAULT_SSL_PATH, insecure=False):
+        gui_root, ssl_path, serve_tests=False, insecure=False):
+    """Generate the builtin server startup file."""
     log('Generating the builtin server startup file.')
+    url_prefix = 'ws' if insecure else 'wss'
+    is_legacy_juju = legacy_juju()
+    api_address = get_api_address()
+    api_url = '{}://127.0.0.1:{}'.format(url_prefix, API_PORT
+        ) if is_legacy_juju else '{}://{}'.format(url_prefix, api_address)
     context = {
         'gui_root': gui_root,
         'api_url': api_url,
-        'api_version': api_version,
-        'serve_tests': serve_tests,
+        'api_version': 'python' if is_legacy_juju else 'go',
         'ssl_path': ssl_path,
+        'serve_tests': serve_tests,
         'insecure': insecure,
     }
     render_to_file('guiserver.conf.template', context, BUILTIN_SERVER_STARTUP)

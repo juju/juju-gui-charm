@@ -34,7 +34,8 @@ from guiserver.apps import (
 )
 
 
-from hooks_utils import DEFAULT_API_VERSION, DEFAULT_SSL_PATH
+DEFAULT_API_VERSION = 'go'
+DEFAULT_SSL_PATH = '/etc/ssl/juju-gui'
 
 
 def _add_debug(logger):
