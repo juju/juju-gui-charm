@@ -27,4 +27,7 @@
 
     FallbackResource /index.html
 
+    Header unset Cache-Control
+    Header set Cache-Control "max-age=0, public, must-revalidate"
+
 </VirtualHost>
