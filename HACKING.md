@@ -39,9 +39,12 @@ time of this writing it is not yet released.  To run it you must first install
 it locally, e.g.:
 
     bzr checkout --lightweight lp:juju-plugins
+    ln -s juju-plugins/plugins/juju_test.py juju-test
+    export PATH="$PATH":`pwd`
 
-At this point, link "juju-plugins/plugins/juju_test.py" as "juju-test"
-somewhere in your PATH, so that it is possible to execute "juju-test".
+Alternatively you may check out lp:juju-plugins and link
+"juju-plugins/plugins/juju_test.py" as "juju-test" somewhere in your PATH, so
+that it is possible to execute "juju-test".
 
 Before being able to run the suite, test requirements need to be installed
 running the command:

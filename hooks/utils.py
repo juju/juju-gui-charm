@@ -105,7 +105,7 @@ APACHE_SITE = '/etc/apache2/sites-available/juju-gui'
 APACHE_PORTS = '/etc/apache2/ports.conf'
 JUJU_PEM = 'juju.includes-private-key.pem'
 DEB_BUILD_DEPENDENCIES = (
-    'bzr', 'imagemagick', 'make',  'nodejs', 'npm',
+    'bzr', 'g++', 'imagemagick', 'make',  'nodejs', 'npm',
 )
 DEB_STAGE_DEPENDENCIES = (
     'zookeeper',
@@ -561,6 +561,7 @@ def setup_apache():
     with su('root'):
         run('a2dissite', 'default')
         run('a2ensite', 'juju-gui')
+        run('a2enmod', 'headers')
 
 
 def save_or_create_certificates(

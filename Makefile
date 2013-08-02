@@ -26,7 +26,12 @@ unittest: setup
 	./tests/10-unit.test
 	./tests/11-server.test
 
-ftest: setup
+ensure-juju-test:
+	@which juju-test > /dev/null \
+	    || (echo 'The "juju-test" command is missing.  See HACKING.md.' \
+		; false)
+
+ftest: setup ensure-juju-test
 	$(JUJUTEST) 20-functional.test
 
 # This will be eventually removed when we have juju-test --clean-state.
@@ -62,4 +67,5 @@ help:
 	@echo '  service to be started.  If JUJU_ENV is not passed, the charm will'
 	@echo '  be deployed in the default Juju environment.'
 
-.PHONY: all clean deploy ftest help jujutest lint setup test unittest
+.PHONY: all clean deploy ensure-juju-test ftest help jujutest lint setup test \
+    unittest
