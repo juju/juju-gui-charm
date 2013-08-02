@@ -540,8 +540,9 @@ def write_builtin_server_startup(
     url_prefix = 'ws' if insecure else 'wss'
     is_legacy_juju = legacy_juju()
     api_address = get_api_address()
-    api_url = '{}://127.0.0.1:{}'.format(url_prefix, API_PORT
-        ) if is_legacy_juju else '{}://{}'.format(url_prefix, api_address)
+    api_url = '{}://127.0.0.1:{}'.format(
+        url_prefix, API_PORT) if is_legacy_juju else '{}://{}'.format(
+        url_prefix, api_address)
     context = {
         'gui_root': gui_root,
         'api_url': api_url,
