@@ -47,12 +47,12 @@ from utils import (
     get_npm_cache_archive_url,
     render_to_file,
     save_or_create_certificates,
+    setup_apache_config,
+    setup_haproxy_config,
     start_agent,
     start_improv,
-    write_apache_config,
     write_builtin_server_startup,
     write_gui_config,
-    write_haproxy_config,
 )
 # Import the whole utils package for monkey patching.
 import utils
@@ -609,10 +609,14 @@ class TestStartImprovAgentGui(unittest.TestCase):
         for fn, fcns in self.functions.items():
             setattr(utils, fn, fcns[1])
 
+        self.shutil_copy = shutil.copy
+        shutil.copy = noop
+
     def tearDown(self):
         # Undo all of the monkey patching.
         for fn, fcns in self.functions.items():
             setattr(utils, fn, fcns[0])
+        shutil.copy = self.shutil_copy
 
     def test_start_improv(self):
         staging_env = 'large'
@@ -663,9 +667,9 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertIn('charmworldURL: "http://charmworld.example"', js_conf)
         self.assertIn('useAnalytics: true', js_conf)
 
-    def test_write_haproxy_config(self):
-        write_haproxy_config(self.ssl_cert_path, haproxy_path='haproxy')
-        haproxy_conf = self.files['haproxy']
+    def test_setup_haproxy_config(self):
+        setup_haproxy_config(self.ssl_cert_path)
+        haproxy_conf = self.files['haproxy.cfg']
         self.assertIn('ca-base {0}'.format(self.ssl_cert_path), haproxy_conf)
         self.assertIn('crt-base {0}'.format(self.ssl_cert_path), haproxy_conf)
         self.assertIn('ws1 127.0.0.1:{0}'.format(API_PORT), haproxy_conf)
@@ -674,8 +678,8 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertIn('crt {0}'.format(JUJU_PEM), haproxy_conf)
         self.assertIn('redirect scheme https', haproxy_conf)
 
-    def test_write_apache_config(self):
-        write_apache_config(self.build_dir, serve_tests=True)
+    def test_setup_apache_config(self):
+        setup_apache_config(self.build_dir, serve_tests=True)
         apache_conf = self.files['juju-gui']
         self.assertIn('juju-gui/build-', apache_conf)
         self.assertIn('VirtualHost *:{0}'.format(WEB_PORT), apache_conf)
@@ -700,11 +704,10 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertIn("socket_url: 'ws://", js_conf)
         self.assertIn('socket_protocol: "ws"', js_conf)
 
-    def test_write_haproxy_config_insecure(self):
-        write_haproxy_config(
-            self.ssl_cert_path, secure=False, haproxy_path='haproxy')
+    def test_setup_haproxy_config_insecure(self):
+        setup_haproxy_config(self.ssl_cert_path, secure=False)
         # The insecure approach eliminates the https redirect.
-        self.assertNotIn('redirect scheme https', self.files['haproxy'])
+        self.assertNotIn('redirect scheme https', self.files['haproxy.cfg'])
 
     def test_write_gui_config_sandbox(self):
         write_gui_config(

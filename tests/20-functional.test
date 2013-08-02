@@ -166,6 +166,18 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         # The staging environment contains five deployed services.
         self.assertSetEqual(set(STAGING_SERVICES), self.get_service_names())
 
+    def test_builtin_server(self):
+        # Ensure the Juju GUI and builtin server are correctly set up.
+        unit_info = juju_deploy(self.charm, options={'builtin-server': 'true'})
+        hostname = unit_info['public-address']
+        # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
+        self.addCleanup(
+            self.stop_services,
+            hostname, ['guiserver', 'juju-api-agent'])
+        self.navigate_to(hostname)
+        self.handle_browser_warning()
+        self.assertEnvironmentIsConnected()
+
     def test_branch_source(self):
         # Ensure the Juju GUI is correctly deployed from a Bazaar branch.
         unit_info = juju_deploy(

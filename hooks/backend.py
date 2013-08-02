@@ -39,7 +39,6 @@ backend. Keeping them that way is useful.
 """
 
 import os
-import shutil
 
 import charmhelpers
 import shelltoolbox
@@ -47,8 +46,6 @@ import shelltoolbox
 import utils
 
 
-apt_get = shelltoolbox.command('apt-get')
-SYS_INIT_DIR = '/etc/init/'
 TORNADO_TARBALL = 'tornado-3.1.tar.gz'
 
 
@@ -56,10 +53,9 @@ class PythonInstallMixinBase(object):
     """Provide a common "install" method to ImprovMixin and PythonMixin."""
 
     def install(self, backend):
-        config = backend.config
         if (not os.path.exists(utils.JUJU_DIR) or
                 backend.different('staging', 'juju-api-branch')):
-            utils.fetch_api(config['juju-api-branch'])
+            utils.fetch_api(backend.config['juju-api-branch'])
 
 
 class ImprovMixin(PythonInstallMixinBase):
@@ -73,7 +69,7 @@ class ImprovMixin(PythonInstallMixinBase):
             config['staging-environment'], config['ssl-cert-path'])
 
     def stop(self, backend):
-        charmhelpers.service_control(utils.IMPROV, charmhelpers.STOP)
+        utils.stop_improv()
 
 
 class SandboxMixin(object):
@@ -87,7 +83,7 @@ class PythonMixin(PythonInstallMixinBase):
         utils.start_agent(backend.config['ssl-cert-path'])
 
     def stop(self, backend):
-        charmhelpers.service_control(utils.AGENT, charmhelpers.STOP)
+        utils.stop_agent()
 
 
 class GoMixin(object):
@@ -146,17 +142,6 @@ class GuiMixin(object):
             use_analytics=config['use-analytics'],
             default_viewmode=config['default-viewmode'],
             show_get_juju_button=config['show-get-juju-button'])
-        # TODO: eventually this option will go away, as well as haproxy and
-        # Apache.
-        if config['builtin-server']:
-            utils.write_builtin_server_startup(
-                build_dir, config['ssl-cert-path'],
-                serve_tests=config['serve-tests'],
-                insecure=not config['secure'])
-        else:
-            utils.write_haproxy_config(
-                config['ssl-cert-path'], secure=config['secure'])
-            utils.write_apache_config(build_dir, config['serve-tests'])
         # Expose the service.
         charmhelpers.open_port(80)
         charmhelpers.open_port(443)
@@ -164,43 +149,38 @@ class GuiMixin(object):
 
 class ServerInstallMixinBase(object):
     """
-    Provide a common "_post_install" method to HaproxyApacheMixin and
+    Provide a common "_setup_certificates" method to HaproxyApacheMixin and
     BuiltinServerMixin.
     """
 
-    def _post_install(self, backend):
-        config = backend.config
+    def _setup_certificates(self, backend):
+        # Set up the SSL certificates.
         if backend.different(
                 'ssl-cert-path', 'ssl-cert-contents', 'ssl-key-contents'):
+            config = backend.config
             utils.save_or_create_certificates(
                 config['ssl-cert-path'], config.get('ssl-cert-contents'),
                 config.get('ssl-key-contents'))
-        charmhelpers.log('Setting up startup scripts.')
-        source_dir = os.path.join(os.path.dirname(__file__),  '..', 'config')
-        for config_file in backend.upstart_scripts:
-            shutil.copy(os.path.join(source_dir, config_file), SYS_INIT_DIR)
 
 
 class HaproxyApacheMixin(ServerInstallMixinBase):
     """Manage haproxy and Apache via Upstart."""
 
-    upstart_scripts = ('haproxy.conf',)
-    debs = ('openssl', 'haproxy', 'apache2')
+    debs = ('apache2', 'haproxy', 'openssl')
 
     def install(self, backend):
-        """Set up haproxy and Apache startup configuration files."""
-        utils.setup_apache()
-        self._post_install(backend)
+        self._setup_certificates(backend)
 
     def start(self, backend):
-        with shelltoolbox.su('root'):
-            charmhelpers.service_control(utils.APACHE, charmhelpers.RESTART)
-            charmhelpers.service_control(utils.HAPROXY, charmhelpers.RESTART)
+        config = backend.config
+        build_dir = utils.compute_build_dir(
+            config['staging'], config['serve-tests'])
+        utils.start_haproxy_apache(
+            build_dir, config['serve-tests'], config['ssl-cert-path'],
+            config['secure'])
 
     def stop(self, backend):
-        with shelltoolbox.su('root'):
-            charmhelpers.service_control(utils.HAPROXY, charmhelpers.STOP)
-            charmhelpers.service_control(utils.APACHE, charmhelpers.STOP)
+        utils.stop_haproxy_apache()
 
 
 class BuiltinServerMixin(ServerInstallMixinBase):
@@ -209,22 +189,22 @@ class BuiltinServerMixin(ServerInstallMixinBase):
     debs = ('openssl', 'python-pip')
 
     def install(self, backend):
-        """Set up the builtin server startup configuration file."""
         # Install Tornado from a local tarball.
         tornado_path = os.path.join(
             os.path.dirname(__file__),  '..', 'deps', TORNADO_TARBALL)
         shelltoolbox.run('pip', 'install', tornado_path)
-        self._post_install(backend)
+        self._setup_certificates(backend)
 
     def start(self, backend):
-        with shelltoolbox.su('root'):
-            charmhelpers.service_control(
-                utils.BUILTIN_SERVER, charmhelpers.RESTART)
+        config = backend.config
+        build_dir = utils.compute_build_dir(
+            config['staging'], config['serve-tests'])
+        utils.start_builtin_server(
+            build_dir, config['serve-tests'], config['ssl-cert-path'],
+            not config['secure'])
 
     def stop(self, backend):
-        with shelltoolbox.su('root'):
-            charmhelpers.service_control(
-                utils.BUILTIN_SERVER, charmhelpers.STOP)
+        utils.stop_builtin_server()
 
 
 def chain_methods(name):
@@ -294,8 +274,7 @@ class Backend(object):
                 raise ValueError('Unable to use sandbox with go backend')
             self.mixins.append(GoMixin())
 
-        # All backends need to install, start, and stop the services that
-        # provide the GUI.
+        # We always install and start the GUI.
         self.mixins.append(GuiMixin())
         # TODO: eventually this option will go away, as well as haproxy and
         # Apache.
@@ -319,10 +298,4 @@ class Backend(object):
     stop = chain_methods('stop')
 
     # Merged properties.
-    dependencies = merge_properties('dependencies')
-    build_dependencies = merge_properties('build_dependencies')
-    staging_dependencies = merge_properties('staging_dependencies')
-
-    repositories = merge_properties('repositories')
     debs = merge_properties('debs')
-    upstart_scripts = merge_properties('upstart_scripts')

@@ -55,12 +55,6 @@ class TestBackendProperties(unittest.TestCase):
         self.assertEqual(
             frozenset(('apache2', 'curl', 'haproxy', 'openssl', 'zookeeper')),
             test_backend.debs)
-        self.assertEqual(
-            frozenset(()),
-            test_backend.repositories)
-        self.assertEqual(
-            frozenset(('haproxy.conf',)),
-            test_backend.upstart_scripts)
 
     def test_sandbox_backend(self):
         test_backend = backend.Backend(config={
@@ -72,12 +66,6 @@ class TestBackendProperties(unittest.TestCase):
         self.assertEqual(
             frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
             test_backend.debs)
-        self.assertEqual(
-            frozenset(()),
-            test_backend.repositories)
-        self.assertEqual(
-            frozenset(('haproxy.conf',)),
-            test_backend.upstart_scripts)
 
     def test_python_backend(self):
         test_backend = backend.Backend(config={
@@ -89,12 +77,6 @@ class TestBackendProperties(unittest.TestCase):
         self.assertEqual(
             frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
             test_backend.debs)
-        self.assertEqual(
-            frozenset(()),
-            test_backend.repositories)
-        self.assertEqual(
-            frozenset(('haproxy.conf',)),
-            test_backend.upstart_scripts)
 
     def test_go_backend(self):
         # Monkeypatch utils.CURRENT_DIR.
@@ -118,12 +100,6 @@ class TestBackendProperties(unittest.TestCase):
             frozenset(
                 ('apache2', 'curl', 'haproxy', 'openssl', 'python-yaml')),
             test_backend.debs)
-        self.assertEqual(
-            frozenset(()),
-            test_backend.repositories)
-        self.assertEqual(
-            frozenset(('haproxy.conf',)),
-            test_backend.upstart_scripts)
 
 
 class TestBackendCommands(unittest.TestCase):
@@ -144,15 +120,16 @@ class TestBackendCommands(unittest.TestCase):
             'get_npm_cache_archive_url': utils.get_npm_cache_archive_url,
             'parse_source': utils.parse_source,
             'prime_npm_cache': utils.prime_npm_cache,
+            'remove_apache_setup': utils.remove_apache_setup,
+            'remove_haproxy_setup': utils.remove_haproxy_setup,
             'save_or_create_certificates': utils.save_or_create_certificates,
-            'setup_apache': utils.setup_apache,
+            'setup_apache_config': utils.setup_apache_config,
             'setup_gui': utils.setup_gui,
+            'setup_haproxy_config': utils.setup_haproxy_config,
             'start_agent': utils.start_agent,
             'start_improv': utils.start_improv,
-            'write_apache_config': utils.write_apache_config,
             'write_builtin_server_startup': utils.write_builtin_server_startup,
             'write_gui_config': utils.write_gui_config,
-            'write_haproxy_config': utils.write_haproxy_config,
         }
         self.charmhelpers_mocks = {
             'log': charmhelpers.log,
@@ -176,8 +153,8 @@ class TestBackendCommands(unittest.TestCase):
         def mock_su(user):
             self.called['su'] = True
             yield
-        self.orig_su = shelltoolbox.su
-        shelltoolbox.su = mock_su
+        self.orig_su = utils.su
+        utils.su = mock_su
 
         def mock_apt_get_install(*debs):
             self.called['apt_get_install'] = True
@@ -191,20 +168,17 @@ class TestBackendCommands(unittest.TestCase):
 
         # Monkeypatch directories.
         self.orig_juju_dir = utils.JUJU_DIR
-        self.orig_sys_init_dir = backend.SYS_INIT_DIR
         self.temp_dir = tempfile.mkdtemp()
         utils.JUJU_DIR = self.temp_dir
-        backend.SYS_INIT_DIR = self.temp_dir
 
     def tearDown(self):
         # Cleanup directories.
-        backend.SYS_INIT_DIR = self.orig_sys_init_dir
         utils.JUJU_DIR = self.orig_juju_dir
         shutil.rmtree(self.temp_dir)
         # Undo the monkeypatching.
         shelltoolbox.run = self.orig_run
         shelltoolbox.apt_get_install = self.orig_apt_get_install
-        shelltoolbox.su = self.orig_su
+        utils.su = self.orig_su
         for name, orig_fun in self.charmhelpers_mocks.items():
             setattr(charmhelpers, name, orig_fun)
         for name, orig_fun in self.utils_mocks.items():
@@ -214,8 +188,7 @@ class TestBackendCommands(unittest.TestCase):
         test_backend = backend.Backend(config=self.alwaysFalse)
         test_backend.install()
         for mocked in (
-            'apt_get_install', 'fetch_api', 'find_missing_packages', 'log',
-            'setup_apache'
+            'apt_get_install', 'fetch_api', 'find_missing_packages',
         ):
             self.assertTrue(
                 self.called.get(mocked), '{} was not called'.format(mocked))
@@ -224,8 +197,7 @@ class TestBackendCommands(unittest.TestCase):
         test_backend = backend.Backend(config=self.alwaysTrue)
         test_backend.install()
         for mocked in (
-            'apt_get_install', 'fetch_api', 'find_missing_packages', 'log',
-            'run',
+            'apt_get_install', 'fetch_api', 'find_missing_packages', 'run',
         ):
             self.assertTrue(
                 self.called.get(mocked), '{} was not called'.format(mocked))
@@ -234,9 +206,8 @@ class TestBackendCommands(unittest.TestCase):
         test_backend = backend.Backend(config=self.alwaysFalse)
         test_backend.start()
         for mocked in (
-            'compute_build_dir', 'open_port', 'service_control', 'start_agent',
-            'su', 'write_apache_config', 'write_gui_config',
-            'write_haproxy_config',
+            'compute_build_dir', 'open_port', 'setup_apache_config',
+            'setup_haproxy_config', 'start_agent', 'su', 'write_gui_config',
         ):
             self.assertTrue(
                 self.called.get(mocked), '{} was not called'.format(mocked))
@@ -245,9 +216,8 @@ class TestBackendCommands(unittest.TestCase):
         test_backend = backend.Backend(config=self.alwaysTrue)
         test_backend.start()
         for mocked in (
-            'compute_build_dir', 'open_port', 'service_control',
-            'start_improv', 'su', 'write_builtin_server_startup',
-            'write_gui_config',
+            'compute_build_dir', 'open_port', 'start_improv', 'su',
+            'write_builtin_server_startup', 'write_gui_config',
         ):
             self.assertTrue(
                 self.called.get(mocked), '{} was not called'.format(mocked))
@@ -255,11 +225,7 @@ class TestBackendCommands(unittest.TestCase):
     def test_stop(self):
         test_backend = backend.Backend(config=self.alwaysFalse)
         test_backend.stop()
-        for mocked in (
-            'service_control', 'su'
-        ):
-            self.assertTrue(
-                self.called.get(mocked), '{} was not called'.format(mocked))
+        self.assertTrue(self.called.get('su'), 'su was not called')
 
 
 class TestBackendUtils(unittest.TestCase):
