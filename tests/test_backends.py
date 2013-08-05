@@ -196,7 +196,7 @@ class TestBackendCommands(unittest.TestCase):
         test_backend = backend.Backend(config=self.alwaysTrue)
         test_backend.install()
         for mocked in (
-            'apt_get_install', 'fetch_api', 'find_missing_packages', 'run',
+            'apt_get_install', 'fetch_api', 'find_missing_packages',
         ):
             self.assertTrue(
                 self.called.get(mocked), '{} was not called'.format(mocked))

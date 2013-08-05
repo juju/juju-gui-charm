@@ -46,8 +46,6 @@ import shelltoolbox
 import utils
 
 
-
-
 class PythonInstallMixinBase(object):
     """Provide a common "install" method to ImprovMixin and PythonMixin."""
 
