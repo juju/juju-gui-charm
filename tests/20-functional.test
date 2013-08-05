@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import httplib
 import unittest
 import urlparse
 
@@ -23,6 +24,8 @@ from selenium.webdriver import Firefox
 from selenium.webdriver.support import ui
 from xvfbwrapper import Xvfb
 
+# XXX 2013-07-30 benji bug=872264: Don't use juju_deploy directly, use
+# DeployTestMixin.juju_deploy instead.  See comment in stop_services.
 from deploy import juju_deploy
 from helpers import (
     juju_destroy_service,
@@ -129,24 +132,36 @@ class DeployTestMixin(object):
             # Just invoking ``juju destroy-service juju-gui`` in tearDown
             # should execute the ``stop`` hook, stopping all the services
             # started by the charm in the machine. Right now this does not
-            # work in pyJuju, so the same behavior is accomplished keeping
+            # work in pyJuju, so the desired effect is achieved by keeping
             # track of started services and manually stopping them here.
         target = 'ubuntu@{0}'.format(hostname)
         for service in services:
             ssh(target, 'sudo', 'service', service, 'stop')
+
+    def juju_deploy(self, *args, **kws):
+        """Shim in our additional cleanup for pyJuju."""
+        # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
+        # Once pyJuju works correctly or we drop support for it altogether, we
+        # can remove this shim.
+        unit_info = juju_deploy(*args, **kws)
+        if is_legacy_juju:
+            hostname = unit_info['public-address']
+            services = ['haproxy', 'apache2']
+            # Staging uses improv, otherwise the API agent is used.
+            if kws.get('options').get('staging') == 'true':
+                services.append('juju-api-improv')
+            else:
+                services.append('juju-api-agent')
+            self.addCleanup(self.stop_services, hostname, services)
+        return unit_info
 
 
 class DeployTest(DeployTestMixin, unittest.TestCase):
 
     def test_api_agent(self):
         # Ensure the Juju GUI and API agent services are correctly set up.
-        unit_info = juju_deploy(self.charm)
+        unit_info = self.juju_deploy(self.charm)
         hostname = unit_info['public-address']
-        if is_legacy_juju:
-            # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
-            self.addCleanup(
-                self.stop_services,
-                hostname, ['haproxy', 'apache2', 'juju-api-agent'])
         self.navigate_to(hostname)
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()
@@ -154,12 +169,8 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
     @unittest.skipUnless(is_legacy_juju, 'staging only works in pyJuju')
     def test_staging(self):
         # Ensure the Juju GUI and improv services are correctly set up.
-        unit_info = juju_deploy(self.charm, options={'staging': 'true'})
+        unit_info = self.juju_deploy(self.charm, options={'staging': 'true'})
         hostname = unit_info['public-address']
-        # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
-        self.addCleanup(
-            self.stop_services,
-            hostname, ['haproxy', 'apache2', 'juju-api-improv'])
         self.navigate_to(hostname)
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()
@@ -180,22 +191,35 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
 
     def test_branch_source(self):
         # Ensure the Juju GUI is correctly deployed from a Bazaar branch.
-        unit_info = juju_deploy(
+        unit_info = self.juju_deploy(
             self.charm, options={'juju-gui-source': JUJU_GUI_TEST_BRANCH})
         hostname = unit_info['public-address']
-        if is_legacy_juju:
-            # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
-            self.addCleanup(
-                self.stop_services,
-                hostname, ['haproxy', 'apache2', 'juju-api-agent'])
         self.navigate_to(hostname)
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()
 
+    def test_cache_headers(self):
+        # Make sure the correct cache headers are sent.
+        unit_info = self.juju_deploy(
+            self.charm, options={'juju-gui-source': JUJU_GUI_TEST_BRANCH})
+        hostname = unit_info['public-address']
+        conn = httplib.HTTPSConnection(hostname)
+        conn.request('GET', '/')
+        headers = conn.getresponse().getheaders()
+        # There is only one Cache-Control header.
+        self.assertEqual(zip(*headers)[0].count('cache-control'), 1)
+        # The right cache directives are in Cache-Control.
+        cache_control = dict(headers)['cache-control']
+        cache_directives = [s.strip() for s in cache_control.split(',')]
+        self.assertIn('max-age=0', cache_directives)
+        self.assertIn('public', cache_directives)
+        self.assertIn('must-revalidate', cache_directives)
+        
+
     @unittest.skipIf(is_legacy_juju, 'force-machine only works in juju-core')
     def test_force_machine(self):
         # Ensure the Juju GUI is correctly set up in the Juju bootstrap node.
-        unit_info = juju_deploy(self.charm, force_machine=0)
+        unit_info = self.juju_deploy(self.charm, force_machine=0)
         self.assertEqual('0', unit_info['machine'])
         self.navigate_to(unit_info['public-address'])
         self.handle_browser_warning()

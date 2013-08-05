@@ -118,7 +118,7 @@ CONFIG_DIR = os.path.join(os.path.dirname(__file__),  '..', 'config')
 BUILTIN_SERVER_STARTUP = '{}guiserver.conf'.format(SYS_INIT_DIR)
 JUJU_PEM = 'juju.includes-private-key.pem'
 DEB_BUILD_DEPENDENCIES = (
-    'bzr', 'imagemagick', 'make',  'nodejs', 'npm',
+    'bzr', 'g++', 'imagemagick', 'make',  'nodejs', 'npm',
 )
 
 
