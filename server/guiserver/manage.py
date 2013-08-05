@@ -106,10 +106,9 @@ def setup():
         'sslpath', type=str, default=DEFAULT_SSL_PATH,
         help='The path where the SSL certificates are stored.')
     define(
-        'http', type=bool, default=False,
-        help='In order to run the GUI over a non secure connection (HTTP) set '
-             'this flag to True. Do not set this property unless you '
-             'understand and accept the risks.')
+        'insecure', type=bool, default=False,
+        help='Set to True to serve the GUI over an insecure HTTP connection  '
+             'Do not set unless you understand and accept the risks.')
     # In Tornado, parsing the options also sets up the default logger.
     parse_command_line()
     _validate_required('guiroot', 'apiurl')
@@ -119,11 +118,11 @@ def setup():
 
 def run():
     """Run the server"""
-    if options.http:
-        # Run the server over HTTP.
+    if options.insecure:
+        # Run the server over an insecure HTTP connection.
         server().listen(80)
     else:
-        # Default configuration: run the server over a secure connection.
+        # Default configuration: run the server over a secure HTTPS connection.
         server().listen(443, ssl_options=_get_ssl_options())
         redirector().listen(80)
     version = guiserver.get_version()

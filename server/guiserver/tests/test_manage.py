@@ -161,7 +161,7 @@ class TestRun(unittest.TestCase):
 
     def test_secure_mode(self):
         # The application is correctly run in secure mode.
-        _, redirector_listen, server_listen = self.mock_and_run(http=False)
+        _, redirector_listen, server_listen = self.mock_and_run(insecure=False)
         expected_ssl_options = {
             'certfile': '/my/sslpath/juju.crt',
             'keyfile': '/my/sslpath/juju.key',
@@ -170,9 +170,9 @@ class TestRun(unittest.TestCase):
         server_listen.assert_called_once_with(
             443, ssl_options=expected_ssl_options)
 
-    def test_http_mode(self):
-        # The application is correctly run in HTTP mode.
-        _, redirector_listen, server_listen = self.mock_and_run(http=True)
+    def test_insecure_mode(self):
+        # The application is correctly run in insecure mode.
+        _, redirector_listen, server_listen = self.mock_and_run(insecure=True)
         self.assertEqual(0, redirector_listen.call_count)
         server_listen.assert_called_once_with(80)
 

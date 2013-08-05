@@ -20,6 +20,11 @@ Arguments example:
     --guiroot="/var/lib/juju/agents/unit-juju-gui-0/charm/juju-gui/build-prod"
     --apiurl="wss://ec2-75-101-177-185.compute-1.example.com:17070"
     --apiversion="go"
+    --sslpath=/etc/ssl/juju-gui
+    --servetests
+    --insecure
+
+--sslpath is ignored if --insecure is set: only one of them is needed.
 """
 
 from guiserver import manage

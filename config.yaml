@@ -108,9 +108,8 @@ options:
     default: false
   secure:
     description: |
-      In order to run the GUI over a non secure connection (HTTP) set this
-      flag to false. Do not set this property unless you understand and accept
-      the risks.
+      Set to false to serve the GUI over an insecure HTTP connection.
+      Do not set unless you understand and accept the risks.
     type: boolean
     default: true
   sandbox:
@@ -163,7 +162,7 @@ options:
   show-get-juju-button:
     description: |
       There are deployment modes for Juju GUI which are not intended as regular
-      use mode. In these cases, login/logout are disabled and instead there is a
-      link to juju.ubuntu.com
+      use mode. In these cases, login/logout are disabled and instead there is
+      a link to juju.ubuntu.com
     type: boolean
     default: false
