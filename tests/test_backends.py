@@ -118,6 +118,8 @@ class TestBackendCommands(unittest.TestCase):
             'find_missing_packages': utils.find_missing_packages,
             'get_api_address': utils.get_api_address,
             'get_npm_cache_archive_url': utils.get_npm_cache_archive_url,
+            'install_builtin_server': utils.install_builtin_server,
+            'install_tornado': utils.install_tornado,
             'parse_source': utils.parse_source,
             'prime_npm_cache': utils.prime_npm_cache,
             'remove_apache_setup': utils.remove_apache_setup,

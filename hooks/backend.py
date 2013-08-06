@@ -46,9 +46,6 @@ import shelltoolbox
 import utils
 
 
-TORNADO_TARBALL = 'tornado-3.1.tar.gz'
-
-
 class PythonInstallMixinBase(object):
     """Provide a common "install" method to ImprovMixin and PythonMixin."""
 
@@ -189,10 +186,8 @@ class BuiltinServerMixin(ServerInstallMixinBase):
     debs = ('openssl', 'python-pip')
 
     def install(self, backend):
-        # Install Tornado from a local tarball.
-        tornado_path = os.path.join(
-            os.path.dirname(__file__),  '..', 'deps', TORNADO_TARBALL)
-        shelltoolbox.run('pip', 'install', tornado_path)
+        utils.install_tornado()
+        utils.install_builtin_server()
         self._setup_certificates(backend)
 
     def start(self, backend):

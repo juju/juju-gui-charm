@@ -111,11 +111,13 @@ WEB_PORT = 8000
 CURRENT_DIR = os.getcwd()
 JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
+CONFIG_DIR = os.path.join(CURRENT_DIR, 'config')
+SERVER_DIR = os.path.join(CURRENT_DIR, 'server')
+TORNADO_PATH = os.path.join(CURRENT_DIR, 'deps', 'tornado-3.1.tar.gz')
 APACHE_SITE = '/etc/apache2/sites-available/juju-gui'
 APACHE_PORTS = '/etc/apache2/ports.conf'
 HAPROXY_PATH = '/etc/haproxy/haproxy.cfg'
 SYS_INIT_DIR = '/etc/init/'
-CONFIG_DIR = os.path.join(os.path.dirname(__file__),  '..', 'config')
 BUILTIN_SERVER_STARTUP = '{}guiserver.conf'.format(SYS_INIT_DIR)
 JUJU_PEM = 'juju.includes-private-key.pem'
 DEB_BUILD_DEPENDENCIES = (
@@ -293,8 +295,7 @@ def render_to_file(template_name, context, destination):
     The argument *destination* is a file path.
     The argument *context* is a dict-like object.
     """
-    template_path = os.path.join(
-        os.path.dirname(__file__), '..', 'config', template_name)
+    template_path = os.path.join(CONFIG_DIR, template_name)
     template = tempita.Template.from_filename(template_path)
     with open(destination, 'w') as stream:
         stream.write(template.substitute(context))
@@ -535,10 +536,25 @@ def stop_haproxy_apache():
     remove_apache_setup()
 
 
+def install_tornado():
+    """Install Tornado from a local tarball."""
+    log('Installing Tornado.')
+    with su('root'):
+        cmd_log(run('pip', 'install', TORNADO_PATH))
+
+
+def install_builtin_server():
+    """Install the builtin server code."""
+    log('Installing the builtin server.')
+    setup_cmd = os.path.join(SERVER_DIR, 'setup.py')
+    with su('root'):
+        cmd_log(run('/usr/bin/python', setup_cmd, 'install'))
+
+
 def write_builtin_server_startup(
         gui_root, ssl_cert_path, serve_tests=False, insecure=False):
-    """Generate the builtin server startup file."""
-    log('Generating the builtin server startup file.')
+    """Generate the builtin server Upstart file."""
+    log('Generating the builtin server Upstart file.')
     url_prefix = 'ws' if insecure else 'wss'
     is_legacy_juju = legacy_juju()
     api_address = get_api_address()
