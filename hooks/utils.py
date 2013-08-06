@@ -465,7 +465,7 @@ def remove_haproxy_setup():
     """Remove haproxy setup."""
     log('Removing haproxy setup.')
     cmd_log(run('rm', '-f', HAPROXY_PATH))
-    config_path = os.path.join(CONFIG_DIR, 'haproxy.conf')
+    config_path = os.path.join(SYS_INIT_DIR, 'haproxy.conf')
     cmd_log(run('rm', '-f', config_path))
 
 
