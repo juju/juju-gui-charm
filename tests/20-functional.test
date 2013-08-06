@@ -179,15 +179,14 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
 
     def test_builtin_server(self):
         # Ensure the Juju GUI and builtin server are correctly set up.
-        unit_info = juju_deploy(self.charm, options={'builtin-server': 'true'})
+        unit_info = self.juju_deploy(
+            self.charm, options={'builtin-server': 'true'})
         hostname = unit_info['public-address']
-        # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
-        self.addCleanup(
-            self.stop_services,
-            hostname, ['guiserver', 'juju-api-agent'])
-        self.navigate_to(hostname)
-        self.handle_browser_warning()
-        self.assertEnvironmentIsConnected()
+        conn = httplib.HTTPSConnection(hostname)
+        conn.request('HEAD', '/')
+        headers = conn.getresponse().getheaders()
+        server_header = dict(headers)['server']
+        self.assertIn('TornadoServer', server_header)
 
     def test_branch_source(self):
         # Ensure the Juju GUI is correctly deployed from a Bazaar branch.
@@ -204,7 +203,7 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
             self.charm, options={'juju-gui-source': JUJU_GUI_TEST_BRANCH})
         hostname = unit_info['public-address']
         conn = httplib.HTTPSConnection(hostname)
-        conn.request('GET', '/')
+        conn.request('HEAD', '/')
         headers = conn.getresponse().getheaders()
         # There is only one Cache-Control header.
         self.assertEqual(zip(*headers)[0].count('cache-control'), 1)

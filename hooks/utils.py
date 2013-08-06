@@ -116,7 +116,7 @@ SERVER_DIR = os.path.join(CURRENT_DIR, 'server')
 TORNADO_PATH = os.path.join(CURRENT_DIR, 'deps', 'tornado-3.1.tar.gz')
 APACHE_SITE = '/etc/apache2/sites-available/juju-gui'
 APACHE_PORTS = '/etc/apache2/ports.conf'
-HAPROXY_PATH = '/etc/haproxy/haproxy.cfg'
+HAPROXY_CFG_PATH = '/etc/haproxy/haproxy.cfg'
 SYS_INIT_DIR = '/etc/init/'
 BUILTIN_SERVER_STARTUP = '{}guiserver.conf'.format(SYS_INIT_DIR)
 JUJU_PEM = 'juju.includes-private-key.pem'
@@ -463,14 +463,14 @@ def setup_haproxy_config(ssl_cert_path, secure=True):
         'web_port': WEB_PORT,
         'secure': secure
     }
-    render_to_file('haproxy.cfg.template', context, HAPROXY_PATH)
+    render_to_file('haproxy.cfg.template', context, HAPROXY_CFG_PATH)
 
 
 def remove_haproxy_setup():
     """Remove haproxy setup."""
     log('Removing haproxy setup.')
-    cmd_log(run('rm', '-f', HAPROXY_PATH))
-    config_path = os.path.join(CONFIG_DIR, 'haproxy.conf')
+    cmd_log(run('rm', '-f', HAPROXY_CFG_PATH))
+    config_path = os.path.join(SYS_INIT_DIR, 'haproxy.conf')
     cmd_log(run('rm', '-f', config_path))
 
 
