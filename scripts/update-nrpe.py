@@ -5,7 +5,8 @@ from charmsupport import nrpe
 def update_nrpe_config():
     nrpe_compat = nrpe.NRPE()
     nrpe_compat.add_check(
-        'front-page', 'Check font page loads', 'check-front-page.sh')
+        'App is accessible', 'Check the app can be downloaded',
+        'check-app-access.sh')
     nrpe_compat.write()
 
 

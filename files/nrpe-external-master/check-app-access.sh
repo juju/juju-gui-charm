@@ -1,7 +1,7 @@
 #!/bin/bash
-SITE_CONF='/etc/apache2/sites-available/juju-gui'
-ADDRESS='https://127.0.0.1:443/'
-LIFE_SIGN='loading on a slow connection'
+SITE_CONF='/etc/apache2/sites-enabled/juju-gui'
+ADDRESS='https://127.0.0.1:443/juju-ui/version.js'
+LIFE_SIGN='jujuGuiVersionInfo'
 
 if [[ ! -f $SITE_CONF ]]; then
     echo Apache is not configured serve juju-gui.
