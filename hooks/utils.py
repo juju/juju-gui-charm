@@ -20,6 +20,7 @@ __all__ = [
     'AGENT',
     'APACHE',
     'APACHE_SITE',
+    'APACHE_PORTS',
     'API_PORT',
     'CURRENT_DIR',
     'HAPROXY',
@@ -487,6 +488,7 @@ def setup_apache_config(build_dir, serve_tests=False):
     with su('root'):
         run('a2dissite', 'default')
         run('a2ensite', 'juju-gui')
+        run('a2enmod', 'headers')
     log('Generating the Apache site configuration file.')
     context = {
         'port': WEB_PORT,
@@ -502,6 +504,7 @@ def remove_apache_setup():
     """Remove Apache setup."""
     log('Removing Apache setup.')
     with su('root'):
+        run('a2dismod', 'headers')
         run('a2dissite', 'juju-gui')
         run('a2ensite', 'default')
     if os.path.exists(APACHE_PORTS):
@@ -515,7 +518,6 @@ def start_haproxy_apache(
     """Set up and start the haproxy and Apache services."""
     log('Setting up Apache and haproxy.')
     setup_apache_config(build_dir, serve_tests)
-    # Set up haproxy.
     setup_haproxy_config(ssl_cert_path, secure)
     log('Starting the haproxy and Apache services.')
     with su('root'):
