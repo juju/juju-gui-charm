@@ -171,3 +171,5 @@ options:
       Enable the built-in server, disabling both haproxy and Apache.
       This is a temporary option: the built-in server will be
       the only server in the future.
+    type: boolean
+    default: false
