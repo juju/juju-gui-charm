@@ -302,7 +302,7 @@ class TestWebSocketHandlerAuthentication(
         self.assertFalse(self.handler.auth.in_progress())
 
 
-class TestIndexHandler(AsyncHTTPTestCase, LogTrapTestCase):
+class TestIndexHandler(LogTrapTestCase, AsyncHTTPTestCase):
 
     def setUp(self):
         # Set up a static path with an index.html in it.
@@ -338,7 +338,7 @@ class TestIndexHandler(AsyncHTTPTestCase, LogTrapTestCase):
         self.ensure_index('/:flag:/activated/?my=query')
 
 
-class TestHttpsRedirectHandler(AsyncHTTPTestCase, LogTrapTestCase):
+class TestHttpsRedirectHandler(LogTrapTestCase, AsyncHTTPTestCase):
 
     def get_app(self):
         return web.Application([(r'.*', handlers.HttpsRedirectHandler)])
