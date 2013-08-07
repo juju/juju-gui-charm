@@ -22,7 +22,6 @@ import mock
 
 from guiserver import (
     apps,
-    auth,
     handlers,
 )
 
