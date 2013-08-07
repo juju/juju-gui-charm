@@ -64,11 +64,18 @@ class WebSocketHandler(websocket.WebSocketHandler):
     """
 
     @gen.coroutine
-    def initialize(self, apiurl, io_loop=None):
-        """Create a new WebSocket client and connect it to the Juju API."""
+    def initialize(self, io_loop=None):
+        """Initialize the WebSocket server.
+
+        Create a new WebSocket client and connect it to the Juju API.
+        Set up the authentication system.
+        Handle the queued messages.
+        """
         if io_loop is None:
             io_loop = IOLoop.current()
         self._io_loop = io_loop
+        settings = self.application.settings
+        apiurl = settings['apiurl']
         self._summary = request_summary(self.request) + ' '
         logging.info(self._summary + 'client connected')
         self.connected = True
@@ -76,8 +83,7 @@ class WebSocketHandler(websocket.WebSocketHandler):
         self._juju_message_queue = queue = deque()
         # Set up the authentication infrastructure.
         self.user = User()
-        auth_backend = self.application.settings['auth_backend']
-        self.auth = AuthMiddleware(self.user, auth_backend)
+        self.auth = AuthMiddleware(self.user, settings['auth_backend'])
         # Juju requires the Origin header to be included in the WebSocket
         # client handshake request. Propagate the client origin if present;
         # use the Juju API server as origin otherwise.

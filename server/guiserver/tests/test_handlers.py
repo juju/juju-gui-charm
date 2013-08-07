@@ -46,6 +46,7 @@ from guiserver.tests import helpers
 class WebSocketHandlerTestMixin(object):
     """Base set up for all the WebSocketHandler test cases."""
 
+    auth_backend = auth.get_backend(manage.DEFAULT_API_VERSION)
     hello_message = json.dumps({'hello': 'world'})
 
     def get_app(self):
@@ -57,20 +58,16 @@ class WebSocketHandlerTestMixin(object):
         #   ws-client -> ws-server -> ws-forwarding-client -> ws-echo-server
         # Messages arriving to the echo server are returned back to the client:
         #   ws-echo-server -> ws-forwarding-client -> ws-server -> ws-client
-        self.echo_server_address = self.get_wss_url('/echo')
+        echo_server_address = self.get_wss_url('/echo')
         self.echo_server_closed_future = concurrent.Future()
         echo_options = {
             'close_future': self.echo_server_closed_future,
             'io_loop': self.io_loop,
         }
-        ws_options = {
-            'apiurl': self.echo_server_address,
-            'io_loop': self.io_loop,
-        }
         return web.Application([
             (r'/echo', helpers.EchoWebSocketHandler, echo_options),
-            (r'/ws', handlers.WebSocketHandler, ws_options),
-        ], auth_backend=auth.get_backend(manage.DEFAULT_API_VERSION))
+            (r'/ws', handlers.WebSocketHandler, {'io_loop': self.io_loop}),
+        ], apiurl=echo_server_address, auth_backend=self.auth_backend)
 
     def make_client(self):
         """Return a WebSocket client ready to be connected to the server."""
@@ -79,12 +76,15 @@ class WebSocketHandlerTestMixin(object):
         callback = lambda message: None
         return clients.websocket_connect(self.io_loop, url, callback)
 
-    def make_handler(self, headers=None, mock_protocol=False):
+    def make_handler(self, headers=None, mock_protocol=False, apiurl=None):
         """Create and return a WebSocketHandler instance."""
         if headers is None:
             headers = {}
         request = mock.Mock(headers=headers)
-        handler = handlers.WebSocketHandler(self.get_app(), request)
+        app = self.get_app()
+        if apiurl is not None:
+            app.settings['apiurl'] = apiurl
+        handler = handlers.WebSocketHandler(app, request)
         if mock_protocol:
             # Mock the underlying connection protocol.
             handler.ws_connection = mock.Mock()
@@ -108,7 +108,7 @@ class TestWebSocketHandlerConnection(
         # A WebSocket client is created and connected when the handler is
         # initialized.
         handler = self.make_handler()
-        yield handler.initialize(self.echo_server_address, self.io_loop)
+        yield handler.initialize(self.io_loop)
         self.assertTrue(handler.connected)
         self.assertTrue(handler.juju_connected)
         self.assertIsInstance(
@@ -120,11 +120,10 @@ class TestWebSocketHandlerConnection(
     def test_juju_connection_failure(self):
         # If the connection to the Juju API server does not succeed, an
         # error is reported and the client is disconnected.
-        handler = self.make_handler()
+        handler = self.make_handler(apiurl='wss://127.0.0.1/does-not-exist')
         expected_log = '.*unable to connect to the Juju API'
         with ExpectLog('', expected_log, required=True):
-            yield handler.initialize(
-                'wss://127.0.0.1/does-not-exist', self.io_loop)
+            yield handler.initialize(self.io_loop)
         self.assertFalse(handler.connected)
         self.assertFalse(handler.juju_connected)
 
@@ -132,7 +131,7 @@ class TestWebSocketHandlerConnection(
     def test_juju_connection_propagated_request_headers(self):
         # The Origin header is propagated to the client connection.
         handler = self.make_handler(headers={'Origin': 'https://example.com'})
-        yield handler.initialize(self.echo_server_address, self.io_loop)
+        yield handler.initialize(self.io_loop)
         headers = handler.juju_connection.request.headers
         self.assertIn('Origin', headers)
         self.assertEqual('https://example.com', headers['Origin'])
@@ -142,7 +141,7 @@ class TestWebSocketHandlerConnection(
         # The default Origin header is included in the client connection
         # handshake if not found in the original request.
         handler = self.make_handler()
-        yield handler.initialize(self.echo_server_address, self.io_loop)
+        yield handler.initialize(self.io_loop)
         headers = handler.juju_connection.request.headers
         self.assertIn('Origin', headers)
         self.assertEqual(self.get_url('/echo'), headers['Origin'])
@@ -151,7 +150,7 @@ class TestWebSocketHandlerConnection(
         # The WebSocket client is created passing the proper callback.
         handler = self.make_handler()
         with self.mock_websocket_connect() as mock_websocket_connect:
-            handler.initialize(self.echo_server_address, self.io_loop)
+            handler.initialize(self.io_loop)
         self.assertEqual(1, mock_websocket_connect.call_count)
         self.assertIn(
             handler.on_juju_message, mock_websocket_connect.call_args[0])
@@ -184,7 +183,7 @@ class TestWebSocketHandlerProxy(
     def test_from_browser_to_juju(self, mock_juju_connection):
         # A message from the browser is forwarded to the remote server.
         handler = self.make_handler()
-        yield handler.initialize(self.echo_server_address, self.io_loop)
+        yield handler.initialize(self.io_loop)
         handler.on_message(self.hello_message)
         mock_juju_connection.write_message.assert_called_once_with(
             self.hello_message)
@@ -192,7 +191,7 @@ class TestWebSocketHandlerProxy(
     def test_from_juju_to_browser(self):
         # A message from the remote server is returned to the browser.
         handler = self.make_handler()
-        handler.initialize(self.echo_server_address, self.io_loop)
+        handler.initialize(self.io_loop)
         with mock.patch('guiserver.handlers.WebSocketHandler.write_message'):
             handler.on_juju_message(self.hello_message)
             handler.write_message.assert_called_once_with(self.hello_message)
@@ -204,8 +203,7 @@ class TestWebSocketHandlerProxy(
         handler = self.make_handler()
         mock_path = 'guiserver.clients.WebSocketClientConnection.write_message'
         with mock.patch(mock_path) as mock_write_message:
-            initialization = handler.initialize(
-                self.echo_server_address, self.io_loop)
+            initialization = handler.initialize(self.io_loop)
             handler.on_message(self.hello_message)
             self.assertFalse(mock_write_message.called)
             yield initialization
@@ -246,7 +244,7 @@ class TestWebSocketHandlerAuthentication(
     def setUp(self):
         super(TestWebSocketHandlerAuthentication, self).setUp()
         self.handler = self.make_handler(mock_protocol=True)
-        self.handler.initialize(self.echo_server_address, self.io_loop)
+        self.handler.initialize(self.io_loop)
 
     def send_login_request(self):
         """Create a login request and send it to the handler."""
