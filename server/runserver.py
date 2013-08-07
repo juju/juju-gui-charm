@@ -24,7 +24,7 @@ Arguments example:
     --servetests
     --insecure
 
---sslpath is ignored if --insecure is set: only one of them is needed.
+The --sslpath option is ignored if --insecure is set.
 """
 
 from guiserver import manage

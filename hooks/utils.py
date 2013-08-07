@@ -319,9 +319,7 @@ def cmd_log(results):
     results_log.info('\n' + results)
 
 
-def start_improv(
-        staging_env, ssl_cert_path,
-        config_path='/etc/init/juju-api-improv.conf'):
+def start_improv(staging_env, ssl_cert_path):
     """Start a simulated juju environment using ``improv.py``."""
     log('Setting up the staging Upstart script.')
     context = {
@@ -330,29 +328,29 @@ def start_improv(
         'port': API_PORT,
         'staging_env': staging_env,
     }
-    render_to_file('juju-api-improv.conf.template', context, config_path)
+    render_to_file(
+        'juju-api-improv.conf.template', context,
+        '/etc/init/juju-api-improv.conf')
     log('Starting the staging backend.')
     with su('root'):
         service_control(IMPROV, START)
 
 
-def stop_improv(config_path='/etc/init/juju-api-improv.conf'):
-    """Stop a simulated juju environment."""
+def stop_improv():
+    """Stop a simulated Juju environment."""
     log('Stopping the staging backend.')
     with su('root'):
         service_control(IMPROV, STOP)
     log('Removing the staging Upstart script.')
-    cmd_log(run('rm', '-f', config_path))
+    cmd_log(run('rm', '-f', '/etc/init/juju-api-improv.conf'))
 
 
-def start_agent(
-        ssl_cert_path, config_path='/etc/init/juju-api-agent.conf',
-        read_only=False):
+def start_agent(ssl_cert_path, read_only=False):
     """Start the Juju agent and connect to the current environment."""
     # Retrieve the Zookeeper address from the start up script.
     unit_dir = os.path.realpath(os.path.join(CURRENT_DIR, '..'))
-    agent_file = '{}juju-{}.conf'.format(
-        SYS_INIT_DIR, os.path.basename(unit_dir))
+    agent_file = os.path.join(
+        SYS_INIT_DIR, 'juju-{}.conf'.format(os.path.basename(unit_dir)))
     zookeeper = get_zookeeper_address(agent_file)
     log('Setting up the API agent Upstart script.')
     context = {
@@ -362,19 +360,21 @@ def start_agent(
         'zookeeper': zookeeper,
         'read_only': read_only
     }
-    render_to_file('juju-api-agent.conf.template', context, config_path)
+    render_to_file(
+        'juju-api-agent.conf.template', context,
+        '/etc/init/juju-api-agent.conf')
     log('Starting the API agent.')
     with su('root'):
         service_control(AGENT, START)
 
 
-def stop_agent(config_path='/etc/init/juju-api-agent.conf'):
+def stop_agent():
     """Stop the Juju agent."""
     log('Stopping the API agent.')
     with su('root'):
         service_control(AGENT, STOP)
     log('Removing the API agent Upstart script.')
-    cmd_log(run('rm', '-f', config_path))
+    cmd_log(run('rm', '-f', '/etc/init/juju-api-agent.conf'))
 
 
 def compute_build_dir(in_staging, serve_tests):
@@ -471,29 +471,25 @@ def remove_haproxy_setup():
 
 def setup_apache_config(build_dir, serve_tests=False):
     """Set up the Apache configuration."""
-    log('Setting up Apache.')
-    if not os.path.exists(APACHE_SITE):
-        cmd_log(run('touch', APACHE_SITE))
-        cmd_log(run('chown', 'ubuntu:', APACHE_SITE))
-        cmd_log(
-            run('ln', '-s', APACHE_SITE,
-                '/etc/apache2/sites-enabled/juju-gui'))
-    if not os.path.exists(APACHE_PORTS):
-        cmd_log(run('touch', APACHE_PORTS))
-        cmd_log(run('chown', 'ubuntu:', APACHE_PORTS))
-    with su('root'):
-        run('a2dissite', 'default')
-        run('a2ensite', 'juju-gui')
-        run('a2enmod', 'headers')
-    log('Generating the Apache site configuration file.')
+    log('Generating the Apache site configuration files.')
     context = {
         'port': WEB_PORT,
         'serve_tests': serve_tests,
         'server_root': build_dir,
         'tests_root': os.path.join(JUJU_GUI_DIR, 'test', ''),
     }
-    render_to_file('apache-ports.template', context, APACHE_PORTS)
-    render_to_file('apache-site.template', context, APACHE_SITE)
+    if not os.path.exists(APACHE_SITE):
+        render_to_file('apache-site.template', context, APACHE_SITE)
+        cmd_log(run('chown', 'ubuntu:', APACHE_SITE))
+        cmd_log(run(
+            'ln', '-s', APACHE_SITE, '/etc/apache2/sites-enabled/juju-gui'))
+    if not os.path.exists(APACHE_PORTS):
+        render_to_file('apache-ports.template', context, APACHE_PORTS)
+        cmd_log(run('chown', 'ubuntu:', APACHE_PORTS))
+    with su('root'):
+        run('a2dissite', 'default')
+        run('a2ensite', 'juju-gui')
+        run('a2enmod', 'headers')
 
 
 def remove_apache_setup():
