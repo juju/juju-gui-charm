@@ -21,10 +21,10 @@ This module includes the pieces required to process user authentication:
     - User: a simple data structure representing a logged in or anonymous user;
     - authentication backends (GoBackend and PythonBackend): any object
       implementing the following interface:
-        - get_request_id(data);
-        - request_is_login(data);
-        - get_credentials(data);
-        - login_succeeded(data).
+        - get_request_id(data) -> id or None;
+        - request_is_login(data) -> bool;
+        - get_credentials(data) -> (str, str);
+        - login_succeeded(data) -> bool.
       The only purpose of auth backends is to provide the logic to parse
       requests' data based on the API implementation currently in use. Backends
       don't know anything about the authentication process or the current user,
@@ -57,6 +57,9 @@ class User(object):
         username = self.username or 'anonymous'
         return '<User: {} ({})>'.format(username, status)
 
+    def __str__(self):
+        return self.username
+
 
 class AuthMiddleware(object):
     """Handle user authentication.
@@ -84,7 +87,7 @@ class AuthMiddleware(object):
         """
         backend = self._backend
         request_id = backend.get_request_id(data)
-        if request_id and backend.request_is_login(data):
+        if request_id is not None and backend.request_is_login(data):
             self._request_id = request_id
             credentials = backend.get_credentials(data)
             self._user.username, self._user.password = credentials

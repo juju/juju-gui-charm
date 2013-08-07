@@ -44,6 +44,11 @@ class TestUser(unittest.TestCase):
         expected = '<User: anonymous (not authenticated)>'
         self.assertEqual(expected, repr(user))
 
+    def test_str(self):
+        # The string representation of an user is correctly generated.
+        user = auth.User(username='the-doctor')
+        self.assertEqual('the-doctor', str(user))
+
 
 class AuthMiddlewareTestMixin(object):
     """Include tests for the AuthMiddleware.
@@ -117,6 +122,13 @@ class AuthMiddlewareTestMixin(object):
         # The user logged in and the auth process completed.
         self.assert_user('user2', 'passwd2', True)
         self.assertFalse(self.auth.in_progress())
+
+    def test_request_id_is_zero(self):
+        # The authentication process starts if a login request is processed
+        # and the request id is zero.
+        request = self.make_login_request(request_id=0)
+        self.auth.process_request(request)
+        self.assertTrue(self.auth.in_progress())
 
 
 class TestGoAuthMiddleware(
