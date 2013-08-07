@@ -200,6 +200,7 @@ class TestBackendCommands(unittest.TestCase):
         test_backend.install()
         for mocked in (
             'apt_get_install', 'fetch_api', 'find_missing_packages',
+            'install_builtin_server', 'install_tornado',
         ):
             self.assertTrue(
                 self.called.get(mocked), '{} was not called'.format(mocked))

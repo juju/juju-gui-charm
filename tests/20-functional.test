@@ -203,7 +203,7 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
             self.charm, options={'juju-gui-source': JUJU_GUI_TEST_BRANCH})
         hostname = unit_info['public-address']
         conn = httplib.HTTPSConnection(hostname)
-        conn.request('HEAD', '/')
+        conn.request('GET', '/')
         headers = conn.getresponse().getheaders()
         # There is only one Cache-Control header.
         self.assertEqual(zip(*headers)[0].count('cache-control'), 1)
