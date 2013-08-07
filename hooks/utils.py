@@ -19,6 +19,7 @@
 __all__ = [
     'AGENT',
     'APACHE',
+    'APACHE_ENABLED',
     'APACHE_SITE',
     'APACHE_PORTS',
     'API_PORT',
@@ -109,6 +110,7 @@ CURRENT_DIR = os.getcwd()
 JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
 APACHE_SITE = '/etc/apache2/sites-available/juju-gui'
+APACHE_ENABLED = '/etc/apache2/sites-enabled/juju-gui'
 APACHE_PORTS = '/etc/apache2/ports.conf'
 HAPROXY_PATH = '/etc/haproxy/haproxy.cfg'
 SYS_INIT_DIR = '/etc/init/'
@@ -478,14 +480,12 @@ def setup_apache_config(build_dir, serve_tests=False):
         'server_root': build_dir,
         'tests_root': os.path.join(JUJU_GUI_DIR, 'test', ''),
     }
-    if not os.path.exists(APACHE_SITE):
+    if not os.path.exists(APACHE_ENABLED):
         render_to_file('apache-site.template', context, APACHE_SITE)
         cmd_log(run('chown', 'ubuntu:', APACHE_SITE))
-        cmd_log(run(
-            'ln', '-s', APACHE_SITE, '/etc/apache2/sites-enabled/juju-gui'))
-    if not os.path.exists(APACHE_PORTS):
-        render_to_file('apache-ports.template', context, APACHE_PORTS)
-        cmd_log(run('chown', 'ubuntu:', APACHE_PORTS))
+        cmd_log(run('ln', '-s', APACHE_SITE, APACHE_ENABLED))
+    render_to_file('apache-ports.template', context, APACHE_PORTS)
+    cmd_log(run('chown', 'ubuntu:', APACHE_PORTS))
     with su('root'):
         run('a2dissite', 'default')
         run('a2ensite', 'juju-gui')
