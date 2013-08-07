@@ -38,7 +38,7 @@ setup(
     keywords='juju gui server',
     packages=[
         PROJECT_NAME,
-        '{0}.tests'.format(PROJECT_NAME),
+        '{}.tests'.format(PROJECT_NAME),
     ],
     scripts=['runserver.py'],
     classifiers=[

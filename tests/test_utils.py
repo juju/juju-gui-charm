@@ -384,7 +384,7 @@ class TestGetZookeeperAddress(unittest.TestCase):
 
     def setUp(self):
         self.zookeeper_address = 'example.com:2000'
-        contents = 'env JUJU_ZOOKEEPER="{0}"\n'.format(self.zookeeper_address)
+        contents = 'env JUJU_ZOOKEEPER="{}"\n'.format(self.zookeeper_address)
         with tempfile.NamedTemporaryFile(delete=False) as agent_file:
             agent_file.write(contents)
             self.agent_file_path = agent_file.name
@@ -682,12 +682,12 @@ class TestStartImprovAgentGui(unittest.TestCase):
     def test_setup_haproxy_config(self):
         setup_haproxy_config(self.ssl_cert_path)
         haproxy_conf = self.files['haproxy.cfg']
-        self.assertIn('ca-base {0}'.format(self.ssl_cert_path), haproxy_conf)
-        self.assertIn('crt-base {0}'.format(self.ssl_cert_path), haproxy_conf)
-        self.assertIn('ws1 127.0.0.1:{0}'.format(API_PORT), haproxy_conf)
-        self.assertIn('web1 127.0.0.1:{0}'.format(WEB_PORT), haproxy_conf)
-        self.assertIn('ca-file {0}'.format(JUJU_PEM), haproxy_conf)
-        self.assertIn('crt {0}'.format(JUJU_PEM), haproxy_conf)
+        self.assertIn('ca-base {}'.format(self.ssl_cert_path), haproxy_conf)
+        self.assertIn('crt-base {}'.format(self.ssl_cert_path), haproxy_conf)
+        self.assertIn('ws1 127.0.0.1:{}'.format(API_PORT), haproxy_conf)
+        self.assertIn('web1 127.0.0.1:{}'.format(WEB_PORT), haproxy_conf)
+        self.assertIn('ca-file {}'.format(JUJU_PEM), haproxy_conf)
+        self.assertIn('crt {}'.format(JUJU_PEM), haproxy_conf)
         self.assertIn('redirect scheme https', haproxy_conf)
 
     def test_remove_haproxy_setup(self):
@@ -698,9 +698,9 @@ class TestStartImprovAgentGui(unittest.TestCase):
         setup_apache_config(self.build_dir, serve_tests=True)
         apache_site_conf = self.files['SITE_NOT_THERE']
         self.assertIn('juju-gui/build-', apache_site_conf)
-        self.assertIn('VirtualHost *:{0}'.format(WEB_PORT), apache_site_conf)
+        self.assertIn('VirtualHost *:{}'.format(WEB_PORT), apache_site_conf)
         self.assertIn(
-            'Alias /test {0}/test/'.format(JUJU_GUI_DIR), apache_site_conf)
+            'Alias /test {}/test/'.format(JUJU_GUI_DIR), apache_site_conf)
         apache_ports_conf = self.files['PORTS_NOT_THERE']
         self.assertIn('NameVirtualHost *:8000', apache_ports_conf)
         self.assertIn('Listen 8000', apache_ports_conf)
