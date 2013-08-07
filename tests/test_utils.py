@@ -45,6 +45,8 @@ from utils import (
     log_hook,
     parse_source,
     get_npm_cache_archive_url,
+    install_builtin_server,
+    install_tornado,
     remove_apache_setup,
     remove_haproxy_setup,
     render_to_file,
@@ -52,9 +54,11 @@ from utils import (
     setup_apache_config,
     setup_haproxy_config,
     start_agent,
+    start_builtin_server,
     start_haproxy_apache,
     start_improv,
     stop_agent,
+    stop_builtin_server,
     stop_haproxy_apache,
     stop_improv,
     write_builtin_server_startup,
@@ -675,21 +679,6 @@ class TestStartImprovAgentGui(unittest.TestCase):
                 result, build_dir, 'in_staging: {}, serve_tests: {}'.format(
                     in_staging, serve_tests))
 
-    def test_write_gui_config(self):
-        write_gui_config(
-            False, 'This is login help.', True, True, self.charmworld_url,
-            self.build_dir, use_analytics=True, config_js_path='config')
-        js_conf = self.files['config']
-        self.assertIn('consoleEnabled: false', js_conf)
-        self.assertIn('user: "admin"', js_conf)
-        self.assertIn('password: "admin"', js_conf)
-        self.assertIn('login_help: "This is login help."', js_conf)
-        self.assertIn('readOnly: true', js_conf)
-        self.assertIn("socket_url: 'wss://", js_conf)
-        self.assertIn('socket_protocol: "wss"', js_conf)
-        self.assertIn('charmworldURL: "http://charmworld.example"', js_conf)
-        self.assertIn('useAnalytics: true', js_conf)
-
     def test_setup_haproxy_config(self):
         setup_haproxy_config(self.ssl_cert_path)
         haproxy_conf = self.files['haproxy.cfg']
@@ -721,7 +710,7 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertEqual(self.run_call_count, 3)
 
     def test_start_haproxy_apache(self):
-        start_haproxy_apache('build_dir', False, self.ssl_cert_path, True)
+        start_haproxy_apache(JUJU_GUI_DIR, False, self.ssl_cert_path, True)
         self.assertEqual(self.svc_ctl_call_count, 2)
         self.assertEqual(self.service_names, ['apache2', 'haproxy'])
         self.assertEqual(
@@ -733,6 +722,13 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertEqual(self.service_names, ['haproxy', 'apache2'])
         self.assertEqual(self.actions, [charmhelpers.STOP, charmhelpers.STOP])
 
+    def test_install_tornado(self):
+        install_tornado()
+        self.assertEqual(self.run_call_count, 1)
+
+    def test_install_builtin_server(self):
+        install_builtin_server()
+        self.assertEqual(self.run_call_count, 1)
 
     def test_write_builtin_server_startup(self):
         write_builtin_server_startup(
@@ -743,6 +739,35 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertIn('--apiversion="python"', guiserver_conf)
         self.assertIn('--servetests', guiserver_conf)
         self.assertIn('--insecure', guiserver_conf)
+
+    def test_start_builtin_server(self):
+        start_builtin_server(
+            JUJU_GUI_DIR, False, self.ssl_cert_path, insecure=False)
+        self.assertEqual(self.svc_ctl_call_count, 1)
+        self.assertEqual(self.service_names, ['guiserver'])
+        self.assertEqual(self.actions, [charmhelpers.RESTART])
+
+    def test_stop_builtin_server(self):
+        stop_builtin_server()
+        self.assertEqual(self.svc_ctl_call_count, 1)
+        self.assertEqual(self.service_names, ['guiserver'])
+        self.assertEqual(self.actions, [charmhelpers.STOP])
+        self.assertEqual(self.run_call_count, 1)
+
+    def test_write_gui_config(self):
+        write_gui_config(
+            False, 'This is login help.', True, True, self.charmworld_url,
+            self.build_dir, use_analytics=True, config_js_path='config')
+        js_conf = self.files['config']
+        self.assertIn('consoleEnabled: false', js_conf)
+        self.assertIn('user: "admin"', js_conf)
+        self.assertIn('password: "admin"', js_conf)
+        self.assertIn('login_help: "This is login help."', js_conf)
+        self.assertIn('readOnly: true', js_conf)
+        self.assertIn("socket_url: 'wss://", js_conf)
+        self.assertIn('socket_protocol: "wss"', js_conf)
+        self.assertIn('charmworldURL: "http://charmworld.example"', js_conf)
+        self.assertIn('useAnalytics: true', js_conf)
 
     def test_write_gui_config_insecure(self):
         write_gui_config(
