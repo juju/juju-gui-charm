@@ -18,6 +18,8 @@
 
 import unittest
 
+from tornado.testing import LogTrapTestCase
+
 from guiserver import auth
 from guiserver.tests import helpers
 
@@ -132,13 +134,14 @@ class AuthMiddlewareTestMixin(object):
 
 
 class TestGoAuthMiddleware(
-        helpers.GoAPITestMixin, AuthMiddlewareTestMixin, unittest.TestCase):
+        helpers.GoAPITestMixin, AuthMiddlewareTestMixin,
+        LogTrapTestCase, unittest.TestCase):
     pass
 
 
 class TestPythonAuthMiddleware(
         helpers.PythonAPITestMixin, AuthMiddlewareTestMixin,
-        unittest.TestCase):
+        LogTrapTestCase, unittest.TestCase):
     pass
 
 
