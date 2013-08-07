@@ -36,6 +36,8 @@ This module includes the pieces required to process user authentication:
       if the authentication succeeds.
 """
 
+import logging
+
 
 class User(object):
     """The current WebSocket user."""
@@ -103,6 +105,7 @@ class AuthMiddleware(object):
         if request_id == self._request_id:
             logged_in = self._backend.login_succeeded(data)
             if logged_in:
+                logging.info('auth: user {} logged in'.format(self._user))
                 self._user.is_authenticated = True
             else:
                 self._user.username = self._user.password = ''
