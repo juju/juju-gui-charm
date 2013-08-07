@@ -354,7 +354,7 @@ def stop_improv():
 def start_agent(ssl_cert_path, read_only=False):
     """Start the Juju agent and connect to the current environment."""
     # Retrieve the Zookeeper address from the start up script.
-    agent_file = os.path.join(SYS_INIT_DIR, 'juju-{}.conf'.format(UNIT_NAME)))
+    agent_file = os.path.join(SYS_INIT_DIR, 'juju-{}.conf'.format(UNIT_NAME))
     zookeeper = get_zookeeper_address(agent_file)
     log('Setting up the API agent Upstart script.')
     context = {
