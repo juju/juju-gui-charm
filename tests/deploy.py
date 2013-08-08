@@ -68,7 +68,7 @@ def juju_deploy(
         config_file = make_charm_config_file({charm: options})
         args.extend(['--config', config_file.name])
     if force_machine is not None:
-        args.extend(['--force-machine', str(force_machine)])
+        args.extend(['--to', str(force_machine)])
     args.append('local:{}/{}'.format(series, charm))
     juju(*args)
     juju('expose', charm)

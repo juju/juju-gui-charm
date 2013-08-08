@@ -169,7 +169,7 @@ class TestJujuDeploy(unittest.TestCase):
         expected_deploy_call = mock.call(
             'deploy',
             '--repository', self.repo,
-            '--force-machine', '42',
+            '--to', '42',
             self.local_charm,
         )
         deploy_call = self.call_deploy(force_machine=42)
