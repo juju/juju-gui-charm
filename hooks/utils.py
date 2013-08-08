@@ -364,9 +364,7 @@ def start_agent(ssl_cert_path, read_only=False):
         'zookeeper': zookeeper,
         'read_only': read_only
     }
-    render_to_file(
-        'juju-api-agent.conf.template', context,
-        AGENT_INIT_PATH)
+    render_to_file('juju-api-agent.conf.template', context, AGENT_INIT_PATH)
     log('Starting the API agent.')
     with su('root'):
         service_control(AGENT, START)
