@@ -17,19 +17,14 @@
 """Juju GUI charm utilities."""
 
 __all__ = [
-    'AGENT',
-    'APACHE',
     'APACHE_SITE',
     'APACHE_PORTS',
     'API_PORT',
     'CURRENT_DIR',
-    'HAPROXY',
-    'IMPROV',
     'JUJU_DIR',
     'JUJU_GUI_DIR',
     'JUJU_PEM',
     'WEB_PORT',
-    'bzr_checkout',
     'cmd_log',
     'compute_build_dir',
     'fetch_api',
@@ -53,9 +48,11 @@ __all__ = [
     'setup_gui',
     'setup_haproxy_config',
     'start_agent',
+    'start_builtin_server',
     'start_haproxy_apache',
     'start_improv',
     'stop_agent',
+    'stop_builtin_server',
     'stop_haproxy_apache',
     'stop_improv',
     'write_gui_config',
@@ -99,20 +96,32 @@ from charmhelpers import (
 
 AGENT = 'juju-api-agent'
 APACHE = 'apache2'
-IMPROV = 'juju-api-improv'
+BUILTIN_SERVER = 'guiserver'
 HAPROXY = 'haproxy'
+IMPROV = 'juju-api-improv'
 
 API_PORT = 8080
 WEB_PORT = 8000
 
 CURRENT_DIR = os.getcwd()
+CONFIG_DIR = os.path.join(CURRENT_DIR, 'config')
 JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
-APACHE_SITE = '/etc/apache2/sites-available/juju-gui'
-APACHE_PORTS = '/etc/apache2/ports.conf'
-HAPROXY_PATH = '/etc/haproxy/haproxy.cfg'
-SYS_INIT_DIR = '/etc/init/'
-CONFIG_DIR = os.path.join(os.path.dirname(__file__),  '..', 'config')
+SERVER_DIR = os.path.join(CURRENT_DIR, 'server')
+TORNADO_PATH = os.path.join(CURRENT_DIR, 'deps', 'tornado-3.1.tar.gz')
+UNIT_NAME = os.path.basename(os.path.realpath(os.path.join(CURRENT_DIR, '..')))
+
+APACHE_CFG_DIR = os.path.join('', 'etc', 'apache2')
+APACHE_PORTS = os.path.join(APACHE_CFG_DIR, 'ports.conf')
+APACHE_SITE = os.path.join(APACHE_CFG_DIR, 'sites-available', 'juju-gui')
+HAPROXY_CFG_PATH = os.path.join('', 'etc', 'haproxy', 'haproxy.cfg')
+
+SYS_INIT_DIR = os.path.join('', 'etc', 'init')
+AGENT_INIT_PATH = os.path.join(SYS_INIT_DIR, 'juju-api-agent.conf')
+GUISERVER_INIT_PATH = os.path.join(SYS_INIT_DIR, 'guiserver.conf')
+HAPROXY_INIT_PATH = os.path.join(SYS_INIT_DIR, 'haproxy.conf')
+IMPROV_INIT_PATH = os.path.join(SYS_INIT_DIR, 'juju-api-improv.conf')
+
 JUJU_PEM = 'juju.includes-private-key.pem'
 DEB_BUILD_DEPENDENCIES = (
     'bzr', 'g++', 'imagemagick', 'make',  'nodejs', 'npm',
@@ -120,7 +129,7 @@ DEB_BUILD_DEPENDENCIES = (
 
 
 # Store the configuration from on invocation to the next.
-config_json = Serializer('/tmp/config.json')
+config_json = Serializer(os.path.join('', 'tmp', 'config.json'))
 # Bazaar checkout command.
 bzr_checkout = command('bzr', 'co', '--lightweight')
 # Whether or not the charm is deployed using juju-core.
@@ -289,8 +298,7 @@ def render_to_file(template_name, context, destination):
     The argument *destination* is a file path.
     The argument *context* is a dict-like object.
     """
-    template_path = os.path.join(
-        os.path.dirname(__file__), '..', 'config', template_name)
+    template_path = os.path.join(CONFIG_DIR, template_name)
     template = tempita.Template.from_filename(template_path)
     with open(destination, 'w') as stream:
         stream.write(template.substitute(context))
@@ -328,9 +336,7 @@ def start_improv(staging_env, ssl_cert_path):
         'port': API_PORT,
         'staging_env': staging_env,
     }
-    render_to_file(
-        'juju-api-improv.conf.template', context,
-        '/etc/init/juju-api-improv.conf')
+    render_to_file('juju-api-improv.conf.template', context, IMPROV_INIT_PATH)
     log('Starting the staging backend.')
     with su('root'):
         service_control(IMPROV, START)
@@ -342,15 +348,13 @@ def stop_improv():
     with su('root'):
         service_control(IMPROV, STOP)
     log('Removing the staging Upstart script.')
-    cmd_log(run('rm', '-f', '/etc/init/juju-api-improv.conf'))
+    cmd_log(run('rm', '-f', IMPROV_INIT_PATH))
 
 
 def start_agent(ssl_cert_path, read_only=False):
     """Start the Juju agent and connect to the current environment."""
     # Retrieve the Zookeeper address from the start up script.
-    unit_dir = os.path.realpath(os.path.join(CURRENT_DIR, '..'))
-    agent_file = os.path.join(
-        SYS_INIT_DIR, 'juju-{}.conf'.format(os.path.basename(unit_dir)))
+    agent_file = os.path.join(SYS_INIT_DIR, 'juju-{}.conf'.format(UNIT_NAME))
     zookeeper = get_zookeeper_address(agent_file)
     log('Setting up the API agent Upstart script.')
     context = {
@@ -360,9 +364,7 @@ def start_agent(ssl_cert_path, read_only=False):
         'zookeeper': zookeeper,
         'read_only': read_only
     }
-    render_to_file(
-        'juju-api-agent.conf.template', context,
-        '/etc/init/juju-api-agent.conf')
+    render_to_file('juju-api-agent.conf.template', context, AGENT_INIT_PATH)
     log('Starting the API agent.')
     with su('root'):
         service_control(AGENT, START)
@@ -374,7 +376,7 @@ def stop_agent():
     with su('root'):
         service_control(AGENT, STOP)
     log('Removing the API agent Upstart script.')
-    cmd_log(run('rm', '-f', '/etc/init/juju-api-agent.conf'))
+    cmd_log(run('rm', '-f', AGENT_INIT_PATH))
 
 
 def compute_build_dir(in_staging, serve_tests):
@@ -442,7 +444,7 @@ def setup_haproxy_config(ssl_cert_path, secure=True):
     is_legacy_juju = legacy_juju()
     if is_legacy_juju:
         # The PyJuju API agent is listening on localhost.
-        api_address = '127.0.0.1:{0}'.format(API_PORT)
+        api_address = '127.0.0.1:{}'.format(API_PORT)
     else:
         # Retrieve the juju-core API server address.
         api_address = get_api_address()
@@ -458,15 +460,14 @@ def setup_haproxy_config(ssl_cert_path, secure=True):
         'web_port': WEB_PORT,
         'secure': secure
     }
-    render_to_file('haproxy.cfg.template', context, HAPROXY_PATH)
+    render_to_file('haproxy.cfg.template', context, HAPROXY_CFG_PATH)
 
 
 def remove_haproxy_setup():
     """Remove haproxy setup."""
     log('Removing haproxy setup.')
-    cmd_log(run('rm', '-f', HAPROXY_PATH))
-    config_path = os.path.join(SYS_INIT_DIR, 'haproxy.conf')
-    cmd_log(run('rm', '-f', config_path))
+    cmd_log(run('rm', '-f', HAPROXY_CFG_PATH))
+    cmd_log(run('rm', '-f', HAPROXY_INIT_PATH))
 
 
 def setup_apache_config(build_dir, serve_tests=False):
@@ -521,6 +522,60 @@ def stop_haproxy_apache():
         service_control(APACHE, STOP)
     remove_haproxy_setup()
     remove_apache_setup()
+
+
+def install_tornado():
+    """Install Tornado from a local tarball."""
+    log('Installing Tornado.')
+    with su('root'):
+        cmd_log(run('pip', 'install', TORNADO_PATH))
+
+
+def install_builtin_server():
+    """Install the builtin server code."""
+    log('Installing the builtin server.')
+    setup_cmd = os.path.join(SERVER_DIR, 'setup.py')
+    with su('root'):
+        cmd_log(run('/usr/bin/python', setup_cmd, 'install'))
+
+
+def write_builtin_server_startup(
+        gui_root, ssl_cert_path, serve_tests=False, insecure=False):
+    """Generate the builtin server Upstart file."""
+    log('Generating the builtin server Upstart file.')
+    url_prefix = 'ws' if insecure else 'wss'
+    is_legacy_juju = legacy_juju()
+    api_address = get_api_address()
+    api_url = '{}://127.0.0.1:{}'.format(
+        url_prefix, API_PORT) if is_legacy_juju else '{}://{}'.format(
+        url_prefix, api_address)
+    context = {
+        'gui_root': gui_root,
+        'api_url': api_url,
+        'api_version': 'python' if is_legacy_juju else 'go',
+        'ssl_cert_path': ssl_cert_path,
+        'serve_tests': serve_tests,
+        'insecure': insecure,
+    }
+    render_to_file(
+        'guiserver.conf.template', context, GUISERVER_INIT_PATH)
+
+
+def start_builtin_server(build_dir, serve_tests, ssl_cert_path, insecure):
+    """Start the builtin server."""
+    write_builtin_server_startup(
+        build_dir, ssl_cert_path, serve_tests, insecure)
+    log('Starting the builtin server.')
+    with su('root'):
+        service_control(BUILTIN_SERVER, RESTART)
+
+
+def stop_builtin_server():
+    """Stop the builtin server."""
+    log('Stopping the builtin server.')
+    with su('root'):
+        service_control(BUILTIN_SERVER, STOP)
+    cmd_log(run('rm', '-f', GUISERVER_INIT_PATH))
 
 
 def get_npm_cache_archive_url(Launchpad=Launchpad):

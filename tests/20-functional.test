@@ -82,7 +82,7 @@ class DeployTestMixin(object):
         Retry loading the page until the page is found or a timeout exception
         is raised.
         """
-        base_url = 'https://{0}:{1}'.format(hostname, self.port)
+        base_url = 'https://{}:{}'.format(hostname, self.port)
         url = urlparse.urljoin(base_url, path)
 
         def page_ready(driver):
@@ -134,7 +134,7 @@ class DeployTestMixin(object):
             # started by the charm in the machine. Right now this does not
             # work in pyJuju, so the desired effect is achieved by keeping
             # track of started services and manually stopping them here.
-        target = 'ubuntu@{0}'.format(hostname)
+        target = 'ubuntu@{}'.format(hostname)
         for service in services:
             ssh(target, 'sudo', 'service', service, 'stop')
 
@@ -176,6 +176,17 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         self.assertEnvironmentIsConnected()
         # The staging environment contains five deployed services.
         self.assertSetEqual(set(STAGING_SERVICES), self.get_service_names())
+
+    def test_builtin_server(self):
+        # Ensure the Juju GUI and builtin server are correctly set up.
+        unit_info = self.juju_deploy(
+            self.charm, options={'builtin-server': 'true'})
+        hostname = unit_info['public-address']
+        conn = httplib.HTTPSConnection(hostname)
+        conn.request('HEAD', '/')
+        headers = conn.getresponse().getheaders()
+        server_header = dict(headers)['server']
+        self.assertIn('TornadoServer', server_header)
 
     def test_branch_source(self):
         # Ensure the Juju GUI is correctly deployed from a Bazaar branch.

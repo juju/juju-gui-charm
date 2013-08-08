@@ -46,8 +46,8 @@ class TestBackendProperties(unittest.TestCase):
     """Ensure the correct mixins and property values are collected."""
 
     def test_staging_backend(self):
-        test_backend = backend.Backend(
-            config={'sandbox': False, 'staging': True})
+        test_backend = backend.Backend(config={
+            'sandbox': False, 'staging': True, 'builtin-server': False})
         mixin_names = get_mixin_names(test_backend)
         self.assertEqual(
             ('ImprovMixin', 'GuiMixin', 'HaproxyApacheMixin'),
@@ -57,8 +57,8 @@ class TestBackendProperties(unittest.TestCase):
             test_backend.debs)
 
     def test_sandbox_backend(self):
-        test_backend = backend.Backend(
-            config={'sandbox': True, 'staging': False})
+        test_backend = backend.Backend(config={
+            'sandbox': True, 'staging': False, 'builtin-server': False})
         mixin_names = get_mixin_names(test_backend)
         self.assertEqual(
             ('SandboxMixin', 'GuiMixin', 'HaproxyApacheMixin'),
@@ -68,8 +68,8 @@ class TestBackendProperties(unittest.TestCase):
             test_backend.debs)
 
     def test_python_backend(self):
-        test_backend = backend.Backend(
-            config={'sandbox': False, 'staging': False})
+        test_backend = backend.Backend(config={
+            'sandbox': False, 'staging': False, 'builtin-server': False})
         mixin_names = get_mixin_names(test_backend)
         self.assertEqual(
             ('PythonMixin', 'GuiMixin', 'HaproxyApacheMixin'),
@@ -86,8 +86,8 @@ class TestBackendProperties(unittest.TestCase):
         # Create a fake agent file.
         agent_path = os.path.join(base_dir, 'agent.conf')
         open(agent_path, 'w').close()
-        test_backend = backend.Backend(
-            config={'sandbox': False, 'staging': False})
+        test_backend = backend.Backend(config={
+            'sandbox': False, 'staging': False, 'builtin-server': False})
         # Cleanup.
         utils.CURRENT_DIR = orig_current_dir
         shutil.rmtree(base_dir)
@@ -118,6 +118,8 @@ class TestBackendCommands(unittest.TestCase):
             'find_missing_packages': utils.find_missing_packages,
             'get_api_address': utils.get_api_address,
             'get_npm_cache_archive_url': utils.get_npm_cache_archive_url,
+            'install_builtin_server': utils.install_builtin_server,
+            'install_tornado': utils.install_tornado,
             'parse_source': utils.parse_source,
             'prime_npm_cache': utils.prime_npm_cache,
             'remove_apache_setup': utils.remove_apache_setup,
@@ -128,6 +130,7 @@ class TestBackendCommands(unittest.TestCase):
             'setup_haproxy_config': utils.setup_haproxy_config,
             'start_agent': utils.start_agent,
             'start_improv': utils.start_improv,
+            'write_builtin_server_startup': utils.write_builtin_server_startup,
             'write_gui_config': utils.write_gui_config,
         }
         self.charmhelpers_mocks = {
@@ -192,11 +195,12 @@ class TestBackendCommands(unittest.TestCase):
             self.assertTrue(
                 self.called.get(mocked), '{} was not called'.format(mocked))
 
-    def test_install_improv(self):
+    def test_install_improv_builtin(self):
         test_backend = backend.Backend(config=self.alwaysTrue)
         test_backend.install()
         for mocked in (
             'apt_get_install', 'fetch_api', 'find_missing_packages',
+            'install_builtin_server', 'install_tornado',
         ):
             self.assertTrue(
                 self.called.get(mocked), '{} was not called'.format(mocked))
@@ -211,12 +215,12 @@ class TestBackendCommands(unittest.TestCase):
             self.assertTrue(
                 self.called.get(mocked), '{} was not called'.format(mocked))
 
-    def test_start_improv(self):
+    def test_start_improv_builtin(self):
         test_backend = backend.Backend(config=self.alwaysTrue)
         test_backend.start()
         for mocked in (
             'compute_build_dir', 'open_port', 'start_improv', 'su',
-            'write_gui_config',
+            'write_builtin_server_startup', 'write_gui_config',
         ):
             self.assertTrue(
                 self.called.get(mocked), '{} was not called'.format(mocked))
@@ -231,16 +235,20 @@ class TestBackendUtils(unittest.TestCase):
 
     def test_same_config(self):
         test_backend = backend.Backend(
-            config={'sandbox': False, 'staging': False},
-            prev_config={'sandbox': False, 'staging': False},
+            config={
+                'sandbox': False, 'staging': False, 'builtin-server': False},
+            prev_config={
+                'sandbox': False, 'staging': False, 'builtin-server': False},
         )
         self.assertFalse(test_backend.different('sandbox'))
         self.assertFalse(test_backend.different('staging'))
 
     def test_different_config(self):
         test_backend = backend.Backend(
-            config={'sandbox': False, 'staging': False},
-            prev_config={'sandbox': True, 'staging': False},
+            config={
+                'sandbox': False, 'staging': False, 'builtin-server': False},
+            prev_config={
+                'sandbox': True, 'staging': False, 'builtin-server': False},
         )
         self.assertTrue(test_backend.different('sandbox'))
         self.assertFalse(test_backend.different('staging'))

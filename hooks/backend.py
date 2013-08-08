@@ -180,6 +180,28 @@ class HaproxyApacheMixin(ServerInstallMixinBase):
         utils.stop_haproxy_apache()
 
 
+class BuiltinServerMixin(ServerInstallMixinBase):
+    """Manage the builtin server via Upstart."""
+
+    debs = ('openssl', 'python-pip')
+
+    def install(self, backend):
+        utils.install_tornado()
+        utils.install_builtin_server()
+        self._setup_certificates(backend)
+
+    def start(self, backend):
+        config = backend.config
+        build_dir = utils.compute_build_dir(
+            config['staging'], config['serve-tests'])
+        utils.start_builtin_server(
+            build_dir, config['serve-tests'], config['ssl-cert-path'],
+            not config['secure'])
+
+    def stop(self, backend):
+        utils.stop_builtin_server()
+
+
 def chain_methods(name):
     """Helper to compose a set of mixin objects into a callable.
 
@@ -249,7 +271,12 @@ class Backend(object):
 
         # We always install and start the GUI.
         self.mixins.append(GuiMixin())
-        self.mixins.append(HaproxyApacheMixin())
+        # TODO: eventually this option will go away, as well as haproxy and
+        # Apache.
+        if config['builtin-server']:
+            self.mixins.append(BuiltinServerMixin())
+        else:
+            self.mixins.append(HaproxyApacheMixin())
 
     def different(self, *keys):
         """Return a boolean indicating if the current config
