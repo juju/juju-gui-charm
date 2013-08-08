@@ -18,6 +18,8 @@
 
 import unittest
 
+from tornado.testing import LogTrapTestCase
+
 from guiserver import auth
 from guiserver.tests import helpers
 
@@ -43,6 +45,11 @@ class TestUser(unittest.TestCase):
         user = auth.User()
         expected = '<User: anonymous (not authenticated)>'
         self.assertEqual(expected, repr(user))
+
+    def test_str(self):
+        # The string representation of an user is correctly generated.
+        user = auth.User(username='the-doctor')
+        self.assertEqual('the-doctor', str(user))
 
 
 class AuthMiddlewareTestMixin(object):
@@ -118,15 +125,23 @@ class AuthMiddlewareTestMixin(object):
         self.assert_user('user2', 'passwd2', True)
         self.assertFalse(self.auth.in_progress())
 
+    def test_request_id_is_zero(self):
+        # The authentication process starts if a login request is processed
+        # and the request id is zero.
+        request = self.make_login_request(request_id=0)
+        self.auth.process_request(request)
+        self.assertTrue(self.auth.in_progress())
+
 
 class TestGoAuthMiddleware(
-        helpers.GoAPITestMixin, AuthMiddlewareTestMixin, unittest.TestCase):
+        helpers.GoAPITestMixin, AuthMiddlewareTestMixin,
+        LogTrapTestCase, unittest.TestCase):
     pass
 
 
 class TestPythonAuthMiddleware(
         helpers.PythonAPITestMixin, AuthMiddlewareTestMixin,
-        unittest.TestCase):
+        LogTrapTestCase, unittest.TestCase):
     pass
 
 

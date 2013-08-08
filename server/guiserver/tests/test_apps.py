@@ -22,7 +22,6 @@ import mock
 
 from guiserver import (
     apps,
-    auth,
     handlers,
 )
 
@@ -89,12 +88,6 @@ class TestServer(AppsTestMixin, unittest.TestCase):
         app = self.get_app(servetests=None)
         spec = self.get_url_spec(app, r'^/test/(.*)$')
         self.assertIsNone(spec)
-
-    def test_auth_backend(self):
-        # The server settings include the currently used auth backend.
-        app = self.get_app(apiversion='go')
-        self.assertIn('auth_backend', app.settings)
-        self.assertIsInstance(app.settings['auth_backend'], auth.GoBackend)
 
 
 class TestRedirector(AppsTestMixin, unittest.TestCase):
