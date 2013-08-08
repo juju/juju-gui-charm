@@ -478,7 +478,7 @@ def setup_apache_config(build_dir, serve_tests=False):
         'port': WEB_PORT,
         'serve_tests': serve_tests,
         'server_root': build_dir,
-        'tests_root': os.path.join(JUJU_GUI_DIR, 'test', os.path.sep),
+        'tests_root': os.path.join(JUJU_GUI_DIR, 'test', ''),
     }
     render_to_file('apache-ports.template', context, APACHE_PORTS)
     cmd_log(run('chown', 'ubuntu:', APACHE_PORTS))
