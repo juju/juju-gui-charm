@@ -17,10 +17,19 @@
 """
 A composition system for creating backend objects.
 
-Backends implement start(), stop() and install() methods. A backend is composed
+Backends implement install(), start() and stop() methods. A backend is composed
 of many mixins and each mixin will implement any/all of those methods and all
 will be called. Backends additionally provide for collecting property values
 from each mixin into a single final property on the backend.
+
+Mixins are not actually mixed in to the backend class using Python inheritance
+machinery. Instead, each mixin is instantiated and collected in the Backend
+__init__, as needed. Then the install(), start(), and stop() methods have a
+"self" that is the simple instantiated mixin, and a "backend" argument that is
+the backend instance. Python inheritance machinery is somewhat mimicked in that
+certain properties and methods are explicitly aggregated on the backend
+instance: see the chain_methods and merge_properties functions, and their
+usages.
 
 There is also a feature for determining if configuration values have changed
 between old and new configurations so we can selectively take action.
@@ -29,26 +38,21 @@ The mixins appear in the code in the order they are instantiated by the
 backend. Keeping them that way is useful.
 """
 
+import os
+
 import charmhelpers
 import shelltoolbox
+
 import utils
-
-import os
-import shutil
-
-
-apt_get = shelltoolbox.command('apt-get')
-SYS_INIT_DIR = '/etc/init/'
 
 
 class PythonInstallMixinBase(object):
     """Provide a common "install" method to ImprovMixin and PythonMixin."""
 
     def install(self, backend):
-        config = backend.config
         if (not os.path.exists(utils.JUJU_DIR) or
                 backend.different('staging', 'juju-api-branch')):
-            utils.fetch_api(config['juju-api-branch'])
+            utils.fetch_api(backend.config['juju-api-branch'])
 
 
 class ImprovMixin(PythonInstallMixinBase):
@@ -62,7 +66,7 @@ class ImprovMixin(PythonInstallMixinBase):
             config['staging-environment'], config['ssl-cert-path'])
 
     def stop(self, backend):
-        charmhelpers.service_control(utils.IMPROV, charmhelpers.STOP)
+        utils.stop_improv()
 
 
 class SandboxMixin(object):
@@ -76,7 +80,7 @@ class PythonMixin(PythonInstallMixinBase):
         utils.start_agent(backend.config['ssl-cert-path'])
 
     def stop(self, backend):
-        charmhelpers.service_control(utils.AGENT, charmhelpers.STOP)
+        utils.stop_agent()
 
 
 class GoMixin(object):
@@ -95,6 +99,8 @@ class GoMixin(object):
 class GuiMixin(object):
     """Install and start the GUI and its dependencies."""
 
+    debs = ('curl',)
+
     def install(self, backend):
         """Install the GUI and dependencies."""
         # If the given installable thing ("backend") requires one or more debs
@@ -103,7 +109,6 @@ class GuiMixin(object):
         if missing:
             utils.cmd_log(
                 shelltoolbox.apt_get_install(*backend.debs))
-
         # If the source setting has changed since the last time this was run,
         # get the code, from either a static release or a branch as specified
         # by the souce setting, and install it.
@@ -134,44 +139,45 @@ class GuiMixin(object):
             use_analytics=config['use-analytics'],
             default_viewmode=config['default-viewmode'],
             show_get_juju_button=config['show-get-juju-button'])
-        utils.write_haproxy_config(
-            config['ssl-cert-path'], secure=config['secure'])
-        utils.write_apache_config(build_dir, config['serve-tests'])
         # Expose the service.
         charmhelpers.open_port(80)
         charmhelpers.open_port(443)
 
 
-class HaproxyApacheMixin(object):
-    """Manage (install, start, stop, etc.) haproxy and Apache via Upstart."""
+class ServerInstallMixinBase(object):
+    """
+    Provide a common "_setup_certificates" method to HaproxyApacheMixin and
+    BuiltinServerMixin.
+    """
 
-    upstart_scripts = ('haproxy.conf',)
-    debs = ('curl', 'openssl', 'haproxy', 'apache2')
-
-    def install(self, backend):
-        """Set up haproxy and Apache upstart configuration files."""
-        utils.setup_apache()
-        charmhelpers.log('Setting up haproxy and Apache start up scripts.')
-        config = backend.config
+    def _setup_certificates(self, backend):
+        # Set up the SSL certificates.
         if backend.different(
                 'ssl-cert-path', 'ssl-cert-contents', 'ssl-key-contents'):
+            config = backend.config
             utils.save_or_create_certificates(
                 config['ssl-cert-path'], config.get('ssl-cert-contents'),
                 config.get('ssl-key-contents'))
 
-        source_dir = os.path.join(os.path.dirname(__file__),  '..', 'config')
-        for config_file in backend.upstart_scripts:
-            shutil.copy(os.path.join(source_dir, config_file), SYS_INIT_DIR)
+
+class HaproxyApacheMixin(ServerInstallMixinBase):
+    """Manage haproxy and Apache via Upstart."""
+
+    debs = ('apache2', 'haproxy', 'openssl')
+
+    def install(self, backend):
+        self._setup_certificates(backend)
 
     def start(self, backend):
-        with shelltoolbox.su('root'):
-            charmhelpers.service_control(utils.APACHE, charmhelpers.RESTART)
-            charmhelpers.service_control(utils.HAPROXY, charmhelpers.RESTART)
+        config = backend.config
+        build_dir = utils.compute_build_dir(
+            config['staging'], config['serve-tests'])
+        utils.start_haproxy_apache(
+            build_dir, config['serve-tests'], config['ssl-cert-path'],
+            config['secure'])
 
     def stop(self, backend):
-        with shelltoolbox.su('root'):
-            charmhelpers.service_control(utils.HAPROXY, charmhelpers.STOP)
-            charmhelpers.service_control(utils.APACHE, charmhelpers.STOP)
+        utils.stop_haproxy_apache()
 
 
 def chain_methods(name):
@@ -202,7 +208,10 @@ def merge_properties(name):
 
 
 class Backend(object):
-    """Compose methods and policy needed to interact with a Juju backend."""
+    """
+    Support many configurations by composing methods and policy to interact
+    with a Juju backend, collecting them from Strategy pattern mixin objects.
+    """
 
     def __init__(self, config=None, prev_config=None):
         """Generate a list of mixin classes that implement the backend, working
@@ -221,8 +230,8 @@ class Backend(object):
         self.prev_config = prev_config
         self.mixins = []
 
-        sandbox = config.get('sandbox', False)
-        staging = config.get('staging', False)
+        sandbox = config['sandbox']
+        staging = config['staging']
 
         if utils.legacy_juju():
             if staging:
@@ -238,8 +247,7 @@ class Backend(object):
                 raise ValueError('Unable to use sandbox with go backend')
             self.mixins.append(GoMixin())
 
-        # All backends need to install, start, and stop the services that
-        # provide the GUI.
+        # We always install and start the GUI.
         self.mixins.append(GuiMixin())
         self.mixins.append(HaproxyApacheMixin())
 
@@ -258,10 +266,4 @@ class Backend(object):
     stop = chain_methods('stop')
 
     # Merged properties.
-    dependencies = merge_properties('dependencies')
-    build_dependencies = merge_properties('build_dependencies')
-    staging_dependencies = merge_properties('staging_dependencies')
-
-    repositories = merge_properties('repositories')
     debs = merge_properties('debs')
-    upstart_scripts = merge_properties('upstart_scripts')

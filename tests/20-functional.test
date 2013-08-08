@@ -202,7 +202,6 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         self.assertIn('max-age=0', cache_directives)
         self.assertIn('public', cache_directives)
         self.assertIn('must-revalidate', cache_directives)
-        
 
     @unittest.skipIf(is_legacy_juju, 'force-machine only works in juju-core')
     def test_force_machine(self):

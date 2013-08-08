@@ -34,9 +34,7 @@ def get_config():
     return json.loads(output)
 
 config = get_config()
-repo = config.get('repository-location')
-if repo:
-    bootstrap_utils.install_extra_repositories(repo)
+bootstrap_utils.install_extra_repositories(config['repository-location'])
 
 # Python dependencies must be installed here so that the charm can import and
 # use required libraries.

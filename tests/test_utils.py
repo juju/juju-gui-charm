@@ -45,13 +45,19 @@ from utils import (
     log_hook,
     parse_source,
     get_npm_cache_archive_url,
+    remove_apache_setup,
+    remove_haproxy_setup,
     render_to_file,
     save_or_create_certificates,
+    setup_apache_config,
+    setup_haproxy_config,
     start_agent,
+    start_haproxy_apache,
     start_improv,
-    write_apache_config,
+    stop_agent,
+    stop_haproxy_apache,
+    stop_improv,
     write_gui_config,
-    write_haproxy_config,
 )
 # Import the whole utils package for monkey patching.
 import utils
@@ -562,12 +568,13 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.service_names = []
         self.actions = []
         self.svc_ctl_call_count = 0
+        self.run_call_count = 0
         self.fake_zk_address = '192.168.5.26'
         self.build_dir = 'juju-gui/build-'
         self.charmworld_url = 'http://charmworld.example'
+        self.ssl_cert_path = 'ssl/cert/path'
 
         # Monkey patches.
-        self.command = charmhelpers.command
 
         def service_control_mock(service_name, action):
             self.svc_ctl_call_count += 1
@@ -576,6 +583,9 @@ class TestStartImprovAgentGui(unittest.TestCase):
 
         def noop(*args):
             pass
+
+        def run(*args):
+            self.run_call_count += 1
 
         @contextmanager
         def su(user):
@@ -593,32 +603,36 @@ class TestStartImprovAgentGui(unittest.TestCase):
             with open(target.name, 'r') as fp:
                 self.files[os.path.basename(dest)] = fp.read()
 
-        self.functions = dict(
+        self.utils_names = dict(
             service_control=(utils.service_control, service_control_mock),
             log=(utils.log, noop),
             su=(utils.su, su),
-            run=(utils.run, noop),
+            run=(utils.run, run),
             unit_get=(utils.unit_get, noop),
             render_to_file=(utils.render_to_file, render_to_file),
             get_zookeeper_address=(
-                utils.get_zookeeper_address, get_zookeeper_address_mock))
+                utils.get_zookeeper_address, get_zookeeper_address_mock),
+            get_api_address=(utils.get_api_address, noop),
+            APACHE_PORTS=(utils.APACHE_PORTS, 'PORTS_NOT_THERE'),
+            APACHE_SITE=(utils.APACHE_SITE, 'SITE_NOT_THERE'),
+        )
         # Apply the patches.
-        for fn, fcns in self.functions.items():
+        for fn, fcns in self.utils_names.items():
             setattr(utils, fn, fcns[1])
 
-        self.ssl_cert_path = 'ssl/cert/path'
+        self.shutil_copy = shutil.copy
+        shutil.copy = noop
 
     def tearDown(self):
         # Undo all of the monkey patching.
-        for fn, fcns in self.functions.items():
+        for fn, fcns in self.utils_names.items():
             setattr(utils, fn, fcns[0])
-        charmhelpers.command = self.command
+        shutil.copy = self.shutil_copy
 
     def test_start_improv(self):
         staging_env = 'large'
-        start_improv(
-            staging_env, self.ssl_cert_path, 'improv')
-        conf = self.files['improv']
+        start_improv(staging_env, self.ssl_cert_path,)
+        conf = self.files['juju-api-improv.conf']
         self.assertTrue('--port %s' % API_PORT in conf)
         self.assertTrue(staging_env + '.json' in conf)
         self.assertTrue(self.ssl_cert_path in conf)
@@ -626,15 +640,27 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertEqual(self.service_names, ['juju-api-improv'])
         self.assertEqual(self.actions, [charmhelpers.START])
 
+    def test_stop_improv(self):
+        stop_improv()
+        self.assertEqual(self.svc_ctl_call_count, 1)
+        self.assertEqual(self.service_names, ['juju-api-improv'])
+        self.assertEqual(self.actions, [charmhelpers.STOP])
+
     def test_start_agent(self):
         start_agent(self.ssl_cert_path, 'config')
-        conf = self.files['config']
+        conf = self.files['juju-api-agent.conf']
         self.assertTrue('--port %s' % API_PORT in conf)
         self.assertTrue('JUJU_ZOOKEEPER=%s' % self.fake_zk_address in conf)
         self.assertTrue(self.ssl_cert_path in conf)
         self.assertEqual(self.svc_ctl_call_count, 1)
         self.assertEqual(self.service_names, ['juju-api-agent'])
         self.assertEqual(self.actions, [charmhelpers.START])
+
+    def test_stop_agent(self):
+        stop_agent()
+        self.assertEqual(self.svc_ctl_call_count, 1)
+        self.assertEqual(self.service_names, ['juju-api-agent'])
+        self.assertEqual(self.actions, [charmhelpers.STOP])
 
     def test_compute_build_dir(self):
         for (in_staging, serve_tests, result) in (
@@ -663,9 +689,9 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertIn('charmworldURL: "http://charmworld.example"', js_conf)
         self.assertIn('useAnalytics: true', js_conf)
 
-    def test_write_haproxy_config(self):
-        write_haproxy_config(self.ssl_cert_path, haproxy_path='haproxy')
-        haproxy_conf = self.files['haproxy']
+    def test_setup_haproxy_config(self):
+        setup_haproxy_config(self.ssl_cert_path)
+        haproxy_conf = self.files['haproxy.cfg']
         self.assertIn('ca-base {0}'.format(self.ssl_cert_path), haproxy_conf)
         self.assertIn('crt-base {0}'.format(self.ssl_cert_path), haproxy_conf)
         self.assertIn('ws1 127.0.0.1:{0}'.format(API_PORT), haproxy_conf)
@@ -674,13 +700,37 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertIn('crt {0}'.format(JUJU_PEM), haproxy_conf)
         self.assertIn('redirect scheme https', haproxy_conf)
 
-    def test_write_apache_config(self):
-        write_apache_config(self.build_dir, serve_tests=True)
-        apache_conf = self.files['juju-gui']
-        self.assertIn('juju-gui/build-', apache_conf)
-        self.assertIn('VirtualHost *:{0}'.format(WEB_PORT), apache_conf)
+    def test_remove_haproxy_setup(self):
+        remove_haproxy_setup()
+        self.assertEqual(self.run_call_count, 2)
+
+    def test_setup_apache_config(self):
+        setup_apache_config(self.build_dir, serve_tests=True)
+        apache_site_conf = self.files['SITE_NOT_THERE']
+        self.assertIn('juju-gui/build-', apache_site_conf)
+        self.assertIn('VirtualHost *:{0}'.format(WEB_PORT), apache_site_conf)
         self.assertIn(
-            'Alias /test {0}/test/'.format(JUJU_GUI_DIR), apache_conf)
+            'Alias /test {0}/test/'.format(JUJU_GUI_DIR), apache_site_conf)
+        apache_ports_conf = self.files['PORTS_NOT_THERE']
+        self.assertIn('NameVirtualHost *:8000', apache_ports_conf)
+        self.assertIn('Listen 8000', apache_ports_conf)
+
+    def test_remove_apache_setup(self):
+        remove_apache_setup()
+        self.assertEqual(self.run_call_count, 3)
+
+    def test_start_haproxy_apache(self):
+        start_haproxy_apache('build_dir', False, self.ssl_cert_path, True)
+        self.assertEqual(self.svc_ctl_call_count, 2)
+        self.assertEqual(self.service_names, ['apache2', 'haproxy'])
+        self.assertEqual(
+            self.actions, [charmhelpers.RESTART, charmhelpers.RESTART])
+
+    def test_stop_haproxy_apache(self):
+        stop_haproxy_apache()
+        self.assertEqual(self.svc_ctl_call_count, 2)
+        self.assertEqual(self.service_names, ['haproxy', 'apache2'])
+        self.assertEqual(self.actions, [charmhelpers.STOP, charmhelpers.STOP])
 
     def test_write_gui_config_insecure(self):
         write_gui_config(
@@ -690,11 +740,10 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertIn("socket_url: 'ws://", js_conf)
         self.assertIn('socket_protocol: "ws"', js_conf)
 
-    def test_write_haproxy_config_insecure(self):
-        write_haproxy_config(
-            self.ssl_cert_path, secure=False, haproxy_path='haproxy')
+    def test_setup_haproxy_config_insecure(self):
+        setup_haproxy_config(self.ssl_cert_path, secure=False)
         # The insecure approach eliminates the https redirect.
-        self.assertNotIn('redirect scheme https', self.files['haproxy'])
+        self.assertNotIn('redirect scheme https', self.files['haproxy.cfg'])
 
     def test_write_gui_config_sandbox(self):
         write_gui_config(
