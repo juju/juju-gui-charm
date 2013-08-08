@@ -109,14 +109,13 @@ JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
 SERVER_DIR = os.path.join(CURRENT_DIR, 'server')
 TORNADO_PATH = os.path.join(CURRENT_DIR, 'deps', 'tornado-3.1.tar.gz')
-UNIT_NAME = os.path.basename(os.path.realpath(os.path.join(CURRENT_DIR, '..')))
 
-APACHE_CFG_DIR = os.path.join('', 'etc', 'apache2')
+APACHE_CFG_DIR = os.path.join(os.path.sep, 'etc', 'apache2')
 APACHE_PORTS = os.path.join(APACHE_CFG_DIR, 'ports.conf')
 APACHE_SITE = os.path.join(APACHE_CFG_DIR, 'sites-available', 'juju-gui')
-HAPROXY_CFG_PATH = os.path.join('', 'etc', 'haproxy', 'haproxy.cfg')
+HAPROXY_CFG_PATH = os.path.join(os.path.sep, 'etc', 'haproxy', 'haproxy.cfg')
 
-SYS_INIT_DIR = os.path.join('', 'etc', 'init')
+SYS_INIT_DIR = os.path.join(os.path.sep, 'etc', 'init')
 AGENT_INIT_PATH = os.path.join(SYS_INIT_DIR, 'juju-api-agent.conf')
 GUISERVER_INIT_PATH = os.path.join(SYS_INIT_DIR, 'guiserver.conf')
 HAPROXY_INIT_PATH = os.path.join(SYS_INIT_DIR, 'haproxy.conf')
@@ -129,7 +128,7 @@ DEB_BUILD_DEPENDENCIES = (
 
 
 # Store the configuration from on invocation to the next.
-config_json = Serializer(os.path.join('', 'tmp', 'config.json'))
+config_json = Serializer(os.path.join(os.path.sep, 'tmp', 'config.json'))
 # Bazaar checkout command.
 bzr_checkout = command('bzr', 'co', '--lightweight')
 # Whether or not the charm is deployed using juju-core.
@@ -354,7 +353,9 @@ def stop_improv():
 def start_agent(ssl_cert_path, read_only=False):
     """Start the Juju agent and connect to the current environment."""
     # Retrieve the Zookeeper address from the start up script.
-    agent_file = os.path.join(SYS_INIT_DIR, 'juju-{}.conf'.format(UNIT_NAME))
+    unit_name = os.path.basename(
+        os.path.realpath(os.path.join(CURRENT_DIR, '..')))
+    agent_file = os.path.join(SYS_INIT_DIR, 'juju-{}.conf'.format(unit_name))
     zookeeper = get_zookeeper_address(agent_file)
     log('Setting up the API agent Upstart script.')
     context = {
@@ -477,7 +478,7 @@ def setup_apache_config(build_dir, serve_tests=False):
         'port': WEB_PORT,
         'serve_tests': serve_tests,
         'server_root': build_dir,
-        'tests_root': os.path.join(JUJU_GUI_DIR, 'test', ''),
+        'tests_root': os.path.join(JUJU_GUI_DIR, 'test', os.path.sep),
     }
     render_to_file('apache-ports.template', context, APACHE_PORTS)
     cmd_log(run('chown', 'ubuntu:', APACHE_PORTS))
@@ -546,9 +547,10 @@ def write_builtin_server_startup(
     url_prefix = 'ws' if insecure else 'wss'
     is_legacy_juju = legacy_juju()
     api_address = get_api_address()
-    api_url = '{}://127.0.0.1:{}'.format(
-        url_prefix, API_PORT) if is_legacy_juju else '{}://{}'.format(
-        url_prefix, api_address)
+    if is_legacy_juju:
+        api_url = '{}://127.0.0.1:{}'.format(url_prefix, API_PORT)
+    else:
+        api_url = '{}://{}'.format(url_prefix, api_address)
     context = {
         'gui_root': gui_root,
         'api_url': api_url,
@@ -561,7 +563,7 @@ def write_builtin_server_startup(
         'guiserver.conf.template', context, GUISERVER_INIT_PATH)
 
 
-def start_builtin_server(build_dir, serve_tests, ssl_cert_path, insecure):
+def start_builtin_server(build_dir, ssl_cert_path, serve_tests, insecure):
     """Start the builtin server."""
     write_builtin_server_startup(
         build_dir, ssl_cert_path, serve_tests, insecure)

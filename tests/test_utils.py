@@ -742,7 +742,7 @@ class TestStartImprovAgentGui(unittest.TestCase):
 
     def test_start_builtin_server(self):
         start_builtin_server(
-            JUJU_GUI_DIR, False, self.ssl_cert_path, insecure=False)
+            JUJU_GUI_DIR, self.ssl_cert_path, False, insecure=False)
         self.assertEqual(self.svc_ctl_call_count, 1)
         self.assertEqual(self.service_names, ['guiserver'])
         self.assertEqual(self.actions, [charmhelpers.RESTART])
