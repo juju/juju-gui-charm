@@ -21,6 +21,7 @@ import logging
 import unittest
 
 import mock
+from tornado.testing import LogTrapTestCase
 
 from guiserver import manage
 
@@ -138,7 +139,7 @@ class TestGetSslOptions(unittest.TestCase):
             self.assertEqual(expected, manage._get_ssl_options())
 
 
-class TestRun(unittest.TestCase):
+class TestRun(LogTrapTestCase, unittest.TestCase):
 
     def mock_and_run(self, **kwargs):
         """Run the application after mocking the IO loop and the options/apps.
