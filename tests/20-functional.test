@@ -202,7 +202,18 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         self.assertIn('max-age=0', cache_directives)
         self.assertIn('public', cache_directives)
         self.assertIn('must-revalidate', cache_directives)
-        
+
+    def test_nrpe_check_available(self):
+        # Make sure the check-app-access.sh script's ADDRESS is available.
+        unit_info = self.juju_deploy(
+            self.charm, options={'juju-gui-source': JUJU_GUI_TEST_BRANCH})
+        hostname = unit_info['public-address']
+        conn = httplib.HTTPSConnection(hostname)
+        # This request matches the ADDRESS var in the script.
+        conn.request('GET', '/juju-ui/version.js')
+        message = 'ADDRESS in check-app-access.sh is not accessible.'
+        self.assertEqual(200, conn.getresponse().status, message)
+
 
     @unittest.skipIf(is_legacy_juju, 'force-machine only works in juju-core')
     def test_force_machine(self):
