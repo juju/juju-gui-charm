@@ -9,5 +9,4 @@ exec /usr/bin/python /usr/local/bin/runserver.py \
     --apiurl="{{api_url}}" \
     --apiversion="{{api_version}}" \
     --sslpath="{{ssl_cert_path}}" \
-    {{if serve_tests}} --servetests \ {{endif}}
-    {{if insecure}} --insecure {{endif}}
+    {{if serve_tests}}--servetests{{endif}} {{if insecure}}--insecure{{endif}}
