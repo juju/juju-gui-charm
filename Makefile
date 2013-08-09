@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-JUJUTEST = juju-test --timeout=40m -v -e "$(JUJU_ENV)" --upload-tools
+JUJUTEST = juju-test --timeout=60m -v -e "$(JUJU_ENV)" --upload-tools
 VENV = ./tests/.venv
 
 all: setup

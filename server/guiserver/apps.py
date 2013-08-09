@@ -50,8 +50,8 @@ def server():
         (r'^/juju-ui/(.*)', web.StaticFileHandler, {'path': static_path}),
         (r'^/(favicon\.ico)$', web.StaticFileHandler, {'path': guiroot}),
     ]
-    if options.servetests:
-        params = {'path': options.servetests, 'default_filename': 'index.html'}
+    if options.testsroot:
+        params = {'path': options.testsroot, 'default_filename': 'index.html'}
         server_handlers.append(
             # Serve the Juju GUI tests.
             (r'^/test/(.*)', web.StaticFileHandler, params),

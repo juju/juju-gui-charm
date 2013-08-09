@@ -77,7 +77,7 @@ class TestServer(AppsTestMixin, unittest.TestCase):
 
     def test_serving_gui_tests(self):
         # The server can be configured to serve GUI unit tests.
-        app = self.get_app(servetests='/my/tests/')
+        app = self.get_app(testsroot='/my/tests/')
         spec = self.get_url_spec(app, r'^/test/(.*)$')
         self.assertIsNotNone(spec)
         self.assertIn('path', spec.kwargs)
@@ -85,7 +85,7 @@ class TestServer(AppsTestMixin, unittest.TestCase):
 
     def test_not_serving_gui_tests(self):
         # The server can be configured to avoid serving GUI unit tests.
-        app = self.get_app(servetests=None)
+        app = self.get_app(testsroot=None)
         spec = self.get_url_spec(app, r'^/test/(.*)$')
         self.assertIsNone(spec)
 

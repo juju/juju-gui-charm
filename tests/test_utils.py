@@ -45,6 +45,8 @@ from utils import (
     log_hook,
     parse_source,
     get_npm_cache_archive_url,
+    install_builtin_server,
+    install_tornado,
     remove_apache_setup,
     remove_haproxy_setup,
     render_to_file,
@@ -52,11 +54,14 @@ from utils import (
     setup_apache_config,
     setup_haproxy_config,
     start_agent,
+    start_builtin_server,
     start_haproxy_apache,
     start_improv,
     stop_agent,
+    stop_builtin_server,
     stop_haproxy_apache,
     stop_improv,
+    write_builtin_server_startup,
     write_gui_config,
 )
 # Import the whole utils package for monkey patching.
@@ -379,7 +384,7 @@ class TestGetZookeeperAddress(unittest.TestCase):
 
     def setUp(self):
         self.zookeeper_address = 'example.com:2000'
-        contents = 'env JUJU_ZOOKEEPER="{0}"\n'.format(self.zookeeper_address)
+        contents = 'env JUJU_ZOOKEEPER="{}"\n'.format(self.zookeeper_address)
         with tempfile.NamedTemporaryFile(delete=False) as agent_file:
             agent_file.write(contents)
             self.agent_file_path = agent_file.name
@@ -674,6 +679,82 @@ class TestStartImprovAgentGui(unittest.TestCase):
                 result, build_dir, 'in_staging: {}, serve_tests: {}'.format(
                     in_staging, serve_tests))
 
+    def test_setup_haproxy_config(self):
+        setup_haproxy_config(self.ssl_cert_path)
+        haproxy_conf = self.files['haproxy.cfg']
+        self.assertIn('ca-base {}'.format(self.ssl_cert_path), haproxy_conf)
+        self.assertIn('crt-base {}'.format(self.ssl_cert_path), haproxy_conf)
+        self.assertIn('ws1 127.0.0.1:{}'.format(API_PORT), haproxy_conf)
+        self.assertIn('web1 127.0.0.1:{}'.format(WEB_PORT), haproxy_conf)
+        self.assertIn('ca-file {}'.format(JUJU_PEM), haproxy_conf)
+        self.assertIn('crt {}'.format(JUJU_PEM), haproxy_conf)
+        self.assertIn('redirect scheme https', haproxy_conf)
+
+    def test_remove_haproxy_setup(self):
+        remove_haproxy_setup()
+        self.assertEqual(self.run_call_count, 2)
+
+    def test_setup_apache_config(self):
+        setup_apache_config(self.build_dir, serve_tests=True)
+        apache_site_conf = self.files['SITE_NOT_THERE']
+        self.assertIn('juju-gui/build-', apache_site_conf)
+        self.assertIn('VirtualHost *:{}'.format(WEB_PORT), apache_site_conf)
+        self.assertIn(
+            'Alias /test {}/test/'.format(JUJU_GUI_DIR), apache_site_conf)
+        apache_ports_conf = self.files['PORTS_NOT_THERE']
+        self.assertIn('NameVirtualHost *:8000', apache_ports_conf)
+        self.assertIn('Listen 8000', apache_ports_conf)
+
+    def test_remove_apache_setup(self):
+        remove_apache_setup()
+        self.assertEqual(self.run_call_count, 3)
+
+    def test_start_haproxy_apache(self):
+        start_haproxy_apache(JUJU_GUI_DIR, False, self.ssl_cert_path, True)
+        self.assertEqual(self.svc_ctl_call_count, 2)
+        self.assertEqual(self.service_names, ['apache2', 'haproxy'])
+        self.assertEqual(
+            self.actions, [charmhelpers.RESTART, charmhelpers.RESTART])
+
+    def test_stop_haproxy_apache(self):
+        stop_haproxy_apache()
+        self.assertEqual(self.svc_ctl_call_count, 2)
+        self.assertEqual(self.service_names, ['haproxy', 'apache2'])
+        self.assertEqual(self.actions, [charmhelpers.STOP, charmhelpers.STOP])
+
+    def test_install_tornado(self):
+        install_tornado()
+        self.assertEqual(self.run_call_count, 1)
+
+    def test_install_builtin_server(self):
+        install_builtin_server()
+        self.assertEqual(self.run_call_count, 1)
+
+    def test_write_builtin_server_startup(self):
+        write_builtin_server_startup(
+            JUJU_GUI_DIR, self.ssl_cert_path, serve_tests=True, insecure=True)
+        guiserver_conf = self.files['guiserver.conf']
+        self.assertIn('description "GUIServer"', guiserver_conf)
+        self.assertIn('--apiurl="ws://127.0.0.1:8080"', guiserver_conf)
+        self.assertIn('--apiversion="python"', guiserver_conf)
+        self.assertIn(
+            '--testsroot="{}/test/"'.format(JUJU_GUI_DIR), guiserver_conf)
+        self.assertIn('--insecure', guiserver_conf)
+
+    def test_start_builtin_server(self):
+        start_builtin_server(
+            JUJU_GUI_DIR, self.ssl_cert_path, False, insecure=False)
+        self.assertEqual(self.svc_ctl_call_count, 1)
+        self.assertEqual(self.service_names, ['guiserver'])
+        self.assertEqual(self.actions, [charmhelpers.RESTART])
+
+    def test_stop_builtin_server(self):
+        stop_builtin_server()
+        self.assertEqual(self.svc_ctl_call_count, 1)
+        self.assertEqual(self.service_names, ['guiserver'])
+        self.assertEqual(self.actions, [charmhelpers.STOP])
+        self.assertEqual(self.run_call_count, 1)
+
     def test_write_gui_config(self):
         write_gui_config(
             False, 'This is login help.', True, True, self.charmworld_url,
@@ -688,49 +769,6 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertIn('socket_protocol: "wss"', js_conf)
         self.assertIn('charmworldURL: "http://charmworld.example"', js_conf)
         self.assertIn('useAnalytics: true', js_conf)
-
-    def test_setup_haproxy_config(self):
-        setup_haproxy_config(self.ssl_cert_path)
-        haproxy_conf = self.files['haproxy.cfg']
-        self.assertIn('ca-base {0}'.format(self.ssl_cert_path), haproxy_conf)
-        self.assertIn('crt-base {0}'.format(self.ssl_cert_path), haproxy_conf)
-        self.assertIn('ws1 127.0.0.1:{0}'.format(API_PORT), haproxy_conf)
-        self.assertIn('web1 127.0.0.1:{0}'.format(WEB_PORT), haproxy_conf)
-        self.assertIn('ca-file {0}'.format(JUJU_PEM), haproxy_conf)
-        self.assertIn('crt {0}'.format(JUJU_PEM), haproxy_conf)
-        self.assertIn('redirect scheme https', haproxy_conf)
-
-    def test_remove_haproxy_setup(self):
-        remove_haproxy_setup()
-        self.assertEqual(self.run_call_count, 2)
-
-    def test_setup_apache_config(self):
-        setup_apache_config(self.build_dir, serve_tests=True)
-        apache_site_conf = self.files['SITE_NOT_THERE']
-        self.assertIn('juju-gui/build-', apache_site_conf)
-        self.assertIn('VirtualHost *:{0}'.format(WEB_PORT), apache_site_conf)
-        self.assertIn(
-            'Alias /test {0}/test/'.format(JUJU_GUI_DIR), apache_site_conf)
-        apache_ports_conf = self.files['PORTS_NOT_THERE']
-        self.assertIn('NameVirtualHost *:8000', apache_ports_conf)
-        self.assertIn('Listen 8000', apache_ports_conf)
-
-    def test_remove_apache_setup(self):
-        remove_apache_setup()
-        self.assertEqual(self.run_call_count, 3)
-
-    def test_start_haproxy_apache(self):
-        start_haproxy_apache('build_dir', False, self.ssl_cert_path, True)
-        self.assertEqual(self.svc_ctl_call_count, 2)
-        self.assertEqual(self.service_names, ['apache2', 'haproxy'])
-        self.assertEqual(
-            self.actions, [charmhelpers.RESTART, charmhelpers.RESTART])
-
-    def test_stop_haproxy_apache(self):
-        stop_haproxy_apache()
-        self.assertEqual(self.svc_ctl_call_count, 2)
-        self.assertEqual(self.service_names, ['haproxy', 'apache2'])
-        self.assertEqual(self.actions, [charmhelpers.STOP, charmhelpers.STOP])
 
     def test_write_gui_config_insecure(self):
         write_gui_config(
