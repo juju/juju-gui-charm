@@ -474,11 +474,12 @@ def remove_haproxy_setup():
 def setup_apache_config(build_dir, serve_tests=False):
     """Set up the Apache configuration."""
     log('Generating the Apache site configuration files.')
+    tests_root = '' if serve_tests is False else os.path.join(
+        JUJU_GUI_DIR, 'test', '')
     context = {
         'port': WEB_PORT,
-        'serve_tests': serve_tests,
         'server_root': build_dir,
-        'tests_root': os.path.join(JUJU_GUI_DIR, 'test', ''),
+        'tests_root': tests_root,
     }
     render_to_file('apache-ports.template', context, APACHE_PORTS)
     cmd_log(run('chown', 'ubuntu:', APACHE_PORTS))
@@ -551,12 +552,14 @@ def write_builtin_server_startup(
         api_url = '{}://127.0.0.1:{}'.format(url_prefix, API_PORT)
     else:
         api_url = '{}://{}'.format(url_prefix, api_address)
+    tests_root = '' if serve_tests is False else os.path.join(
+        JUJU_GUI_DIR, 'test', '')
     context = {
         'gui_root': gui_root,
         'api_url': api_url,
         'api_version': 'python' if is_legacy_juju else 'go',
         'ssl_cert_path': ssl_cert_path,
-        'serve_tests': serve_tests,
+        'tests_root': tests_root,
         'insecure': insecure,
     }
     render_to_file(

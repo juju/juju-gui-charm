@@ -737,7 +737,9 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertIn('description "GUIServer"', guiserver_conf)
         self.assertIn('--apiurl="ws://127.0.0.1:8080"', guiserver_conf)
         self.assertIn('--apiversion="python"', guiserver_conf)
-        self.assertIn('--servetests', guiserver_conf)
+        self.assertIn('--testsroot', guiserver_conf)
+        self.assertIn(
+            '--testsroot="{}/test/"'.format(JUJU_GUI_DIR), guiserver_conf)
         self.assertIn('--insecure', guiserver_conf)
 
     def test_start_builtin_server(self):
