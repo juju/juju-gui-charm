@@ -28,6 +28,7 @@ base module:
         - import_bundle(user, name, bundle) -> int (a deployment id);
         - watch(deployment_id) -> int or None (a watcher id);
         - next(watcher_id) -> Future (changes or None).
+
       The following arguments are passed to the validate and import_bundle
       interface methods:
         - user: a guiserver.auth.User instance, representing a logged in user;
@@ -35,17 +36,20 @@ base module:
         - bundle: a YAML decoded object representing the bundle contents.
       The watch and next interface methods are used to retrieve information
       about the status of the currently started/scheduled deployments.
+
       The Deployer provides the logic to validate deployment requests based on
       the current state of the Juju environment, to import bundles, and to
       observe the deployment process. The Deployer does not know anything about
       the WebSocket request/response aspects, or how incoming data is retrieved
       or generated.
+
       The Deployer implementation in this module uses the juju-deployer library
       to import the provided bundle into the Juju environment. Since the
       mentioned operations are executed in a separate process, it is safe for
       the Deployer to interact with the blocking juju-deployer library.
       Those blocking functions are defined in the blocking module of this
       package, described below.
+
       Note that the Deployer is not intended to store request related data: one
       instance is created once when the application is bootstrapped and used as
       a singleton by all WebSocket requests;
@@ -71,9 +75,10 @@ process and of starting/scheduling bundle deployments.
         - validate: validate a bundle based on the state of the Juju env.;
         - import_bundle: starts the bundle deployment process.
 
-The infrastructure can be summarized like the following:
+The infrastructure described above can be summarized like the following
+(each arrow meaning "calls"):
     - request handling: request -> DeployMiddleware -> views
-    - deployment handling: views <-> Deployer -> blocking
+    - deployment handling: views -> Deployer -> blocking
     - response handling: views -> response
 
 While the DeployMiddleware parses the request data and statically validates
@@ -172,9 +177,9 @@ becomes available, e.g.:
         'RequestId': 3,
         'Response': {
             'Changes': [
-                {'DeployerId': 42, 'Status': 'scheduled', 'Queue': 2},
-                {'DeployerId': 42, 'Status': 'scheduled', 'Queue': 1},
-                {'DeployerId': 42, 'Status': 'started', 'Queue': 0},
+                {'DeploymentId': 42, 'Status': 'scheduled', 'Queue': 2},
+                {'DeploymentId': 42, 'Status': 'scheduled', 'Queue': 1},
+                {'DeploymentId': 42, 'Status': 'started', 'Queue': 0},
             ],
         },
     }
@@ -183,7 +188,9 @@ The Queue values in the response indicates the position of the requested
 bundle deployment in the queue. The Deployer implementation processes one
 bundle at the time. A Queue value of zero means the deployment will be started
 as soon as possible.
+
 The Status can be one of the following: 'scheduled', 'started' and 'completed'.
+
 The Next request can be performed as many times as required by the API clients
 after receiving a response from a previous one. However, if the Status of the
 last deployment change is 'completed', no further changes will be notified, and
@@ -193,7 +200,11 @@ the watch request will always return only the last change:
         'RequestId': 4,
         'Response': {
             'Changes': [
-                {'DeployerId': 42, 'Status': 'completed', 'Error': 'optional'},
+                {
+                  'DeploymentId': 42,
+                  'Status': 'completed',
+                  'Error': 'this field is only present if an error occurred',
+                },
             ],
         },
     }
@@ -226,11 +237,16 @@ the second one is a successful response:
         'RequestId': 5,
         'Response': {
             'LastChanges': [
-                {'DeployerId': 42, 'Status': 'completed', 'Error': 'an error'},
-                {'DeployerId': 43, 'Status': 'completed'},
-                {'DeployerId': 44, 'Status': 'started', 'Queue': 0},
-                {'DeployerId': 45, 'Status': 'scheduled', 'Queue': 1},
+                {'DeploymentId': 42, 'Status': 'completed', 'Error': 'error'},
+                {'DeploymentId': 43, 'Status': 'completed'},
+                {'DeploymentId': 44, 'Status': 'started', 'Queue': 0},
+                {'DeploymentId': 45, 'Status': 'scheduled', 'Queue': 1},
             ],
         },
     }
+
+In the second response above, the Error field in the first attempted deployment
+(42) contains details about an error that occurred while deploying a bundle.
+This means that bundle deployment has been completed but an error occurred
+during the process.
 """
