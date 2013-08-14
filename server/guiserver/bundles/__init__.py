@@ -27,7 +27,7 @@ base module:
         - validate(user, name, bundle) -> Future (str or None);
         - import_bundle(user, name, bundle) -> int (a deployment id);
         - watch(deployment_id) -> int or None (a watcher id);
-        - next(watcher_id) -> Future (changes).
+        - next(watcher_id) -> Future (changes or None).
       The following arguments are passed to the validate and import_bundle
       interface methods:
         - user: a guiserver.auth.User instance, representing a logged in user;
@@ -46,17 +46,20 @@ base module:
       the Deployer to interact with the blocking juju-deployer library.
       Those blocking functions are defined in the blocking module of this
       package, described below.
-      Note that the Deployer is not intended to store state: one instance is
-      created once when the application is bootstrapped and used as a singleton
-      by all WebSocket requests;
+      Note that the Deployer is not intended to store request related data: one
+      instance is created once when the application is bootstrapped and used as
+      a singleton by all WebSocket requests;
 
-    - DeployMiddleware: process deployment requests arriving from the client,
-      validate the requests' data and send the appropriate responses.
+    - base.DeployMiddleware: process deployment requests arriving from the
+      client, validate the requests' data and send the appropriate responses.
       Since the bundles deployment protocol (described below) mimics the usual
       request/response paradigm over a WebSocket, the real request handling
       is delegated by the DeployMiddleware to simple functions present in the
       views module of this package. The DeployMiddleware dispatches requests
       and collect responses to be sent back to the API client.
+
+The views and blocking modules are responsible of handling the request/response
+process and of starting/scheduling bundle deployments.
 
     - views: as already mentioned, the functions in this module handle the
       requests from the API client, and set up responses. Since the views have
@@ -96,7 +99,7 @@ After receiving a deployment request, the DeployMiddleware sends a response
 indicating whether or not the request has been accepted. This response is sent
 relatively quickly.
 
-If the request not is valid, the response looks like the following:
+If the request is not valid, the response looks like the following:
 
     {
         'RequestId': 1,
@@ -119,7 +122,7 @@ Watching a deployment progress.
 -------------------------------
 
 To start observing the progress of a specific deployment, the client must send
-a request like the following:
+a watch request like the following:
 
     {
         'RequestId': 2,
@@ -128,7 +131,7 @@ a request like the following:
         'Params': {'DeploymentId': 42},
     }
 
-If any error occurs, the response will be like this:
+If any error occurs, the response is like this:
 
     {
         'RequestId': 2,
@@ -136,8 +139,8 @@ If any error occurs, the response will be like this:
         'Error': 'some error: error details',
     }
 
-Otherwise, the response will include the watcher id to use to actually retrieve
-deployment events, e.g.:
+Otherwise, the response includes the watcher identifier to use to actually
+retrieve deployment events, e.g.:
 
     {
         'RequestId': 2,

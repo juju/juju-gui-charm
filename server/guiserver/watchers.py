@@ -39,10 +39,11 @@ class AsyncWatcher(object):
     A request for changes returns a Future whose result is a list of changes
     not yet seen by the listener identified by the watcher id (42).
     If the watcher already includes changes that are new for a specific
-    listener, the future is suddenly fired, otherwise, a call to
+    listener, the future is suddenly fired; otherwise, a call to
     changes_future.result() blocks until a new change is made available.
-    Use this watcher in combination with Tornado's gen.coroutine in order
-    to suspend the function execution until a change is available, e.g.:
+    Use this watcher in combination with Tornado's gen.coroutine decorator in
+    order to suspend the function execution (and release the IO loop) until a
+    change is available, e.g.:
 
     @gen.coroutine
     def my function(watcher):
