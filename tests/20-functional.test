@@ -226,6 +226,17 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()
 
+    def test_nrpe_check_available(self):
+        # Make sure the check-app-access.sh script's ADDRESS is available.
+        unit_info = self.juju_deploy(
+            self.charm, options={'juju-gui-source': JUJU_GUI_TEST_BRANCH})
+        hostname = unit_info['public-address']
+        conn = httplib.HTTPSConnection(hostname)
+        # This request matches the ADDRESS var in the script.
+        conn.request('GET', '/juju-ui/version.js')
+        message = 'ADDRESS in check-app-access.sh is not accessible.'
+        self.assertEqual(200, conn.getresponse().status, message)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
