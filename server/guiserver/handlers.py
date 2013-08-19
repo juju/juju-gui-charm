@@ -173,6 +173,15 @@ class IndexHandler(web.StaticFileHandler):
         return os.path.join(root, 'index.html')
 
 
+class InfoHandler(web.RequestHandler):
+    """Return information about the GUI server."""
+
+    def get(self):
+        """Handle GET requests."""
+        info = {'version': get_version()}
+        self.write(escape.json_encode(info))
+
+
 class HttpsRedirectHandler(web.RequestHandler):
     """Permanently redirect all the requests to the equivalent HTTPS URL."""
 
@@ -181,12 +190,3 @@ class HttpsRedirectHandler(web.RequestHandler):
         request = self.request
         url = 'https://{}{}'.format(request.host, request.uri)
         self.redirect(url, permanent=True)
-
-
-class InfoHandler(web.RequestHandler):
-    """Return information about the GUI server."""
-
-    def get(self):
-        """Handle GET requests."""
-        info = {'version': get_version()}
-        self.write(escape.json_encode(info))
