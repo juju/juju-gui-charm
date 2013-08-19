@@ -340,6 +340,20 @@ class TestIndexHandler(LogTrapTestCase, AsyncHTTPTestCase):
         self.ensure_index('/:flag:/activated/?my=query')
 
 
+class TestInfoHandler(LogTrapTestCase, AsyncHTTPTestCase):
+
+    def get_app(self):
+        return web.Application([(r'^/info', handlers.InfoHandler)])
+
+    def test_info(self):
+        # The handler correctly returns information about the GUI server.
+        expected = {'version': get_version()}
+        response = self.fetch('/info')
+        self.assertEqual(200, response.code)
+        info = escape.json_decode(response.body)
+        self.assertEqual(expected, info)
+
+
 class TestHttpsRedirectHandler(LogTrapTestCase, AsyncHTTPTestCase):
 
     def get_app(self):
@@ -364,17 +378,3 @@ class TestHttpsRedirectHandler(LogTrapTestCase, AsyncHTTPTestCase):
         path_and_query = '/my/page?my=query'
         response = self.fetch(path_and_query, follow_redirects=False)
         self.assert_redirected(response, path_and_query)
-
-
-class TestInfoHandler(LogTrapTestCase, AsyncHTTPTestCase):
-
-    def get_app(self):
-        return web.Application([(r'^/info', handlers.InfoHandler)])
-
-    def test_info(self):
-        # The handler correctly returns information about the GUI server.
-        expected = {'version': get_version()}
-        response = self.fetch('/info')
-        self.assertEqual(200, response.code)
-        info = escape.json_decode(response.body)
-        self.assertEqual(expected, info)
