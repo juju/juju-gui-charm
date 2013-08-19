@@ -177,8 +177,7 @@ class BundlesTestMixin(object):
     def get_name_and_bundle(self):
         """Return a tuple (bundle name, contents) parsing self.bundle."""
         all_contents = yaml.load(self.bundle)
-        name = all_contents.keys()[0]
-        return name, all_contents[name]
+        return all_contents.items()[0]
 
 
 class WSSTestMixin(object):

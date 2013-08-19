@@ -55,7 +55,7 @@ class _Environment(GoEnvironment):
         """Return the stored password.
 
         This method is overridden so that the juju-deployer does not try to
-        parse the environment.yaml file in order to retrieve the admin-secret.
+        parse the environments.yaml file in order to retrieve the admin-secret.
         """
         return self._password
 
@@ -98,11 +98,11 @@ def _validate(env, bundle):
     """
     # Retrieve the services deployed in the Juju environment.
     env_status = env.status()
-    env_services = env_status['services'].keys()
+    env_services = set(env_status['services'].keys())
     # Retrieve the services in the bundle.
-    bundle_services = bundle.get('services', {}).keys()
+    bundle_services = set(bundle.get('services', {}).keys())
     # Calculate overlapping services.
-    overlapping = [i for i in env_services if i in bundle_services]
+    overlapping = env_services.intersection(bundle_services)
     if overlapping:
         services = ', '.join(overlapping)
         error = 'service(s) already in the environment: {}'.format(services)
