@@ -22,3 +22,6 @@ categories: ["applications"]
 provides:
   web:
     interface: http
+  nrpe-external-master:
+    interface: nrpe-external-master
+    scope: container

@@ -16,8 +16,8 @@
 
 """Juju GUI server bundles support.
 
-Note that the following is a work in progress. Some of the objects described
-below are not yet implemented.
+XXX frankban: note that the following is a work in progress. Some of the
+objects described below are not yet implemented.
 
 This package includes the objects and functions required to support deploying
 bundles in juju-core. The base pieces of the infrastructure are placed in the
@@ -71,7 +71,7 @@ process and of starting/scheduling bundle deployments.
       deployments.
 
     - blocking: all the blocking functions interacting with the juju-deployer
-      library belong here. Specifically this module defines two function:
+      library belong here. Specifically this module defines two functions:
         - validate: validate a bundle based on the state of the Juju env.;
         - import_bundle: starts the bundle deployment process.
 
