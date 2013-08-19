@@ -158,7 +158,7 @@ options:
         canvas. This is also known as browse mode.
       - 'minimized': the charmbrowser will be minimized by default, and hidden.
     type: string
-    default: sidebar 
+    default: sidebar
   show-get-juju-button:
     description: |
       There are deployment modes for Juju GUI which are not intended as regular
@@ -173,3 +173,13 @@ options:
       the only server in the future.
     type: boolean
     default: false
+  nagios_context:
+    description: |
+      Used by the nrpe-external-master subordinate charm.
+      A string that will be prepended to instance name to set the host name
+      in nagios. So for instance the hostname would be something like:
+          juju-myservice-0
+      If you're running multiple environments with the same services in them
+      this allows you to differentiate between them.
+    type: string
+    default: "juju"
