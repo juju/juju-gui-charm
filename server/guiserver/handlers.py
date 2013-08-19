@@ -21,12 +21,14 @@ import logging
 import os
 
 from tornado import (
+    escape,
     gen,
     web,
     websocket,
 )
 from tornado.ioloop import IOLoop
 
+from guiserver import get_version
 from guiserver.auth import (
     AuthMiddleware,
     User,
@@ -179,3 +181,12 @@ class HttpsRedirectHandler(web.RequestHandler):
         request = self.request
         url = 'https://{}{}'.format(request.host, request.uri)
         self.redirect(url, permanent=True)
+
+
+class InfoHandler(web.RequestHandler):
+    """Return information about the GUI server."""
+
+    def get(self):
+        """Handle GET requests."""
+        info = {'version': get_version()}
+        self.write(escape.json_encode(info))

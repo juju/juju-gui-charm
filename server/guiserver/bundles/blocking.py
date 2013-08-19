@@ -59,6 +59,23 @@ class _Environment(GoEnvironment):
         """
         return self._password
 
+    def connect(self):
+        """Connect the API client to the Juju backend.
+
+        This method is overridden so that a call to connect is a no-op if the
+        client is already connected.
+        """
+        if self.client is None:
+            super(_Environment, self).connect()
+
+    def close(self):
+        """Close the API connection.
+
+        Also set the client attribute to None after the disconnection.
+        """
+        super(_Environment, self).close()
+        self.client = None
+
     def deploy(
             self, name, charm_url, config=None, constraints=None, num_units=1,
             *args, **kwargs):
@@ -73,14 +90,15 @@ class _Environment(GoEnvironment):
             num_units=num_units)
 
 
-def validate(apiurl, password, bundle):
-    """Validate a bundle."""
-    env = _Environment(apiurl, password)
-    env.connect()
+def _validate(env, bundle):
+    """Bundle validation logic, used by both validate and import_bundle.
+
+    This function receives a connected environment and the bundle as a YAML
+    decoded object.
+    """
     # Retrieve the services deployed in the Juju environment.
     env_status = env.status()
     env_services = env_status['services'].keys()
-    env.close()
     # Retrieve the services in the bundle.
     bundle_services = bundle.get('services', {}).keys()
     # Calculate overlapping services.
@@ -91,13 +109,24 @@ def validate(apiurl, password, bundle):
         raise ValueError(error)
 
 
+def validate(apiurl, password, bundle):
+    """Validate a bundle."""
+    env = _Environment(apiurl, password)
+    env.connect()
+    try:
+        _validate(env, bundle)
+    finally:
+        env.close()
+
+
 def import_bundle(apiurl, password, name, bundle):
     """Import a bundle."""
-    # XXX 2013-08-14 frankban:
-        # Optimize the validate call: there is no need to create a separate
-        # environment instance.
-    validate(apiurl, password, bundle)
     env = _Environment(apiurl, password)
     deployment = Deployment(name, bundle, [])
     importer = Importer(env, deployment, IMPORTER_OPTIONS)
-    importer.run()
+    env.connect()
+    try:
+        _validate(env, bundle)
+        importer.run()
+    finally:
+        env.close()

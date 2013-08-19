@@ -16,6 +16,7 @@
 
 """Tests for the bundles support blocking functions and objects."""
 
+from contextlib import contextmanager
 import unittest
 
 import mock
@@ -39,6 +40,19 @@ class TestEnvironment(unittest.TestCase):
         self.env.connect()
         mock_client.assert_called_once_with(self.endpoint)
         mock_client().login.assert_called_once_with(self.password)
+
+    def test_multiple_connections(self, mock_client):
+        # The environment does not attempt a second connection if it is already
+        # connected to the API backend.
+        self.env.connect()
+        self.env.connect()
+        self.assertEqual(1, mock_client.call_count)
+
+    def test_close(self, mock_client):
+        # The client attribute is set to None when the connection is closed.
+        self.env.connect()
+        self.env.close()
+        self.assertIsNone(self.env.client)
 
     def test_deploy(self, mock_client):
         # The environment uses the API to deploy charms.
@@ -64,6 +78,38 @@ class DeployerFunctionsTestMixin(helpers.BundlesTestMixin):
     def setUp(self):
         self.name, self.bundle = self.get_name_and_bundle()
 
+    def check_environment_life(self, mock_environment):
+        """Check the calls executed on the given mock environment.
+
+        Ensure that, in order to retrieve the list of currently deployed
+        services, the environment is instantiated, connected, env.status is
+        called and then the connection is closed.
+        """
+        mock_environment.assert_called_once_with(self.apiurl, self.password)
+        mock_env_instance = mock_environment()
+        mock_env_instance.connect.assert_called_once_with()
+        mock_env_instance.status.assert_called_once_with()
+        mock_env_instance.close.assert_called_once_with()
+
+    @contextmanager
+    def overlapping_services(self, mock_environment):
+        """Ensure a ValueError is raised in the context manager block.
+
+        The given mock environment object is set up so that its status
+        simulates an existing service. The name of this service overlaps with
+        the name of one of the services in the bundle.
+        """
+        mock_env_instance = mock_environment()
+        mock_env_instance.status.return_value = {'services': {'mysql': {}}}
+        # Ensure a ValueError is raised by the code in the context block.
+        with self.assertRaises(ValueError) as context_manager:
+            yield
+        # The error reflects the overlapping service name.
+        error = str(context_manager.exception)
+        self.assertEqual('service(s) already in the environment: mysql', error)
+        # Even if an error occurs, the environment connection is closed.
+        mock_env_instance.close.assert_called_once_with()
+
 
 @mock.patch('guiserver.bundles.blocking._Environment')
 class TestValidate(DeployerFunctionsTestMixin, unittest.TestCase):
@@ -71,35 +117,26 @@ class TestValidate(DeployerFunctionsTestMixin, unittest.TestCase):
     def test_validation(self, mock_environment):
         # The validation is correctly run.
         blocking.validate(self.apiurl, self.password, self.bundle)
-        # The environment is correctly instantiated.
-        mock_environment.assert_called_once_with(self.apiurl, self.password)
-        # To retrieve the list of currently deployed services, the environment
-        # is connected, env.status is called and then the connection is closed.
-        mock_env_instance = mock_environment()
-        mock_env_instance.connect.assert_called_once_with()
-        mock_env_instance.status.assert_called_once_with()
-        mock_env_instance.close.assert_called_once_with()
+        # The environment is correctly instantiated and used.
+        self.check_environment_life(mock_environment)
 
     def test_overlapping_services(self, mock_environment):
         # The validation fails if the bundle includes a service name already
         # present in the Juju environment.
-        mock_environment().status.return_value = {'services': {'mysql': {}}}
-        with self.assertRaises(ValueError) as context_manager:
+        with self.overlapping_services(mock_environment):
             blocking.validate(self.apiurl, self.password, self.bundle)
-        error = str(context_manager.exception)
-        self.assertEqual('service(s) already in the environment: mysql', error)
 
 
-@mock.patch('guiserver.bundles.blocking.Importer')
 @mock.patch('guiserver.bundles.blocking._Environment')
 class TestImportBundle(DeployerFunctionsTestMixin, unittest.TestCase):
 
-    def test_import_bundle(self, mock_environment, mock_importer):
+    @mock.patch('guiserver.bundles.blocking.Importer')
+    def test_importing_bundle(self, mock_importer, mock_environment):
         # The juju-deployer importer is correctly set up and run.
         blocking.import_bundle(
             self.apiurl, self.password, self.name, self.bundle)
-        # The environment is correctly instantiated.
-        mock_environment.assert_called_with(self.apiurl, self.password)
+        # The environment is correctly instantiated and used.
+        self.check_environment_life(mock_environment)
         # The importer is correctly instantiated.
         self.assertEqual(1, mock_importer.call_count)
         importer_args = mock_importer.call_args[0]
@@ -115,3 +152,10 @@ class TestImportBundle(DeployerFunctionsTestMixin, unittest.TestCase):
         self.assertIs(blocking.IMPORTER_OPTIONS, options)
         # The importer is started.
         mock_importer().run.assert_called_once_with()
+
+    def test_overlapping_services(self, mock_environment):
+        # The import fails if the bundle includes a service name already
+        # present in the Juju environment.
+        with self.overlapping_services(mock_environment):
+            blocking.import_bundle(
+                self.apiurl, self.password, self.name, self.bundle)
