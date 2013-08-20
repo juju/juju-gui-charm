@@ -59,8 +59,8 @@ class TestEnvironment(unittest.TestCase):
         self.env.connect()
         config = {'foo': 'bar'}
         constraints = {'cpu': 4}
-        # Deploy a service: the latest two arguments (force_machine and repo)
-        # are ignored.
+        # Deploy a service: the last two arguments (force_machine and repo) are
+        # ignored.
         self.env.deploy(
             'myservice', 'cs:precise/service-42', config=config,
             constraints=constraints, num_units=2, force_machine=1, repo='/tmp')
