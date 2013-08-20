@@ -49,6 +49,8 @@ def server():
         # Handle static files.
         (r'^/juju-ui/(.*)', web.StaticFileHandler, {'path': static_path}),
         (r'^/(favicon\.ico)$', web.StaticFileHandler, {'path': guiroot}),
+        # Handle GUI server info.
+        (r'^/gui-server-info', handlers.InfoHandler),
     ]
     if options.testsroot:
         params = {'path': options.testsroot, 'default_filename': 'index.html'}

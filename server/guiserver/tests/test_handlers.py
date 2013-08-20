@@ -24,6 +24,7 @@ import tempfile
 import mock
 from tornado import (
     concurrent,
+    escape,
     gen,
     web,
 )
@@ -38,6 +39,7 @@ from tornado.testing import (
 from guiserver import (
     auth,
     clients,
+    get_version,
     handlers,
     manage,
 )
@@ -336,6 +338,20 @@ class TestIndexHandler(LogTrapTestCase, AsyncHTTPTestCase):
     def test_page_with_flags_and_queries(self):
         # Requests including flags and queries are served by the index file.
         self.ensure_index('/:flag:/activated/?my=query')
+
+
+class TestInfoHandler(LogTrapTestCase, AsyncHTTPTestCase):
+
+    def get_app(self):
+        return web.Application([(r'^/info', handlers.InfoHandler)])
+
+    def test_info(self):
+        # The handler correctly returns information about the GUI server.
+        expected = {'version': get_version()}
+        response = self.fetch('/info')
+        self.assertEqual(200, response.code)
+        info = escape.json_decode(response.body)
+        self.assertEqual(expected, info)
 
 
 class TestHttpsRedirectHandler(LogTrapTestCase, AsyncHTTPTestCase):

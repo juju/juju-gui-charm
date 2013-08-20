@@ -19,6 +19,7 @@
 import json
 
 from tornado import websocket
+import yaml
 
 from guiserver import auth
 
@@ -126,6 +127,57 @@ class PythonAPITestMixin(object):
         else:
             data['err'] = True
         return json.dumps(data) if encoded else data
+
+
+class BundlesTestMixin(object):
+    """Add helper methods for testing the GUI server bundles support."""
+
+    bundle = """
+        envExport:
+          series: precise
+          services:
+            wordpress:
+              charm: "cs:precise/wordpress-15"
+              num_units: 1
+              options:
+                debug: "no"
+                engine: nginx
+                tuning: single
+                "wp-content": ""
+              annotations:
+                "gui-x": 313
+                "gui-y": 51
+            mysql:
+              charm: "cs:precise/mysql-26"
+              num_units: 1
+              options:
+                "binlog-format": MIXED
+                "block-size": "5"
+                "dataset-size": "80%"
+                flavor: distro
+                "ha-bindiface": eth0
+                "ha-mcastport": "5411"
+                "max-connections": "-1"
+                "preferred-storage-engine": InnoDB
+                "query-cache-size": "-1"
+                "query-cache-type": "OFF"
+                "rbd-name": mysql1
+                "tuning-level": safest
+                vip: ""
+                vip_cidr: "24"
+                vip_iface: eth0
+              annotations:
+                "gui-x": 669.5
+                "gui-y": -33.5
+          relations:
+            - - "wordpress:db"
+              - "mysql:db"
+    """
+
+    def get_name_and_bundle(self):
+        """Return a tuple (bundle name, contents) parsing self.bundle."""
+        all_contents = yaml.load(self.bundle)
+        return all_contents.items()[0]
 
 
 class WSSTestMixin(object):

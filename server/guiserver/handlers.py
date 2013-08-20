@@ -21,12 +21,14 @@ import logging
 import os
 
 from tornado import (
+    escape,
     gen,
     web,
     websocket,
 )
 from tornado.ioloop import IOLoop
 
+from guiserver import get_version
 from guiserver.auth import (
     AuthMiddleware,
     User,
@@ -169,6 +171,15 @@ class IndexHandler(web.StaticFileHandler):
     def get_absolute_path(cls, root, path):
         """See tornado.web.StaticFileHandler.get_absolute_path."""
         return os.path.join(root, 'index.html')
+
+
+class InfoHandler(web.RequestHandler):
+    """Return information about the GUI server."""
+
+    def get(self):
+        """Handle GET requests."""
+        info = {'version': get_version()}
+        self.write(escape.json_encode(info))
 
 
 class HttpsRedirectHandler(web.RequestHandler):
