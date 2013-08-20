@@ -23,9 +23,48 @@ import tempfile
 import unittest
 
 import mock
-from tornado.testing import ExpectLog
+from tornado import (
+    concurrent,
+    gen,
+)
+from tornado.testing import (
+    AsyncTestCase,
+    ExpectLog,
+    gen_test,
+)
 
 from guiserver import utils
+
+
+class TestAddFuture(AsyncTestCase):
+
+    def setUp(self):
+        super(TestAddFuture, self).setUp()
+        self.future = concurrent.Future()
+        self.result = None
+
+    @gen.coroutine
+    def assert_done(self, result):
+        yield self.future
+        self.assertEqual(result, self.result)
+
+    @gen_test
+    def test_without_args(self):
+        # A callback without args is correctly called.
+        def callback(future):
+            self.result = 'future said: ' + future.result()
+        utils.add_future(self.io_loop, self.future, callback)
+        self.future.set_result('I am done')
+        yield self.assert_done('future said: I am done')
+
+    @gen_test
+    def test_with_args(self):
+        # A callback with args is correctly called.
+        def callback(arg1, arg2, future):
+            self.result = [arg1, arg2, future.result()]
+        utils.add_future(self.io_loop, self.future, callback, 1, 2)
+        self.future.set_result(3)
+        yield self.assert_done([1, 2, 3])
 
 
 class TestGetHeaders(unittest.TestCase):

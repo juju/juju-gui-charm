@@ -15,4 +15,3 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """Tests for the bundle deployment base objects."""
-

@@ -18,11 +18,21 @@
 
 import collections
 import errno
+import functools
 import logging
 import os
 import urlparse
 
 from tornado import escape
+
+
+def add_future(io_loop, future, callback, *args):
+    """Schedules a callback on the IOLoop when the given Future is finished.
+
+    The callback will receive the given optional args and the completed Future.
+    """
+    partial_callback = functools.partial(callback, *args)
+    io_loop.add_future(future, partial_callback)
 
 
 def get_headers(request, websocket_url):
