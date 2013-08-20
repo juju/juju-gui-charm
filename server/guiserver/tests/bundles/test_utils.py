@@ -16,19 +16,22 @@
 
 """Tests for the deployment utility functions."""
 
-import mock
+import unittest
+
 from tornado import gen
 from tornado.testing import(
     AsyncTestCase,
+    ExpectLog,
     gen_test,
     LogTrapTestCase,
 )
 
-from guiserver import auth
 from guiserver.bundles import utils
+from guiserver.tests import helpers
 
 
-class TestRequireAuthenticatedUser(LogTrapTestCase, AsyncTestCase):
+class TestRequireAuthenticatedUser(
+        helpers.BundlesTestMixin, LogTrapTestCase, AsyncTestCase):
 
     deployer = 'fake-deployer'
 
@@ -36,7 +39,7 @@ class TestRequireAuthenticatedUser(LogTrapTestCase, AsyncTestCase):
         """Return a view to be used for tests.
 
         The resulting callable must be called with a request object as first
-        argument amd with self.deployer as second argument.
+        argument and with self.deployer as second argument.
         """
         @gen.coroutine
         @utils.require_authenticated_user
@@ -46,21 +49,11 @@ class TestRequireAuthenticatedUser(LogTrapTestCase, AsyncTestCase):
             raise utils.response(info='ok')
         return myview
 
-    def make_request(self, is_authenticated=True):
-        """Return a mock request, containing a guiserver.auth.User instance.
-
-        If is_authenticated is True, the user in the request is logged in.
-        """
-        user = auth.User(
-            username='user', password='passwd',
-            is_authenticated=is_authenticated)
-        return mock.Mock(user=user)
-
     @gen_test
     def test_authenticated(self):
         # The view is executed normally if the user is authenticated.
         view = self.make_view()
-        request = self.make_request(is_authenticated=True)
+        request = self.make_view_request(is_authenticated=True)
         response = yield view(request, self.deployer)
         self.assertEqual({'Response': 'ok'}, response)
 
@@ -68,7 +61,7 @@ class TestRequireAuthenticatedUser(LogTrapTestCase, AsyncTestCase):
     def test_not_authenticated(self):
         # The view returns an error response if the user is not authenticated.
         view = self.make_view()
-        request = self.make_request(is_authenticated=False)
+        request = self.make_view_request(is_authenticated=False)
         response = yield view(request, self.deployer)
         expected = {
             'Response': {},
@@ -81,3 +74,35 @@ class TestRequireAuthenticatedUser(LogTrapTestCase, AsyncTestCase):
         view = self.make_view()
         self.assertEqual('myview', view.__name__)
         self.assertEqual('An example testing view.', view.__doc__)
+
+
+class TestResponse(LogTrapTestCase, unittest.TestCase):
+
+    def assert_response(self, expected, response):
+        """Ensure the given gen.Return instance contains the expected response.
+        """
+        self.assertIsInstance(response, gen.Return)
+        self.assertEqual(expected, response.value)
+
+    def test_empty(self):
+        # An empty response is correctly generated.
+        expected = {'Response': {}}
+        response = utils.response()
+        self.assert_response(expected, response)
+
+    def test_success(self):
+        # A success response is correctly generated.
+        expected = {'Response': {'foo': 'bar'}}
+        response = utils.response({'foo': 'bar'})
+        self.assert_response(expected, response)
+
+    def test_failure(self):
+        # A failure response is correctly generated.
+        expected = {'Error': 'an error occurred', 'Response': {}}
+        response = utils.response(error='an error occurred')
+        self.assert_response(expected, response)
+
+    def test_log_failure(self):
+        # An error log is written when a failure response is generated.
+        with ExpectLog('', 'deployer: an error occurred', required=True):
+            utils.response(error='an error occurred')

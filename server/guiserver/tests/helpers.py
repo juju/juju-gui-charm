@@ -18,6 +18,7 @@
 
 import json
 
+import mock
 from tornado import websocket
 import yaml
 
@@ -178,6 +179,20 @@ class BundlesTestMixin(object):
         """Return a tuple (bundle name, contents) parsing self.bundle."""
         all_contents = yaml.load(self.bundle)
         return all_contents.items()[0]
+
+    def make_view_request(self, params=None, is_authenticated=True):
+        """Create and return a mock request to be passed to bundle views.
+
+        The resulting request contains the given parameters and a
+        guiserver.auth.User instance.
+        If is_authenticated is True, the user in the request is logged in.
+        """
+        if params is None:
+            params = {}
+        user = auth.User(
+            username='user', password='passwd',
+            is_authenticated=is_authenticated)
+        return mock.Mock(params=params, user=user)
 
 
 class WSSTestMixin(object):

@@ -28,8 +28,8 @@ the API client. Each view receives the following arguments:
     - deployer: a Deployer instance, ready to be used to schedule/start bundle
       deployments.
 
-The response returned by views must be a Future, (usually an instance of
-tornado.gen.Return), containing the response data as a dict-like object, e.g.:
+The response returned by views must be a Future containing the response data as
+a dict-like object, e.g.:
 
     {'Response': {}, 'Error': 'this field is optional'}
 
@@ -88,7 +88,7 @@ def _validate_import_params(params):
         raise ValueError('invalid YAML contents: {}'.format(err))
     bundle = bundles.get(name)
     if bundle is None:
-        raise ValueError('bundle not found')
+        raise ValueError('bundle {} not found'.format(name))
     return name, bundle
 
 
@@ -169,5 +169,7 @@ def status(request, deployer):
 
     The 'Status' request does not receive parameters.
     """
+    if request.params:
+        raise response(error='invalid request: invalid data parameters')
     last_changes = deployer.status()
     raise response({'LastChanges': last_changes})
