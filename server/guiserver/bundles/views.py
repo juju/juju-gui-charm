@@ -28,8 +28,8 @@ the API client. Each view receives the following arguments:
     - deployer: a Deployer instance, ready to be used to schedule/start bundle
       deployments.
 
-The response returned by views must be an instance of tornado.gen.Return,
-containing the response data as a dict-like object, e.g.:
+The response returned by views must be a Future, (usually an instance of
+tornado.gen.Return), containing the response data as a dict-like object, e.g.:
 
     {'Response': {}, 'Error': 'this field is optional'}
 
@@ -40,7 +40,7 @@ creating this kind of responses:
 
     @gen.coroutine
     def succeeding_view(request, deployer)
-        raise response(info='Success!')
+        raise response('Success!')
 
     @gen.coroutine
     def failing_view(request, deployer)
@@ -99,6 +99,9 @@ def import_bundle(request, deployer):
 
     If the request is valid, the response will contain the DeploymentId
     assigned to the bundle deployment.
+
+    Request: 'Import'.
+    Parameters example: {'Name': 'bundle-name', 'YAML': 'bundles'}.
     """
     # Validate the request parameters.
     try:
@@ -111,7 +114,7 @@ def import_bundle(request, deployer):
         raise response(error='invalid request: {}'.format(err))
     # Add the bundle deployment to the Deployer queue.
     deployment_id = deployer.import_bundle(request.user, name, bundle)
-    raise response(info={'DeploymentId': deployment_id})
+    raise response({'DeploymentId': deployment_id})
 
 
 @gen.coroutine
@@ -122,6 +125,9 @@ def watch(request, deployer):
     The deployment is identified in the request by the DeploymentId parameter.
     If the request is valid, the response will contain the WatcherId
     to be used to observe the deployment progress.
+
+    Request: 'Watch'.
+    Parameters example: {'DeploymentId': 42}.
     """
     deployment_id = request.params.get('DeploymentId')
     if deployment_id is None:
@@ -130,7 +136,7 @@ def watch(request, deployer):
     watcher_id = deployer.watch(deployment_id)
     if watcher_id is None:
         raise response(error='invalid request: deployment not found')
-    raise response(info={'WatcherId': watcher_id})
+    raise response({'WatcherId': watcher_id})
 
 
 @gen.coroutine
@@ -142,6 +148,9 @@ def next(request, deployer):
     deployment being observed. If unseen changes are available, a response is
     suddenly returned containing the changes. Otherwise, this views suspends
     its execution until a new change is notified by the Deployer.
+
+    Request: 'Next'.
+    Parameters example: {'WatcherId': 47}.
     """
     watcher_id = request.params.get('WatcherId')
     if watcher_id is None:
@@ -150,12 +159,15 @@ def next(request, deployer):
     changes = yield deployer.next(watcher_id)
     if changes is None:
         raise response(error='invalid request: invalid watcher identifier')
-    raise response(info={'Changes': changes})
+    raise response({'Changes': changes})
 
 
 @gen.coroutine
 @require_authenticated_user
 def status(request, deployer):
-    """Return the current status of all the bundle deployments."""
+    """Return the current status of all the bundle deployments.
+
+    The 'Status' request does not receive parameters.
+    """
     last_changes = deployer.status()
-    raise response(info={'LastChanges': last_changes})
+    raise response({'LastChanges': last_changes})

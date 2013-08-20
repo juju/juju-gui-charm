@@ -27,7 +27,8 @@ base module:
         - validate(user, name, bundle) -> Future (str or None);
         - import_bundle(user, name, bundle) -> int (a deployment id);
         - watch(deployment_id) -> int or None (a watcher id);
-        - next(watcher_id) -> Future (changes or None).
+        - next(watcher_id) -> Future (changes or None);
+        - status() -> list (of changes).
 
       The following arguments are passed to the validate and import_bundle
       interface methods:
