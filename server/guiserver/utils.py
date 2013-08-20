@@ -17,7 +17,9 @@
 """Juju GUI server utility functions and classes."""
 
 import collections
+import errno
 import logging
+import os
 import urlparse
 
 from tornado import escape
@@ -53,6 +55,21 @@ def json_decode_dict(message):
         logging.warning(msg)
         return None
     return data
+
+
+def mkdir(path):
+    """Create a leaf directory and all intermediate ones.
+
+    Also expand ~ and ~user constructions.
+    If path exists and it's a directory, return without errors.
+    """
+    path = os.path.expanduser(path)
+    try:
+        os.makedirs(path)
+    except OSError as err:
+        # Re-raise the error if the target path exists but it is not a dir.
+        if (err.errno != errno.EEXIST) or (not os.path.isdir(path)):
+            raise
 
 
 def request_summary(request):

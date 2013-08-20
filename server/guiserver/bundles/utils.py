@@ -22,6 +22,16 @@ import logging
 from tornado import gen
 
 
+def change(deployment_id, status, queue=None, error=None):
+    """Return a dict representing a deployment change."""
+    result = {'DeploymentId': deployment_id, 'Status': status}
+    if queue is not None:
+        result['Queue'] = queue
+    if error is not None:
+        result['Error'] = error
+    return result
+
+
 def require_authenticated_user(view):
     """Require the user to be authenticated when executing the decorated view.
 
