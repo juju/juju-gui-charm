@@ -33,11 +33,13 @@ class ViewsTestMixin(object):
     """Base helpers and common tests for all the view tests.
 
     Subclasses must define a get_view() method returning the view function to
-    be tested. Subclasses can also override the invalid_params attribute, used
-    to test the view in the case the passed parameters are not valid.
+    be tested. Subclasses can also override the invalid_params and
+    invalid_params_error attributes, used to test the view in the case the
+    passed parameters are not valid.
     """
 
     invalid_params = {'No-such': 'parameter'}
+    invalid_params_error = 'invalid request: invalid data parameters'
 
     def setUp(self):
         super(ViewsTestMixin, self).setUp()
@@ -54,12 +56,12 @@ class ViewsTestMixin(object):
     def test_not_authenticated(self):
         # An error response is returned if the user is not authenticated.
         request = self.make_view_request(is_authenticated=False)
-        expected_log = 'deployer: unauthorized access: unknown user'
+        expected_log = 'deployer: unauthorized access: no user logged in'
         with ExpectLog('', expected_log, required=True):
             response = yield self.view(request, self.deployer)
         expected_response = {
             'Response': {},
-            'Error': 'unauthorized access: unknown user',
+            'Error': 'unauthorized access: no user logged in',
         }
         self.assertEqual(expected_response, response)
         # The Deployer methods have not been called.
@@ -70,12 +72,12 @@ class ViewsTestMixin(object):
         # An error response is returned if the parameters in the request are
         # not valid.
         request = self.make_view_request(params=self.invalid_params)
-        expected_log = 'deployer: invalid request: invalid data parameters'
+        expected_log = 'deployer: {}'.format(self.invalid_params_error)
         with ExpectLog('', expected_log, required=True):
             response = yield self.view(request, self.deployer)
         expected_response = {
             'Response': {},
-            'Error': 'invalid request: invalid data parameters',
+            'Error': self.invalid_params_error,
         }
         self.assertEqual(expected_response, response)
         # The Deployer methods have not been called.
@@ -236,6 +238,8 @@ class TestNext(
 class TestStatus(
         ViewsTestMixin, helpers.BundlesTestMixin, LogTrapTestCase,
         AsyncTestCase):
+
+    invalid_params_error = 'invalid request: invalid data parameters: No-such'
 
     def get_view(self):
         return views.status

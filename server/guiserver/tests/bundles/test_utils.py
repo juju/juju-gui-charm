@@ -101,7 +101,7 @@ class TestRequireAuthenticatedUser(
         response = yield view(request, self.deployer)
         expected = {
             'Response': {},
-            'Error': 'unauthorized access: unknown user',
+            'Error': 'unauthorized access: no user logged in',
         }
         self.assertEqual(expected, response)
 

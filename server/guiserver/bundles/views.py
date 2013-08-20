@@ -34,7 +34,7 @@ a dict-like object, e.g.:
     {'Response': {}, 'Error': 'this field is optional'}
 
 The response function defined in the guiserver.bundles.utils module helps
-creating this kind of responses:
+create these responses:
 
     from guiserver.bundles.utils import response
 
@@ -145,8 +145,8 @@ def next(request, deployer):
     """Wait until a new deployment event is available to be sent to the client.
 
     The request params must include a WatcherId value, used to identify the
-    deployment being observed. If unseen changes are available, a response is
-    suddenly returned containing the changes. Otherwise, this views suspends
+    deployment being observed. If unsent changes are available, a response is
+    immediately returned containing the changes. Otherwise, this views suspends
     its execution until a new change is notified by the Deployer.
 
     Request: 'Next'.
@@ -170,6 +170,8 @@ def status(request, deployer):
     The 'Status' request does not receive parameters.
     """
     if request.params:
-        raise response(error='invalid request: invalid data parameters')
+        params = ', '.join(request.params)
+        error = 'invalid request: invalid data parameters: {}'.format(params)
+        raise response(error=error)
     last_changes = deployer.status()
     raise response({'LastChanges': last_changes})
