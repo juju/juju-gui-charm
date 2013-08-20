@@ -25,8 +25,8 @@ the API client. Each view receives the following arguments:
     - request: a request object with two attributes:
       - request.params: a dict representing the parameters sent by the client;
       - request.user: the current user (an instance of guiserver.auth.User);
-    - deployer: a Deployer instance, ready to be used to schedule/start bundle
-      deployments.
+    - deployer: a Deployer instance, ready to be used to schedule/start/observe
+      bundle deployments.
 
 The response returned by views must be a Future containing the response data as
 a dict-like object, e.g.:
