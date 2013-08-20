@@ -33,7 +33,7 @@ def require_authenticated_user(view):
     @wraps(view)
     def decorated(request, deployer):
         if not request.user.is_authenticated:
-            raise response(error='unauthorized access: unknown user')
+            raise response(error='unauthorized access: no user logged in')
         return view(request, deployer)
     return decorated
 
