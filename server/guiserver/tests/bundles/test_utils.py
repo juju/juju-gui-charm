@@ -30,6 +30,42 @@ from guiserver.bundles import utils
 from guiserver.tests import helpers
 
 
+class TestChange(unittest.TestCase):
+
+    def test_status(self):
+        # The change includes the deployment status.
+        expected = {'DeploymentId': 0, 'Status': 'started'}
+        obtained = utils.change(0, 'started')
+        self.assertEqual(expected, obtained)
+
+    def test_queue(self):
+        # The change includes the deployment queue length.
+        expected = {'DeploymentId': 1, 'Status': 'scheduled', 'Queue': 42}
+        obtained = utils.change(1, 'scheduled', queue=42)
+        self.assertEqual(expected, obtained)
+
+    def test_error(self):
+        # The change includes a deployment error.
+        expected = {
+            'DeploymentId': 2,
+            'Status': 'completed',
+            'Error': 'an error',
+        }
+        obtained = utils.change(2, 'completed', error='an error')
+        self.assertEqual(expected, obtained)
+
+    def test_all_params(self):
+        # The change includes all the parameters.
+        expected = {
+            'DeploymentId': 3,
+            'Status': 'completed',
+            'Queue': 47,
+            'Error': 'an error',
+        }
+        obtained = utils.change(3, 'completed', queue=47, error='an error')
+        self.assertEqual(expected, obtained)
+
+
 class TestRequireAuthenticatedUser(
         helpers.BundlesTestMixin, LogTrapTestCase, AsyncTestCase):
 
