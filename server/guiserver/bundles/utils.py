@@ -37,7 +37,7 @@ def create_change(deployment_id, status, queue=None, error=None):
 
     The resulting dict contains at least the following fields:
       - DeploymentId: the deployment identifier;
-      - Status: the current deployment status;
+      - Status: the deployment's current status;
       - Time: the time in seconds since the epoch as an int.
     """
     result = {

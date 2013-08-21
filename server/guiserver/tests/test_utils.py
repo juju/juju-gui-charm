@@ -39,12 +39,19 @@ from guiserver import utils
 class TestAddFuture(AsyncTestCase):
 
     def setUp(self):
+        # Set up a future object and a result attribute where tests will store
+        # their results.
         super(TestAddFuture, self).setUp()
         self.future = concurrent.Future()
         self.result = None
 
     @gen.coroutine
     def assert_done(self, result):
+        """Fire the future and ensure the callback has been called.
+
+        Callbacks in this test case store their results in self.result.
+        """
+        self.assertTrue(self.future.done())
         yield self.future
         self.assertEqual(result, self.result)
 
