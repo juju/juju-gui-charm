@@ -17,10 +17,22 @@
 """Juju GUI server utility functions and classes."""
 
 import collections
+import errno
+import functools
 import logging
+import os
 import urlparse
 
 from tornado import escape
+
+
+def add_future(io_loop, future, callback, *args):
+    """Schedule a callback on the IO loop when the given Future is finished.
+
+    The callback will receive the given optional args and the completed Future.
+    """
+    partial_callback = functools.partial(callback, *args)
+    io_loop.add_future(future, partial_callback)
 
 
 def get_headers(request, websocket_url):
@@ -53,6 +65,21 @@ def json_decode_dict(message):
         logging.warning(msg)
         return None
     return data
+
+
+def mkdir(path):
+    """Create a leaf directory and all intermediate ones.
+
+    Also expand ~ and ~user constructions.
+    If path exists and it's a directory, return without errors.
+    """
+    path = os.path.expanduser(path)
+    try:
+        os.makedirs(path)
+    except OSError as err:
+        # Re-raise the error if the target path exists but it is not a dir.
+        if (err.errno != errno.EEXIST) or (not os.path.isdir(path)):
+            raise
 
 
 def request_summary(request):

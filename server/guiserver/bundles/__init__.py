@@ -178,9 +178,12 @@ becomes available, e.g.:
         'RequestId': 3,
         'Response': {
             'Changes': [
-                {'DeploymentId': 42, 'Status': 'scheduled', 'Queue': 2},
-                {'DeploymentId': 42, 'Status': 'scheduled', 'Queue': 1},
-                {'DeploymentId': 42, 'Status': 'started', 'Queue': 0},
+                {'DeploymentId': 42, 'Status': 'scheduled', 'Time': 1377080066,
+                 'Queue': 2},
+                {'DeploymentId': 42, 'Status': 'scheduled', 'Time': 1377080062,
+                 'Queue': 1},
+                {'DeploymentId': 42, 'Status': 'started', 'Time': 1377080000,
+                 'Queue': 0},
             ],
         },
     }
@@ -191,6 +194,9 @@ bundle at the time. A Queue value of zero means the deployment will be started
 as soon as possible.
 
 The Status can be one of the following: 'scheduled', 'started' and 'completed'.
+
+The Time field indicates the number of seconds since the epoch at the time of
+the change.
 
 The Next request can be performed as many times as required by the API clients
 after receiving a response from a previous one. However, if the Status of the
@@ -204,6 +210,7 @@ the watch request will always return only the last change:
                 {
                   'DeploymentId': 42,
                   'Status': 'completed',
+                  'Time': 1377080000,
                   'Error': 'this field is only present if an error occurred',
                 },
             ],
@@ -238,10 +245,14 @@ the second one is a successful response:
         'RequestId': 5,
         'Response': {
             'LastChanges': [
-                {'DeploymentId': 42, 'Status': 'completed', 'Error': 'error'},
-                {'DeploymentId': 43, 'Status': 'completed'},
-                {'DeploymentId': 44, 'Status': 'started', 'Queue': 0},
-                {'DeploymentId': 45, 'Status': 'scheduled', 'Queue': 1},
+                {'DeploymentId': 42, 'Status': 'completed', 'Time': 1377080001,
+                 'Error': 'error'},
+                {'DeploymentId': 43, 'Status': 'completed',
+                 'Time': 1377080002},
+                {'DeploymentId': 44, 'Status': 'started', 'Time': 1377080003,
+                 'Queue': 0},
+                {'DeploymentId': 45, 'Status': 'scheduled', 'Time': 1377080004,
+                 'Queue': 1},
             ],
         },
     }

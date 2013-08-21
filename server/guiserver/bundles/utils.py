@@ -14,12 +14,96 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Bundle deployment utility functions."""
+"""Bundle deployment utility functions and objects."""
 
 from functools import wraps
+import itertools
 import logging
+import time
 
 from tornado import gen
+
+from guiserver.watchers import AsyncWatcher
+
+
+# Change statuses.
+SCHEDULED = 'scheduled'
+STARTED = 'started'
+COMPLETED = 'completed'
+
+
+def create_change(deployment_id, status, queue=None, error=None):
+    """Return a dict representing a deployment change.
+
+    The resulting dict contains at least the following fields:
+      - DeploymentId: the deployment identifier;
+      - Status: the deployment's current status;
+      - Time: the time in seconds since the epoch as an int.
+
+    These optional fields can also be present:
+      - Queue: the deployment position in the queue at the time of this change;
+      - Error: a message describing an error occurred during the deployment.
+    """
+    result = {
+        'DeploymentId': deployment_id,
+        'Status': status,
+        'Time': int(time.time()),
+    }
+    if queue is not None:
+        result['Queue'] = queue
+    if error is not None:
+        result['Error'] = error
+    return result
+
+
+class Observer(object):
+    """Handle multiple deployment watchers."""
+
+    def __init__(self):
+        # Map deployment identifiers to watchers.
+        self.deployments = {}
+        # Map watcher identifiers to deployment identifiers.
+        self.watchers = {}
+        # This counter is used to generate deployment identifiers.
+        self._deployment_counter = itertools.count()
+        # This counter is used to generate watcher identifiers.
+        self._watcher_counter = itertools.count()
+
+    def add_deployment(self):
+        """Start observing a deployment.
+
+        Generate a deployment id and add it to self.deployments.
+        Return the generated deployment id.
+        """
+        deployment_id = self._deployment_counter.next()
+        self.deployments[deployment_id] = AsyncWatcher()
+        return deployment_id
+
+    def add_watcher(self, deployment_id):
+        """Return a new watcher id for the given deployment id.
+
+        Also add the generated watcher id to self.watchers.
+        """
+        watcher_id = self._watcher_counter.next()
+        self.watchers[watcher_id] = deployment_id
+        return watcher_id
+
+    def notify_position(self, deployment_id, position):
+        """Add a change to the deployment watcher notifying a new position.
+
+        If the position in the queue is 0, it means the deployment is started
+        or about to start. Therefore set its status to STARTED.
+        """
+        watcher = self.deployments[deployment_id]
+        status = SCHEDULED if position else STARTED
+        change = create_change(deployment_id, status, queue=position)
+        watcher.put(change)
+
+    def notify_completed(self, deployment_id, error=None):
+        """Add a change to the deployment watcher notifying it is completed."""
+        watcher = self.deployments[deployment_id]
+        change = create_change(deployment_id, COMPLETED, error=error)
+        watcher.close(change)
 
 
 def require_authenticated_user(view):
