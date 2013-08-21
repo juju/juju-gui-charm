@@ -26,10 +26,12 @@ a detailed explanation of how these objects are used.
 from concurrent.futures import ThreadPoolExecutor
 from tornado import gen
 from tornado.ioloop import IOLoop
+from tornado.util import ObjectDict
 
 from guiserver.bundles import (
     blocking,
     utils,
+    views,
 )
 from guiserver.utils import (
     add_future,
@@ -184,3 +186,57 @@ class Deployer(object):
         """
         watchers = self._observer.deployments.values()
         return [i.getlast() for i in watchers]
+
+
+class DeployMiddleware(object):
+    """Handle the bundles deployment request/response process.
+
+    This class handles the process of parsing requests from the GUI, checking
+    if any incoming message is a deployment request, ensuring that the request
+    is well formed and, if so, forwarding the requests to the bundle views.
+
+    Assuming that:
+      - user is a guiserver.auth.User instance (used by this middleware in
+        order to retrieve the credentials for connecting the Deployer to the
+        Juju API server);
+      - deployer is a guiserver.bundles.base.Deployer instance;
+      - write_response is a callable that will be used to send responses to the
+        client, i.e. deployments status and the results;
+      - data is a JSON decoded object representing a single Juju API request;
+    here is an usage example:
+
+        deployment = DeployMiddleware(user, deployer, write_response)
+        if deployment.requested(data):
+            deployment.process_request(data)
+    """
+
+    routes = {
+        'Status': views.status,
+        'Import': views.import_bundle,
+        'Watch': views.watch,
+        'Next': views.next,
+    }
+
+    def __init__(self, user, deployer, write_response):
+        """Initialize the deployment middleware."""
+        self._user = user
+        self._deployer = deployer
+        self._write_response = write_response
+
+    def requested(self, data):
+        """Return True if data is a deployment request, False otherwise."""
+        return (
+            'RequestId' in data and
+            data.get('Type') == 'Deployer' and
+            data.get('Request') in self.routes
+        )
+
+    @gen.coroutine
+    def process_request(self, data):
+        """Process a deployment request."""
+        request_id = data['RequestId']
+        view = self.routes[data['Request']]
+        request = ObjectDict(params=data.get('Params', {}), user=self._user)
+        response = yield view(request, self._deployer)
+        response['RequestId'] = request_id
+        self._write_response(response)
