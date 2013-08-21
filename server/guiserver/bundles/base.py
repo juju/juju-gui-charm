@@ -38,7 +38,6 @@ from guiserver.utils import (
 from guiserver.watchers import WatcherError
 
 
-
 # Juju API versions supported by the GUI server Deployer.
 SUPPORTED_API_VERSIONS = ['go']
 
@@ -70,13 +69,11 @@ class Deployer(object):
             io_loop = IOLoop.current()
         self._io_loop = io_loop
 
-        # This executor is used for validating deployments.
+        # Deployment validation and importing executors.
         self._validate_executor = ThreadPoolExecutor(1)
-        # This executor is used for processing deployments.
         self._run_executor = ThreadPoolExecutor(1)
 
-        # An observer instance is used to watch the progress of the queued
-        # deployment jobs.
+        # An observer instance is used to watch the deployments progress.
         self._observer = utils.Observer()
         # Queue stores the deployment identifiers corresponding to the
         # currently started/queued jobs.
@@ -111,23 +108,6 @@ class Deployer(object):
         except Exception as err:
             raise gen.Return(str(err))
 
-    def _import_callback(self, deployment_id, future):
-        """Callback called when a deployment process is completed.
-
-        This callback, scheduled in self.import_bundle, receives the
-        deployment_id identifying one specific deployment job, and the fired
-        future returned by the executor.
-        """
-        exception = future.exception()
-        error = None if exception is None else str(exception)
-        # Notify a deployment completed.
-        self._observer.notify_completed(deployment_id, error=error)
-        # Remove the completed deployment job from the queue.
-        self._queue.remove(deployment_id)
-        # Notify the new position of all remaining deployments in the queue.
-        for position, deploy_id in enumerate(self._queue):
-            self._observer.notify_position(deploy_id, position)
-
     def import_bundle(self, user, name, bundle):
         """Schedule a deployment bundle import process.
 
@@ -152,6 +132,23 @@ class Deployer(object):
             blocking.import_bundle, self._apiurl, user.password, name, bundle)
         add_future(self._io_loop, future, self._import_callback, deployment_id)
         return deployment_id
+
+    def _import_callback(self, deployment_id, future):
+        """Callback called when a deployment process is completed.
+
+        This callback, scheduled in self.import_bundle(), receives the
+        deployment_id identifying one specific deployment job, and the fired
+        future returned by the executor.
+        """
+        exception = future.exception()
+        error = None if exception is None else str(exception)
+        # Notify a deployment completed.
+        self._observer.notify_completed(deployment_id, error=error)
+        # Remove the completed deployment job from the queue.
+        self._queue.remove(deployment_id)
+        # Notify the new position of all remaining deployments in the queue.
+        for position, deploy_id in enumerate(self._queue):
+            self._observer.notify_position(deploy_id, position)
 
     def watch(self, deployment_id):
         """Start watching a deployment and return a watcher identifier.

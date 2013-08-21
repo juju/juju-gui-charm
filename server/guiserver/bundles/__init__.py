@@ -195,7 +195,7 @@ as soon as possible.
 
 The Status can be one of the following: 'scheduled', 'started' and 'completed'.
 
-The Time fields indicates the number of seconds since the epoch at the time of
+The Time field indicates the number of seconds since the epoch at the time of
 the change.
 
 The Next request can be performed as many times as required by the API clients
