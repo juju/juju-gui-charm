@@ -27,7 +27,7 @@ from tornado import escape
 
 
 def add_future(io_loop, future, callback, *args):
-    """Schedules a callback on the IOLoop when the given Future is finished.
+    """Schedule a callback on the IO loop when the given Future is finished.
 
     The callback will receive the given optional args and the completed Future.
     """
