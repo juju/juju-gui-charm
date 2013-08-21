@@ -24,6 +24,7 @@ a detailed explanation of how these objects are used.
 """
 
 from concurrent.futures import ThreadPoolExecutor
+from tornado import gen
 from tornado.ioloop import IOLoop
 
 from guiserver.bundles import (
@@ -34,7 +35,8 @@ from guiserver.utils import (
     add_future,
     mkdir,
 )
-from tornado import gen
+from guiserver.watchers import WatcherError
+
 
 
 # Juju API versions supported by the GUI server Deployer.
@@ -80,7 +82,7 @@ class Deployer(object):
         # currently started/queued jobs.
         self._queue = []
 
-        # XXX 2013-08-12 frankban:
+        # XXX 2013-08-21 frankban:
             # The following is required because the deployer tries to create
             # the ~/.juju/.deployer-store-cache directory directly, without
             # ensuring that ~/.juju/ actually exists.
@@ -162,7 +164,7 @@ class Deployer(object):
         Return None if the deployment identifier is not valid.
         """
         if deployment_id in self._observer.deployments:
-            self._observer.subscribe(deployment_id)
+            return self._observer.add_watcher(deployment_id)
 
     def next(self, watcher_id):
         """Wait for the next changes on a specific deployment.
@@ -171,13 +173,14 @@ class Deployer(object):
         (see the self.watch() method above).
         Return a future whose result is a list of deployment changes.
         """
-        watchers = self._observer.watchers
-        deployments = self._observer.deployments
-        deployment_id = watchers.get(watcher_id)
+        deployment_id = self._observer.watchers.get(watcher_id)
         if deployment_id is None:
             return
-        watcher = deployments[deployment_id]
-        return watcher.next(watcher_id)
+        watcher = self._observer.deployments[deployment_id]
+        try:
+            return watcher.next(watcher_id)
+        except WatcherError:
+            return
 
     def status(self):
         """Return a list containing the last known change for each deployment.

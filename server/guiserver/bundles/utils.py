@@ -19,6 +19,7 @@
 from functools import wraps
 import itertools
 import logging
+import time
 
 from tornado import gen
 
@@ -32,8 +33,18 @@ COMPLETED = 'completed'
 
 
 def create_change(deployment_id, status, queue=None, error=None):
-    """Return a dict representing a deployment change."""
-    result = {'DeploymentId': deployment_id, 'Status': status}
+    """Return a dict representing a deployment change.
+
+    The resulting dict contains at least the following fields:
+      - DeploymentId: the deployment identifier;
+      - Status: the current deployment status;
+      - Time: the time in seconds since the epoch as an int.
+    """
+    result = {
+        'DeploymentId': deployment_id,
+        'Status': status,
+        'Time': int(time.time()),
+    }
     if queue is not None:
         result['Queue'] = queue
     if error is not None:
@@ -64,7 +75,7 @@ class Observer(object):
         self.deployments[deployment_id] = AsyncWatcher()
         return deployment_id
 
-    def add_subscriber(self, deployment_id):
+    def add_watcher(self, deployment_id):
         """Return a new watcher id for the given deployment id.
 
         Also add the generated watcher id to self.watchers.
