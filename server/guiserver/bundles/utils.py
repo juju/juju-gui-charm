@@ -39,6 +39,10 @@ def create_change(deployment_id, status, queue=None, error=None):
       - DeploymentId: the deployment identifier;
       - Status: the deployment's current status;
       - Time: the time in seconds since the epoch as an int.
+
+    These optional fields can also be present:
+      - Queue: the deployment position in the queue at the time of this change;
+      - Error: a message describing an error occurred during the deployment.
     """
     result = {
         'DeploymentId': deployment_id,
@@ -85,7 +89,11 @@ class Observer(object):
         return watcher_id
 
     def notify_position(self, deployment_id, position):
-        """Add a change to the deployment watcher notifying a new position."""
+        """Add a change to the deployment watcher notifying a new position.
+
+        If the position in the queue is 0, it means the deployment is started
+        or about to start. Therefore set its status to STARTED.
+        """
         watcher = self.deployments[deployment_id]
         status = SCHEDULED if position else STARTED
         change = create_change(deployment_id, status, queue=position)

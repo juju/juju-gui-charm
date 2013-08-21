@@ -140,7 +140,7 @@ class TestObserver(unittest.TestCase):
         self.assert_watcher(watcher2, deployment2)
 
     @mock.patch('time.time', mock.Mock(return_value=1234))
-    def test_notify_position(self):
+    def test_notify_scheduled(self):
         # It is possible to notify a new queue position for a deployment.
         deployment_id = self.observer.add_deployment()
         watcher = self.observer.deployments[deployment_id]
@@ -155,6 +155,21 @@ class TestObserver(unittest.TestCase):
         self.assertFalse(watcher.closed)
 
     @mock.patch('time.time', mock.Mock(return_value=12345))
+    def test_notify_started(self):
+        # It is possible to notify that a deployment is (about to be) started.
+        deployment_id = self.observer.add_deployment()
+        watcher = self.observer.deployments[deployment_id]
+        self.observer.notify_position(deployment_id, 0)
+        expected = {
+            'DeploymentId': deployment_id,
+            'Status': utils.STARTED,
+            'Time': 12345,
+            'Queue': 0,
+        }
+        self.assertEqual(expected, watcher.getlast())
+        self.assertFalse(watcher.closed)
+
+    @mock.patch('time.time', mock.Mock(return_value=123456))
     def test_notify_completed(self):
         # It is possible to notify that a deployment is completed.
         deployment_id = self.observer.add_deployment()
@@ -163,12 +178,12 @@ class TestObserver(unittest.TestCase):
         expected = {
             'DeploymentId': deployment_id,
             'Status': utils.COMPLETED,
-            'Time': 12345,
+            'Time': 123456,
         }
         self.assertEqual(expected, watcher.getlast())
         self.assertTrue(watcher.closed)
 
-    @mock.patch('time.time', mock.Mock(return_value=123456))
+    @mock.patch('time.time', mock.Mock(return_value=1234567))
     def test_notify_error(self):
         # It is possible to notify that an error occurred during a deployment.
         deployment_id = self.observer.add_deployment()
@@ -177,7 +192,7 @@ class TestObserver(unittest.TestCase):
         expected = {
             'DeploymentId': deployment_id,
             'Status': utils.COMPLETED,
-            'Time': 123456,
+            'Time': 1234567,
             'Error': 'bad wolf',
         }
         self.assertEqual(expected, watcher.getlast())
