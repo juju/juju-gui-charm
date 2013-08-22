@@ -17,6 +17,9 @@
 """Juju GUI server test utilities."""
 
 import json
+import multiprocessing
+import os
+import signal
 
 import mock
 from tornado import websocket
@@ -201,3 +204,87 @@ class WSSTestMixin(object):
     def get_wss_url(self, path):
         """Return an absolute secure WebSocket url for the given path."""
         return 'wss://localhost:{}{}'.format(self.get_http_port(), path)
+
+
+class MultiProcessMock(object):
+    """Return a callable mock object to be used across multiple processes.
+
+    In a multiprocess context the usual mock.Mock() does not work as expected:
+    see <https://code.google.com/p/mock/issues/detail?id=139>.
+
+    Help sharing call info between separate processes, and ensuring that the
+    callable is called in a separate process.
+    Note that only self.__call__() must be executed in a separate process: all
+    the other methods are supposed to be called in the main process.
+    """
+
+    def __init__(self, side_effect=None):
+        """Initialize the mock object.
+
+        Calling this object will return side_effect if it is not an exception.
+        If otherwise side_effect is an exception, that error will be raised.
+        """
+        # When testing across multiple processes, a SIGPIPE can intermittently
+        # generate a broken pipe IOError. In order to avoid that, restore the
+        # default handler for the SIGPIPE signal when initializing this mock.
+        signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+        self.side_effect = side_effect
+        manager = multiprocessing.Manager()
+        self.queue = manager.Queue()
+        self._call_pids = []
+        self._call_args = []
+
+    def __call__(self, *args, **kwargs):
+        """Return or raise self.side_effect.
+
+        This method is supposed to be called in a separate process.
+        """
+        side_effect = self.side_effect
+        self.queue.put((os.getpid(), args, kwargs))
+        if isinstance(side_effect, Exception):
+            raise side_effect
+        return side_effect
+
+    def _consume_queue(self):
+        """Collect info about how this mock has been called."""
+        while not self.queue.empty():
+            pid, args, kwargs = self.queue.get()
+            self._call_pids.append(pid)
+            self._call_args.append((args, kwargs))
+
+    @property
+    def call_args(self):
+        """Return a list of (args, kwargs) tuples.
+
+        Each pair in the list represents the arguments of a single call.
+        """
+        self._consume_queue()
+        return self._call_args
+
+    @property
+    def call_count(self):
+        """Return the number of times this mock has been called."""
+        return len(self.call_args)
+
+    def assert_called_once_with(self, *args, **kwargs):
+        """Ensure this mock has been called once with the given arguments."""
+        # Check call count.
+        call_count = self.call_count
+        if self.call_count != 1:
+            error = 'Expected to be called once. Called {} times.'
+            raise AssertionError(error.format(call_count))
+        # Check call args.
+        expected = (args, kwargs)
+        obtained = self._call_args[0]
+        if expected != obtained:
+            error = (
+                'Called with different arguments.\n'
+                'Expected: {}\nObtained: {}'.format(expected, obtained)
+            )
+            raise AssertionError(error)
+
+    def assert_called_in_a_separate_process(self):
+        """Ensure this object was called in a separate process."""
+        assert self.call_count, 'Not even called.'
+        pid = self._call_pids[-1]
+        assert pid != os.getpid(), 'Called in the same process: {}'.format(pid)

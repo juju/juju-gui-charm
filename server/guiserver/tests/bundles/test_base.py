@@ -16,14 +16,7 @@
 
 """Tests for the bundle deployment base objects."""
 
-from contextlib import contextmanager
-import threading
-
 import mock
-from tornado import (
-    concurrent,
-    gen,
-)
 from tornado.testing import(
     AsyncTestCase,
     gen_test,
@@ -32,27 +25,9 @@ from tornado.testing import(
 from guiserver import auth
 from guiserver.bundles import (
     base,
-    blocking,
     utils,
 )
-
-
-class ThreadCheckMock(object):
-    """Help ensuring that a mock function is called in a separate thread."""
-
-    thread_name = None
-
-    def __call__(self, *args, **kwargs):
-        self.thread_name = self.get_thread_name()
-
-    def get_thread_name(self, *args, **kwargs):
-        """Return the name of the current thread."""
-        return threading.current_thread().name
-
-    def assert_called_in_a_separate_thread(self):
-        """Ensure this object was called in a separate thread."""
-        msg = 'called in the same thread: {}'.format(self.thread_name)
-        assert self.thread_name != self.get_thread_name(), msg
+from guiserver.tests import helpers
 
 
 @mock.patch('time.time', mock.Mock(return_value=42))
@@ -69,54 +44,63 @@ class TestDeployer(AsyncTestCase):
             apiversion = base.SUPPORTED_API_VERSIONS[0]
         return base.Deployer(self.apiurl, apiversion)
 
-    @contextmanager
-    def patch_executor(self):
-        future = concurrent.Future()
-        executor_path = 'guiserver.bundles.base.ThreadPoolExecutor'
-        mock_executor = mock.Mock()
-        mock_executor.submit.return_value = future
-        with mock.patch(executor_path, mock_executor):
-            yield future
+    def patch_validate(self, side_effect=None):
+        """Mock the blocking validate function."""
+        mock_validate = helpers.MultiProcessMock(side_effect=side_effect)
+        return mock.patch('guiserver.bundles.blocking.validate', mock_validate)
 
-    @gen.coroutine
-    def consume_changes(self, deployer, deployment_id):
-        watcher_id = deployer.watch(deployment_id)
-        all_changes = []
-        while True:
-            changes = yield deployer.next(watcher_id)
-            all_changes.extend(changes)
-            if changes[-1]['Status'] == utils.COMPLETED:
-                break
-        raise gen.Return(all_changes)
+    def patch_import_bundle(self, side_effect=None):
+        """Mock the blocking import_bundle function."""
+        mock_import_bundle = helpers.MultiProcessMock(side_effect=side_effect)
+        import_bundle_path = 'guiserver.bundles.blocking.import_bundle'
+        return mock.patch(import_bundle_path, mock_import_bundle)
+
+    def assert_change(
+            self, changes, deployment_id, status, queue=None, error=None):
+        """Ensure only one change is present in the given changes.
+
+        Also check the change refers to the expected deployment id and status.
+        Optionally also ensure the change includes the queue and error values.
+        """
+        self.assertEqual(1, len(changes))
+        expected = {
+            'DeploymentId': deployment_id,
+            'Status': status,
+            'Time': 42,
+        }
+        if queue is not None:
+            expected['Queue'] = queue
+        if error is not None:
+            expected['Error'] = error
+        self.assertEqual(expected, changes[0])
 
     @gen_test
     def test_validation_success(self):
-        # A None Future is returned if the bundle validates.
+        # None is returned if the validation succeeds.
         deployer = self.make_deployer()
-        validate_path = 'guiserver.bundles.blocking.validate'
-        with mock.patch(validate_path) as mock_validate:
+        with self.patch_validate():
             result = yield deployer.validate(self.user, 'bundle', self.bundle)
         self.assertIsNone(result)
-        mock_validate.assert_called_once_with(
-            self.apiurl, self.user.password, self.bundle)
-
-    @gen_test
-    def test_validation_process(self):
-        # The validation is executed in a separate thread.
-        deployer = self.make_deployer()
-        mock_validate = ThreadCheckMock()
-        with mock.patch('guiserver.bundles.blocking.validate', mock_validate):
-            yield deployer.validate(self.user, 'bundle', self.bundle)
-        mock_validate.assert_called_in_a_separate_thread()
 
     @gen_test
     def test_validation_failure(self):
         # An error message is returned if the validation fails.
         deployer = self.make_deployer()
-        mock_validate = mock.Mock(side_effect=ValueError('validation error'))
-        with mock.patch('guiserver.bundles.blocking.validate', mock_validate):
+        error = ValueError('validation error')
+        with self.patch_validate(side_effect=error):
             result = yield deployer.validate(self.user, 'bundle', self.bundle)
-        self.assertEqual('validation error', result)
+        self.assertEqual(str(error), result)
+
+    @gen_test
+    def test_validation_process(self):
+        # The validation is executed in a separate process.
+        deployer = self.make_deployer()
+        with self.patch_validate() as mock_validate:
+            result = yield deployer.validate(self.user, 'bundle', self.bundle)
+        self.assertIsNone(result)
+        mock_validate.assert_called_once_with(
+            self.apiurl, self.user.password, self.bundle)
+        mock_validate.assert_called_in_a_separate_process()
 
     @gen_test
     def test_unsupported_api_version(self):
@@ -125,92 +109,135 @@ class TestDeployer(AsyncTestCase):
         result = yield deployer.validate(self.user, 'bundle', self.bundle)
         self.assertEqual('unsupported API version', result)
 
+    def test_import_bundle_scheduling(self):
+        # A deployment id is returned if the bundle import process is
+        # successfully scheduled.
+        deployer = self.make_deployer()
+        with self.patch_import_bundle():
+            deployment_id = deployer.import_bundle(
+                self.user, 'bundle', self.bundle, callback=self.stop)
+        self.assertIsInstance(deployment_id, int)
+        # Wait for the deployment to be completed.
+        self.wait()
+
+    def test_import_bundle_process(self):
+        # The deployment is executed in a separate process.
+        deployer = self.make_deployer()
+        with self.patch_import_bundle() as mock_import_bundle:
+            deployer.import_bundle(
+                self.user, 'bundle', self.bundle, callback=self.stop)
+        # Wait for the deployment to be completed.
+        self.wait()
+        mock_import_bundle.assert_called_once_with(
+            self.apiurl, self.user.password, 'bundle', self.bundle)
+        mock_import_bundle.assert_called_in_a_separate_process()
+
     def test_watch(self):
         # To start observing a deployment progress, a client can obtain a
         # watcher id for the given deployment job.
         deployer = self.make_deployer()
-        with mock.patch('guiserver.bundles.blocking.import_bundle'):
+        with self.patch_import_bundle():
             deployment_id = deployer.import_bundle(
-                self.user, 'bundle', self.bundle)
-        self.assertIsInstance(deployer.watch(deployment_id), int)
-        import pdb; pdb.set_trace()
-        self.io_loop.close()
+                self.user, 'bundle', self.bundle, callback=self.stop)
+        watcher_id = deployer.watch(deployment_id)
+        self.assertIsInstance(watcher_id, int)
+        # Wait for the deployment to be completed.
+        self.wait()
 
     def test_watch_unknown_deployment(self):
         # None is returned if a client ask to observe an invalid deployment.
         deployer = self.make_deployer()
         self.assertIsNone(deployer.watch(42))
 
-    # @gen_test
-    # def test_next(self):
-    #     # A client can be asynchronously notified of deployment changes.
-    #     deployer = self.make_deployer()
-    #     with mock.patch('guiserver.bundles.blocking.import_bundle'):
-    #         deployment_id = deployer.import_bundle(
-    #             self.user, 'bundle', self.bundle)
-    #     changes = yield self.consume_changes(deployer, deployment_id)
-    #     print changes
+    @gen_test
+    def test_next(self):
+        # A client can be asynchronously notified of deployment changes.
+        deployer = self.make_deployer()
+        with self.patch_import_bundle():
+            deployment_id = deployer.import_bundle(
+                self.user, 'bundle', self.bundle, callback=self.stop)
+        watcher_id = deployer.watch(deployment_id)
+        # A first change is received notifying that the deployment is started.
+        changes = yield deployer.next(watcher_id)
+        self.assert_change(changes, deployment_id, utils.STARTED, queue=0)
+        # A second change is received notifying a completed deployment.
+        changes = yield deployer.next(watcher_id)
+        self.assert_change(changes, deployment_id, utils.COMPLETED)
+        # Only the last change is notified to new subscribers.
+        watcher_id = deployer.watch(deployment_id)
+        changes = yield deployer.next(watcher_id)
+        self.assert_change(changes, deployment_id, utils.COMPLETED)
+        # Wait for the deployment to be completed.
+        self.wait()
 
+    @gen_test
+    def test_multiple_deployments(self):
+        # Multiple deployments can be scheduled and observed.
+        deployer = self.make_deployer()
+        with self.patch_import_bundle():
+            deployment1 = deployer.import_bundle(
+                self.user, 'bundle', self.bundle)
+            deployment2 = deployer.import_bundle(
+                self.user, 'bundle', self.bundle, callback=self.stop)
+        watcher1 = deployer.watch(deployment1)
+        watcher2 = deployer.watch(deployment2)
+        # The first deployment is started.
+        changes = yield deployer.next(watcher1)
+        self.assert_change(changes, deployment1, utils.STARTED, queue=0)
+        # The second deployment is scheduled and will only start after the
+        # first one is done.
+        changes = yield deployer.next(watcher2)
+        self.assert_change(changes, deployment2, utils.SCHEDULED, queue=1)
+        # The first deployment completes.
+        changes = yield deployer.next(watcher1)
+        self.assert_change(changes, deployment1, utils.COMPLETED)
+        # The second is started.
+        changes = yield deployer.next(watcher2)
+        self.assert_change(changes, deployment2, utils.STARTED, queue=0)
+        # Wait for the deployment to be completed.
+        self.wait()
 
-    # def test_bundle_scheduling(self):
-    #     # A deployment id is returned if the bundle import process is
-    #     # successfully scheduled.
-    #     deployer = self.make_deployer()
-    #     import_bundle_path = 'guiserver.bundles.blocking.import_bundle'
-    #     with mock.patch(import_bundle_path) as mock_import_bundle:
-    #         result = deployer.import_bundle(self.user, 'bundle', self.bundle)
-    #     self.assertIsInstance(result, int)
-    #     mock_import_bundle.assert_called_once_with(
-    #         self.apiurl, self.user.password, 'bundle', self.bundle)
+    @gen_test
+    def test_deployment_failure(self):
+        # An error change is notified if the deployment process fails.
+        deployer = self.make_deployer()
+        with self.patch_import_bundle(side_effect=RuntimeError('bad wolf')):
+            deployment_id = deployer.import_bundle(
+                self.user, 'bundle', self.bundle, callback=self.stop)
+        watcher_id = deployer.watch(deployment_id)
+        # We expect two changes: the second one should include the error.
+        yield deployer.next(watcher_id)
+        changes = yield deployer.next(watcher_id)
+        self.assert_change(
+            changes, deployment_id, utils.COMPLETED, error='bad wolf')
+        # Wait for the deployment to be completed.
+        self.wait()
 
+    @gen_test
+    def test_invalid_watcher(self):
+        # None is returned if the watcher id is not valid.
+        deployer = self.make_deployer()
+        changes = deployer.next(42)
+        self.assertIsNone(changes)
 
+    def test_initial_status(self):
+        # The initial deployer status is an empty list.
+        deployer = self.make_deployer()
+        self.assertEqual([], deployer.status())
 
-
-
-    # @gen_test
-    # def test_import_bundle_process(self):
-    #     # The import bundle process is executed in a separate thread.
-    #     deployer = self.make_deployer()
-    #     mock_validate = ThreadCheckMock()
-    #     with mock.patch('guiserver.bundles.blocking.validate', mock_validate):
-    #         yield deployer.validate(self.user, 'bundle', self.bundle)
-    #     mock_validate.assert_called_in_a_separate_thread()
-
-    # def test_multiple_bundle_scheduling(self):
-    #     pass
-
-
-    # @gen_test
-    # def test_run_process(self):
-    #     # The run executor is correctly used.
-    #     executor_path = 'guiserver.bundles.Deployer._run_executor'
-    #     with mock.patch(executor_path) as mock_executor:
-    #         deployer = self.make_deployer()
-    #         yield deployer.run(self.user, 'bundle', self.bundle)
-    #     mock_executor.submit.assert_called_once_with(
-    #         bundles._import, self.apiurl, self.user.password, 'bundle',
-    #         self.bundle)
-
-    # @gen_test
-    # def test_run_failure(self):
-    #     # An error message is returned if the bundles deployment raises an
-    #     # error.
-    #     deployer = self.make_deployer()
-    #     mock_import = self.make_pickleable_mock(error='import error')
-    #     with mock.patch('guiserver.bundles._import', mock_import):
-    #         result = yield deployer.run(self.user, 'bundle', self.bundle)
-    #     self.assertEqual('import error', result)
-
-    # @gen_test
-    # def test_queue(self):
-    #     # The queue attribute is correctly increased/decreased.
-    #     deployer = self.make_deployer()
-    #     mock_import = self.make_pickleable_mock()
-    #     with mock.patch('guiserver.bundles._import', mock_import):
-    #         self.assertEqual(0, deployer.queue)
-    #         future1 = deployer.run(self.user, 'bundle1', self.bundle)
-    #         future2 = deployer.run(self.user, 'bundle2', self.bundle)
-    #         self.assertEqual(2, deployer.queue)
-    #         yield future1
-    #         yield future2
-    #         self.assertEqual(0, deployer.queue)
+    def test_status(self):
+        # The status contains the last known change for each deployment.
+        deployer = self.make_deployer()
+        with self.patch_import_bundle():
+            deployment1 = deployer.import_bundle(
+                self.user, 'bundle', self.bundle)
+            deployment2 = deployer.import_bundle(
+                self.user, 'bundle', self.bundle, callback=self.stop)
+        # Wait for the deployment to be completed.
+        self.wait()
+        # At this point we expect two completed deployments.
+        change1, change2 = deployer.status()
+        self.assertEqual(utils.COMPLETED, change1['Status'])
+        self.assertEqual(utils.COMPLETED, change2['Status'])
+        self.assertEqual(deployment1, change1['DeploymentId'])
+        self.assertEqual(deployment2, change2['DeploymentId'])

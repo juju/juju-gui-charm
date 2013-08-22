@@ -23,7 +23,7 @@ bundle views and the Deployer itself. See the bundles package docstring for
 a detailed explanation of how these objects are used.
 """
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 from tornado import gen
 from tornado.ioloop import IOLoop
 from tornado.util import ObjectDict
@@ -51,7 +51,7 @@ class Deployer(object):
     current state of the Juju environment, and to start/observe the import
     process.
 
-    The validation and deployments steps are executed in separate threads.
+    The validation and deployments steps are executed in separate processes.
     It is possible to process only one bundle at the time.
 
     Note that the Deployer is not intended to store request related state: it
@@ -72,8 +72,8 @@ class Deployer(object):
         self._io_loop = io_loop
 
         # Deployment validation and importing executors.
-        self._validate_executor = ThreadPoolExecutor(1)
-        self._run_executor = ThreadPoolExecutor(1)
+        self._validate_executor = ProcessPoolExecutor(1)
+        self._run_executor = ProcessPoolExecutor(1)
 
         # An observer instance is used to watch the deployments progress.
         self._observer = utils.Observer()
@@ -110,15 +110,21 @@ class Deployer(object):
         except Exception as err:
             raise gen.Return(str(err))
 
-    def import_bundle(self, user, name, bundle):
+    def import_bundle(self, user, name, bundle, callback=None):
         """Schedule a deployment bundle import process.
 
-        The deployment is executed in a separate thread.
+        The deployment is executed in a separate process.
 
-        Three arguments are provided:
+        Three arguments are required:
           - user: the current authenticated user;
           - name: then name of the bundle to be imported;
           - bundle: a YAML decoded object representing the bundle contents.
+
+        It is possible to also provide an optional callback that will be called
+        when the deployment is completed. Note that this functionality is
+        present only for tests: clients should not consider the callback
+        argument part of the API, and should instead use the watch/next methods
+        to observe the progress of a deployment (see below).
 
         Return the deployment identifier assigned to this deployment process.
         """
@@ -133,6 +139,9 @@ class Deployer(object):
         future = self._run_executor.submit(
             blocking.import_bundle, self._apiurl, user.password, name, bundle)
         add_future(self._io_loop, future, self._import_callback, deployment_id)
+        # If a customized callback is provided, schedule it as well.
+        if callback is not None:
+            add_future(self._io_loop, future, callback)
         return deployment_id
 
     def _import_callback(self, deployment_id, future):
