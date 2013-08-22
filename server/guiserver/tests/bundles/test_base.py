@@ -320,5 +320,5 @@ class TestDeployMiddleware(helpers.BundlesTestMixin, AsyncTestCase):
         yield self.deployment.process_request(deployment_request)
         # Ensure the response has been correctly sent.
         self.assertEqual(1, len(self.responses))
-        response =  self.responses[0]
+        response = self.responses[0]
         self.assertEqual({'RequestId': 42, 'Response': 'ok'}, response)
