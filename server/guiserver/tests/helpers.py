@@ -16,16 +16,19 @@
 
 """Juju GUI server test utilities."""
 
+from contextlib import contextmanager
 import json
 import multiprocessing
 import os
 import signal
+import unittest
 
 import mock
 from tornado import websocket
 import yaml
 
 from guiserver import auth
+from guiserver.bundles import base
 
 
 class EchoWebSocketHandler(websocket.WebSocketHandler):
@@ -136,6 +139,7 @@ class PythonAPITestMixin(object):
 class BundlesTestMixin(object):
     """Add helper methods for testing the GUI server bundles support."""
 
+    apiurl = 'wss://api.example.com:17070'
     bundle = """
         envExport:
           series: precise
@@ -183,6 +187,12 @@ class BundlesTestMixin(object):
         all_contents = yaml.load(self.bundle)
         return all_contents.items()[0]
 
+    def make_deployer(self, apiversion=None):
+        """Create and return a Deployer instance."""
+        if apiversion is None:
+            apiversion = base.SUPPORTED_API_VERSIONS[0]
+        return base.Deployer(self.apiurl, apiversion)
+
     def make_view_request(self, params=None, is_authenticated=True):
         """Create and return a mock request to be passed to bundle views.
 
@@ -196,6 +206,28 @@ class BundlesTestMixin(object):
             username='user', password='passwd',
             is_authenticated=is_authenticated)
         return mock.Mock(params=params, user=user)
+
+    def make_deployment_request(
+            self, request, request_id=42, params=None, encoded=False):
+        """Create and return a deployment request message.
+
+        If encoded is set to True, the returned message will be JSON encoded.
+        """
+        defaults = {
+            'Import': {'Name': 'bundle', 'YAML': 'bundle: contents'},
+            'Watch': {'DeploymentId': 1},
+            'Next': {'WatcherId': 2},
+            'Status': {},
+        }
+        if params is None:
+            params = defaults[request]
+        data = {
+            'RequestId': request_id,
+            'Type': 'Deployer',
+            'Request': request,
+            'Params': params,
+        }
+        return json.dumps(data) if encoded else data
 
 
 class WSSTestMixin(object):
@@ -288,3 +320,103 @@ class MultiProcessMock(object):
         assert self.call_count, 'Not even called.'
         pid = self._call_pids[-1]
         assert pid != os.getpid(), 'Called in the same process: {}'.format(pid)
+
+
+class TestMultiProcessMock(unittest.TestCase):
+
+    def call(self, function, *args, **kwargs):
+        """Execute the given callable in a separate process.
+
+        Pass the given args and kwargs to the callable.
+        """
+        process = multiprocessing.Process(
+            target=function, args=args, kwargs=kwargs)
+        process.start()
+        process.join()
+
+    @contextmanager
+    def assert_error(self, error):
+        """Ensure an AssertionError is raised in the context block.
+
+        Also check the error message is the expected one.
+        """
+        with self.assertRaises(AssertionError) as context_manager:
+            yield
+        self.assertEqual(error, str(context_manager.exception))
+
+    def test_not_called(self):
+        # If the mock object has not been called, both assertions fail.
+        mock_callable = MultiProcessMock()
+        # The assert_called_once_with assertion fails.
+        with self.assert_error('Expected to be called once. Called 0 times.'):
+            mock_callable.assert_called_once_with()
+        # The assert_called_in_a_separate_process assertion fails.
+        with self.assert_error('Not even called.'):
+            mock_callable.assert_called_in_a_separate_process()
+
+    def test_call(self):
+        # The mock object can be called in a separate process.
+        mock_callable = MultiProcessMock()
+        self.call(mock_callable)
+        mock_callable.assert_called_once_with()
+        mock_callable.assert_called_in_a_separate_process()
+
+    def test_call_same_process(self):
+        # The mock object knows if it has been called in the main process.
+        mock_callable = MultiProcessMock()
+        mock_callable()
+        mock_callable.assert_called_once_with()
+        pid = os.getpid()
+        with self.assert_error('Called in the same process: {}'.format(pid)):
+            mock_callable.assert_called_in_a_separate_process()
+
+    def test_multiple_calls(self):
+        # The assert_called_once_with assertion fails if the mock object has
+        # been called multiple times.
+        mock_callable = MultiProcessMock()
+        mock_callable()
+        mock_callable()
+        with self.assert_error('Expected to be called once. Called 2 times.'):
+            mock_callable.assert_called_once_with()
+
+    def test_call_args(self):
+        # The mock object call arguments can be inspected.
+        mock_callable = MultiProcessMock()
+        self.call(mock_callable, 1, 2, foo='bar')
+        self.assertEqual([((1, 2), {'foo': 'bar'})], mock_callable.call_args)
+
+    def test_multiple_call_args(self):
+        # Call arguments are collected for each call.
+        mock_callable = MultiProcessMock()
+        self.call(mock_callable, 1)
+        self.call(mock_callable, 2, foo=None)
+        expected = [
+            ((1,), {}),
+            ((2,), {'foo': None})
+        ]
+        self.assertEqual(expected, mock_callable.call_args)
+
+    def test_call_count(self):
+        # The number of calls are correctly tracked.
+        mock_callable = MultiProcessMock()
+        self.call(mock_callable)
+        self.assertEqual(1, mock_callable.call_count)
+        self.call(mock_callable, 1, 2)
+        self.assertEqual(2, mock_callable.call_count)
+        mock_callable(None)
+        self.assertEqual(3, mock_callable.call_count)
+
+    def test_default_return_value(self):
+        # The mock object returns None by default.
+        mock_callable = MultiProcessMock()
+        self.assertIsNone(mock_callable())
+
+    def test_customized_return_value(self):
+        # The mock object can be configured to return a customized value.
+        mock_callable = MultiProcessMock(side_effect='my-value')
+        self.assertEqual('my-value', mock_callable())
+
+    def test_raise_error(self):
+        # The mock object can be configured to raise an exception.
+        mock_callable = MultiProcessMock(side_effect=ValueError())
+        self.assertRaises(ValueError, mock_callable)

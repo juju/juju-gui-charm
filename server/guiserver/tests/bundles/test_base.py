@@ -17,6 +17,7 @@
 """Tests for the bundle deployment base objects."""
 
 import mock
+from tornado import gen
 from tornado.testing import(
     AsyncTestCase,
     gen_test,
@@ -31,18 +32,11 @@ from guiserver.tests import helpers
 
 
 @mock.patch('time.time', mock.Mock(return_value=42))
-class TestDeployer(AsyncTestCase):
+class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
 
-    apiurl = 'wss://api.example.com:17070'
     bundle = {'foo': 'bar'}
     user = auth.User(
         username='myuser', password='mypasswd', is_authenticated=True)
-
-    def make_deployer(self, apiversion=None):
-        """Create and return a Deployer instance."""
-        if apiversion is None:
-            apiversion = base.SUPPORTED_API_VERSIONS[0]
-        return base.Deployer(self.apiurl, apiversion)
 
     def patch_validate(self, side_effect=None):
         """Mock the blocking validate function."""
@@ -241,3 +235,90 @@ class TestDeployer(AsyncTestCase):
         self.assertEqual(utils.COMPLETED, change2['Status'])
         self.assertEqual(deployment1, change1['DeploymentId'])
         self.assertEqual(deployment2, change2['DeploymentId'])
+
+
+class TestDeployMiddleware(helpers.BundlesTestMixin, AsyncTestCase):
+
+    def setUp(self):
+        # Create a DeployMiddleware instance.
+        super(TestDeployMiddleware, self).setUp()
+        self.user = auth.User(
+            username='myuser', password='mypasswd', is_authenticated=True)
+        self.deployer = self.make_deployer()
+        self.responses = []
+        self.deployment = base.DeployMiddleware(
+            self.user, self.deployer, self.responses.append)
+
+    def test_deployment_requested(self):
+        # True is returned if the incoming data is a deployment request.
+        requests = (
+            self.make_deployment_request('Import'),
+            self.make_deployment_request('Watch'),
+            self.make_deployment_request('Next'),
+            self.make_deployment_request('Status'),
+        )
+        for request in requests:
+            requested = self.deployment.requested(request)
+            self.assertTrue(requested, request)
+
+    def test_deployment_not_requested(self):
+        # False is returned if the incoming data is not a deployment request.
+        # Params are not validated by DeployMiddleware.requested.
+        params = {'Name': 'mybundle', 'YAML': 'foo: bar'}
+        requests = (
+            # Empty request.
+            {},
+            # Invalid type field.
+            {
+                'RequestId': 1,
+                'Type': 'INVALID',
+                'Request': 'Import',
+                'Params': params,
+            },
+            # Invalid request field.
+            {
+                'RequestId': 2,
+                'Type': 'Deployer',
+                'Request': 'INVALID',
+                'Params': params,
+            },
+            # Missing request id field.
+            {
+                'INVALID': 3,
+                'Type': 'Deployer',
+                'Request': 'Import',
+                'Params': params,
+            },
+            # Field names are case sensitive.
+            {
+                'RequestId': 4,
+                'type': 'Deployer',
+                'request': 'Import',
+                'Params': params,
+            },
+        )
+        for request in requests:
+            requested = self.deployment.requested(request)
+            self.assertFalse(requested, request)
+
+    @gen_test
+    def test_process_request(self):
+        # A deployment request is correctly processed.
+        deployment_request = self.make_deployment_request('Import')
+
+        @gen.coroutine
+        def view(request, deployer):
+            # Ensure the view is called with the expected arguments.
+            self.assertEqual(deployment_request['Params'], request.params)
+            self.assertIs(self.user, request.user)
+            self.assertIs(self.deployer, deployer)
+            return {'Response': 'ok'}
+
+        # Patch the routes so that the customized view defined above is called
+        # when an import request is processed.
+        self.deployment.routes['Import'] = view
+        yield self.deployment.process_request(deployment_request)
+        # Ensure the response has been correctly sent.
+        self.assertEqual(1, len(self.responses))
+        response =  self.responses[0]
+        self.assertEqual({'RequestId': 42, 'Response': 'ok'}, response)

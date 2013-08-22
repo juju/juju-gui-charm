@@ -219,18 +219,17 @@ class DeployMiddleware(object):
             deployment.process_request(data)
     """
 
-    routes = {
-        'Status': views.status,
-        'Import': views.import_bundle,
-        'Watch': views.watch,
-        'Next': views.next,
-    }
-
     def __init__(self, user, deployer, write_response):
         """Initialize the deployment middleware."""
         self._user = user
         self._deployer = deployer
         self._write_response = write_response
+        self.routes = {
+            'Import': views.import_bundle,
+            'Watch': views.watch,
+            'Next': views.next,
+            'Status': views.status,
+        }
 
     def requested(self, data):
         """Return True if data is a deployment request, False otherwise."""
