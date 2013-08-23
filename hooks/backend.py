@@ -186,7 +186,6 @@ class BuiltinServerMixin(ServerInstallMixinBase):
     debs = ('openssl', 'python-pip')
 
     def install(self, backend):
-        utils.install_tornado()
         utils.install_builtin_server()
         self._setup_certificates(backend)
 

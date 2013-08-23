@@ -119,7 +119,6 @@ class TestBackendCommands(unittest.TestCase):
             'get_api_address': utils.get_api_address,
             'get_npm_cache_archive_url': utils.get_npm_cache_archive_url,
             'install_builtin_server': utils.install_builtin_server,
-            'install_tornado': utils.install_tornado,
             'parse_source': utils.parse_source,
             'prime_npm_cache': utils.prime_npm_cache,
             'remove_apache_setup': utils.remove_apache_setup,
@@ -200,7 +199,7 @@ class TestBackendCommands(unittest.TestCase):
         test_backend.install()
         for mocked in (
             'apt_get_install', 'fetch_api', 'find_missing_packages',
-            'install_builtin_server', 'install_tornado',
+            'install_builtin_server',
         ):
             self.assertTrue(
                 self.called.get(mocked), '{} was not called'.format(mocked))

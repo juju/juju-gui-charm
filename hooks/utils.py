@@ -107,8 +107,14 @@ CURRENT_DIR = os.getcwd()
 CONFIG_DIR = os.path.join(CURRENT_DIR, 'config')
 JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
+# Builtin server dependencies. The order of these requirements is important.
+SERVER_DEPENDENCIES = (
+    'futures-2.1.4.tar.gz'
+    'tornado-3.1.tar.gz',
+    'jujuclient-0.0.9.tar.gz',
+    'juju-deployer-0.2.2.tar.gz',
+)
 SERVER_DIR = os.path.join(CURRENT_DIR, 'server')
-TORNADO_PATH = os.path.join(CURRENT_DIR, 'deps', 'tornado-3.1.tar.gz')
 
 APACHE_CFG_DIR = os.path.join(os.path.sep, 'etc', 'apache2')
 APACHE_PORTS = os.path.join(APACHE_CFG_DIR, 'ports.conf')
@@ -525,15 +531,13 @@ def stop_haproxy_apache():
     remove_apache_setup()
 
 
-def install_tornado():
-    """Install Tornado from a local tarball."""
-    log('Installing Tornado.')
-    with su('root'):
-        cmd_log(run('pip', 'install', TORNADO_PATH))
-
-
 def install_builtin_server():
     """Install the builtin server code."""
+    log('Installing the builtin server dependencies.')
+    for dependency_name in SERVER_DEPENDENCIES:
+        dependency = os.path.join(CURRENT_DIR, 'deps', dependency_name)
+        with su('root'):
+            cmd_log(run('pip', 'install', dependency))
     log('Installing the builtin server.')
     setup_cmd = os.path.join(SERVER_DIR, 'setup.py')
     with su('root'):

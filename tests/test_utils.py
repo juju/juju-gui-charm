@@ -33,6 +33,7 @@ from utils import (
     API_PORT,
     JUJU_GUI_DIR,
     JUJU_PEM,
+    SERVER_DEPENDENCIES,
     WEB_PORT,
     _get_by_attr,
     cmd_log,
@@ -46,7 +47,6 @@ from utils import (
     parse_source,
     get_npm_cache_archive_url,
     install_builtin_server,
-    install_tornado,
     remove_apache_setup,
     remove_haproxy_setup,
     render_to_file,
@@ -722,13 +722,11 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertEqual(self.service_names, ['haproxy', 'apache2'])
         self.assertEqual(self.actions, [charmhelpers.STOP, charmhelpers.STOP])
 
-    def test_install_tornado(self):
-        install_tornado()
-        self.assertEqual(self.run_call_count, 1)
-
     def test_install_builtin_server(self):
         install_builtin_server()
-        self.assertEqual(self.run_call_count, 1)
+        # The function executes one "pip install" call for each dependency, and
+        # a final "python setup.py" call for the GUI server itself.
+        self.assertEqual(self.run_call_count, len(SERVER_DEPENDENCIES) + 1)
 
     def test_write_builtin_server_startup(self):
         write_builtin_server_startup(
