@@ -90,8 +90,7 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         # The validation is executed in a separate process.
         deployer = self.make_deployer()
         with self.patch_validate() as mock_validate:
-            result = yield deployer.validate(self.user, 'bundle', self.bundle)
-        self.assertIsNone(result)
+            yield deployer.validate(self.user, 'bundle', self.bundle)
         mock_validate.assert_called_once_with(
             self.apiurl, self.user.password, self.bundle)
         mock_validate.assert_called_in_a_separate_process()
@@ -139,7 +138,7 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         self.wait()
 
     def test_watch_unknown_deployment(self):
-        # None is returned if a client ask to observe an invalid deployment.
+        # None is returned if a client tries to observe an invalid deployment.
         deployer = self.make_deployer()
         self.assertIsNone(deployer.watch(42))
 
@@ -185,7 +184,7 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         # The first deployment completes.
         changes = yield deployer.next(watcher1)
         self.assert_change(changes, deployment1, utils.COMPLETED)
-        # The second is started.
+        # The second one is started.
         changes = yield deployer.next(watcher2)
         self.assert_change(changes, deployment2, utils.STARTED, queue=0)
         # Wait for the deployment to be completed.
