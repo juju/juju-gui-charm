@@ -183,7 +183,9 @@ class HaproxyApacheMixin(ServerInstallMixinBase):
 class BuiltinServerMixin(ServerInstallMixinBase):
     """Manage the builtin server via Upstart."""
 
-    debs = ('openssl', 'python-pip')
+    # The package python-bzrlib is required by juju-deployer.
+    # The package python-pip is is used to install the GUI server dependencies.
+    debs = ('openssl', 'python-bzrlib', 'python-pip')
 
     def install(self, backend):
         utils.install_builtin_server()
