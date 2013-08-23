@@ -104,7 +104,7 @@ def wrap_write_message(handler):
         handler = handler_ref()
         if (handler is None) or (not handler.connected):
             return logging.warning(
-                'discarding message (closed connection): {}'.format(data))
+                'discarding message (closed connection): {!r}'.format(data))
         message = escape.json_encode(data)
         handler.write_message(message)
 
