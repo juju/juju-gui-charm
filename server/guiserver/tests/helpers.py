@@ -259,6 +259,7 @@ class MultiProcessMock(object):
         # When testing across multiple processes, a SIGPIPE can intermittently
         # generate a broken pipe IOError. In order to avoid that, restore the
         # default handler for the SIGPIPE signal when initializing this mock.
+        # See <http://bugs.python.org/issue1652>.
         signal.signal(signal.SIGPIPE, signal.SIG_DFL)
         self.side_effect = side_effect
         manager = multiprocessing.Manager()

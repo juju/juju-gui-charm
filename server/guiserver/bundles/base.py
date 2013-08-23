@@ -164,9 +164,9 @@ class Deployer(object):
     def watch(self, deployment_id):
         """Start watching a deployment and return a watcher identifier.
 
-        The watcher identifier can be used by clients to observe changes
-        occurring during the deployment process identified by deployment_id.
-        Use the returned watcher_id to start observing deployment changes
+        The watcher id can be used by clients to observe changes occurring
+        during the deployment process identified by the deployment id.
+        Use the returned watcher id to start observing deployment changes
         (see the self.next() method below).
 
         Return None if the deployment identifier is not valid.
