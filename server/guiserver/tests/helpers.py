@@ -215,8 +215,8 @@ class BundlesTestMixin(object):
         """
         defaults = {
             'Import': {'Name': 'bundle', 'YAML': 'bundle: contents'},
-            'Watch': {'DeploymentId': 1},
-            'Next': {'WatcherId': 2},
+            'Watch': {'DeploymentId': 0},
+            'Next': {'WatcherId': 0},
             'Status': {},
         }
         if params is None:
@@ -228,6 +228,17 @@ class BundlesTestMixin(object):
             'Params': params,
         }
         return json.dumps(data) if encoded else data
+
+    def patch_validate(self, side_effect=None):
+        """Mock the blocking validate function."""
+        mock_validate = MultiProcessMock(side_effect=side_effect)
+        return mock.patch('guiserver.bundles.blocking.validate', mock_validate)
+
+    def patch_import_bundle(self, side_effect=None):
+        """Mock the blocking import_bundle function."""
+        mock_import_bundle = MultiProcessMock(side_effect=side_effect)
+        import_bundle_path = 'guiserver.bundles.blocking.import_bundle'
+        return mock.patch(import_bundle_path, mock_import_bundle)
 
 
 class WSSTestMixin(object):

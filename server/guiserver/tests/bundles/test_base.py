@@ -38,17 +38,6 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
     user = auth.User(
         username='myuser', password='mypasswd', is_authenticated=True)
 
-    def patch_validate(self, side_effect=None):
-        """Mock the blocking validate function."""
-        mock_validate = helpers.MultiProcessMock(side_effect=side_effect)
-        return mock.patch('guiserver.bundles.blocking.validate', mock_validate)
-
-    def patch_import_bundle(self, side_effect=None):
-        """Mock the blocking import_bundle function."""
-        mock_import_bundle = helpers.MultiProcessMock(side_effect=side_effect)
-        import_bundle_path = 'guiserver.bundles.blocking.import_bundle'
-        return mock.patch(import_bundle_path, mock_import_bundle)
-
     def assert_change(
             self, changes, deployment_id, status, queue=None, error=None):
         """Ensure only one change is present in the given changes.
