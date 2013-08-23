@@ -215,8 +215,8 @@ class BundlesTestMixin(object):
         """
         defaults = {
             'Import': {'Name': 'bundle', 'YAML': 'bundle: contents'},
-            'Watch': {'DeploymentId': 1},
-            'Next': {'WatcherId': 2},
+            'Watch': {'DeploymentId': 0},
+            'Next': {'WatcherId': 0},
             'Status': {},
         }
         if params is None:

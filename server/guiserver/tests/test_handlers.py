@@ -311,14 +311,13 @@ class TestWebSocketHandlerAuthentication(
 
 class TestWebSocketHandlerBundles(
         WebSocketHandlerTestMixin, helpers.WSSTestMixin,
-        helpers.BundlesTestMixin, AsyncHTTPSTestCase):
-
-    patch_write_message = mock.patch('guiserver.handlers.wrap_write_message')
+        helpers.BundlesTestMixin, LogTrapTestCase, AsyncHTTPSTestCase):
 
     @gen_test
     def test_bundle_import_process(self):
         # The bundle import process is correctly started and completed.
-        with self.patch_write_message as mock_write_message:
+        write_message_path = 'guiserver.handlers.wrap_write_message'
+        with mock.patch(write_message_path) as mock_write_message:
             handler = yield self.make_initialized_handler()
         # Simulate the user is authenticated.
         handler.user.is_authenticated = True
@@ -328,12 +327,21 @@ class TestWebSocketHandlerBundles(
             yield handler.on_message(request)
         expected = self.make_deployment_response(response={'DeploymentId': 0})
         mock_write_message().assert_called_once_with(expected)
-
+        # Start observing the deployment progress.
+        request = self.make_deployment_request('Watch', encoded=True)
+        yield handler.on_message(request)
+        expected = self.make_deployment_response(response={'WatcherId': 0})
+        mock_write_message().assert_called_with(expected)
+        # Get the two next changes: in the first one the deployment has been
+        # started, in the second one it is completed. This way the test runner
+        # can safely stop the IO loop (no remaining Future callbacks).
+        request = self.make_deployment_request('Next', encoded=True)
+        yield handler.on_message(request)
+        yield handler.on_message(request)
 
     @gen_test
-    def test_bundle_import_request_not_authenticated(self):
-        # The bundle deployment support is activated, but only for
-        # authenticated users.
+    def test_not_authenticated(self):
+        # The bundle deployment support is only activated for logged in users.
         client = yield self.make_client()
         request = self.make_deployment_request('Import', encoded=True)
         client.write_message(request)
@@ -390,8 +398,7 @@ class TestInfoHandler(LogTrapTestCase, AsyncHTTPTestCase):
             'deployer': mock_deployer,
             'start_time': 10,
         }
-        return web.Application(
-            [(r'^/info', handlers.InfoHandler, options)], debug=True)
+        return web.Application([(r'^/info', handlers.InfoHandler, options)])
 
     @mock.patch('time.time', mock.Mock(return_value=52))
     def test_info(self):
@@ -399,7 +406,7 @@ class TestInfoHandler(LogTrapTestCase, AsyncHTTPTestCase):
         expected = {
             'apiurl': 'wss://api.example.com:17070',
             'apiversion': 'clojure',
-            'debug': True,
+            'debug': False,
             'deployer': 'deployments status',
             'uptime': 42,
             'version': get_version(),
