@@ -20,11 +20,14 @@ The following functions and objects use the juju-deployer library to handle
 bundle deployments. They are intended to be run in a separate process.
 Code interacting with the juju-deployer should be stored here.
 """
+import os
 
 from deployer.action.importer import Importer
 from deployer.deployment import Deployment
 from deployer.env import GoEnvironment
 from tornado import util
+
+from guiserver.utils import mkdir
 
 
 IMPORTER_OPTIONS = util.ObjectDict(
@@ -38,6 +41,8 @@ IMPORTER_OPTIONS = util.ObjectDict(
     update_charms=False,  # Do not update existing charm branches.
     watch=False,  # Do not watch environment changes on console.
 )
+# This value is used by the juju-deployer importer object to store charms.
+JUJU_HOME = '/var/lib/juju/gui-server/juju-home'
 
 
 class _Environment(GoEnvironment):
@@ -125,6 +130,10 @@ def import_bundle(apiurl, password, name, bundle):
     deployment = Deployment(name, bundle, [])
     importer = Importer(env, deployment, IMPORTER_OPTIONS)
     env.connect()
+    # The importer tries to retrieve the Juju home from the JUJU_HOME
+    # environment: create a customized directory if required.
+    mkdir(JUJU_HOME)
+    os.environ['JUJU_HOME'] = JUJU_HOME
     try:
         _validate(env, bundle)
         importer.run()

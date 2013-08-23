@@ -33,10 +33,7 @@ from guiserver.bundles import (
     utils,
     views,
 )
-from guiserver.utils import (
-    add_future,
-    mkdir,
-)
+from guiserver.utils import add_future
 from guiserver.watchers import WatcherError
 
 
@@ -80,12 +77,6 @@ class Deployer(object):
         # Queue stores the deployment identifiers corresponding to the
         # currently started/queued jobs.
         self._queue = []
-
-        # XXX 2013-08-21 frankban:
-            # The following is required because the deployer tries to create
-            # the ~/.juju/.deployer-store-cache directory directly, without
-            # ensuring that ~/.juju/ actually exists.
-        mkdir('~/.juju')
 
     @gen.coroutine
     def validate(self, user, name, bundle):
