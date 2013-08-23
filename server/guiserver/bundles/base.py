@@ -38,6 +38,7 @@ from guiserver.watchers import WatcherError
 
 
 # Juju API versions supported by the GUI server Deployer.
+# Tests use the first API version in this list.
 SUPPORTED_API_VERSIONS = ['go']
 
 

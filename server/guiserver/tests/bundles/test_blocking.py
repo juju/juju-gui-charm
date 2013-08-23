@@ -95,7 +95,7 @@ class DeployerFunctionsTestMixin(helpers.BundlesTestMixin):
         mock_env_instance.close.assert_called_once_with()
 
     @contextmanager
-    def overlapping_services(self, mock_environment):
+    def assert_overlapping_services(self, mock_environment):
         """Ensure a ValueError is raised in the context manager block.
 
         The given mock environment object is set up so that its status
@@ -126,7 +126,7 @@ class TestValidate(DeployerFunctionsTestMixin, unittest.TestCase):
     def test_overlapping_services(self, mock_environment):
         # The validation fails if the bundle includes a service name already
         # present in the Juju environment.
-        with self.overlapping_services(mock_environment):
+        with self.assert_overlapping_services(mock_environment):
             blocking.validate(self.apiurl, self.password, self.bundle)
 
 
@@ -169,7 +169,7 @@ class TestImportBundle(DeployerFunctionsTestMixin, unittest.TestCase):
     def test_overlapping_services(self, mock_environment):
         # The import fails if the bundle includes a service name already
         # present in the Juju environment.
-        with self.overlapping_services(mock_environment):
+        with self.assert_overlapping_services(mock_environment):
             with self.patch_juju_home():
                 blocking.import_bundle(
                     self.apiurl, self.password, self.name, self.bundle)
@@ -178,6 +178,7 @@ class TestImportBundle(DeployerFunctionsTestMixin, unittest.TestCase):
     def test_juju_home(self, mock_importer, mock_environment):
         # A customized Juju home is created and used during the import process.
         with self.patch_juju_home() as juju_home:
+            assert not os.path.isdir(juju_home), 'directory should not exist'
             # Ensure JUJU_HOME is included in the context when the Importer
             # instance is run.
             run = lambda: self.assertEqual(juju_home, os.getenv('JUJU_HOME'))
