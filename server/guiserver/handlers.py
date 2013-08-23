@@ -19,6 +19,7 @@
 from collections import deque
 import logging
 import os
+import time
 
 from tornado import (
     escape,
@@ -176,9 +177,26 @@ class IndexHandler(web.StaticFileHandler):
 class InfoHandler(web.RequestHandler):
     """Return information about the GUI server."""
 
+    def initialize(self, apiurl, apiversion, deployer, start_time):
+        """Initialize the handler."""
+        self.apiurl = apiurl
+        self.apiversion = apiversion
+        self.deployer = deployer
+        self.start_time = start_time
+
+    def get_info(self, settings):
+        return {
+            'apiurl': self.apiurl,
+            'apiversion': self.apiversion,
+            'debug': settings.get('debug', False),
+            'deployer': self.deployer.status(),
+            'uptime': int(time.time()) - self.start_time,
+            'version': get_version(),
+        }
+
     def get(self):
         """Handle GET requests."""
-        info = {'version': get_version()}
+        info = self.get_info(self.application.settings)
         self.write(escape.json_encode(info))
 
 

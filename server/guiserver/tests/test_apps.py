@@ -22,8 +22,11 @@ import mock
 
 from guiserver import (
     apps,
+    auth,
     handlers,
+    manage,
 )
+from guiserver.bundles import base
 
 
 class AppsTestMixin(object):
@@ -42,6 +45,18 @@ class AppsTestMixin(object):
             if spec.regex.pattern == pattern:
                 return spec
         return None
+
+    def assert_in_spec(self, spec, key, value=None):
+        """Ensure the given key-value pair is present in the specification.
+
+        Also return the value in the specification.
+        """
+        self.assertIsNotNone(spec)
+        self.assertIn(key, spec.kwargs)
+        obtained = spec.kwargs[key]
+        if value is not None:
+            self.assertEqual(value, obtained)
+        return obtained
 
     def test_debug_enabled(self):
         # Debug mode is enabled if options.debug is True.
@@ -67,21 +82,33 @@ class TestServer(AppsTestMixin, unittest.TestCase):
         with mock.patch('guiserver.apps.options', options):
             return apps.server()
 
+    def test_auth_backend(self):
+        # The authentication backend instance is correctly passed to the
+        # WebSocket handler.
+        app = self.get_app()
+        spec = self.get_url_spec(app, r'^/ws$')
+        auth_backend = self.assert_in_spec(spec, 'auth_backend')
+        expected = auth.get_backend(manage.DEFAULT_API_VERSION)
+        self.assertIsInstance(auth_backend, type(expected))
+
+    def test_deployer(self):
+        # The deployer instance is correctly passed to the WebSocket handler.
+        app = self.get_app()
+        spec = self.get_url_spec(app, r'^/ws$')
+        deployer = self.assert_in_spec(spec, 'deployer')
+        self.assertIsInstance(deployer, base.Deployer)
+
     def test_static_files(self):
         # The Juju GUI static files are correctly served.
         app = self.get_app()
         spec = self.get_url_spec(app, r'^/juju-ui/(.*)$')
-        self.assertIsNotNone(spec)
-        self.assertIn('path', spec.kwargs)
-        self.assertEqual('/my/guiroot/juju-ui', spec.kwargs['path'])
+        self.assert_in_spec(spec, 'path', value='/my/guiroot/juju-ui')
 
     def test_serving_gui_tests(self):
         # The server can be configured to serve GUI unit tests.
         app = self.get_app(testsroot='/my/tests/')
         spec = self.get_url_spec(app, r'^/test/(.*)$')
-        self.assertIsNotNone(spec)
-        self.assertIn('path', spec.kwargs)
-        self.assertEqual('/my/tests/', spec.kwargs['path'])
+        self.assert_in_spec(spec, 'path', value='/my/tests/')
 
     def test_not_serving_gui_tests(self):
         # The server can be configured to avoid serving GUI unit tests.

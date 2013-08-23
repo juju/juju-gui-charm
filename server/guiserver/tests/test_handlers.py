@@ -343,11 +343,28 @@ class TestIndexHandler(LogTrapTestCase, AsyncHTTPTestCase):
 class TestInfoHandler(LogTrapTestCase, AsyncHTTPTestCase):
 
     def get_app(self):
-        return web.Application([(r'^/info', handlers.InfoHandler)])
+        mock_deployer = mock.Mock()
+        mock_deployer.status.return_value = 'deployments status'
+        options = {
+            'apiurl': 'wss://api.example.com:17070',
+            'apiversion': 'clojure',
+            'deployer': mock_deployer,
+            'start_time': 10,
+        }
+        return web.Application(
+            [(r'^/info', handlers.InfoHandler, options)], debug=True)
 
+    @mock.patch('time.time', mock.Mock(return_value=52))
     def test_info(self):
         # The handler correctly returns information about the GUI server.
-        expected = {'version': get_version()}
+        expected = {
+            'apiurl': 'wss://api.example.com:17070',
+            'apiversion': 'clojure',
+            'debug': True,
+            'deployer': 'deployments status',
+            'uptime': 42,
+            'version': get_version(),
+        }
         response = self.fetch('/info')
         self.assertEqual(200, response.code)
         info = escape.json_decode(response.body)

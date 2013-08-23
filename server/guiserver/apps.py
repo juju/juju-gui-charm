@@ -17,6 +17,7 @@
 """Juju GUI server applications."""
 
 import os
+import time
 
 from tornado import web
 from tornado.options import options
@@ -25,6 +26,7 @@ from guiserver import (
     auth,
     handlers,
 )
+from guiserver.bundles.base import Deployer
 
 
 def server():
@@ -36,12 +38,22 @@ def server():
     # Set up static paths.
     guiroot = options.guiroot
     static_path = os.path.join(guiroot, 'juju-ui')
+    # Set up the bundle deployer.
+    deployer = Deployer(options.apiurl, options.apiversion)
     # Set up handlers.
     websocket_handler_options = {
         # The Juju API backend url.
         'apiurl': options.apiurl,
         # The backend to use for user authentication.
         'auth_backend': auth.get_backend(options.apiversion),
+        # The Juju deployer to use for importing bundles.
+        'deployer': deployer,
+    }
+    info_handler_options = {
+        'apiurl': options.apiurl,
+        'apiversion': options.apiversion,
+        'deployer': deployer,
+        'start_time': int(time.time()),
     }
     server_handlers = [
         # Handle WebSocket connections.
@@ -50,7 +62,7 @@ def server():
         (r'^/juju-ui/(.*)', web.StaticFileHandler, {'path': static_path}),
         (r'^/(favicon\.ico)$', web.StaticFileHandler, {'path': guiroot}),
         # Handle GUI server info.
-        (r'^/gui-server-info', handlers.InfoHandler),
+        (r'^/gui-server-info', handlers.InfoHandler, info_handler_options),
     ]
     if options.testsroot:
         params = {'path': options.testsroot, 'default_filename': 'index.html'}
