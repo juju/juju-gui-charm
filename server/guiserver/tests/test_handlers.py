@@ -43,6 +43,7 @@ from guiserver import (
     handlers,
     manage,
 )
+from guiserver.bundles import base
 from guiserver.tests import helpers
 
 
@@ -63,6 +64,8 @@ class WebSocketHandlerTestMixin(object):
         #   ws-echo-server -> ws-forwarding-client -> ws-server -> ws-client
         self.apiurl = self.get_wss_url('/echo')
         self.api_close_future = concurrent.Future()
+        self.deployer = base.Deployer(
+            self.apiurl, manage.DEFAULT_API_VERSION, io_loop=self.io_loop)
         echo_options = {
             'close_future': self.api_close_future,
             'io_loop': self.io_loop,
@@ -70,6 +73,7 @@ class WebSocketHandlerTestMixin(object):
         ws_options = {
             'apiurl': self.apiurl,
             'auth_backend': self.auth_backend,
+            'deployer': self.deployer,
             'io_loop': self.io_loop,
         }
         return web.Application([
@@ -103,7 +107,8 @@ class WebSocketHandlerTestMixin(object):
             apiurl = self.apiurl
         handler = self.make_handler(
             headers=headers, mock_protocol=mock_protocol)
-        yield handler.initialize(apiurl, self.auth_backend, self.io_loop)
+        yield handler.initialize(
+            apiurl, self.auth_backend, self.deployer, self.io_loop)
         raise gen.Return(handler)
 
 
@@ -302,6 +307,40 @@ class TestWebSocketHandlerAuthentication(
         self.send_login_response(True)
         self.assertFalse(self.handler.user.is_authenticated)
         self.assertFalse(self.handler.auth.in_progress())
+
+
+class TestWebSocketHandlerBundles(
+        WebSocketHandlerTestMixin, helpers.WSSTestMixin,
+        helpers.BundlesTestMixin, AsyncHTTPSTestCase):
+
+    patch_write_message = mock.patch('guiserver.handlers.wrap_write_message')
+
+    @gen_test
+    def test_bundle_import_process(self):
+        # The bundle import process is correctly started and completed.
+        with self.patch_write_message as mock_write_message:
+            handler = yield self.make_initialized_handler()
+        # Simulate the user is authenticated.
+        handler.user.is_authenticated = True
+        # Start a bundle import.
+        request = self.make_deployment_request('Import', encoded=True)
+        with self.patch_validate(), self.patch_import_bundle():
+            yield handler.on_message(request)
+        expected = self.make_deployment_response(response={'DeploymentId': 0})
+        mock_write_message().assert_called_once_with(expected)
+
+
+    @gen_test
+    def test_bundle_import_request_not_authenticated(self):
+        # The bundle deployment support is activated, but only for
+        # authenticated users.
+        client = yield self.make_client()
+        request = self.make_deployment_request('Import', encoded=True)
+        client.write_message(request)
+        expected = self.make_deployment_response(
+            error='unauthorized access: no user logged in')
+        response = yield client.read_message()
+        self.assertEqual(expected, json.loads(response))
 
 
 class TestIndexHandler(LogTrapTestCase, AsyncHTTPTestCase):

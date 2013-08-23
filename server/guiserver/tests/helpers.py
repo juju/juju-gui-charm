@@ -229,6 +229,30 @@ class BundlesTestMixin(object):
         }
         return json.dumps(data) if encoded else data
 
+    def make_deployment_response(
+            self, request_id=42, response=None, error=None, encoded=False):
+        """Create and return a deployment response message.
+
+        If encoded is set to True, the returned message will be JSON encoded.
+        """
+        if response is None:
+            response = {}
+        data = {'RequestId': request_id, 'Response': response}
+        if error is not None:
+            data['Error'] = error
+        return json.dumps(data) if encoded else data
+
+    def patch_validate(self, side_effect=None):
+        """Mock the blocking validate function."""
+        mock_validate = MultiProcessMock(side_effect=side_effect)
+        return mock.patch('guiserver.bundles.blocking.validate', mock_validate)
+
+    def patch_import_bundle(self, side_effect=None):
+        """Mock the blocking import_bundle function."""
+        mock_import_bundle = MultiProcessMock(side_effect=side_effect)
+        import_bundle_path = 'guiserver.bundles.blocking.import_bundle'
+        return mock.patch(import_bundle_path, mock_import_bundle)
+
 
 class WSSTestMixin(object):
     """Add some helper methods for testing secure WebSocket handlers."""

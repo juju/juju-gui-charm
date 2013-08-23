@@ -34,11 +34,13 @@ from guiserver.auth import (
     AuthMiddleware,
     User,
 )
+from guiserver.bundles.base import DeployMiddleware
 from guiserver.clients import websocket_connect
 from guiserver.utils import (
     get_headers,
     json_decode_dict,
     request_summary,
+    wrap_write_message,
 )
 
 
@@ -46,7 +48,8 @@ class WebSocketHandler(websocket.WebSocketHandler):
     """WebSocket handler supporting secure WebSockets.
 
     This handler acts as a proxy between the browser connection and the
-    Juju API server.
+    Juju API server. It also handles API authentication and requests for
+    bundles deployment (using the juju-deployer deployment format).
 
     Relevant attributes:
 
@@ -67,7 +70,7 @@ class WebSocketHandler(websocket.WebSocketHandler):
     """
 
     @gen.coroutine
-    def initialize(self, apiurl, auth_backend, io_loop=None):
+    def initialize(self, apiurl, auth_backend, deployer, io_loop=None):
         """Initialize the WebSocket server.
 
         Create a new WebSocket client and connect it to the Juju API.
@@ -85,6 +88,9 @@ class WebSocketHandler(websocket.WebSocketHandler):
         # Set up the authentication infrastructure.
         self.user = User()
         self.auth = AuthMiddleware(self.user, auth_backend)
+        # Set up the bundle deployment infrastructure.
+        self.deployment = DeployMiddleware(
+            self.user, deployer, wrap_write_message(self))
         # Juju requires the Origin header to be included in the WebSocket
         # client handshake request. Propagate the client origin if present;
         # use the Juju API server as origin otherwise.
@@ -112,13 +118,20 @@ class WebSocketHandler(websocket.WebSocketHandler):
     def on_message(self, message):
         """Hook called when a new message is received from the browser.
 
-        The message is propagated to the Juju API server.
+        If the message is a deployment request, start the deployment process.
+        Otherwise the message is propagated to the Juju API server.
         Messages sent before the client connection to the Juju API server is
         established are queued for later delivery.
         """
         data = json_decode_dict(message)
-        if (data is not None) and (not self.user.is_authenticated):
-            self.auth.process_request(data)
+        if data is not None:
+            # Handle deployment requests.
+            if self.deployment.requested(data):
+                return self.deployment.process_request(data)
+            # Handle authentication requests.
+            if not self.user.is_authenticated:
+                self.auth.process_request(data)
+        # Propagate messages to the Juju API server.
         if self.juju_connected:
             logging.debug(self._summary + 'client -> juju: {}'.format(message))
             return self.juju_connection.write_message(message)

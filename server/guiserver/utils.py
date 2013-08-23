@@ -87,6 +87,10 @@ def request_summary(request):
     return '{} {} ({})'.format(request.method, request.uri, request.remote_ip)
 
 
+def wrap_write_message(handler):
+    return handler.write_message
+
+
 def ws_to_http(url):
     """Return the HTTP(S) equivalent of the provided ws/wss URL."""
     parts = urlparse.urlsplit(url)
