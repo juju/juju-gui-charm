@@ -197,7 +197,7 @@ class BuiltinServerMixin(ServerInstallMixinBase):
             config['staging'], config['serve-tests'])
         utils.start_builtin_server(
             build_dir, config['ssl-cert-path'], config['serve-tests'],
-            not config['secure'])
+            config['sandbox'], not config['secure'])
 
     def stop(self, backend):
         utils.stop_builtin_server()

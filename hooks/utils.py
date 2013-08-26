@@ -545,33 +545,40 @@ def install_builtin_server():
 
 
 def write_builtin_server_startup(
-        gui_root, ssl_cert_path, serve_tests=False, insecure=False):
+        gui_root, ssl_cert_path, serve_tests=False, sandbox=False,
+        insecure=False):
     """Generate the builtin server Upstart file."""
     log('Generating the builtin server Upstart file.')
-    url_prefix = 'ws' if insecure else 'wss'
-    is_legacy_juju = legacy_juju()
-    api_address = get_api_address()
-    if is_legacy_juju:
-        api_url = '{}://127.0.0.1:{}'.format(url_prefix, API_PORT)
-    else:
-        api_url = '{}://{}'.format(url_prefix, api_address)
-    tests_root = os.path.join(JUJU_GUI_DIR, 'test', '') if serve_tests else ''
     context = {
         'gui_root': gui_root,
-        'api_url': api_url,
-        'api_version': 'python' if is_legacy_juju else 'go',
-        'ssl_cert_path': ssl_cert_path,
-        'tests_root': tests_root,
         'insecure': insecure,
+        'sandbox': sandbox,
+        'ssl_cert_path': ssl_cert_path,
     }
+    if not sandbox:
+        url_prefix = 'ws' if insecure else 'wss'
+        is_legacy_juju = legacy_juju()
+        api_address = get_api_address()
+        if is_legacy_juju:
+            api_url = '{}://127.0.0.1:{}'.format(url_prefix, API_PORT)
+        else:
+            api_url = '{}://{}'.format(url_prefix, api_address)
+        context.update({
+            'api_url': api_url,
+            'api_version': 'python' if is_legacy_juju else 'go',
+        })
+    if serve_tests:
+        context['tests_root'] = os.path.join(JUJU_GUI_DIR, 'test', '')
     render_to_file(
         'guiserver.conf.template', context, GUISERVER_INIT_PATH)
 
 
-def start_builtin_server(build_dir, ssl_cert_path, serve_tests, insecure):
+def start_builtin_server(
+        build_dir, ssl_cert_path, serve_tests, sandbox, insecure):
     """Start the builtin server."""
     write_builtin_server_startup(
-        build_dir, ssl_cert_path, serve_tests, insecure)
+        build_dir, ssl_cert_path, serve_tests=serve_tests, sandbox=sandbox,
+        insecure=insecure)
     log('Starting the builtin server.')
     with su('root'):
         service_control(BUILTIN_SERVER, RESTART)
