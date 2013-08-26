@@ -546,10 +546,11 @@ def install_builtin_server():
 
 def write_builtin_server_startup(
         gui_root, ssl_cert_path, serve_tests=False, sandbox=False,
-        insecure=False):
+        builtin_server_logging='info', insecure=False):
     """Generate the builtin server Upstart file."""
     log('Generating the builtin server Upstart file.')
     context = {
+        'builtin_server_logging': builtin_server_logging,
         'gui_root': gui_root,
         'insecure': insecure,
         'sandbox': sandbox,
@@ -575,11 +576,12 @@ def write_builtin_server_startup(
 
 
 def start_builtin_server(
-        build_dir, ssl_cert_path, serve_tests, sandbox, insecure):
+        build_dir, ssl_cert_path, serve_tests, sandbox, builtin_server_logging,
+        insecure):
     """Start the builtin server."""
     write_builtin_server_startup(
         build_dir, ssl_cert_path, serve_tests=serve_tests, sandbox=sandbox,
-        insecure=insecure)
+        builtin_server_logging=builtin_server_logging, insecure=insecure)
     log('Starting the builtin server.')
     with su('root'):
         service_control(BUILTIN_SERVER, RESTART)
