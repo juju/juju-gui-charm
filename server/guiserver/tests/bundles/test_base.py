@@ -89,7 +89,7 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         # An error message is returned the API version is not supported.
         deployer = self.make_deployer(apiversion='not-supported')
         result = yield deployer.validate(self.user, 'bundle', self.bundle)
-        self.assertEqual('unsupported API version', result)
+        self.assertEqual('unsupported API version: not-supported', result)
 
     def test_import_bundle_scheduling(self):
         # A deployment id is returned if the bundle import process is
@@ -97,7 +97,7 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         deployer = self.make_deployer()
         with self.patch_import_bundle():
             deployment_id = deployer.import_bundle(
-                self.user, 'bundle', self.bundle, callback=self.stop)
+                self.user, 'bundle', self.bundle, test_callback=self.stop)
         self.assertIsInstance(deployment_id, int)
         # Wait for the deployment to be completed.
         self.wait()
@@ -107,7 +107,7 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         deployer = self.make_deployer()
         with self.patch_import_bundle() as mock_import_bundle:
             deployer.import_bundle(
-                self.user, 'bundle', self.bundle, callback=self.stop)
+                self.user, 'bundle', self.bundle, test_callback=self.stop)
         # Wait for the deployment to be completed.
         self.wait()
         mock_import_bundle.assert_called_once_with(
@@ -120,7 +120,7 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         deployer = self.make_deployer()
         with self.patch_import_bundle():
             deployment_id = deployer.import_bundle(
-                self.user, 'bundle', self.bundle, callback=self.stop)
+                self.user, 'bundle', self.bundle, test_callback=self.stop)
         watcher_id = deployer.watch(deployment_id)
         self.assertIsInstance(watcher_id, int)
         # Wait for the deployment to be completed.
@@ -137,7 +137,7 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         deployer = self.make_deployer()
         with self.patch_import_bundle():
             deployment_id = deployer.import_bundle(
-                self.user, 'bundle', self.bundle, callback=self.stop)
+                self.user, 'bundle', self.bundle, test_callback=self.stop)
         watcher_id = deployer.watch(deployment_id)
         # A first change is received notifying that the deployment is started.
         changes = yield deployer.next(watcher_id)
@@ -160,7 +160,7 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
             deployment1 = deployer.import_bundle(
                 self.user, 'bundle', self.bundle)
             deployment2 = deployer.import_bundle(
-                self.user, 'bundle', self.bundle, callback=self.stop)
+                self.user, 'bundle', self.bundle, test_callback=self.stop)
         watcher1 = deployer.watch(deployment1)
         watcher2 = deployer.watch(deployment2)
         # The first deployment is started.
@@ -185,7 +185,7 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         deployer = self.make_deployer()
         with self.patch_import_bundle(side_effect=RuntimeError('bad wolf')):
             deployment_id = deployer.import_bundle(
-                self.user, 'bundle', self.bundle, callback=self.stop)
+                self.user, 'bundle', self.bundle, test_callback=self.stop)
         watcher_id = deployer.watch(deployment_id)
         # We expect two changes: the second one should include the error.
         yield deployer.next(watcher_id)
@@ -214,7 +214,7 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
             deployment1 = deployer.import_bundle(
                 self.user, 'bundle', self.bundle)
             deployment2 = deployer.import_bundle(
-                self.user, 'bundle', self.bundle, callback=self.stop)
+                self.user, 'bundle', self.bundle, test_callback=self.stop)
         # Wait for the deployment to be completed.
         self.wait()
         # At this point we expect two completed deployments.

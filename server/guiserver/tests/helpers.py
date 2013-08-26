@@ -187,10 +187,8 @@ class BundlesTestMixin(object):
         all_contents = yaml.load(self.bundle)
         return all_contents.items()[0]
 
-    def make_deployer(self, apiversion=None):
+    def make_deployer(self, apiversion=base.SUPPORTED_API_VERSIONS[0]):
         """Create and return a Deployer instance."""
-        if apiversion is None:
-            apiversion = base.SUPPORTED_API_VERSIONS[0]
         return base.Deployer(self.apiurl, apiversion)
 
     def make_view_request(self, params=None, is_authenticated=True):
@@ -316,7 +314,7 @@ class MultiProcessMock(object):
         Each pair in the list represents the arguments of a single call.
         """
         self._consume_queue()
-        return self._call_args
+        return list(self._call_args)
 
     @property
     def call_count(self):
