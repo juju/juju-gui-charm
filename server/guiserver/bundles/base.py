@@ -18,7 +18,7 @@
 
 This module defines the base pieces of the bundle support infrastructure,
 including the Deployer object, responsible of starting/scheduling deployments,
-and the DeployMiddleware, a glue code that connects the WebSocket handler, the
+and the DeployMiddleware, glue code that connects the WebSocket handler, the
 bundle views and the Deployer itself. See the bundles package docstring for
 a detailed explanation of how these objects are used.
 """
@@ -94,15 +94,16 @@ class Deployer(object):
         Return a Future whose result is a string representing an error or None
         if no error occurred.
         """
-        if self._apiversion not in SUPPORTED_API_VERSIONS:
-            raise gen.Return('unsupported API version')
+        apiversion = self._apiversion
+        if apiversion not in SUPPORTED_API_VERSIONS:
+            raise gen.Return('unsupported API version: {}'.format(apiversion))
         try:
             yield self._validate_executor.submit(
                 blocking.validate, self._apiurl, user.password, bundle)
         except Exception as err:
             raise gen.Return(str(err))
 
-    def import_bundle(self, user, name, bundle, callback=None):
+    def import_bundle(self, user, name, bundle, test_callback=None):
         """Schedule a deployment bundle import process.
 
         The deployment is executed in a separate process.
@@ -112,11 +113,11 @@ class Deployer(object):
           - name: then name of the bundle to be imported;
           - bundle: a YAML decoded object representing the bundle contents.
 
-        It is possible to also provide an optional callback that will be called
-        when the deployment is completed. Note that this functionality is
-        present only for tests: clients should not consider the callback
-        argument part of the API, and should instead use the watch/next methods
-        to observe the progress of a deployment (see below).
+        It is possible to also provide an optional test_callback that will be
+        called when the deployment is completed. Note that this functionality
+        is present only for tests: clients should not consider the
+        test_callback argument part of the API, and should instead use the
+        watch/next methods to observe the progress of a deployment (see below).
 
         Return the deployment identifier assigned to this deployment process.
         """
@@ -132,8 +133,8 @@ class Deployer(object):
             blocking.import_bundle, self._apiurl, user.password, name, bundle)
         add_future(self._io_loop, future, self._import_callback, deployment_id)
         # If a customized callback is provided, schedule it as well.
-        if callback is not None:
-            add_future(self._io_loop, future, callback)
+        if test_callback is not None:
+            add_future(self._io_loop, future, test_callback)
         return deployment_id
 
     def _import_callback(self, deployment_id, future):
