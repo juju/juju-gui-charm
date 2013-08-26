@@ -17,6 +17,9 @@
 """Tests for the bundles support blocking functions and objects."""
 
 from contextlib import contextmanager
+import os
+import shutil
+import tempfile
 import unittest
 
 import mock
@@ -92,7 +95,7 @@ class DeployerFunctionsTestMixin(helpers.BundlesTestMixin):
         mock_env_instance.close.assert_called_once_with()
 
     @contextmanager
-    def overlapping_services(self, mock_environment):
+    def assert_overlapping_services(self, mock_environment):
         """Ensure a ValueError is raised in the context manager block.
 
         The given mock environment object is set up so that its status
@@ -123,18 +126,28 @@ class TestValidate(DeployerFunctionsTestMixin, unittest.TestCase):
     def test_overlapping_services(self, mock_environment):
         # The validation fails if the bundle includes a service name already
         # present in the Juju environment.
-        with self.overlapping_services(mock_environment):
+        with self.assert_overlapping_services(mock_environment):
             blocking.validate(self.apiurl, self.password, self.bundle)
 
 
 @mock.patch('guiserver.bundles.blocking._Environment')
 class TestImportBundle(DeployerFunctionsTestMixin, unittest.TestCase):
 
+    @contextmanager
+    def patch_juju_home(self):
+        """Patch the value used by the bundle importer as Juju home."""
+        base_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, base_dir)
+        juju_home = os.path.join(base_dir, 'juju-home')
+        with mock.patch('guiserver.bundles.blocking.JUJU_HOME', juju_home):
+            yield juju_home
+
     @mock.patch('guiserver.bundles.blocking.Importer')
     def test_importing_bundle(self, mock_importer, mock_environment):
         # The juju-deployer importer is correctly set up and run.
-        blocking.import_bundle(
-            self.apiurl, self.password, self.name, self.bundle)
+        with self.patch_juju_home():
+            blocking.import_bundle(
+                self.apiurl, self.password, self.name, self.bundle)
         # The environment is correctly instantiated and used.
         self.check_environment_life(mock_environment)
         # The importer is correctly instantiated.
@@ -156,6 +169,21 @@ class TestImportBundle(DeployerFunctionsTestMixin, unittest.TestCase):
     def test_overlapping_services(self, mock_environment):
         # The import fails if the bundle includes a service name already
         # present in the Juju environment.
-        with self.overlapping_services(mock_environment):
+        with self.assert_overlapping_services(mock_environment):
+            with self.patch_juju_home():
+                blocking.import_bundle(
+                    self.apiurl, self.password, self.name, self.bundle)
+
+    @mock.patch('guiserver.bundles.blocking.Importer')
+    def test_juju_home(self, mock_importer, mock_environment):
+        # A customized Juju home is created and used during the import process.
+        with self.patch_juju_home() as juju_home:
+            assert not os.path.isdir(juju_home), 'directory should not exist'
+            # Ensure JUJU_HOME is included in the context when the Importer
+            # instance is run.
+            run = lambda: self.assertEqual(juju_home, os.getenv('JUJU_HOME'))
+            mock_importer().run = run
             blocking.import_bundle(
                 self.apiurl, self.password, self.name, self.bundle)
+        # The JUJU_HOME directory has been created.
+        self.assertTrue(os.path.isdir(juju_home))
