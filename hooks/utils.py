@@ -553,6 +553,7 @@ def write_builtin_server_startup(
         'gui_root': gui_root,
         'insecure': insecure,
         'sandbox': sandbox,
+        'serve_tests': serve_tests,
         'ssl_cert_path': ssl_cert_path,
     }
     if not sandbox:

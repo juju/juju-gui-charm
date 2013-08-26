@@ -12,7 +12,7 @@ exec /usr/bin/python /usr/local/bin/runserver.py \
     {{else}}
         --apiurl="{{api_url}}" --apiversion="{{api_version}}" \
     {{endif}}
-    {{if tests_root}}
+    {{if serve_tests}}
         --testsroot="{{tests_root}}" \
     {{endif}}
     {{if insecure}}
