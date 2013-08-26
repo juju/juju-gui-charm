@@ -76,7 +76,11 @@ class TestServer(AppsTestMixin, unittest.TestCase):
 
         Use the options provided in kwargs.
         """
-        options_dict = {'apiversion': 'go', 'guiroot': '/my/guiroot/'}
+        options_dict = {
+            'apiversion': 'go',
+            'guiroot': '/my/guiroot/',
+            'sandbox': False,
+        }
         options_dict.update(kwargs)
         options = mock.Mock(**options_dict)
         with mock.patch('guiserver.apps.options', options):
@@ -97,6 +101,12 @@ class TestServer(AppsTestMixin, unittest.TestCase):
         spec = self.get_url_spec(app, r'^/ws$')
         deployer = self.assert_in_spec(spec, 'deployer')
         self.assertIsInstance(deployer, base.Deployer)
+
+    def test_sandbox(self):
+        # The WebScoket handler is excluded if sandbox mode is enabled.
+        app = self.get_app(sandbox=True)
+        spec = self.get_url_spec(app, r'^/ws$')
+        self.assertIsNone(spec)
 
     def test_static_files(self):
         # The Juju GUI static files are correctly served.

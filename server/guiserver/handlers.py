@@ -190,11 +190,12 @@ class IndexHandler(web.StaticFileHandler):
 class InfoHandler(web.RequestHandler):
     """Return information about the GUI server."""
 
-    def initialize(self, apiurl, apiversion, deployer, start_time):
+    def initialize(self, apiurl, apiversion, deployer, sandbox, start_time):
         """Initialize the handler."""
         self.apiurl = apiurl
         self.apiversion = apiversion
         self.deployer = deployer
+        self.sandbox = sandbox
         self.start_time = start_time
 
     def get_info(self, settings):
@@ -203,6 +204,7 @@ class InfoHandler(web.RequestHandler):
             'apiversion': self.apiversion,
             'debug': settings.get('debug', False),
             'deployer': self.deployer.status(),
+            'sandbox': self.sandbox,
             'uptime': int(time.time()) - self.start_time,
             'version': get_version(),
         }
