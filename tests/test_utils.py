@@ -734,7 +734,7 @@ class TestStartImprovAgentGui(unittest.TestCase):
         guiserver_conf = self.files['guiserver.conf']
         self.assertIn('description "GUIServer"', guiserver_conf)
         self.assertIn('--logging="info"', guiserver_conf)
-        self.assertIn('--apiurl="ws://127.0.0.1:8080"', guiserver_conf)
+        self.assertIn('--apiurl="wss://127.0.0.1:8080"', guiserver_conf)
         self.assertIn('--apiversion="python"', guiserver_conf)
         self.assertIn(
             '--testsroot="{}/test/"'.format(JUJU_GUI_DIR), guiserver_conf)

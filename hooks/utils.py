@@ -558,13 +558,11 @@ def write_builtin_server_startup(
         'ssl_cert_path': ssl_cert_path,
     }
     if not sandbox:
-        url_prefix = 'ws' if insecure else 'wss'
         is_legacy_juju = legacy_juju()
-        api_address = get_api_address()
         if is_legacy_juju:
-            api_url = '{}://127.0.0.1:{}'.format(url_prefix, API_PORT)
+            api_url = 'wss://127.0.0.1:{}'.format(API_PORT)
         else:
-            api_url = '{}://{}'.format(url_prefix, api_address)
+            api_url = 'wss://{}'.format(get_api_address())
         context.update({
             'api_url': api_url,
             'api_version': 'python' if is_legacy_juju else 'go',
