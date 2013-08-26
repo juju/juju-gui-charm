@@ -65,7 +65,7 @@ def server():
         'apiurl': options.apiurl,
         'apiversion': options.apiversion,
         'deployer': deployer,
-        'sandbox': options.sanbox,
+        'sandbox': options.sandbox,
         'start_time': int(time.time()),
     }
     server_handlers.extend([
