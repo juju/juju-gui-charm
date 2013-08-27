@@ -22,6 +22,7 @@ import functools
 import logging
 import os
 import urlparse
+import weakref
 
 from tornado import escape
 
@@ -85,6 +86,29 @@ def mkdir(path):
 def request_summary(request):
     """Return a string representing a summary for the given request."""
     return '{} {} ({})'.format(request.method, request.uri, request.remote_ip)
+
+
+def wrap_write_message(handler):
+    """Wrap the write_message() method of the given handler.
+
+    The resulting function uses a weak reference to the handler, in order to
+    avoid calling the wrapped method if the handler (a WebSocket connection)
+    has been closed or garbage collected.
+
+    If the handler is still there, and the connection is still established,
+    JSON encode the received data before propagating it.
+    """
+    handler_ref = weakref.ref(handler)
+
+    def wrapped(data):
+        handler = handler_ref()
+        if (handler is None) or (not handler.connected):
+            return logging.warning(
+                'discarding message (closed connection): {!r}'.format(data))
+        message = escape.json_encode(data)
+        handler.write_message(message)
+
+    return wrapped
 
 
 def ws_to_http(url):

@@ -43,6 +43,7 @@ from guiserver import (
     handlers,
     manage,
 )
+from guiserver.bundles import base
 from guiserver.tests import helpers
 
 
@@ -63,6 +64,8 @@ class WebSocketHandlerTestMixin(object):
         #   ws-echo-server -> ws-forwarding-client -> ws-server -> ws-client
         self.apiurl = self.get_wss_url('/echo')
         self.api_close_future = concurrent.Future()
+        self.deployer = base.Deployer(
+            self.apiurl, manage.DEFAULT_API_VERSION, io_loop=self.io_loop)
         echo_options = {
             'close_future': self.api_close_future,
             'io_loop': self.io_loop,
@@ -70,6 +73,7 @@ class WebSocketHandlerTestMixin(object):
         ws_options = {
             'apiurl': self.apiurl,
             'auth_backend': self.auth_backend,
+            'deployer': self.deployer,
             'io_loop': self.io_loop,
         }
         return web.Application([
@@ -103,7 +107,8 @@ class WebSocketHandlerTestMixin(object):
             apiurl = self.apiurl
         handler = self.make_handler(
             headers=headers, mock_protocol=mock_protocol)
-        yield handler.initialize(apiurl, self.auth_backend, self.io_loop)
+        yield handler.initialize(
+            apiurl, self.auth_backend, self.deployer, self.io_loop)
         raise gen.Return(handler)
 
 
@@ -304,6 +309,48 @@ class TestWebSocketHandlerAuthentication(
         self.assertFalse(self.handler.auth.in_progress())
 
 
+class TestWebSocketHandlerBundles(
+        WebSocketHandlerTestMixin, helpers.WSSTestMixin,
+        helpers.BundlesTestMixin, LogTrapTestCase, AsyncHTTPSTestCase):
+
+    @gen_test
+    def test_bundle_import_process(self):
+        # The bundle import process is correctly started and completed.
+        write_message_path = 'guiserver.handlers.wrap_write_message'
+        with mock.patch(write_message_path) as mock_write_message:
+            handler = yield self.make_initialized_handler()
+        # Simulate the user is authenticated.
+        handler.user.is_authenticated = True
+        # Start a bundle import.
+        request = self.make_deployment_request('Import', encoded=True)
+        with self.patch_validate(), self.patch_import_bundle():
+            yield handler.on_message(request)
+        expected = self.make_deployment_response(response={'DeploymentId': 0})
+        mock_write_message().assert_called_once_with(expected)
+        # Start observing the deployment progress.
+        request = self.make_deployment_request('Watch', encoded=True)
+        yield handler.on_message(request)
+        expected = self.make_deployment_response(response={'WatcherId': 0})
+        mock_write_message().assert_called_with(expected)
+        # Get the two next changes: in the first one the deployment has been
+        # started, in the second one it is completed. This way the test runner
+        # can safely stop the IO loop (no remaining Future callbacks).
+        request = self.make_deployment_request('Next', encoded=True)
+        yield handler.on_message(request)
+        yield handler.on_message(request)
+
+    @gen_test
+    def test_not_authenticated(self):
+        # The bundle deployment support is only activated for logged in users.
+        client = yield self.make_client()
+        request = self.make_deployment_request('Import', encoded=True)
+        client.write_message(request)
+        expected = self.make_deployment_response(
+            error='unauthorized access: no user logged in')
+        response = yield client.read_message()
+        self.assertEqual(expected, json.loads(response))
+
+
 class TestIndexHandler(LogTrapTestCase, AsyncHTTPTestCase):
 
     def setUp(self):
@@ -343,11 +390,27 @@ class TestIndexHandler(LogTrapTestCase, AsyncHTTPTestCase):
 class TestInfoHandler(LogTrapTestCase, AsyncHTTPTestCase):
 
     def get_app(self):
-        return web.Application([(r'^/info', handlers.InfoHandler)])
+        mock_deployer = mock.Mock()
+        mock_deployer.status.return_value = 'deployments status'
+        options = {
+            'apiurl': 'wss://api.example.com:17070',
+            'apiversion': 'clojure',
+            'deployer': mock_deployer,
+            'start_time': 10,
+        }
+        return web.Application([(r'^/info', handlers.InfoHandler, options)])
 
+    @mock.patch('time.time', mock.Mock(return_value=52))
     def test_info(self):
         # The handler correctly returns information about the GUI server.
-        expected = {'version': get_version()}
+        expected = {
+            'apiurl': 'wss://api.example.com:17070',
+            'apiversion': 'clojure',
+            'debug': False,
+            'deployer': 'deployments status',
+            'uptime': 42,
+            'version': get_version(),
+        }
         response = self.fetch('/info')
         self.assertEqual(200, response.code)
         info = escape.json_decode(response.body)

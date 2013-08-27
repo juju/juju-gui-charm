@@ -170,6 +170,46 @@ class TestRequestSummary(unittest.TestCase):
         self.assertEqual('GET /path (127.0.0.1)', summary)
 
 
+class TestWrapWriteMessage(unittest.TestCase):
+
+    expected_log = "discarding message \(closed connection\): 'hello'"
+
+    def setUp(self):
+        self.messages = []
+        self.handler = type(
+            'Handler', (),
+            {'connected': True, 'write_message': self.messages.append}
+        )()
+        self.wrapped = utils.wrap_write_message(self.handler)
+
+    def test_propagated(self):
+        # The JSON encoded version of the message is correctly propagated.
+        self.wrapped({'foo': 'bar'})
+        self.assertEqual(json.dumps({'foo': 'bar'}), self.messages[0])
+
+    def test_multiple_messages(self):
+        # Multiple messages are correctly propagated.
+        self.wrapped(1)
+        self.wrapped(2)
+        self.wrapped(3)
+        self.assertEqual(['1', '2', '3'], self.messages)
+
+    def test_connection_closed(self):
+        # If the handler connection is closed, a warning is logged and the
+        # wrapped method is not called.
+        self.handler.connected = False
+        with ExpectLog('', self.expected_log, required=True):
+            self.wrapped('hello')
+        self.assertEqual([], self.messages)
+
+    def test_handler_deleted(self):
+        # A warning is logged if the referred handler has been deleted.
+        del self.handler
+        with ExpectLog('', self.expected_log, required=True):
+            self.wrapped('hello')
+        self.assertEqual([], self.messages)
+
+
 class TestWsToHttp(unittest.TestCase):
 
     def test_websocket(self):

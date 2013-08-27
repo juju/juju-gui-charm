@@ -227,6 +227,19 @@ class BundlesTestMixin(object):
         }
         return json.dumps(data) if encoded else data
 
+    def make_deployment_response(
+            self, request_id=42, response=None, error=None, encoded=False):
+        """Create and return a deployment response message.
+
+        If encoded is set to True, the returned message will be JSON encoded.
+        """
+        if response is None:
+            response = {}
+        data = {'RequestId': request_id, 'Response': response}
+        if error is not None:
+            data['Error'] = error
+        return json.dumps(data) if encoded else data
+
     def patch_validate(self, side_effect=None):
         """Mock the blocking validate function."""
         mock_validate = MultiProcessMock(side_effect=side_effect)
