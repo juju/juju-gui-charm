@@ -23,10 +23,11 @@ First, you need a configured Juju environment: see the Juju docs about
 do not yet have an environment defined, the Jitsu command "setup-environment"
 is an easy way to get started.
 
-You'll also need some dependencies and developer basics.
+You'll also need some system dependencies and developer basics.
 
-    sudo apt-get install build-essential bzr libapt-pkg-dev python-pip \
-        python-virtualenv xvfb
+    make sysdeps
+
+The command above will run as root and install the required deb packages.
 
 Next, you need the bzr branch.  We work from
 [lp:~juju-gui/charms/precise/juju-gui/trunk](https://code.launchpad.net/~juju-gui/charms/precise/juju-gui/trunk).
