@@ -108,11 +108,17 @@ def setup():
         help='The path where the SSL certificates are stored.')
     define(
         'insecure', type=bool, default=False,
-        help='Set to True to serve the GUI over an insecure HTTP connection  '
+        help='Set to True to serve the GUI over an insecure HTTP connection. '
              'Do not set unless you understand and accept the risks.')
+    define(
+        'sandbox', type=bool, default=False,
+        help='Set to True if the GUI is running in sandbox mode, i.e. using '
+             'an in-memory backend. When this is set to True, the GUI server '
+             'does not listen to incoming WebSocket connections, and '
+             'therefore the --apiurl and --apiversion options are ignored.')
     # In Tornado, parsing the options also sets up the default logger.
     parse_command_line()
-    _validate_required('guiroot', 'apiurl')
+    _validate_required('guiroot')
     _validate_choices('apiversion', ('go', 'python'))
     _add_debug(logging.getLogger())
 

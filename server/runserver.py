@@ -23,8 +23,11 @@ Arguments example:
     --sslpath="/etc/ssl/juju-gui"
     --tests_root="/var/lib/juju/agents/unit-juju-gui-0/charm/juju-gui/test/"
     --insecure
+    --sandbox
+    --logging=debug|info|warning|error
 
 The --sslpath option is ignored if --insecure is set.
+The --apiurl and --apiversion options are ignored if --sandbox is set.
 """
 
 from guiserver import manage

@@ -733,15 +733,32 @@ class TestStartImprovAgentGui(unittest.TestCase):
             JUJU_GUI_DIR, self.ssl_cert_path, serve_tests=True, insecure=True)
         guiserver_conf = self.files['guiserver.conf']
         self.assertIn('description "GUIServer"', guiserver_conf)
-        self.assertIn('--apiurl="ws://127.0.0.1:8080"', guiserver_conf)
+        self.assertIn('--logging="info"', guiserver_conf)
+        self.assertIn('--apiurl="wss://127.0.0.1:8080"', guiserver_conf)
         self.assertIn('--apiversion="python"', guiserver_conf)
         self.assertIn(
             '--testsroot="{}/test/"'.format(JUJU_GUI_DIR), guiserver_conf)
         self.assertIn('--insecure', guiserver_conf)
+        self.assertNotIn('--sandbox', guiserver_conf)
+
+    def test_write_builtin_server_startup_sandbox_and_logging(self):
+        # The upstart configuration file for the GUI server is correctly
+        # generated when the GUI is in sandbox mode and when a customized log
+        # level is specified.
+        write_builtin_server_startup(
+            JUJU_GUI_DIR, self.ssl_cert_path, serve_tests=True, sandbox=True,
+            builtin_server_logging='debug')
+        guiserver_conf = self.files['guiserver.conf']
+        self.assertIn('description "GUIServer"', guiserver_conf)
+        self.assertIn('--logging="debug"', guiserver_conf)
+        self.assertIn('--sandbox', guiserver_conf)
+        self.assertNotIn('--apiurl', guiserver_conf)
+        self.assertNotIn('--apiversion', guiserver_conf)
 
     def test_start_builtin_server(self):
         start_builtin_server(
-            JUJU_GUI_DIR, self.ssl_cert_path, False, insecure=False)
+            JUJU_GUI_DIR, self.ssl_cert_path, serve_tests=False, sandbox=False,
+            builtin_server_logging='info', insecure=False)
         self.assertEqual(self.svc_ctl_call_count, 1)
         self.assertEqual(self.service_names, ['guiserver'])
         self.assertEqual(self.actions, [charmhelpers.RESTART])

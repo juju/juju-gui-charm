@@ -41,39 +41,42 @@ def server():
     # Set up the bundle deployer.
     deployer = Deployer(options.apiurl, options.apiversion)
     # Set up handlers.
-    websocket_handler_options = {
-        # The Juju API backend url.
-        'apiurl': options.apiurl,
-        # The backend to use for user authentication.
-        'auth_backend': auth.get_backend(options.apiversion),
-        # The Juju deployer to use for importing bundles.
-        'deployer': deployer,
-    }
-    info_handler_options = {
-        'apiurl': options.apiurl,
-        'apiversion': options.apiversion,
-        'deployer': deployer,
-        'start_time': int(time.time()),
-    }
-    server_handlers = [
-        # Handle WebSocket connections.
-        (r'^/ws$', handlers.WebSocketHandler, websocket_handler_options),
-        # Handle static files.
-        (r'^/juju-ui/(.*)', web.StaticFileHandler, {'path': static_path}),
-        (r'^/(favicon\.ico)$', web.StaticFileHandler, {'path': guiroot}),
-        # Handle GUI server info.
-        (r'^/gui-server-info', handlers.InfoHandler, info_handler_options),
-    ]
+    server_handlers = []
+    if not options.sandbox:
+        websocket_handler_options = {
+            # The Juju API backend url.
+            'apiurl': options.apiurl,
+            # The backend to use for user authentication.
+            'auth_backend': auth.get_backend(options.apiversion),
+            # The Juju deployer to use for importing bundles.
+            'deployer': deployer,
+        }
+        server_handlers.append(
+            # Handle WebSocket connections.
+            (r'^/ws$', handlers.WebSocketHandler, websocket_handler_options),
+        )
     if options.testsroot:
         params = {'path': options.testsroot, 'default_filename': 'index.html'}
         server_handlers.append(
             # Serve the Juju GUI tests.
             (r'^/test/(.*)', web.StaticFileHandler, params),
         )
-    server_handlers.append(
+    info_handler_options = {
+        'apiurl': options.apiurl,
+        'apiversion': options.apiversion,
+        'deployer': deployer,
+        'sandbox': options.sandbox,
+        'start_time': int(time.time()),
+    }
+    server_handlers.extend([
+        # Handle static files.
+        (r'^/juju-ui/(.*)', web.StaticFileHandler, {'path': static_path}),
+        (r'^/(favicon\.ico)$', web.StaticFileHandler, {'path': guiroot}),
+        # Handle GUI server info.
+        (r'^/gui-server-info', handlers.InfoHandler, info_handler_options),
         # Any other path is served by index.html.
         (r'^/(.*)', handlers.IndexHandler, {'path': guiroot}),
-    )
+    ])
     return web.Application(server_handlers, debug=options.debug)
 
 

@@ -396,6 +396,7 @@ class TestInfoHandler(LogTrapTestCase, AsyncHTTPTestCase):
             'apiurl': 'wss://api.example.com:17070',
             'apiversion': 'clojure',
             'deployer': mock_deployer,
+            'sandbox': False,
             'start_time': 10,
         }
         return web.Application([(r'^/info', handlers.InfoHandler, options)])
@@ -408,6 +409,7 @@ class TestInfoHandler(LogTrapTestCase, AsyncHTTPTestCase):
             'apiversion': 'clojure',
             'debug': False,
             'deployer': 'deployments status',
+            'sandbox': False,
             'uptime': 42,
             'version': get_version(),
         }

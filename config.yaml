@@ -173,6 +173,12 @@ options:
       the only server in the future.
     type: boolean
     default: false
+  builtin-server-logging:
+    description: |
+      Set the GUI server log level. Possible values are debug, info, warning
+      and error. The log file is placed in /var/log/upstart/guiserver.log.
+    type: string
+    default: info
   nagios_context:
     description: |
       Used by the nrpe-external-master subordinate charm.
