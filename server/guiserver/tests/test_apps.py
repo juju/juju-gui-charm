@@ -103,7 +103,7 @@ class TestServer(AppsTestMixin, unittest.TestCase):
         self.assertIsInstance(deployer, base.Deployer)
 
     def test_sandbox(self):
-        # The WebScoket handler is excluded if sandbox mode is enabled.
+        # The WebSocket handler is excluded if sandbox mode is enabled.
         app = self.get_app(sandbox=True)
         spec = self.get_url_spec(app, r'^/ws$')
         self.assertIsNone(spec)
