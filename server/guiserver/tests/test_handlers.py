@@ -193,6 +193,12 @@ class TestWebSocketHandlerConnection(
             message = yield client.read_message()
         self.assertIsNone(message)
 
+    def test_select_subprotocol(self):
+        # The first sub-protocol is returned by the handler method.
+        handler = self.make_handler()
+        subprotocol = handler.select_subprotocol(['foo', 'bar'])
+        self.assertEqual('foo', subprotocol)
+
 
 class TestWebSocketHandlerProxy(
         WebSocketHandlerTestMixin, helpers.WSSTestMixin, LogTrapTestCase,
