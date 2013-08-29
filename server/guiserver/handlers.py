@@ -122,8 +122,8 @@ class WebSocketHandler(websocket.WebSocketHandler):
         Sec-WebSocket-Protocol header, this method is not called.
 
         Overriding this method is required due to a new behavior of development
-        versions of the Chrome browser, which disconnects if a sub-protocol
-        value is not sent back by the WebSocket server.
+        versions of the Chrome browser, which disconnects if if the
+        sub-protocol does not match the one sent by the client.
         """
         return subprotocols[0]
 
