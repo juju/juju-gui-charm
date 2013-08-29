@@ -19,7 +19,6 @@
 
 from collections import defaultdict
 from contextlib import contextmanager
-import os
 import shutil
 import tempfile
 import unittest
