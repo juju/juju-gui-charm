@@ -25,6 +25,7 @@ import tempfile
 import unittest
 
 import charmhelpers
+import mock
 import shelltoolbox
 
 import backend
@@ -45,6 +46,22 @@ class GotEmAllDict(defaultdict):
 class TestBackendProperties(unittest.TestCase):
     """Ensure the correct mixins and property values are collected."""
 
+    mock_legacy_juju = mock.patch(
+        'utils.legacy_juju', mock.Mock(return_value=False))
+
+    def check_sandbox_mode(self):
+        """The backend includes the correct mixins when sandbox mode is active.
+        """
+        test_backend = backend.Backend(config={
+            'sandbox': True, 'staging': False, 'builtin-server': False})
+        mixin_names = get_mixin_names(test_backend)
+        self.assertEqual(
+            ('SandboxMixin', 'GuiMixin', 'HaproxyApacheMixin'),
+            mixin_names)
+        self.assertEqual(
+            frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
+            test_backend.debs)
+
     def test_staging_backend(self):
         test_backend = backend.Backend(config={
             'sandbox': False, 'staging': True, 'builtin-server': False})
@@ -56,16 +73,12 @@ class TestBackendProperties(unittest.TestCase):
             frozenset(('apache2', 'curl', 'haproxy', 'openssl', 'zookeeper')),
             test_backend.debs)
 
-    def test_sandbox_backend(self):
-        test_backend = backend.Backend(config={
-            'sandbox': True, 'staging': False, 'builtin-server': False})
-        mixin_names = get_mixin_names(test_backend)
-        self.assertEqual(
-            ('SandboxMixin', 'GuiMixin', 'HaproxyApacheMixin'),
-            mixin_names)
-        self.assertEqual(
-            frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
-            test_backend.debs)
+    def test_python_sandbox_backend(self):
+        self.check_sandbox_mode()
+
+    def test_go_sandbox_backend(self):
+        with self.mock_legacy_juju:
+            self.check_sandbox_mode()
 
     def test_python_backend(self):
         test_backend = backend.Backend(config={
@@ -79,27 +92,17 @@ class TestBackendProperties(unittest.TestCase):
             test_backend.debs)
 
     def test_go_backend(self):
-        # Monkeypatch utils.CURRENT_DIR.
-        base_dir = tempfile.mkdtemp()
-        orig_current_dir = utils.CURRENT_DIR
-        utils.CURRENT_DIR = tempfile.mkdtemp(dir=base_dir)
-        # Create a fake agent file.
-        agent_path = os.path.join(base_dir, 'agent.conf')
-        open(agent_path, 'w').close()
-        test_backend = backend.Backend(config={
-            'sandbox': False, 'staging': False, 'builtin-server': False})
-        # Cleanup.
-        utils.CURRENT_DIR = orig_current_dir
-        shutil.rmtree(base_dir)
-        # Tests
-        mixin_names = get_mixin_names(test_backend)
-        self.assertEqual(
-            ('GoMixin', 'GuiMixin', 'HaproxyApacheMixin'),
-            mixin_names)
-        self.assertEqual(
-            frozenset(
-                ('apache2', 'curl', 'haproxy', 'openssl', 'python-yaml')),
-            test_backend.debs)
+        with self.mock_legacy_juju:
+            test_backend = backend.Backend(config={
+                'sandbox': False, 'staging': False, 'builtin-server': False})
+            mixin_names = get_mixin_names(test_backend)
+            self.assertEqual(
+                ('GoMixin', 'GuiMixin', 'HaproxyApacheMixin'),
+                mixin_names)
+            self.assertEqual(
+                frozenset(
+                    ('apache2', 'curl', 'haproxy', 'openssl', 'python-yaml')),
+                test_backend.debs)
 
 
 class TestBackendCommands(unittest.TestCase):

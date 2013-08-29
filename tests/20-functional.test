@@ -177,6 +177,15 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         # The staging environment contains five deployed services.
         self.assertSetEqual(set(STAGING_SERVICES), self.get_service_names())
 
+    def test_sandbox(self):
+        # The GUI is correctly deployed and set up in sandbox mode.
+        unit_info = self.juju_deploy(
+            self.charm, options={'staging': 'true', 'sandbox': 'true'})
+        hostname = unit_info['public-address']
+        self.navigate_to(hostname)
+        self.handle_browser_warning()
+        self.assertEnvironmentIsConnected()
+
     def test_builtin_server(self):
         # Ensure the Juju GUI and builtin server are correctly set up.
         unit_info = self.juju_deploy(

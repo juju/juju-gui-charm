@@ -254,22 +254,17 @@ class Backend(object):
         self.prev_config = prev_config
         self.mixins = []
 
-        sandbox = config['sandbox']
-        staging = config['staging']
+        is_legacy_juju = utils.legacy_juju()
 
-        if utils.legacy_juju():
-            if staging:
-                self.mixins.append(ImprovMixin())
-            elif sandbox:
-                self.mixins.append(SandboxMixin())
-            else:
-                self.mixins.append(PythonMixin())
-        else:
-            if staging:
+        if config['staging']:
+            if not is_legacy_juju:
                 raise ValueError('Unable to use staging with go backend')
-            elif sandbox:
-                raise ValueError('Unable to use sandbox with go backend')
-            self.mixins.append(GoMixin())
+            self.mixins.append(ImprovMixin())
+        elif config['sandbox']:
+            self.mixins.append(SandboxMixin())
+        else:
+            mixin = PythonMixin() if is_legacy_juju else GoMixin()
+            self.mixins.append(mixin)
 
         # We always install and start the GUI.
         self.mixins.append(GuiMixin())
