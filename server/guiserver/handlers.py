@@ -115,6 +115,18 @@ class WebSocketHandler(websocket.WebSocketHandler):
             logging.debug(self._summary + 'queue -> juju: {}'.format(message))
             self.juju_connection.write_message(message)
 
+    def select_subprotocol(self, subprotocols):
+        """Return the first sub-protocol sent by the client.
+
+        If the client does not include sub-protocols in the
+        Sec-WebSocket-Protocol header, this method is not called.
+
+        Overriding this method is required due to a new behavior of development
+        versions of the Chrome browser, which disconnects if a sub-protocol
+        value is not sent back by the WebSocket server.
+        """
+        return subprotocols[0]
+
     def on_message(self, message):
         """Hook called when a new message is received from the browser.
 
