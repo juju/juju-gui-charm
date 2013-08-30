@@ -275,7 +275,7 @@ class Backend(object):
         self.mixins.append(GuiMixin())
         # TODO: eventually this option will go away, as well as haproxy and
         # Apache.
-        if config['builtin-server']:
+        if config.get('builtin-server', False):
             self.mixins.append(BuiltinServerMixin())
         else:
             self.mixins.append(HaproxyApacheMixin())
