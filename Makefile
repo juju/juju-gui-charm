@@ -14,16 +14,21 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-JUJUTEST = juju-test --timeout=30m -v -e "$(JUJU_ENV)" --upload-tools
+JUJUTEST = juju-test --timeout=60m -v -e "$(JUJU_ENV)" --upload-tools
 VENV = ./tests/.venv
+SYSDEPS = build-essential bzr libapt-pkg-dev python-pip python-virtualenv xvfb
 
 all: setup
 
 setup:
 	@./tests/00-setup
 
+sysdeps:
+	sudo apt-get install --yes $(SYSDEPS)
+
 unittest: setup
 	./tests/10-unit.test
+	./tests/11-server.test
 
 ensure-juju-test:
 	@which juju-test > /dev/null \
@@ -41,7 +46,8 @@ jujutest:
 	$(JUJUTEST)
 
 lint: setup
-	@$(VENV)/bin/flake8 --show-source --exclude=.venv  ./hooks/ ./tests/
+	@$(VENV)/bin/flake8 --show-source --exclude=.venv \
+		./hooks/ ./tests/ ./server/
 
 clean:
 	find . -name '*.pyc' -delete
@@ -52,6 +58,7 @@ deploy: setup
 
 help:
 	@echo -e 'Juju GUI charm - list of make targets:\n'
+	@echo -e 'make sysdeps - Install the required system packages.\n'
 	@echo -e 'make - Set up development and testing environment.\n'
 	@echo 'make test JUJU_ENV="my-juju-env" - Run functional and unit tests.'
 	@echo -e '  JUJU_ENV is the Juju environment that will be bootstrapped.\n'

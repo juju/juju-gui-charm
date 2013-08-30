@@ -10,9 +10,7 @@ fi
 
 match=$(curl -k $ADDRESS | grep "$LIFE_SIGN")
 
-if [[ -n "$match" ]]; then
-    exit 0
-else
+if [[ -z $match ]]; then
     echo juju-gui did not return content indicating it was loading.
     exit 2
 fi

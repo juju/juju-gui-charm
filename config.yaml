@@ -108,9 +108,8 @@ options:
     default: false
   secure:
     description: |
-      In order to run the GUI over a non secure connection (HTTP) set this
-      flag to false. Do not set this property unless you understand and accept
-      the risks.
+      Set to false to serve the GUI over an insecure HTTP connection.
+      Do not set unless you understand and accept the risks.
     type: boolean
     default: true
   sandbox:
@@ -163,13 +162,24 @@ options:
   show-get-juju-button:
     description: |
       There are deployment modes for Juju GUI which are not intended as regular
-      use mode. In these cases, login/logout are disabled and instead there is a
-      link to juju.ubuntu.com
+      use mode. In these cases, login/logout are disabled and instead there is
+      a link to juju.ubuntu.com
     type: boolean
     default: false
-  nagios_context:
-    default: "juju"
+  builtin-server:
+    description: |
+      Enable the built-in server, disabling both haproxy and Apache.
+      This is a temporary option: the built-in server will be
+      the only server in the future.
+    type: boolean
+    default: false
+  builtin-server-logging:
+    description: |
+      Set the GUI server log level. Possible values are debug, info, warning
+      and error. The log file is placed in /var/log/upstart/guiserver.log.
     type: string
+    default: info
+  nagios_context:
     description: |
       Used by the nrpe-external-master subordinate charm.
       A string that will be prepended to instance name to set the host name
@@ -177,3 +187,5 @@ options:
           juju-myservice-0
       If you're running multiple environments with the same services in them
       this allows you to differentiate between them.
+    type: string
+    default: "juju"

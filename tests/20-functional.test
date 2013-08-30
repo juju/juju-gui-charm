@@ -82,7 +82,7 @@ class DeployTestMixin(object):
         Retry loading the page until the page is found or a timeout exception
         is raised.
         """
-        base_url = 'https://{0}:{1}'.format(hostname, self.port)
+        base_url = 'https://{}:{}'.format(hostname, self.port)
         url = urlparse.urljoin(base_url, path)
 
         def page_ready(driver):
@@ -134,7 +134,7 @@ class DeployTestMixin(object):
             # started by the charm in the machine. Right now this does not
             # work in pyJuju, so the desired effect is achieved by keeping
             # track of started services and manually stopping them here.
-        target = 'ubuntu@{0}'.format(hostname)
+        target = 'ubuntu@{}'.format(hostname)
         for service in services:
             ssh(target, 'sudo', 'service', service, 'stop')
 
@@ -177,6 +177,20 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         # The staging environment contains five deployed services.
         self.assertSetEqual(set(STAGING_SERVICES), self.get_service_names())
 
+    def test_builtin_server(self):
+        # Ensure the Juju GUI and builtin server are correctly set up.
+        unit_info = self.juju_deploy(
+            self.charm, options={'builtin-server': 'true'})
+        hostname = unit_info['public-address']
+        self.navigate_to(hostname)
+        self.handle_browser_warning()
+        self.assertEnvironmentIsConnected()
+        conn = httplib.HTTPSConnection(hostname)
+        conn.request('HEAD', '/')
+        headers = conn.getresponse().getheaders()
+        server_header = dict(headers)['server']
+        self.assertIn('TornadoServer', server_header)
+
     def test_branch_source(self):
         # Ensure the Juju GUI is correctly deployed from a Bazaar branch.
         unit_info = self.juju_deploy(
@@ -192,7 +206,7 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
             self.charm, options={'juju-gui-source': JUJU_GUI_TEST_BRANCH})
         hostname = unit_info['public-address']
         conn = httplib.HTTPSConnection(hostname)
-        conn.request('GET', '/')
+        conn.request('HEAD', '/')
         headers = conn.getresponse().getheaders()
         # There is only one Cache-Control header.
         self.assertEqual(zip(*headers)[0].count('cache-control'), 1)
@@ -202,6 +216,15 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         self.assertIn('max-age=0', cache_directives)
         self.assertIn('public', cache_directives)
         self.assertIn('must-revalidate', cache_directives)
+
+    @unittest.skipIf(is_legacy_juju, 'force-machine only works in juju-core')
+    def test_force_machine(self):
+        # Ensure the Juju GUI is correctly set up in the Juju bootstrap node.
+        unit_info = self.juju_deploy(self.charm, force_machine=0)
+        self.assertEqual('0', unit_info['machine'])
+        self.navigate_to(unit_info['public-address'])
+        self.handle_browser_warning()
+        self.assertEnvironmentIsConnected()
 
     def test_nrpe_check_available(self):
         # Make sure the check-app-access.sh script's ADDRESS is available.
@@ -213,16 +236,6 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         conn.request('GET', '/juju-ui/version.js')
         message = 'ADDRESS in check-app-access.sh is not accessible.'
         self.assertEqual(200, conn.getresponse().status, message)
-
-
-    @unittest.skipIf(is_legacy_juju, 'force-machine only works in juju-core')
-    def test_force_machine(self):
-        # Ensure the Juju GUI is correctly set up in the Juju bootstrap node.
-        unit_info = self.juju_deploy(self.charm, force_machine=0)
-        self.assertEqual('0', unit_info['machine'])
-        self.navigate_to(unit_info['public-address'])
-        self.handle_browser_warning()
-        self.assertEnvironmentIsConnected()
 
 
 if __name__ == '__main__':
