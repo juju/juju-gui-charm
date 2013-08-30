@@ -180,7 +180,7 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
     def test_sandbox(self):
         # The GUI is correctly deployed and set up in sandbox mode.
         unit_info = self.juju_deploy(
-            self.charm, options={'staging': 'true', 'sandbox': 'true'})
+            self.charm, options={'builtin-server': 'true', 'sandbox': 'true'})
         hostname = unit_info['public-address']
         self.navigate_to(hostname)
         self.handle_browser_warning()
