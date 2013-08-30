@@ -45,7 +45,9 @@ class GotEmAllDict(defaultdict):
 class TestBackendProperties(unittest.TestCase):
     """Ensure the correct mixins and property values are collected."""
 
-    mock_legacy_juju = mock.patch(
+    simulate_pyjuju = mock.patch(
+        'utils.legacy_juju', mock.Mock(return_value=True))
+    simulate_juju_core = mock.patch(
         'utils.legacy_juju', mock.Mock(return_value=False))
 
     def check_sandbox_mode(self):
@@ -61,37 +63,47 @@ class TestBackendProperties(unittest.TestCase):
             frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
             test_backend.debs)
 
-    def test_staging_backend(self):
-        test_backend = backend.Backend(config={
-            'sandbox': False, 'staging': True, 'builtin-server': False})
-        mixin_names = get_mixin_names(test_backend)
-        self.assertEqual(
-            ('ImprovMixin', 'GuiMixin', 'HaproxyApacheMixin'),
-            mixin_names)
-        self.assertEqual(
-            frozenset(('apache2', 'curl', 'haproxy', 'openssl', 'zookeeper')),
-            test_backend.debs)
+    def test_python_staging_backend(self):
+        with self.simulate_pyjuju:
+            test_backend = backend.Backend(config={
+                'sandbox': False, 'staging': True, 'builtin-server': False})
+            mixin_names = get_mixin_names(test_backend)
+            self.assertEqual(
+                ('ImprovMixin', 'GuiMixin', 'HaproxyApacheMixin'),
+                mixin_names)
+            debs = ('apache2', 'curl', 'haproxy', 'openssl', 'zookeeper')
+            self.assertEqual(frozenset(debs), test_backend.debs)
+
+    def test_go_staging_backend(self):
+        config = {'sandbox': False, 'staging': True, 'builtin-server': False}
+        with self.simulate_juju_core:
+            with self.assertRaises(ValueError) as context_manager:
+                backend.Backend(config=config)
+        error = str(context_manager.exception)
+        self.assertEqual('Unable to use staging with go backend', error)
 
     def test_python_sandbox_backend(self):
-        self.check_sandbox_mode()
+        with self.simulate_pyjuju:
+            self.check_sandbox_mode()
 
     def test_go_sandbox_backend(self):
-        with self.mock_legacy_juju:
+        with self.simulate_juju_core:
             self.check_sandbox_mode()
 
     def test_python_backend(self):
-        test_backend = backend.Backend(config={
-            'sandbox': False, 'staging': False, 'builtin-server': False})
-        mixin_names = get_mixin_names(test_backend)
-        self.assertEqual(
-            ('PythonMixin', 'GuiMixin', 'HaproxyApacheMixin'),
-            mixin_names)
-        self.assertEqual(
-            frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
-            test_backend.debs)
+        with self.simulate_pyjuju:
+            test_backend = backend.Backend(config={
+                'sandbox': False, 'staging': False, 'builtin-server': False})
+            mixin_names = get_mixin_names(test_backend)
+            self.assertEqual(
+                ('PythonMixin', 'GuiMixin', 'HaproxyApacheMixin'),
+                mixin_names)
+            self.assertEqual(
+                frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
+                test_backend.debs)
 
     def test_go_backend(self):
-        with self.mock_legacy_juju:
+        with self.simulate_juju_core:
             test_backend = backend.Backend(config={
                 'sandbox': False, 'staging': False, 'builtin-server': False})
             mixin_names = get_mixin_names(test_backend)
@@ -102,6 +114,17 @@ class TestBackendProperties(unittest.TestCase):
                 frozenset(
                     ('apache2', 'curl', 'haproxy', 'openssl', 'python-yaml')),
                 test_backend.debs)
+
+    def test_builtin_server(self):
+        expected_mixins = ('GoMixin', 'GuiMixin', 'BuiltinServerMixin')
+        expected_debs = set([
+            'python-pip', 'python-yaml', 'curl', 'openssl', 'python-bzrlib'])
+        with self.simulate_juju_core:
+            test_backend = backend.Backend(config={
+                'sandbox': False, 'staging': False, 'builtin-server': True})
+            mixin_names = get_mixin_names(test_backend)
+            self.assertEqual(expected_mixins, mixin_names)
+            self.assertEqual(expected_debs, test_backend.debs)
 
 
 class TestBackendCommands(unittest.TestCase):
