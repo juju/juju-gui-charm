@@ -560,7 +560,7 @@ def write_builtin_server_startup(
     if not sandbox:
         is_legacy_juju = legacy_juju()
         if is_legacy_juju:
-            api_url = 'wss://127.0.0.1:{}'.format(API_PORT)
+            api_url = 'wss://127.0.0.1:{}/ws'.format(API_PORT)
         else:
             api_url = 'wss://{}'.format(get_api_address())
         context.update({
