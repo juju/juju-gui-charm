@@ -17,42 +17,45 @@
 """Juju GUI charm utilities."""
 
 __all__ = [
-    'AGENT',
-    'APACHE',
+    'APACHE_SITE',
+    'APACHE_PORTS',
     'API_PORT',
     'CURRENT_DIR',
-    'HAPROXY',
-    'IMPROV',
     'JUJU_DIR',
     'JUJU_GUI_DIR',
-    'JUJU_GUI_SITE',
     'JUJU_PEM',
     'WEB_PORT',
-    'bzr_checkout',
-    'chain',
     'cmd_log',
+    'compute_build_dir',
     'fetch_api',
-    'fetch_gui',
+    'fetch_gui_from_branch',
+    'fetch_gui_release',
     'find_missing_packages',
     'first_path_in_dir',
     'get_api_address',
     'get_npm_cache_archive_url',
     'get_release_file_url',
-    'get_staging_dependencies',
     'get_zookeeper_address',
     'legacy_juju',
     'log_hook',
-    'merge',
     'parse_source',
     'prime_npm_cache',
+    'remove_apache_setup',
+    'remove_haproxy_setup',
     'render_to_file',
     'save_or_create_certificates',
-    'setup_apache',
+    'setup_apache_config',
     'setup_gui',
+    'setup_haproxy_config',
     'start_agent',
-    'start_gui',
+    'start_builtin_server',
+    'start_haproxy_apache',
     'start_improv',
-    'write_apache_config',
+    'stop_agent',
+    'stop_builtin_server',
+    'stop_haproxy_apache',
+    'stop_improv',
+    'write_gui_config',
 ]
 
 from contextlib import contextmanager
@@ -81,7 +84,9 @@ from shelltoolbox import (
     su,
 )
 from charmhelpers import (
+    RESTART,
     START,
+    STOP,
     get_config,
     log,
     service_control,
@@ -91,28 +96,45 @@ from charmhelpers import (
 
 AGENT = 'juju-api-agent'
 APACHE = 'apache2'
-IMPROV = 'juju-api-improv'
+BUILTIN_SERVER = 'guiserver'
 HAPROXY = 'haproxy'
+IMPROV = 'juju-api-improv'
 
 API_PORT = 8080
 WEB_PORT = 8000
 
 CURRENT_DIR = os.getcwd()
+CONFIG_DIR = os.path.join(CURRENT_DIR, 'config')
 JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
-JUJU_GUI_SITE = '/etc/apache2/sites-available/juju-gui'
-JUJU_GUI_PORTS = '/etc/apache2/ports.conf'
+# Builtin server dependencies. The order of these requirements is important.
+SERVER_DEPENDENCIES = (
+    'futures-2.1.4.tar.gz',
+    'tornado-3.1.tar.gz',
+    'jujuclient-0.0.9.tar.gz',
+    'juju-deployer-0.2.2.tar.gz',
+)
+SERVER_DIR = os.path.join(CURRENT_DIR, 'server')
+
+APACHE_CFG_DIR = os.path.join(os.path.sep, 'etc', 'apache2')
+APACHE_PORTS = os.path.join(APACHE_CFG_DIR, 'ports.conf')
+APACHE_SITE = os.path.join(APACHE_CFG_DIR, 'sites-available', 'juju-gui')
+HAPROXY_CFG_PATH = os.path.join(os.path.sep, 'etc', 'haproxy', 'haproxy.cfg')
+
+SYS_INIT_DIR = os.path.join(os.path.sep, 'etc', 'init')
+AGENT_INIT_PATH = os.path.join(SYS_INIT_DIR, 'juju-api-agent.conf')
+GUISERVER_INIT_PATH = os.path.join(SYS_INIT_DIR, 'guiserver.conf')
+HAPROXY_INIT_PATH = os.path.join(SYS_INIT_DIR, 'haproxy.conf')
+IMPROV_INIT_PATH = os.path.join(SYS_INIT_DIR, 'juju-api-improv.conf')
+
 JUJU_PEM = 'juju.includes-private-key.pem'
 DEB_BUILD_DEPENDENCIES = (
     'bzr', 'g++', 'imagemagick', 'make',  'nodejs', 'npm',
 )
-DEB_STAGE_DEPENDENCIES = (
-    'zookeeper',
-)
 
 
 # Store the configuration from on invocation to the next.
-config_json = Serializer('/tmp/config.json')
+config_json = Serializer(os.path.join(os.path.sep, 'tmp', 'config.json'))
 # Bazaar checkout command.
 bzr_checkout = command('bzr', 'co', '--lightweight')
 # Whether or not the charm is deployed using juju-core.
@@ -120,6 +142,15 @@ bzr_checkout = command('bzr', 'co', '--lightweight')
 # be present in the charm parent directory.
 legacy_juju = lambda: not os.path.exists(
     os.path.join(CURRENT_DIR, '..', 'agent.conf'))
+
+bzr_url_expression = re.compile(r"""
+    ^  # Beginning of line.
+    ((?:lp:|http:\/\/)[^:]+)  # Branch URL (scheme + domain/path).
+    (?::(\d+))?  # Optional branch revision.
+    $  # End of line.
+""", re.VERBOSE)
+
+results_log = None
 
 
 def _get_build_dependencies():
@@ -134,7 +165,7 @@ def get_api_address(unit_dir=None):
     If not present in the hook context as an environment variable, try to
     retrieve the address parsing the machiner agent.conf file.
     """
-    api_addresses = os.getenv("JUJU_API_ADDRESSES")
+    api_addresses = os.getenv('JUJU_API_ADDRESSES')
     if api_addresses is not None:
         return api_addresses.split()[0]
     # The JUJU_API_ADDRESSES environment variable is not included in the hooks
@@ -154,12 +185,6 @@ def get_api_address(unit_dir=None):
         raise IOError('Juju agent configuration file not found.')
     contents = yaml.load(open(agent_conf))
     return contents['apiinfo']['addrs'][0]
-
-
-def get_staging_dependencies():
-    """Install deb dependencies for the stage (improv) environment."""
-    log('Installing stage dependencies.')
-    cmd_log(apt_get_install(*DEB_STAGE_DEPENDENCIES))
 
 
 def first_path_in_dir(directory):
@@ -236,14 +261,6 @@ def log_hook():
         log("<<< Exiting {}".format(script))
 
 
-bzr_url_expression = re.compile(r"""
-    ^  # Beginning of line.
-    ((?:lp:|http:\/\/)[^:]+)  # Branch URL (scheme + domain/path).
-    (?::(\d+))?  # Optional branch revision.
-    $  # End of line.
-""", re.VERBOSE)
-
-
 def parse_source(source):
     """Parse the ``juju-gui-source`` option.
 
@@ -286,14 +303,10 @@ def render_to_file(template_name, context, destination):
     The argument *destination* is a file path.
     The argument *context* is a dict-like object.
     """
-    template_path = os.path.join(
-        os.path.dirname(__file__), '..', 'config', template_name)
+    template_path = os.path.join(CONFIG_DIR, template_name)
     template = tempita.Template.from_filename(template_path)
     with open(destination, 'w') as stream:
         stream.write(template.substitute(context))
-
-
-results_log = None
 
 
 def _setupLogging():
@@ -319,31 +332,38 @@ def cmd_log(results):
     results_log.info('\n' + results)
 
 
-def start_improv(staging_env, ssl_cert_path,
-                 config_path='/etc/init/juju-api-improv.conf'):
+def start_improv(staging_env, ssl_cert_path):
     """Start a simulated juju environment using ``improv.py``."""
-    log('Setting up staging start up script.')
+    log('Setting up the staging Upstart script.')
     context = {
         'juju_dir': JUJU_DIR,
         'keys': ssl_cert_path,
         'port': API_PORT,
         'staging_env': staging_env,
     }
-    render_to_file('juju-api-improv.conf.template', context, config_path)
+    render_to_file('juju-api-improv.conf.template', context, IMPROV_INIT_PATH)
     log('Starting the staging backend.')
     with su('root'):
         service_control(IMPROV, START)
 
 
-def start_agent(
-        ssl_cert_path, config_path='/etc/init/juju-api-agent.conf',
-        read_only=False):
+def stop_improv():
+    """Stop a simulated Juju environment."""
+    log('Stopping the staging backend.')
+    with su('root'):
+        service_control(IMPROV, STOP)
+    log('Removing the staging Upstart script.')
+    cmd_log(run('rm', '-f', IMPROV_INIT_PATH))
+
+
+def start_agent(ssl_cert_path, read_only=False):
     """Start the Juju agent and connect to the current environment."""
     # Retrieve the Zookeeper address from the start up script.
-    unit_dir = os.path.realpath(os.path.join(CURRENT_DIR, '..'))
-    agent_file = '/etc/init/juju-{0}.conf'.format(os.path.basename(unit_dir))
+    unit_name = os.path.basename(
+        os.path.realpath(os.path.join(CURRENT_DIR, '..')))
+    agent_file = os.path.join(SYS_INIT_DIR, 'juju-{}.conf'.format(unit_name))
     zookeeper = get_zookeeper_address(agent_file)
-    log('Setting up API agent start up script.')
+    log('Setting up the API agent Upstart script.')
     context = {
         'juju_dir': JUJU_DIR,
         'keys': ssl_cert_path,
@@ -351,18 +371,23 @@ def start_agent(
         'zookeeper': zookeeper,
         'read_only': read_only
     }
-    render_to_file('juju-api-agent.conf.template', context, config_path)
-    log('Starting API agent.')
+    render_to_file('juju-api-agent.conf.template', context, AGENT_INIT_PATH)
+    log('Starting the API agent.')
     with su('root'):
         service_control(AGENT, START)
 
 
-def start_gui(
-        console_enabled, login_help, readonly, in_staging, ssl_cert_path,
-        charmworld_url, serve_tests, haproxy_path='/etc/haproxy/haproxy.cfg',
-        config_js_path=None, secure=True, sandbox=False, use_analytics=False,
-        default_viewmode='sidebar', show_get_juju_button=False):
-    """Set up and start the Juju GUI server."""
+def stop_agent():
+    """Stop the Juju agent."""
+    log('Stopping the API agent.')
+    with su('root'):
+        service_control(AGENT, STOP)
+    log('Removing the API agent Upstart script.')
+    cmd_log(run('rm', '-f', AGENT_INIT_PATH))
+
+
+def compute_build_dir(in_staging, serve_tests):
+    """Compute the build directory."""
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
         # XXX 2013-02-05 frankban bug=1116320:
@@ -373,7 +398,15 @@ def start_gui(
         build_dirname = 'build-debug'
     else:
         build_dirname = 'build-prod'
-    build_dir = os.path.join(JUJU_GUI_DIR, build_dirname)
+    return os.path.join(JUJU_GUI_DIR, build_dirname)
+
+
+def write_gui_config(
+        console_enabled, login_help, readonly, in_staging, charmworld_url,
+        build_dir, secure=True, sandbox=False, use_analytics=False,
+        default_viewmode='sidebar', show_get_juju_button=False,
+        config_js_path=None):
+    """Generate the GUI configuration file."""
     log('Generating the Juju GUI configuration file.')
     is_legacy_juju = legacy_juju()
     user, password = None, None
@@ -381,14 +414,12 @@ def start_gui(
         user, password = 'admin', 'admin'
     else:
         user, password = None, None
-
     api_backend = 'python' if is_legacy_juju else 'go'
     if secure:
         protocol = 'wss'
     else:
         log('Running in insecure mode! Port 80 will serve unencrypted.')
         protocol = 'ws'
-
     context = {
         'raw_protocol': protocol,
         'address': unit_get('public-address'),
@@ -410,12 +441,17 @@ def start_gui(
             build_dir, 'juju-ui', 'assets', 'config.js')
     render_to_file('config.js.template', context, config_js_path)
 
-    write_apache_config(build_dir, serve_tests)
 
+def setup_haproxy_config(ssl_cert_path, secure=True):
+    """Generate the haproxy configuration file."""
+    log('Setting up haproxy Upstart file.')
+    config_path = os.path.join(CONFIG_DIR, 'haproxy.conf')
+    shutil.copy(config_path, SYS_INIT_DIR)
     log('Generating haproxy configuration file.')
+    is_legacy_juju = legacy_juju()
     if is_legacy_juju:
         # The PyJuju API agent is listening on localhost.
-        api_address = '127.0.0.1:{0}'.format(API_PORT)
+        api_address = '127.0.0.1:{}'.format(API_PORT)
     else:
         # Retrieve the juju-core API server address.
         api_address = get_api_address()
@@ -431,20 +467,130 @@ def start_gui(
         'web_port': WEB_PORT,
         'secure': secure
     }
-    render_to_file('haproxy.cfg.template', context, haproxy_path)
-    log('Starting Juju GUI.')
+    render_to_file('haproxy.cfg.template', context, HAPROXY_CFG_PATH)
 
 
-def write_apache_config(build_dir, serve_tests=False):
-    log('Generating the apache site configuration file.')
+def remove_haproxy_setup():
+    """Remove haproxy setup."""
+    log('Removing haproxy setup.')
+    cmd_log(run('rm', '-f', HAPROXY_CFG_PATH))
+    cmd_log(run('rm', '-f', HAPROXY_INIT_PATH))
+
+
+def setup_apache_config(build_dir, serve_tests=False):
+    """Set up the Apache configuration."""
+    log('Generating the Apache site configuration files.')
+    tests_root = os.path.join(JUJU_GUI_DIR, 'test', '') if serve_tests else ''
     context = {
         'port': WEB_PORT,
-        'serve_tests': serve_tests,
         'server_root': build_dir,
-        'tests_root': os.path.join(JUJU_GUI_DIR, 'test', ''),
+        'tests_root': tests_root,
     }
-    render_to_file('apache-ports.template', context, JUJU_GUI_PORTS)
-    render_to_file('apache-site.template', context, JUJU_GUI_SITE)
+    render_to_file('apache-ports.template', context, APACHE_PORTS)
+    cmd_log(run('chown', 'ubuntu:', APACHE_PORTS))
+    render_to_file('apache-site.template', context, APACHE_SITE)
+    cmd_log(run('chown', 'ubuntu:', APACHE_SITE))
+    with su('root'):
+        run('a2dissite', 'default')
+        run('a2ensite', 'juju-gui')
+        run('a2enmod', 'headers')
+
+
+def remove_apache_setup():
+    """Remove Apache setup."""
+    log('Removing Apache setup.')
+    with su('root'):
+        run('a2dismod', 'headers')
+        run('a2dissite', 'juju-gui')
+        run('a2ensite', 'default')
+    if os.path.exists(APACHE_PORTS):
+        cmd_log(run('rm', '-f', APACHE_PORTS))
+    if os.path.exists(APACHE_SITE):
+        cmd_log(run('rm', '-f', APACHE_SITE))
+
+
+def start_haproxy_apache(
+        build_dir, serve_tests, ssl_cert_path, secure):
+    """Set up and start the haproxy and Apache services."""
+    log('Setting up Apache and haproxy.')
+    setup_apache_config(build_dir, serve_tests)
+    setup_haproxy_config(ssl_cert_path, secure)
+    log('Starting the haproxy and Apache services.')
+    with su('root'):
+        service_control(APACHE, RESTART)
+        service_control(HAPROXY, RESTART)
+
+
+def stop_haproxy_apache():
+    """Stop the haproxy and Apache services."""
+    log('Stopping the haproxy and Apache services.')
+    with su('root'):
+        service_control(HAPROXY, STOP)
+        service_control(APACHE, STOP)
+    remove_haproxy_setup()
+    remove_apache_setup()
+
+
+def install_builtin_server():
+    """Install the builtin server code."""
+    log('Installing the builtin server dependencies.')
+    for dependency_name in SERVER_DEPENDENCIES:
+        dependency = os.path.join(CURRENT_DIR, 'deps', dependency_name)
+        with su('root'):
+            cmd_log(run('pip', 'install', dependency))
+    log('Installing the builtin server.')
+    setup_cmd = os.path.join(SERVER_DIR, 'setup.py')
+    with su('root'):
+        cmd_log(run('/usr/bin/python', setup_cmd, 'install'))
+
+
+def write_builtin_server_startup(
+        gui_root, ssl_cert_path, serve_tests=False, sandbox=False,
+        builtin_server_logging='info', insecure=False):
+    """Generate the builtin server Upstart file."""
+    log('Generating the builtin server Upstart file.')
+    context = {
+        'builtin_server_logging': builtin_server_logging,
+        'gui_root': gui_root,
+        'insecure': insecure,
+        'sandbox': sandbox,
+        'serve_tests': serve_tests,
+        'ssl_cert_path': ssl_cert_path,
+    }
+    if not sandbox:
+        is_legacy_juju = legacy_juju()
+        if is_legacy_juju:
+            api_url = 'wss://127.0.0.1:{}'.format(API_PORT)
+        else:
+            api_url = 'wss://{}'.format(get_api_address())
+        context.update({
+            'api_url': api_url,
+            'api_version': 'python' if is_legacy_juju else 'go',
+        })
+    if serve_tests:
+        context['tests_root'] = os.path.join(JUJU_GUI_DIR, 'test', '')
+    render_to_file(
+        'guiserver.conf.template', context, GUISERVER_INIT_PATH)
+
+
+def start_builtin_server(
+        build_dir, ssl_cert_path, serve_tests, sandbox, builtin_server_logging,
+        insecure):
+    """Start the builtin server."""
+    write_builtin_server_startup(
+        build_dir, ssl_cert_path, serve_tests=serve_tests, sandbox=sandbox,
+        builtin_server_logging=builtin_server_logging, insecure=insecure)
+    log('Starting the builtin server.')
+    with su('root'):
+        service_control(BUILTIN_SERVER, RESTART)
+
+
+def stop_builtin_server():
+    """Stop the builtin server."""
+    log('Stopping the builtin server.')
+    with su('root'):
+        service_control(BUILTIN_SERVER, STOP)
+    cmd_log(run('rm', '-f', GUISERVER_INIT_PATH))
 
 
 def get_npm_cache_archive_url(Launchpad=Launchpad):
@@ -473,59 +619,51 @@ def prime_npm_cache(npm_cache_url):
     cmd_log(uncompress(npm_cache_archive))
 
 
-def fetch_gui(juju_gui_source, logpath):
-    """Retrieve the Juju GUI release/branch."""
-    # Retrieve a Juju GUI release.
-    origin, version_or_branch = parse_source(juju_gui_source)
-    if origin == 'branch':
-        # If we are not using a pre-built release of the GUI (i.e., we are
-        # using a branch) then we need to build a release archive to use.
-        branch_url, revision = version_or_branch
-        # Make sure we have the dependencies necessary for us to actually make
-        # a build.
-        _get_build_dependencies()
-        # Inject NPM packages into the cache for faster building.
-        prime_npm_cache(get_npm_cache_archive_url())
-        # Create a release starting from a branch.
-        juju_gui_source_dir = os.path.join(CURRENT_DIR, 'juju-gui-source')
-        if revision is None:
-            checkout_args = []
-            revno = 'latest revno'
-        else:
-            checkout_args = ['--revision', revision]
-            revno = 'revno {}'.format(revision)
-        log('Retrieving Juju GUI source checkout from {} ({}).'.format(
-            branch_url, revno))
-        cmd_log(run('rm', '-rf', juju_gui_source_dir))
-        checkout_args.extend([branch_url, juju_gui_source_dir])
-        cmd_log(bzr_checkout(*checkout_args))
-        log('Preparing a Juju GUI release.')
-        logdir = os.path.dirname(logpath)
-        fd, name = tempfile.mkstemp(prefix='make-distfile-', dir=logdir)
-        log('Output from "make distfile" sent to %s' % name)
-        with environ(NO_BZR='1'):
-            run('make', '-C', juju_gui_source_dir, 'distfile',
-                stdout=fd, stderr=fd)
-        release_tarball = first_path_in_dir(
-            os.path.join(juju_gui_source_dir, 'releases'))
+def fetch_gui_from_branch(branch_url, revision, logpath):
+    """Retrieve the Juju GUI from a branch and build a release archive."""
+    # Make sure we have the needed dependencies.
+    _get_build_dependencies()
+    # Inject NPM packages into the cache for faster building.
+    prime_npm_cache(get_npm_cache_archive_url())
+    # Create a release starting from a branch.
+    juju_gui_source_dir = os.path.join(CURRENT_DIR, 'juju-gui-source')
+    checkout_args, revno = ([], 'latest revno') if revision is None else (
+        ['--revision', revision], 'revno {}'.format(revision))
+    log('Retrieving Juju GUI source checkout from {} ({}).'.format(
+        branch_url, revno))
+    cmd_log(run('rm', '-rf', juju_gui_source_dir))
+    checkout_args.extend([branch_url, juju_gui_source_dir])
+    cmd_log(bzr_checkout(*checkout_args))
+    log('Preparing a Juju GUI release.')
+    logdir = os.path.dirname(logpath)
+    fd, name = tempfile.mkstemp(prefix='make-distfile-', dir=logdir)
+    log('Output from "make distfile" sent to %s' % name)
+    with environ(NO_BZR='1'):
+        run('make', '-C', juju_gui_source_dir, 'distfile',
+            stdout=fd, stderr=fd)
+    return first_path_in_dir(
+        os.path.join(juju_gui_source_dir, 'releases'))
+
+
+def fetch_gui_release(origin, version):
+    """Retrieve a Juju GUI release."""
+    log('Retrieving Juju GUI release.')
+    if origin == 'url':
+        file_url = version
     else:
-        log('Retrieving Juju GUI release.')
-        if origin == 'url':
-            file_url = version_or_branch
-        else:
-            # Retrieve a release from Launchpad.
-            launchpad = Launchpad.login_anonymously(
-                'Juju GUI charm', 'production')
-            project = launchpad.projects['juju-gui']
-            file_url = get_release_file_url(project, origin, version_or_branch)
-        log('Downloading release file from %s.' % file_url)
-        release_tarball = os.path.join(CURRENT_DIR, 'release.tgz')
-        cmd_log(run('curl', '-L', '-o', release_tarball, file_url))
+        # Retrieve a release from Launchpad.
+        launchpad = Launchpad.login_anonymously(
+            'Juju GUI charm', 'production')
+        project = launchpad.projects['juju-gui']
+        file_url = get_release_file_url(project, origin, version)
+    log('Downloading release file from %s.' % file_url)
+    release_tarball = os.path.join(CURRENT_DIR, 'release.tgz')
+    cmd_log(run('curl', '-L', '-o', release_tarball, file_url))
     return release_tarball
 
 
 def fetch_api(juju_api_branch):
-    """Retrieve the Juju branch."""
+    """Retrieve the Juju branch, removing it first if already there."""
     # Retrieve Juju API source checkout.
     log('Retrieving Juju API source checkout.')
     cmd_log(run('rm', '-rf', JUJU_DIR))
@@ -543,26 +681,6 @@ def setup_gui(release_tarball):
     cmd_log(uncompress(release_tarball))
     # Link the Juju GUI dir to the contents of the release tarball.
     cmd_log(run('ln', '-sf', first_path_in_dir(release_dir), JUJU_GUI_DIR))
-
-
-def setup_apache():
-    """Set up apache."""
-    log('Setting up apache.')
-    if not os.path.exists(JUJU_GUI_SITE):
-        cmd_log(run('touch', JUJU_GUI_SITE))
-        cmd_log(run('chown', 'ubuntu:', JUJU_GUI_SITE))
-        cmd_log(
-            run('ln', '-s', JUJU_GUI_SITE,
-                '/etc/apache2/sites-enabled/juju-gui'))
-
-    if not os.path.exists(JUJU_GUI_PORTS):
-        cmd_log(run('touch', JUJU_GUI_PORTS))
-        cmd_log(run('chown', 'ubuntu:', JUJU_GUI_PORTS))
-
-    with su('root'):
-        run('a2dissite', 'default')
-        run('a2ensite', 'juju-gui')
-        run('a2enmod', 'headers')
 
 
 def save_or_create_certificates(
@@ -618,39 +736,3 @@ def find_missing_packages(*packages):
             continue
         missing.add(pkg_name)
     return missing
-
-
-## Backend support decorators
-
-def chain(name):
-    """Helper method to compose a set of mixin objects into a callable.
-
-    Each method is called in the context of its mixin instance, and its
-    argument is the Backend instance.
-    """
-    # Chain method calls through all implementing mixins.
-    def method(self):
-        for mixin in self.mixins:
-            a_callable = getattr(type(mixin), name, None)
-            if a_callable:
-                a_callable(mixin, self)
-
-    method.__name__ = name
-    return method
-
-
-def merge(name):
-    """Helper to merge a property from a set of strategy objects
-    into a unified set.
-    """
-    # Return merged property from every providing mixin as a set.
-    @property
-    def method(self):
-        result = set()
-        for mixin in self.mixins:
-            segment = getattr(type(mixin), name, None)
-            if segment and isinstance(segment, (list, tuple, set)):
-                result |= set(segment)
-
-        return result
-    return method

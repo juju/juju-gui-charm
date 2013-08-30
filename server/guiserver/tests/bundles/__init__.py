@@ -1,8 +1,6 @@
-# Juju GUI test requirements.
-
 # This file is part of the Juju GUI, which lets users view and manage Juju
 # environments within a graphical interface (https://launchpad.net/juju-gui).
-# Copyright (C) 2012-2013 Canonical Ltd.
+# Copyright (C) 2013 Canonical Ltd.
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU Affero General Public License version 3, as published by
@@ -16,34 +14,4 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Note: the order of the following dependencies is important!
-
-# GUI server -> juju deployer -> bzr.
-chardet==2.1.1
-python-debian==0.1.21
-
-# GUI server -> juju deployer.
-bzr==2.6.0
-
-# Charm hooks + GUI server.
-PyYAML==3.10
-
-# GUI server.
-futures==2.1.4
--e bzr+http://launchpad.net/juju-deployer/darwin#egg=juju-deployer
-tornado==3.1
-
-# Charm hooks.
--e bzr+http://launchpad.net/charm-tools#egg=charm-tools
-launchpadlib==1.10.2
-python-apt==0.8.5
--e bzr+http://launchpad.net/python-shelltoolbox#egg=python-shelltoolbox
-Tempita==0.5.1
-
-# Charm tests + GUI server tests.
-flake8==2.0
-mock==1.0.1
-
-# Charm tests.
-selenium==2.34.0
-xvfbwrapper==0.2.2
+"""Tests package for the Juju GUI server bundles support."""

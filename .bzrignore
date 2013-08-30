@@ -2,4 +2,7 @@
 tags
 exec.d/*
 npm-cache.tgz
+server/build
+server/dist
+server/MANIFEST
 tests/.venv
