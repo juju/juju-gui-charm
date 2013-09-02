@@ -46,11 +46,21 @@ import shelltoolbox
 import utils
 
 
+class SetUpMixin(object):
+    """Handle the overall set up and clean up processes."""
+
+    def install(self, backend):
+        os.makedirs(utils.BASE_DIR)
+
+    def stop(self, backend):
+        utils.cmd_log(shelltoolbox.run('rm', '-rf', utils.BASE_DIR))
+
+
 class PythonInstallMixinBase(object):
     """Provide a common "install" method to ImprovMixin and PythonMixin."""
 
     def install(self, backend):
-        if (not os.path.exists(utils.JUJU_DIR) or
+        if (not os.path.exists(utils.JUJU_AGENT_DIR) or
                 backend.different('staging', 'juju-api-branch')):
             utils.fetch_api(backend.config['juju-api-branch'])
 
@@ -87,13 +97,6 @@ class GoMixin(object):
     """Manage the real Go juju-core backend."""
 
     debs = ('python-yaml',)
-
-    def install(self, backend):
-        # When juju-core deploys the charm, the charm directory (which hosts
-        # the GUI itself) is permissioned too strictly; set the perms on that
-        # directory to be friendly for Apache.
-        # Bug: 1202772
-        utils.cmd_log(shelltoolbox.run('chmod', '+x', utils.CURRENT_DIR))
 
 
 class GuiMixin(object):
@@ -204,7 +207,7 @@ class BuiltinServerMixin(ServerInstallMixinBase):
         utils.stop_builtin_server()
 
 
-def chain_methods(name):
+def chain_methods(name, reverse=False):
     """Helper to compose a set of mixin objects into a callable.
 
     Each method is called in the context of its mixin instance, and its
@@ -212,7 +215,8 @@ def chain_methods(name):
     """
     # Chain method calls through all implementing mixins.
     def method(self):
-        for mixin in self.mixins:
+        mixins = reversed(self.mixins) if reverse else self.mixins
+        for mixin in mixins:
             a_callable = getattr(type(mixin), name, None)
             if a_callable is not None:
                 a_callable(mixin, self)
@@ -252,7 +256,7 @@ class Backend(object):
         if prev_config is None:
             prev_config = {}
         self.prev_config = prev_config
-        self.mixins = []
+        self.mixins = [SetUpMixin()]
 
         is_legacy_juju = utils.legacy_juju()
 
@@ -287,7 +291,7 @@ class Backend(object):
     # Composed methods.
     install = chain_methods('install')
     start = chain_methods('start')
-    stop = chain_methods('stop')
+    stop = chain_methods('stop', reverse=True)
 
     # Merged properties.
     debs = merge_properties('debs')

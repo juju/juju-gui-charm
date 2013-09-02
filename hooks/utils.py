@@ -21,7 +21,7 @@ __all__ = [
     'APACHE_PORTS',
     'API_PORT',
     'CURRENT_DIR',
-    'JUJU_DIR',
+    'JUJU_AGENT_DIR',
     'JUJU_GUI_DIR',
     'JUJU_PEM',
     'WEB_PORT',
@@ -103,10 +103,11 @@ IMPROV = 'juju-api-improv'
 API_PORT = 8080
 WEB_PORT = 8000
 
+BASE_DIR = '/var/lib/juju-gui'
 CURRENT_DIR = os.getcwd()
 CONFIG_DIR = os.path.join(CURRENT_DIR, 'config')
-JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
-JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
+JUJU_AGENT_DIR = os.path.join(BASE_DIR, 'juju')
+JUJU_GUI_DIR = os.path.join(BASE_DIR, 'juju-gui')
 # Builtin server dependencies. The order of these requirements is important.
 SERVER_DEPENDENCIES = (
     'futures-2.1.4.tar.gz',
@@ -336,7 +337,7 @@ def start_improv(staging_env, ssl_cert_path):
     """Start a simulated juju environment using ``improv.py``."""
     log('Setting up the staging Upstart script.')
     context = {
-        'juju_dir': JUJU_DIR,
+        'juju_dir': JUJU_AGENT_DIR,
         'keys': ssl_cert_path,
         'port': API_PORT,
         'staging_env': staging_env,
@@ -365,7 +366,7 @@ def start_agent(ssl_cert_path, read_only=False):
     zookeeper = get_zookeeper_address(agent_file)
     log('Setting up the API agent Upstart script.')
     context = {
-        'juju_dir': JUJU_DIR,
+        'juju_dir': JUJU_AGENT_DIR,
         'keys': ssl_cert_path,
         'port': API_PORT,
         'zookeeper': zookeeper,
@@ -666,15 +667,15 @@ def fetch_api(juju_api_branch):
     """Retrieve the Juju branch, removing it first if already there."""
     # Retrieve Juju API source checkout.
     log('Retrieving Juju API source checkout.')
-    cmd_log(run('rm', '-rf', JUJU_DIR))
-    cmd_log(bzr_checkout(juju_api_branch, JUJU_DIR))
+    cmd_log(run('rm', '-rf', JUJU_AGENT_DIR))
+    cmd_log(bzr_checkout(juju_api_branch, JUJU_AGENT_DIR))
 
 
 def setup_gui(release_tarball):
     """Set up Juju GUI."""
     # Uncompress the release tarball.
     log('Installing Juju GUI.')
-    release_dir = os.path.join(CURRENT_DIR, 'release')
+    release_dir = os.path.join(BASE_DIR, 'release')
     cmd_log(run('rm', '-rf', release_dir))
     os.mkdir(release_dir)
     uncompress = command('tar', '-x', '-z', '-C', release_dir, '-f')
