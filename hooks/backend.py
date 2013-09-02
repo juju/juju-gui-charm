@@ -52,7 +52,12 @@ class SetUpMixin(object):
     """Handle the overall set up and clean up processes."""
 
     def install(self, backend):
-        os.makedirs(utils.BASE_DIR)
+        try:
+            os.makedirs(utils.BASE_DIR)
+        except OSError as err:
+            # The base directory might already exist: ignore the error.
+            if err.errno != errno.EEXIST:
+                raise
 
     def stop(self, backend):
         try:
