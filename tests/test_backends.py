@@ -215,6 +215,17 @@ class TestBackendCommands(unittest.TestCase):
         for name, orig_fun in self.utils_mocks.items():
             setattr(utils, name, orig_fun)
 
+    def test_base_dir_created(self):
+        test_backend = backend.Backend(config=self.alwaysFalse)
+        test_backend.install()
+        self.assertTrue(os.path.isdir(utils.BASE_DIR))
+
+    def test_base_dir_removed(self):
+        test_backend = backend.Backend(config=self.alwaysFalse)
+        test_backend.install()
+        test_backend.stop()
+        self.assertFalse(os.path.exists(utils.BASE_DIR), utils.BASE_DIR)
+
     def test_install_python(self):
         test_backend = backend.Backend(config=self.alwaysFalse)
         test_backend.install()
@@ -281,3 +292,18 @@ class TestBackendUtils(unittest.TestCase):
         )
         self.assertTrue(test_backend.different('sandbox'))
         self.assertFalse(test_backend.different('staging'))
+
+
+class TestChainMethods(unittest.TestCase):
+
+    def setUp(self):
+        self.called = []
+        def method(self):
+            self.called.append('aaa')
+        mixin1 = type('Mixin1', (), {'method': method})
+        mixin2 = type('Mixin2', (), {'method': method})
+        self.mixins = (mixin1, mixin2)
+
+    def test_chain(self):
+        backend.chain_methods('method')(self)
+        import pdb; pdb.set_trace()

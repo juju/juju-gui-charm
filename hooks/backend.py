@@ -38,7 +38,9 @@ The mixins appear in the code in the order they are instantiated by the
 backend. Keeping them that way is useful.
 """
 
+import errno
 import os
+import shutil
 
 import charmhelpers
 import shelltoolbox
@@ -53,7 +55,12 @@ class SetUpMixin(object):
         os.makedirs(utils.BASE_DIR)
 
     def stop(self, backend):
-        utils.cmd_log(shelltoolbox.run('rm', '-rf', utils.BASE_DIR))
+        try:
+            shutil.rmtree(utils.BASE_DIR)
+        except OSError as err:
+            # Re-raise the error if it is not 'No such file or directory'.
+            if err.errno != errno.ENOENT:
+                raise
 
 
 class PythonInstallMixinBase(object):
