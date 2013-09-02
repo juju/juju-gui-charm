@@ -298,12 +298,19 @@ class TestChainMethods(unittest.TestCase):
 
     def setUp(self):
         self.called = []
-        def method(self):
-            self.called.append('aaa')
-        mixin1 = type('Mixin1', (), {'method': method})
-        mixin2 = type('Mixin2', (), {'method': method})
-        self.mixins = (mixin1, mixin2)
+
+        def method(mixin, backend):
+            self.called.append(mixin.__class__.__name__)
+        mixin1 = type('Mixin1', (object,), {'method': method})()
+        mixin2 = type('Mixin2', (object,), {'method': method})()
+        self.backend = type('Backend', (), {'mixins': (mixin1, mixin2)})()
 
     def test_chain(self):
-        backend.chain_methods('method')(self)
-        import pdb; pdb.set_trace()
+        method = backend.chain_methods('method')
+        method(self.backend)
+        self.assertEqual(['Mixin1', 'Mixin2'], self.called)
+
+    def test_reversed(self):
+        method = backend.chain_methods('method', reverse=True)
+        method(self.backend)
+        self.assertEqual(['Mixin2', 'Mixin1'], self.called)
