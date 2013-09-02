@@ -52,6 +52,7 @@ class SetUpMixin(object):
     """Handle the overall set up and clean up processes."""
 
     def install(self, backend):
+        print "CREATEEEEEEEEEEEEEEEEEEEEEEE ***************************"
         try:
             os.makedirs(utils.BASE_DIR)
         except OSError as err:
@@ -60,10 +61,11 @@ class SetUpMixin(object):
                 raise
 
     def stop(self, backend):
+        print "REMOVEEEEEEEEEEEEEEEEEEEEEEEEE ****************************"
         try:
             shutil.rmtree(utils.BASE_DIR)
         except OSError as err:
-            # Re-raise the error if it is not 'No such file or directory'.
+            # Re-raise the error if it is not a "No such file or directory".
             if err.errno != errno.ENOENT:
                 raise
 
