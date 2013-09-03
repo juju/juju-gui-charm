@@ -24,6 +24,7 @@ from utils import log_hook
 def main():
     backend = Backend()
     backend.stop()
+    backend.destroy()
 
 
 if __name__ == '__main__':

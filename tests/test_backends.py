@@ -223,7 +223,7 @@ class TestBackendCommands(unittest.TestCase):
     def test_base_dir_removed(self):
         test_backend = backend.Backend(config=self.alwaysFalse)
         test_backend.install()
-        test_backend.stop()
+        test_backend.destroy()
         self.assertFalse(os.path.exists(utils.BASE_DIR), utils.BASE_DIR)
 
     def test_install_python(self):
