@@ -25,6 +25,7 @@ import tempfile
 import unittest
 
 import charmhelpers
+import mock
 from shelltoolbox import environ
 import tempita
 import yaml
@@ -705,10 +706,6 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertIn('NameVirtualHost *:8000', apache_ports_conf)
         self.assertIn('Listen 8000', apache_ports_conf)
 
-    def test_remove_apache_setup(self):
-        remove_apache_setup()
-        self.assertEqual(self.run_call_count, 3)
-
     def test_start_haproxy_apache(self):
         start_haproxy_apache(JUJU_GUI_DIR, False, self.ssl_cert_path, True)
         self.assertEqual(self.svc_ctl_call_count, 2)
@@ -826,6 +823,32 @@ class TestStartImprovAgentGui(unittest.TestCase):
             self.build_dir, sandbox=True, show_get_juju_button=True,
             config_js_path='config')
         self.assertIn('showGetJujuButton: true', self.files['config'])
+
+
+@mock.patch('utils.run')
+@mock.patch('utils.cmd_log', mock.Mock())
+@mock.patch('utils.log', mock.Mock())
+@mock.patch('utils.su', mock.MagicMock())
+class TestRemoveApacheSetup(unittest.TestCase):
+
+    def test_existing_configuration(self, mock_run):
+        # The Apache configuration is cleaned up if previously set up.
+        apache_site = tempfile.mkdtemp()
+        with mock.patch('utils.APACHE_SITE', apache_site):
+            remove_apache_setup()
+        self.assertEqual(4, mock_run.call_count)
+        expected_calls = [
+            mock.call('rm', '-f', apache_site),
+            mock.call('a2dismod', 'headers'),
+            mock.call('a2dissite', 'juju-gui'),
+            mock.call('a2ensite', 'default')
+        ]
+        mock_run.assert_has_calls(expected_calls)
+
+    def test_missing_configuration(self, mock_run):
+        # Nothing happens if the configuration does not already exist.
+        remove_apache_setup()
+        self.assertEqual(0, mock_run.call_count)
 
 
 class TestNpmCache(unittest.TestCase):

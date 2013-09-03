@@ -19,6 +19,7 @@
 
 from collections import defaultdict
 from contextlib import contextmanager
+import os
 import shutil
 import tempfile
 import unittest
@@ -57,20 +58,20 @@ class TestBackendProperties(unittest.TestCase):
             'sandbox': True, 'staging': False, 'builtin-server': False})
         mixin_names = get_mixin_names(test_backend)
         self.assertEqual(
-            ('SandboxMixin', 'GuiMixin', 'HaproxyApacheMixin'),
+            ('SetUpMixin', 'SandboxMixin', 'GuiMixin', 'HaproxyApacheMixin'),
             mixin_names)
         self.assertEqual(
             frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
             test_backend.debs)
 
     def test_python_staging_backend(self):
+        expected_mixins = (
+            'SetUpMixin', 'ImprovMixin', 'GuiMixin', 'HaproxyApacheMixin')
         with self.simulate_pyjuju:
             test_backend = backend.Backend(config={
                 'sandbox': False, 'staging': True, 'builtin-server': False})
             mixin_names = get_mixin_names(test_backend)
-            self.assertEqual(
-                ('ImprovMixin', 'GuiMixin', 'HaproxyApacheMixin'),
-                mixin_names)
+            self.assertEqual(expected_mixins, mixin_names)
             debs = ('apache2', 'curl', 'haproxy', 'openssl', 'zookeeper')
             self.assertEqual(frozenset(debs), test_backend.debs)
 
@@ -91,13 +92,13 @@ class TestBackendProperties(unittest.TestCase):
             self.check_sandbox_mode()
 
     def test_python_backend(self):
+        expected_mixins = (
+            'SetUpMixin', 'PythonMixin', 'GuiMixin', 'HaproxyApacheMixin')
         with self.simulate_pyjuju:
             test_backend = backend.Backend(config={
                 'sandbox': False, 'staging': False, 'builtin-server': False})
             mixin_names = get_mixin_names(test_backend)
-            self.assertEqual(
-                ('PythonMixin', 'GuiMixin', 'HaproxyApacheMixin'),
-                mixin_names)
+            self.assertEqual(expected_mixins, mixin_names)
             self.assertEqual(
                 frozenset(('apache2', 'curl', 'haproxy', 'openssl')),
                 test_backend.debs)
@@ -108,7 +109,7 @@ class TestBackendProperties(unittest.TestCase):
                 'sandbox': False, 'staging': False, 'builtin-server': False})
             mixin_names = get_mixin_names(test_backend)
             self.assertEqual(
-                ('GoMixin', 'GuiMixin', 'HaproxyApacheMixin'),
+                ('SetUpMixin', 'GoMixin', 'GuiMixin', 'HaproxyApacheMixin'),
                 mixin_names)
             self.assertEqual(
                 frozenset(
@@ -116,7 +117,8 @@ class TestBackendProperties(unittest.TestCase):
                 test_backend.debs)
 
     def test_builtin_server(self):
-        expected_mixins = ('GoMixin', 'GuiMixin', 'BuiltinServerMixin')
+        expected_mixins = (
+            'SetUpMixin', 'GoMixin', 'GuiMixin', 'BuiltinServerMixin')
         expected_debs = set([
             'python-pip', 'python-yaml', 'curl', 'openssl', 'python-bzrlib'])
         with self.simulate_juju_core:
@@ -193,14 +195,17 @@ class TestBackendCommands(unittest.TestCase):
         shelltoolbox.run = mock_run
 
         # Monkeypatch directories.
-        self.orig_juju_dir = utils.JUJU_DIR
-        self.temp_dir = tempfile.mkdtemp()
-        utils.JUJU_DIR = self.temp_dir
+        self.playground = tempfile.mkdtemp()
+        self.orig_juju_dir = utils.JUJU_AGENT_DIR
+        utils.JUJU_AGENT_DIR = tempfile.mkdtemp(dir=self.playground)
+        self.orig_base_dir = utils.BASE_DIR
+        utils.BASE_DIR = os.path.join(self.playground, 'juju-gui')
 
     def tearDown(self):
         # Cleanup directories.
-        utils.JUJU_DIR = self.orig_juju_dir
-        shutil.rmtree(self.temp_dir)
+        shutil.rmtree(self.playground)
+        utils.JUJU_AGENT_DIR = self.orig_juju_dir
+        utils.BASE_DIR = self.orig_base_dir
         # Undo the monkeypatching.
         shelltoolbox.run = self.orig_run
         shelltoolbox.apt_get_install = self.orig_apt_get_install
@@ -209,6 +214,17 @@ class TestBackendCommands(unittest.TestCase):
             setattr(charmhelpers, name, orig_fun)
         for name, orig_fun in self.utils_mocks.items():
             setattr(utils, name, orig_fun)
+
+    def test_base_dir_created(self):
+        test_backend = backend.Backend(config=self.alwaysFalse)
+        test_backend.install()
+        self.assertTrue(os.path.isdir(utils.BASE_DIR))
+
+    def test_base_dir_removed(self):
+        test_backend = backend.Backend(config=self.alwaysFalse)
+        test_backend.install()
+        test_backend.destroy()
+        self.assertFalse(os.path.exists(utils.BASE_DIR), utils.BASE_DIR)
 
     def test_install_python(self):
         test_backend = backend.Backend(config=self.alwaysFalse)
@@ -276,3 +292,25 @@ class TestBackendUtils(unittest.TestCase):
         )
         self.assertTrue(test_backend.different('sandbox'))
         self.assertFalse(test_backend.different('staging'))
+
+
+class TestChainMethods(unittest.TestCase):
+
+    def setUp(self):
+        self.called = []
+
+        def method(mixin, backend):
+            self.called.append(mixin.__class__.__name__)
+        mixin1 = type('Mixin1', (object,), {'method': method})()
+        mixin2 = type('Mixin2', (object,), {'method': method})()
+        self.backend = type('Backend', (), {'mixins': (mixin1, mixin2)})()
+
+    def test_chain(self):
+        method = backend.chain_methods('method')
+        method(self.backend)
+        self.assertEqual(['Mixin1', 'Mixin2'], self.called)
+
+    def test_reversed(self):
+        method = backend.chain_methods('method', reverse=True)
+        method(self.backend)
+        self.assertEqual(['Mixin2', 'Mixin1'], self.called)
