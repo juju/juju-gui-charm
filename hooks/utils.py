@@ -510,7 +510,6 @@ def remove_apache_setup():
             cmd_log(run('rm', '-f', APACHE_PORTS))
 
 
-
 def start_haproxy_apache(
         build_dir, serve_tests, ssl_cert_path, secure):
     """Set up and start the haproxy and Apache services."""
