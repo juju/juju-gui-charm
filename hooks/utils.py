@@ -499,15 +499,16 @@ def setup_apache_config(build_dir, serve_tests=False):
 
 def remove_apache_setup():
     """Remove Apache setup."""
-    log('Removing Apache setup.')
-    with su('root'):
-        run('a2dismod', 'headers')
-        run('a2dissite', 'juju-gui')
-        run('a2ensite', 'default')
-    if os.path.exists(APACHE_PORTS):
-        cmd_log(run('rm', '-f', APACHE_PORTS))
     if os.path.exists(APACHE_SITE):
+        log('Removing Apache setup.')
         cmd_log(run('rm', '-f', APACHE_SITE))
+        with su('root'):
+            run('a2dismod', 'headers')
+            run('a2dissite', 'juju-gui')
+            run('a2ensite', 'default')
+        if os.path.exists(APACHE_PORTS):
+            cmd_log(run('rm', '-f', APACHE_PORTS))
+
 
 
 def start_haproxy_apache(
