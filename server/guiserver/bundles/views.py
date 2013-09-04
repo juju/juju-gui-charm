@@ -78,7 +78,6 @@ def _validate_import_params(params):
 
     Raise a ValueError if data represents an invalid request.
     """
-
     contents = params.get('YAML')
     if contents is None:
         raise ValueError('invalid data parameters')
