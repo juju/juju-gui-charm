@@ -78,14 +78,19 @@ def _validate_import_params(params):
 
     Raise a ValueError if data represents an invalid request.
     """
-    name = params.get('Name')
     contents = params.get('YAML')
-    if not (name and contents):
+    if contents is None:
         raise ValueError('invalid data parameters')
     try:
         bundles = yaml.load(contents, Loader=yaml.SafeLoader)
     except Exception as err:
         raise ValueError('invalid YAML contents: {}'.format(err))
+    name = params.get('Name')
+    if name is None:
+        # The Name is optional if the YAML contents contain only one bunlde.
+        if len(bundles) == 1:
+            return bundles.items()[0]
+        raise ValueError('invalid data parameters: no bundle name provided')
     bundle = bundles.get(name)
     if bundle is None:
         raise ValueError('bundle {} not found'.format(name))

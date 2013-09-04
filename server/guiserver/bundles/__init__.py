@@ -98,8 +98,10 @@ A deployment request looks like the following:
         'Params': {'Name': 'bundle-name', 'YAML': 'bundles'},
     }
 
-In the future it will be possible to pass "URL" in place of "YAML" in order to
-deploy a bundle from a URL.
+In the request parameters above, the YAML field stores the YAML encoded
+contents representing one or more bundles, and the Name field is the name of
+the specific bundle (included in YAML) that must be deployed. The Name
+parameter is optional in the case YAML includes only one bundle.
 
 After receiving a deployment request, the DeployMiddleware sends a response
 indicating whether or not the request has been accepted. This response is sent
