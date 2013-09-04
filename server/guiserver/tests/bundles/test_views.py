@@ -108,6 +108,22 @@ class TestImportBundle(
         self.assertEqual(0, len(self.deployer.mock_calls))
 
     @gen_test
+    def test_no_name_failure(self):
+        # An error response is returned if the requested bundle name is not
+        # provided and the YAML contents include multiple bundles
+        params = {'YAML': 'bundle1: contents1\nbundle2: contents2'}
+        request = self.make_view_request(params=params)
+        response = yield self.view(request, self.deployer)
+        expected_response = {
+            'Response': {},
+            'Error': 'invalid request: invalid data parameters: '
+                     'no bundle name provided',
+        }
+        self.assertEqual(expected_response, response)
+        # The Deployer methods have not been called.
+        self.assertEqual(0, len(self.deployer.mock_calls))
+
+    @gen_test
     def test_bundle_not_found(self):
         # An error response is returned if the requested bundle name is not
         # found in the bundle YAML contents.
@@ -153,6 +169,22 @@ class TestImportBundle(
         response = yield self.view(request, self.deployer)
         expected_response = {'Response': {'DeploymentId': 42}}
         self.assertEqual(expected_response, response)
+        # Ensure the Deployer methods have been correctly called.
+        args = (request.user, 'mybundle', 'mycontents')
+        self.deployer.validate.assert_called_once_with(*args)
+        self.deployer.import_bundle.assert_called_once_with(*args)
+
+    @gen_test
+    def test_no_name_success(self):
+        # The process succeeds if the bundle name is not provided but the
+        # YAML contents include just one bundle.
+        params = {'YAML': 'mybundle: mycontents'}
+        request = self.make_view_request(params=params)
+        # Set up the Deployer mock.
+        self.deployer.validate.return_value = self.make_future(None)
+        self.deployer.import_bundle.return_value = 42
+        # Execute the view.
+        yield self.view(request, self.deployer)
         # Ensure the Deployer methods have been correctly called.
         args = (request.user, 'mybundle', 'mycontents')
         self.deployer.validate.assert_called_once_with(*args)
