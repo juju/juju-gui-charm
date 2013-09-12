@@ -387,7 +387,7 @@ def stop_agent():
     cmd_log(run('rm', '-f', AGENT_INIT_PATH))
 
 
-def compute_build_dir(in_staging, serve_tests):
+def compute_build_dir(juju_gui_debug, serve_tests):
     """Compute the build directory."""
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
@@ -395,7 +395,7 @@ def compute_build_dir(in_staging, serve_tests):
         # External insecure resources are still loaded when testing in the
         # debug environment. For now, switch to the production environment if
         # the charm is configured to serve tests.
-    if in_staging and not serve_tests:
+    if juju_gui_debug and not serve_tests:
         build_dirname = 'build-debug'
     else:
         build_dirname = 'build-prod'

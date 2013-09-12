@@ -32,6 +32,11 @@ options:
         to pull a release from.
     type: string
     default: stable
+  juju-gui-debug:
+    description: |
+      Run Juju GUI in debug mode, serving the uncompressed GUI source files.
+    type: boolean
+    default: false
   juju-api-branch:
     description: |
       The Juju API Bazaar branch (implementing the WebSocket server).  Since
@@ -42,9 +47,9 @@ options:
   staging:
     description: |
       Connect the Juju GUI to the staging backend (i.e. a simulated Juju
-      environment).  Currently juju-core does not support the staging
-      backend. For this reason, this option is ignored if the charm is
-      deployed using juju-core.
+      environment).  Currently juju-core does not support the staging backend.
+      For this reason, an error is raised if this option is enabled in a
+      juju-core environment.
     type: boolean
     default: false
   staging-environment:

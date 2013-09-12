@@ -141,7 +141,7 @@ class GuiMixin(object):
         charmhelpers.log('Starting Juju GUI.')
         config = backend.config
         build_dir = utils.compute_build_dir(
-            config['staging'], config['serve-tests'])
+            config['juju-gui-debug'], config['serve-tests'])
         utils.write_gui_config(
             config['juju-gui-console-enabled'], config['login-help'],
             config['read-only'], config['staging'], config['charmworld-url'],
@@ -181,7 +181,7 @@ class HaproxyApacheMixin(ServerInstallMixinBase):
     def start(self, backend):
         config = backend.config
         build_dir = utils.compute_build_dir(
-            config['staging'], config['serve-tests'])
+            config['juju-gui-debug'], config['serve-tests'])
         utils.start_haproxy_apache(
             build_dir, config['serve-tests'], config['ssl-cert-path'],
             config['secure'])
@@ -204,7 +204,7 @@ class BuiltinServerMixin(ServerInstallMixinBase):
     def start(self, backend):
         config = backend.config
         build_dir = utils.compute_build_dir(
-            config['staging'], config['serve-tests'])
+            config['juju-gui-debug'], config['serve-tests'])
         utils.start_builtin_server(
             build_dir, config['ssl-cert-path'], config['serve-tests'],
             config['sandbox'], config['builtin-server-logging'],
