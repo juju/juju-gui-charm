@@ -770,7 +770,8 @@ class TestStartImprovAgentGui(unittest.TestCase):
     def test_write_gui_config(self):
         write_gui_config(
             False, 'This is login help.', True, True, self.charmworld_url,
-            self.build_dir, use_analytics=True, config_js_path='config')
+            self.build_dir, config_js_path='config',
+            ga_key='UA-123456')
         js_conf = self.files['config']
         self.assertIn('consoleEnabled: false', js_conf)
         self.assertIn('user: "admin"', js_conf)
@@ -780,7 +781,7 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertIn("socket_url: 'wss://", js_conf)
         self.assertIn('socket_protocol: "wss"', js_conf)
         self.assertIn('charmworldURL: "http://charmworld.example"', js_conf)
-        self.assertIn('useAnalytics: true', js_conf)
+        self.assertIn('GA_key: "UA-123456"', js_conf)
 
     def test_write_gui_config_insecure(self):
         write_gui_config(
@@ -803,12 +804,6 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertIn('sandbox: true', js_conf)
         self.assertIn('user: "admin"', js_conf)
         self.assertIn('password: "admin"', js_conf)
-
-    def test_write_gui_config_no_analytics(self):
-        write_gui_config(
-            False, 'This is login help.', False, False, self.charmworld_url,
-            self.build_dir, use_analytics=False, config_js_path='config')
-        self.assertIn('useAnalytics: false', self.files['config'])
 
     def test_write_gui_config_fullscreen(self):
         write_gui_config(
