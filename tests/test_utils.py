@@ -669,16 +669,16 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertEqual(self.actions, [charmhelpers.STOP])
 
     def test_compute_build_dir(self):
-        for (in_staging, serve_tests, result) in (
+        for (juju_gui_debug, serve_tests, result) in (
             (False, False, 'build-prod'),
             (True, False, 'build-debug'),
             (False, True, 'build-prod'),
             (True, True, 'build-prod'),
         ):
-            build_dir = compute_build_dir(in_staging, serve_tests)
+            build_dir = compute_build_dir(juju_gui_debug, serve_tests)
             self.assertIn(
-                result, build_dir, 'in_staging: {}, serve_tests: {}'.format(
-                    in_staging, serve_tests))
+                result, build_dir, 'debug: {}, serve_tests: {}'.format(
+                    juju_gui_debug, serve_tests))
 
     def test_setup_haproxy_config(self):
         setup_haproxy_config(self.ssl_cert_path)
