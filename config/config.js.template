@@ -22,7 +22,6 @@ var juju_config = {
   apiBackend: {{api_backend}}, // Value can be 'python' or 'go'.
   readOnly: {{readonly}},
   sandbox: {{sandbox}},
-  useAnalytics: {{use_analytics}},
   GA_key: {{ga_key}},
   login_help: {{login_help}},
   defaultViewmode: {{default_viewmode}},

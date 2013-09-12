@@ -146,7 +146,6 @@ class GuiMixin(object):
             config['juju-gui-console-enabled'], config['login-help'],
             config['read-only'], config['staging'], config['charmworld-url'],
             build_dir, secure=config['secure'], sandbox=config['sandbox'],
-            use_analytics=config['use-analytics'],
             ga_key=config['ga-key'],
             default_viewmode=config['default-viewmode'],
             show_get_juju_button=config['show-get-juju-button'])
