@@ -29,6 +29,7 @@ from guiserver.watchers import AsyncWatcher
 # Change statuses.
 SCHEDULED = 'scheduled'
 STARTED = 'started'
+CANCELLED = 'cancelled'
 COMPLETED = 'completed'
 
 
@@ -98,6 +99,12 @@ class Observer(object):
         status = SCHEDULED if position else STARTED
         change = create_change(deployment_id, status, queue=position)
         watcher.put(change)
+
+    def notify_cancelled(self, deployment_id):
+        """Add a change to the deployment watcher notifying it is cancelled."""
+        watcher = self.deployments[deployment_id]
+        change = create_change(deployment_id, CANCELLED)
+        watcher.close(change)
 
     def notify_completed(self, deployment_id, error=None):
         """Add a change to the deployment watcher notifying it is completed."""
