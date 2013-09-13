@@ -404,9 +404,9 @@ def compute_build_dir(juju_gui_debug, serve_tests):
 
 def write_gui_config(
         console_enabled, login_help, readonly, in_staging, charmworld_url,
-        build_dir, secure=True, sandbox=False, use_analytics=False,
+        build_dir, secure=True, sandbox=False,
         default_viewmode='sidebar', show_get_juju_button=False,
-        config_js_path=None):
+        config_js_path=None, ga_key=''):
     """Generate the GUI configuration file."""
     log('Generating the Juju GUI configuration file.')
     is_legacy_juju = legacy_juju()
@@ -433,7 +433,7 @@ def write_gui_config(
         'protocol': json.dumps(protocol),
         'sandbox': json.dumps(sandbox),
         'charmworld_url': json.dumps(charmworld_url),
-        'use_analytics': json.dumps(use_analytics),
+        'ga_key': json.dumps(ga_key),
         'default_viewmode': json.dumps(default_viewmode),
         'show_get_juju_button': json.dumps(show_get_juju_button),
     }

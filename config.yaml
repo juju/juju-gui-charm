@@ -144,19 +144,20 @@ options:
       'add-apt-repository'.
     type: string
     default: ppa:juju-gui-charmers/stable
-  use-analytics:
+  ga-key:
     description: |
+      The Google Analytics key to use.  Set to blank to disable analytics.
       The team developing the Juju GUI benefits from understanding how
-      different deployments use the tool.  By enabling this setting,
+      different deployments use the tool.  By keeping the default key value,
       anonymized usage data is reported back using Google Analytics.  The type
       of data collected includes the charms that are deployed and the number
       of units per service.  Use of analytics is optional but we hope you will
       allow us to improve our tool based on your experience.
-    type: boolean
-    default: true
+    type: string
+    default: UA-41463568-2
   default-viewmode:
     description: |
-      What the charmbrowser's default viewmode should be. Possible options are:
+      What the default viewmode  for the charmbrowser should be. Possible options are:
       - 'sidebar' (default): the charmwbrowser will appear as a sidebar. This
         is also known as build mode.
       - 'fullscreen': the charmbrowser will appear in full screen, hiding the
@@ -190,7 +191,7 @@ options:
       A string that will be prepended to instance name to set the host name
       in nagios. So for instance the hostname would be something like:
           juju-myservice-0
-      If you're running multiple environments with the same services in them
+      If you are running multiple environments with the same services in them
       this allows you to differentiate between them.
     type: string
     default: "juju"
