@@ -87,7 +87,7 @@ class Deployer(object):
         # Queue stores the deployment identifiers corresponding to the
         # currently started/queued jobs.
         self._queue = []
-        # The futures attribute maps deployment identifiers to futures.
+        # The futures attribute maps deployment identifiers to Futures.
         self._futures = {}
 
     @gen.coroutine
