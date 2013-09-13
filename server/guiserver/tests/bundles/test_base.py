@@ -254,8 +254,12 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
             deployment_id = deployer.import_bundle(
                 self.user, 'bundle', self.bundle, test_callback=self.stop)
         watcher_id = deployer.watch(deployment_id)
-        # Assume the deployment is completed after two changes.
-        yield deployer.next(watcher_id)
+        # Wait until the deployment is started.
+        while True:
+            changes = yield deployer.next(watcher_id)
+            statuses = [change['Status'] for change in changes]
+            if utils.STARTED in statuses:
+                break
         error = deployer.cancel(deployment_id)
         self.assertEqual('unable to cancel the deployment', error)
         # Wait for the deployment to be completed.
