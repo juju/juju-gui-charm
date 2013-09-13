@@ -195,7 +195,6 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         # Wait for the deployment to be completed.
         self.wait()
 
-    @gen_test
     def test_invalid_watcher(self):
         # None is returned if the watcher id is not valid.
         deployer = self.make_deployer()
@@ -262,6 +261,7 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         error = deployer.cancel(deployment_id)
         self.assertEqual('unable to cancel the deployment', error)
         # Wait for the deployment to be completed.
+        yield deployer.next(watcher_id)
         self.wait()
 
     def test_initial_status(self):
