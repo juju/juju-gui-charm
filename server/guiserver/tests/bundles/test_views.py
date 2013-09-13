@@ -267,6 +267,43 @@ class TestNext(
         self.deployer.next.assert_called_once_with(42)
 
 
+class TestCancel(
+        ViewsTestMixin, helpers.BundlesTestMixin, LogTrapTestCase,
+        AsyncTestCase):
+
+    def get_view(self):
+        return views.cancel
+
+    @gen_test
+    def test_invalid_deployment(self):
+        # An error response is returned if the deployment identifier is not
+        # valid.
+        request = self.make_view_request(params={'DeploymentId': 42})
+        # Set up the Deployer mock.
+        self.deployer.cancel.return_value = 'bad wolf'
+        # Execute the view.
+        response = yield self.view(request, self.deployer)
+        expected_response = {
+            'Response': {},
+            'Error': 'invalid request: bad wolf',
+        }
+        self.assertEqual(expected_response, response)
+        # Ensure the Deployer methods have been correctly called.
+        self.deployer.cancel.assert_called_once_with(42)
+
+    @gen_test
+    def test_success(self):
+        # An empty response is returned if everything is ok.
+        request = self.make_view_request(params={'DeploymentId': 42})
+        # Set up the Deployer mock.
+        self.deployer.cancel.return_value = None
+        # Execute the view.
+        response = yield self.view(request, self.deployer)
+        self.assertEqual({'Response': {}}, response)
+        # Ensure the Deployer methods have been correctly called.
+        self.deployer.cancel.assert_called_once_with(42)
+
+
 class TestStatus(
         ViewsTestMixin, helpers.BundlesTestMixin, LogTrapTestCase,
         AsyncTestCase):

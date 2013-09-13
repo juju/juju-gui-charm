@@ -169,6 +169,28 @@ def next(request, deployer):
 
 @gen.coroutine
 @require_authenticated_user
+def cancel(request, deployer):
+    """Cancel the given pending deployment.
+
+    The deployment is identified in the request by the DeploymentId parameter.
+    If the request is not valid or the deployment cannot be cancelled (e.g.
+    because it is already started) an error response is returned.
+
+    Request: 'Cancel'.
+    Parameters example: {'DeploymentId': 42}.
+    """
+    deployment_id = request.params.get('DeploymentId')
+    if deployment_id is None:
+        raise response(error='invalid request: invalid data parameters')
+    # Use the Deployer instance to cancel the deployment.
+    err = deployer.cancel(deployment_id)
+    if err is not None:
+        raise response(error='invalid request: {}'.format(err))
+    raise response()
+
+
+@gen.coroutine
+@require_authenticated_user
 def status(request, deployer):
     """Return the current status of all the bundle deployments.
 

@@ -23,7 +23,12 @@ bundle views and the Deployer itself. See the bundles package docstring for
 a detailed explanation of how these objects are used.
 """
 
-from concurrent.futures import ProcessPoolExecutor
+import time
+
+from concurrent.futures import (
+    process,
+    ProcessPoolExecutor,
+)
 from tornado import gen
 from tornado.ioloop import IOLoop
 from tornado.util import ObjectDict
@@ -37,6 +42,10 @@ from guiserver.utils import add_future
 from guiserver.watchers import WatcherError
 
 
+# Controls how many more calls than processes will be queued in the call queue.
+# Set to zero to make Future.cancel() succeed more frequently (Futures in the
+# call queue cannot be cancelled).
+process.EXTRA_QUEUED_CALLS = 0
 # Juju API versions supported by the GUI server Deployer.
 # Tests use the first API version in this list.
 SUPPORTED_API_VERSIONS = ['go']
@@ -78,6 +87,8 @@ class Deployer(object):
         # Queue stores the deployment identifiers corresponding to the
         # currently started/queued jobs.
         self._queue = []
+        # The futures attribute maps deployment identifiers to Futures.
+        self._futures = {}
 
     @gen.coroutine
     def validate(self, user, name, bundle):
@@ -132,9 +143,14 @@ class Deployer(object):
         future = self._run_executor.submit(
             blocking.import_bundle, self._apiurl, user.password, name, bundle)
         add_future(self._io_loop, future, self._import_callback, deployment_id)
+        self._futures[deployment_id] = future
         # If a customized callback is provided, schedule it as well.
         if test_callback is not None:
             add_future(self._io_loop, future, test_callback)
+        # Submit a sleeping job in order to avoid the next deployment job to be
+        # immediately put in the executor's call queue. This allows for
+        # cancelling scheduled jobs, even if the job is the next to be started.
+        self._run_executor.submit(time.sleep, 1)
         return deployment_id
 
     def _import_callback(self, deployment_id, future):
@@ -144,12 +160,17 @@ class Deployer(object):
         deployment_id identifying one specific deployment job, and the fired
         future returned by the executor.
         """
-        exception = future.exception()
-        error = None if exception is None else str(exception)
-        # Notify a deployment completed.
-        self._observer.notify_completed(deployment_id, error=error)
+        if future.cancelled():
+            # Notify a deployment has been cancelled.
+            self._observer.notify_cancelled(deployment_id)
+        else:
+            exception = future.exception()
+            error = None if exception is None else str(exception)
+            # Notify a deployment completed.
+            self._observer.notify_completed(deployment_id, error=error)
         # Remove the completed deployment job from the queue.
         self._queue.remove(deployment_id)
+        del self._futures[deployment_id]
         # Notify the new position of all remaining deployments in the queue.
         for position, deploy_id in enumerate(self._queue):
             self._observer.notify_position(deploy_id, position)
@@ -182,6 +203,18 @@ class Deployer(object):
             return watcher.next(watcher_id)
         except WatcherError:
             return
+
+    def cancel(self, deployment_id):
+        """Attempt to cancel the deployment identified by deployment_id.
+
+        Return None if the deployment has been correctly cancelled.
+        Return an error string otherwise.
+        """
+        future = self._futures.get(deployment_id)
+        if future is None:
+            return 'deployment not found or already completed'
+        if not future.cancel():
+            return 'unable to cancel the deployment'
 
     def status(self):
         """Return a list containing the last known change for each deployment.
@@ -221,6 +254,7 @@ class DeployMiddleware(object):
             'Import': views.import_bundle,
             'Watch': views.watch,
             'Next': views.next,
+            'Cancel': views.cancel,
             'Status': views.status,
         }
 
