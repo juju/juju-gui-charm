@@ -41,12 +41,12 @@ base module:
       the WebSocket request/response aspects, or how incoming data is retrieved
       or generated.
 
-      The Deployer implementation in this module uses the juju-deployer library
-      to import the provided bundle into the Juju environment. Since the
-      mentioned operations are executed in a separate process, it is safe for
-      the Deployer to interact with the blocking juju-deployer library.
-      Those blocking functions are defined in the blocking module of this
-      package, described below.
+      The Deployer implementation in this package uses the juju-deployer
+      library to import the provided bundle into the Juju environment. Since
+      the mentioned operations are executed in a separate process, it is safe
+      for the Deployer to interact with the blocking juju-deployer library.
+      Those blocking functions are defined in the guiserver module of the
+      juju-deployer project, described below.
 
       Note that the Deployer is not intended to store request related data: one
       instance is created once when the application is bootstrapped and used as
@@ -60,23 +60,24 @@ base module:
       views module of this package. The DeployMiddleware dispatches requests
       and collect responses to be sent back to the API client.
 
-The views and blocking modules are responsible of handling the request/response
-process and of starting/scheduling bundle deployments.
+The views module is responsible of handling the request/response process and of
+starting/scheduling bundle deployments.
 
     - views: as already mentioned, the functions in this module handle the
       requests from the API client, and set up responses. Since the views have
       access to the Deployer (described above), they can start/queue bundle
       deployments.
 
-    - blocking: all the blocking functions interacting with the juju-deployer
-      library belong here. Specifically this module defines two functions:
-        - validate: validate a bundle based on the state of the Juju env.;
-        - import_bundle: starts the bundle deployment process.
+The deployer.guiserver module in the juju-deployer library is responsible of
+validating a bundle and starting a deployment. Specifically the module defines
+two functions:
+    - validate: validate a bundle based on the state of the Juju env.;
+    - import_bundle: starts the bundle deployment process.
 
 The infrastructure described above can be summarized like the following
 (each arrow meaning "calls"):
     - request handling: request -> DeployMiddleware -> views
-    - deployment handling: views -> Deployer -> blocking
+    - deployment handling: views -> Deployer -> deployer.guiserver
     - response handling: views -> response
 
 While the DeployMiddleware parses the request data and statically validates
