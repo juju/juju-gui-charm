@@ -60,15 +60,15 @@ base module:
       views module of this package. The DeployMiddleware dispatches requests
       and collect responses to be sent back to the API client.
 
-The views module is responsible of handling the request/response process and of
-starting/scheduling bundle deployments.
+The views module is responsible for handling the request/response process and
+of starting/scheduling bundle deployments.
 
     - views: as already mentioned, the functions in this module handle the
       requests from the API client, and set up responses. Since the views have
       access to the Deployer (described above), they can start/queue bundle
       deployments.
 
-The deployer.guiserver module in the juju-deployer library is responsible of
+The deployer.guiserver module in the juju-deployer library is responsible for
 validating a bundle and starting a deployment. Specifically the module defines
 two functions:
     - validate: validate a bundle based on the state of the Juju env.;
