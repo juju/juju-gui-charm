@@ -25,7 +25,6 @@ import unittest
 
 import mock
 from tornado import websocket
-import yaml
 
 from guiserver import auth
 from guiserver.bundles import base
