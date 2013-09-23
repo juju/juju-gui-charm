@@ -111,7 +111,8 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         # Wait for the deployment to be completed.
         self.wait()
         mock_import_bundle.assert_called_once_with(
-            self.apiurl, self.user.password, 'bundle', self.bundle)
+            self.apiurl, self.user.password, 'bundle', self.bundle,
+            base.IMPORTER_OPTIONS)
         mock_import_bundle.assert_called_in_a_separate_process()
 
     def test_watch(self):

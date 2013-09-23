@@ -17,9 +17,6 @@
 """Tests for the Juju GUI server utilities."""
 
 import json
-import os
-import shutil
-import tempfile
 import unittest
 
 import mock
@@ -111,54 +108,6 @@ class TestJsonDecodeDict(unittest.TestCase):
         expected_log = 'JSON decoder: message is not a dict: "not-a-dict"'
         with ExpectLog('', expected_log, required=True):
             self.assertIsNone(utils.json_decode_dict('"not-a-dict"'))
-
-
-class TestMkdir(unittest.TestCase):
-
-    def setUp(self):
-        self.playground = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, self.playground)
-
-    def test_create_dir(self):
-        # A directory is correctly created.
-        path = os.path.join(self.playground, 'foo')
-        utils.mkdir(path)
-        self.assertTrue(os.path.isdir(path))
-
-    def test_intermediate_dirs(self):
-        # All intermediate directories are created.
-        path = os.path.join(self.playground, 'foo', 'bar', 'leaf')
-        utils.mkdir(path)
-        self.assertTrue(os.path.isdir(path))
-
-    def test_expand_user(self):
-        # The ~ construction is expanded.
-        with mock.patch('os.environ', {'HOME': self.playground}):
-            utils.mkdir('~/in/my/home')
-        path = os.path.join(self.playground, 'in', 'my', 'home')
-        self.assertTrue(os.path.isdir(path))
-
-    def test_existing_dir(self):
-        # The function exits without errors if the target directory exists.
-        path = os.path.join(self.playground, 'foo')
-        os.mkdir(path)
-        utils.mkdir(path)
-
-    def test_existing_file(self):
-        # An OSError is raised if a file already exists in the target path.
-        path = os.path.join(self.playground, 'foo')
-        with open(path, 'w'):
-            with self.assertRaises(OSError):
-                utils.mkdir(path)
-
-    def test_failure(self):
-        # Errors are correctly re-raised.
-        path = os.path.join(self.playground, 'foo')
-        os.chmod(self.playground, 0000)
-        self.addCleanup(os.chmod, self.playground, 0700)
-        with self.assertRaises(OSError):
-            utils.mkdir(os.path.join(path))
-        self.assertFalse(os.path.exists(path))
 
 
 class TestRequestSummary(unittest.TestCase):
