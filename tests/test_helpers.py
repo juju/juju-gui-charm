@@ -31,6 +31,7 @@ from helpers import (
     juju_version,
     ProcessError,
     retry,
+    stop_services,
     Version,
     wait_for_unit,
 )
@@ -315,8 +316,28 @@ class TestRetry(unittest.TestCase):
         mock_sleep.assert_called_with(1)
 
 
+@mock.patch('helpers.ssh')
+class TestStopServices(unittest.TestCase):
+
+    def test_single_service(self, mock_ssh):
+        # An ssh command is executed to stop a single service.
+        stop_services('my-host-name', ['foo'])
+        mock_ssh.assert_called_once_with(
+            'ubuntu@my-host-name', 'sudo', 'service', 'foo', 'stop')
+
+    def test_multiple_services(self, mock_ssh):
+        # An ssh command is executed for each given service.
+        stop_services('127.0.0.1', ['foo', 'bar'])
+        self.assertEqual(2, mock_ssh.call_count)
+        expected = [
+            mock.call('ubuntu@127.0.0.1', 'sudo', 'service', 'foo', 'stop'),
+            mock.call('ubuntu@127.0.0.1', 'sudo', 'service', 'bar', 'stop'),
+        ]
+        mock_ssh.assert_has_calls(expected)
+
+
 @mock.patch('helpers.juju_status')
-class TestWaitForService(unittest.TestCase):
+class TestWaitForUnit(unittest.TestCase):
 
     address = 'unit.example.com'
     service = 'test-service'

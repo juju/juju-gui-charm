@@ -160,6 +160,13 @@ def juju_version():
     return Version._make(map(to_int, match.groups()))
 
 
+def stop_services(hostname, services):
+    """Stop the given upstart services running on hostname."""
+    target = 'ubuntu@{}'.format(hostname)
+    for service in services:
+        ssh(target, 'sudo', 'service', service, 'stop')
+
+
 def wait_for_unit(sevice):
     """Wait for the first unit of the given service to be started.
 

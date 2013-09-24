@@ -25,12 +25,12 @@ from selenium.webdriver.support import ui
 from xvfbwrapper import Xvfb
 
 # XXX 2013-07-30 benji bug=872264: Don't use juju_deploy directly, use
-# DeployTestMixin.juju_deploy instead.  See comment in stop_services.
+# DeployTestMixin.juju_deploy instead.  See comment in the method.
 from deploy import juju_deploy
 from helpers import (
     juju_destroy_service,
     juju_version,
-    ssh,
+    stop_services,
 )
 
 
@@ -52,9 +52,7 @@ class DeployTestMixin(object):
         # Create a Selenium browser instance.
         selenium = self.selenium = Firefox()
         self.addCleanup(selenium.quit)
-
-    def tearDown(self):
-        juju_destroy_service(self.charm)
+        super(DeployTestMixin, self).setUp()
 
     def assertEnvironmentIsConnected(self):
         """Assert the GUI environment is connected to the Juju API agent."""
@@ -127,36 +125,38 @@ class DeployTestMixin(object):
         services = self.wait_for(services_found, 'Services not displayed.')
         return set([element.text for element in services])
 
-    def stop_services(self, hostname, services):
+    def juju_deploy(self, *args, **kwargs):
+        """Shim in our additional cleanup for pyJuju."""
         # XXX 2012-11-29 frankban bug=872264:
             # Just invoking ``juju destroy-service juju-gui`` in tearDown
             # should execute the ``stop`` hook, stopping all the services
             # started by the charm in the machine. Right now this does not
             # work in pyJuju, so the desired effect is achieved by keeping
             # track of started services and manually stopping them here.
-        target = 'ubuntu@{}'.format(hostname)
-        for service in services:
-            ssh(target, 'sudo', 'service', service, 'stop')
-
-    def juju_deploy(self, *args, **kws):
-        """Shim in our additional cleanup for pyJuju."""
-        # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         # Once pyJuju works correctly or we drop support for it altogether, we
         # can remove this shim.
-        unit_info = juju_deploy(*args, **kws)
+        unit_info = juju_deploy(*args, **kwargs)
         if is_legacy_juju:
             hostname = unit_info['public-address']
-            services = ['haproxy', 'apache2']
+            options = kwargs.get('options', {})
+            # Either stop the builtin server or the old apache2/haproxy setup.
+            if options.get('builtin-server') == 'true':
+                services = ['guiserver']
+            else:
+                services = ['haproxy', 'apache2']
             # Staging uses improv, otherwise the API agent is used.
-            if kws.get('options').get('staging') == 'true':
+            if options.get('staging') == 'true':
                 services.append('juju-api-improv')
             else:
                 services.append('juju-api-agent')
-            self.addCleanup(self.stop_services, hostname, services)
+            self.addCleanup(stop_services, hostname, services)
         return unit_info
 
 
-class DeployTest(DeployTestMixin, unittest.TestCase):
+class TestDeploy(DeployTestMixin, unittest.TestCase):
+
+    def tearDown(self):
+        juju_destroy_service(self.charm)
 
     def test_api_agent(self):
         # Ensure the Juju GUI and API agent services are correctly set up.
@@ -185,20 +185,6 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         self.navigate_to(hostname)
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()
-
-    def test_builtin_server(self):
-        # Ensure the Juju GUI and builtin server are correctly set up.
-        unit_info = self.juju_deploy(
-            self.charm, options={'builtin-server': 'true'})
-        hostname = unit_info['public-address']
-        self.navigate_to(hostname)
-        self.handle_browser_warning()
-        self.assertEnvironmentIsConnected()
-        conn = httplib.HTTPSConnection(hostname)
-        conn.request('HEAD', '/')
-        headers = conn.getresponse().getheaders()
-        server_header = dict(headers)['server']
-        self.assertIn('TornadoServer', server_header)
 
     def test_branch_source(self):
         # Ensure the Juju GUI is correctly deployed from a Bazaar branch.
@@ -245,6 +231,48 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         conn.request('GET', '/juju-ui/version.js')
         message = 'ADDRESS in check-app-access.sh is not accessible.'
         self.assertEqual(200, conn.getresponse().status, message)
+
+
+class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        # Deploy the charm. The resulting service is used by all the tests
+        # in this test case.
+        unit_info = juju_deploy(cls.charm, options={'builtin-server': 'true'})
+        cls.hostname = unit_info['public-address']
+
+    @classmethod
+    def tearDownClass(cls):
+        # Destroy the GUI service, and perform additional clean up in the case
+        # we are in a pyJuju environment.
+        juju_destroy_service(cls.charm)
+        if is_legacy_juju:
+            # XXX 2012-11-29 frankban bug=872264:
+            # see DeployTestMixin.juju_deploy above.
+            stop_services(cls.hostname, ['guiserver', 'juju-api-agent'])
+
+    def test_environment_connection(self):
+        # Ensure the Juju GUI and builtin server are correctly set up.
+        self.navigate_to(self.hostname)
+        self.handle_browser_warning()
+        self.assertEnvironmentIsConnected()
+
+    def test_headers(self):
+        # Ensure the Tornado headers are correctly sent.
+        conn = httplib.HTTPSConnection(self.hostname)
+        conn.request('HEAD', '/')
+        headers = conn.getresponse().getheaders()
+        server_header = dict(headers)['server']
+        self.assertIn('TornadoServer', server_header)
+
+    def test_server_info(self):
+        # The builtin server includes info about its current status.
+        import pdb; pdb.set_trace()
+
+    def test_deployer(self):
+        # The builtin server supports deploying bundles using juju-deployer.
+        pass
 
 
 if __name__ == '__main__':
