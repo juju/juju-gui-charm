@@ -86,7 +86,7 @@ class DeployTestMixin(object):
         def page_ready(driver):
             driver.get(url)
             return driver.title == 'Juju Admin'
-        self.wait_for(page_ready, error='Juju GUI not found.')
+        self.wait_for(page_ready, error='Juju GUI not found.', timeout=60)
 
     def wait_for(self, condition, error=None, timeout=30):
         """Wait for condition to be True.
@@ -266,14 +266,9 @@ class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
         server_header = dict(headers)['server']
         self.assertIn('TornadoServer', server_header)
 
-    def test_server_info(self):
-        # The builtin server includes info about its current status.
-        import pdb; pdb.set_trace()
-
     def test_deployer(self):
         # The builtin server supports deploying bundles using juju-deployer.
         pass
-
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

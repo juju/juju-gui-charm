@@ -24,6 +24,8 @@ import re
 import subprocess
 import time
 
+import yaml
+
 
 class ProcessError(subprocess.CalledProcessError):
     """Error running a shell command."""
@@ -97,6 +99,40 @@ def retry(exception, tries=10, delay=1):
             raise err
         return decorated
     return decorator
+
+
+def get_admin_secret():
+    """Return the admin secret for the current environment.
+
+    The environment name must be present in the JUJU_ENV env variable.
+    Raise a ValueError if the environment is not found in the context or the
+    given environment name is not included in ~/.juju/environments.yaml.
+    """
+    # Retrieve the current environment.
+    env = juju_env()
+    if env is  None:
+        raise ValueError('Unable to retrieve the current environment name.')
+    # Load and parse the Juju environments file.
+    path = os.path.expanduser('~/.juju/environments.yaml')
+    try:
+        environments_file = open(path)
+    except IOError as err:
+        raise ValueError('Unable to open environments file: {}'.format(err))
+    try:
+        environments = yaml.safe_load(environments_file)
+    except Exception as err:
+        raise ValueError('Unable to parse environments file: {}'.format(err))
+    # Retrieve the admin secret for the current environment.
+    try:
+        environment = environments.get('environments', {}).get(env)
+    except AttributeError as err:
+        raise ValueError('Invalid YAML contents: {}'.format(environments))
+    if environment is None:
+        raise ValueError('Environment {} not found'.format(env))
+    admin_secret = environment.get('admin-secret')
+    if admin_secret is None:
+        raise ValueError('Admin secret not found')
+    return admin_secret
 
 
 @retry(ProcessError)
