@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import print_function
 import httplib
 import unittest
 import urlparse
@@ -28,15 +29,22 @@ from xvfbwrapper import Xvfb
 # DeployTestMixin.juju_deploy instead.  See comment in the method.
 from deploy import juju_deploy
 from helpers import (
+    get_admin_secret,
     juju_destroy_service,
     juju_version,
     stop_services,
+    WebSocketClient,
 )
 
 
 JUJU_GUI_TEST_BRANCH = 'lp:~juju-gui/juju-gui/charm-tests-branch'
 STAGING_SERVICES = ('haproxy', 'mediawiki', 'memcached', 'mysql', 'wordpress')
 is_legacy_juju = juju_version().major == 0
+try:
+    admin_secret = get_admin_secret()
+except ValueError as err:
+    admin_secret = None
+    print(err)
 
 
 class DeployTestMixin(object):
@@ -266,9 +274,15 @@ class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
         server_header = dict(headers)['server']
         self.assertIn('TornadoServer', server_header)
 
+    @unittest.skipUnless(admin_secret, 'admin secret was not found')
+    @unittest.skipIf(
+        is_legacy_juju, 'bundle deployments is only supported in juju-core')
     def test_deployer(self):
         # The builtin server supports deploying bundles using juju-deployer.
-        pass
+        client = WebSocketClient('wss://{}:443/ws'.format(self.hostname))
+        # Create a WebSocket connection to the builtin server.
+        client.connect()
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
