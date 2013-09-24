@@ -18,6 +18,7 @@
 
 from __future__ import print_function
 import httplib
+import itertools
 import unittest
 import urlparse
 
@@ -35,7 +36,7 @@ from helpers import (
     stop_services,
     WebSocketClient,
 )
-
+import example
 
 JUJU_GUI_TEST_BRANCH = 'lp:~juju-gui/juju-gui/charm-tests-branch'
 STAGING_SERVICES = ('haproxy', 'mediawiki', 'memcached', 'mysql', 'wordpress')
@@ -279,9 +280,141 @@ class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
         is_legacy_juju, 'bundle deployments is only supported in juju-core')
     def test_deployer(self):
         # The builtin server supports deploying bundles using juju-deployer.
-        client = WebSocketClient('wss://{}:443/ws'.format(self.hostname))
+        counter = itertools.count()
+
         # Create a WebSocket connection to the builtin server.
+        client = WebSocketClient('wss://{}:443/ws'.format(self.hostname))
         client.connect()
+        self.addCleanup(client.close)
+
+        # An error is returned trying to start a bundle deployment without
+        # being authenticated.
+        response = client.send({
+            'RequestId': counter.next(),
+            'Type': 'Deployer',
+            'Request': 'Import',
+            'Params': {'Name': 'bundle-name', 'YAML': 'foo: bar'},
+        })
+        self.assertIn('Error', response)
+        self.assertEqual(
+            'unauthorized access: no user logged in', response['Error'])
+
+        # Log in.
+        response = client.send({
+            'RequestId': counter.next(),
+            'Type': 'Admin',
+            'Request': 'Login',
+            'Params': {'AuthTag': 'user-admin', 'Password': admin_secret},
+        })
+        self.assertNotIn('Error', response)
+
+        # An error is returned trying to deploy a bundle with an invalid name.
+        response = client.send({
+            'RequestId': counter.next(),
+            'Type': 'Deployer',
+            'Request': 'Import',
+            'Params': {'Name': 'no-such', 'YAML': example.BUNDLE1},
+        })
+        self.assertIn('Error', response)
+        self.assertEqual(
+            'invalid request: bundle no-such not found', response['Error'])
+
+        # An error is returned trying to deploy an invalid bundle YAML.
+        response = client.send({
+            'RequestId': counter.next(),
+            'Type': 'Deployer',
+            'Request': 'Import',
+            'Params': {'Name': 'bundle-name', 'YAML': 42},
+        })
+        self.assertIn('Error', response)
+        self.assertIn(
+            'invalid request: invalid YAML contents', response['Error'])
+
+        # Start a first bundle deployment.
+        response = client.send({
+            'RequestId': counter.next(),
+            'Type': 'Deployer',
+            'Request': 'Import',
+            'Params': {'Name': 'bundle1', 'YAML': example.BUNDLE1},
+        })
+        self.assertNotIn('Error', response)
+        self.assertIn('DeploymentId', response['Response'])
+
+        # Start a second bundle deployment: the bundle name can be omitted if
+        # the YAML contains only one bundle.
+        response = client.send({
+            'RequestId': counter.next(),
+            'Type': 'Deployer',
+            'Request': 'Import',
+            'Params': {'YAML': example.BUNDLE2},
+        })
+        self.assertNotIn('Error', response)
+        self.assertIn('DeploymentId', response['Response'])
+        deployment_id = response['Response']['DeploymentId']
+
+        # Check the bundle deployments status.
+        response = client.send({
+            'RequestId': counter.next(),
+            'Type': 'Deployer',
+            'Request': 'Status',
+        })
+        # TODO:
+         # {u'RequestId': 10,
+         # u'Response': {u'LastChanges': [{u'DeploymentId': 0,
+         #    u'Queue': 0,
+         #    u'Status': u'started',
+         #    u'Time': 1380039816},
+         #   {u'DeploymentId': 1,
+         #    u'Queue': 1,
+         #    u'Status': u'scheduled',
+         #    u'Time': 1380039881}]}}
+
+
+        # An error is returned trying to watch an unknown deployment.
+        response = client.send({
+            'RequestId': counter.next(),
+            'Type': 'Deployer',
+            'Request': 'Watch',
+            'Params': {'DeploymentId': 424242},
+        })
+        self.assertIn('Error', response)
+        self.assertEqual(
+            'invalid request: deployment not found', response['Error'])
+
+        # Start watching the second deployment.
+        response = client.send({
+            'RequestId': counter.next(),
+            'Type': 'Deployer',
+            'Request': 'Watch',
+            'Params': {'DeploymentId': deployment_id},
+        })
+        self.assertNotIn('Error', response)
+        self.assertIn('WatcherId', response['Response'])
+        watcher_id = response['Response']['WatcherId']
+
+        # Observe three changes on the second deployment.
+        response = client.send({
+            'RequestId': counter.next(),
+            'Type': 'Deployer',
+            'Request': 'Next',
+            'Params': {'WatcherId': watcher_id},
+        })
+
+        # An error is returned trying to re-deploy a bundle.
+        response = client.send({
+            'RequestId': counter.next(),
+            'Type': 'Deployer',
+            'Request': 'Import',
+            'Params': {'YAML': example.BUNDLE1},
+        })
+
+        # Check the final bundle deployment status.
+        response = client.send({
+            'RequestId': counter.next(),
+            'Type': 'Deployer',
+            'Request': 'Status',
+        })
+
 
 
 if __name__ == '__main__':

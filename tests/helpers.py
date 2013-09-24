@@ -252,5 +252,6 @@ class WebSocketClient(object):
 
     def close(self):
         """Close the WebSocket connection."""
-        self._conn.close()
-        self._conn = None
+        if self._conn is not None:
+            self._conn.close()
+            self._conn = None
