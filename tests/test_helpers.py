@@ -40,6 +40,7 @@ from helpers import (
     stop_services,
     Version,
     wait_for_unit,
+    WebSocketClient,
 )
 
 
@@ -507,3 +508,35 @@ class TestWaitForUnit(unittest.TestCase):
         unit_info = wait_for_unit(self.service)
         self.assertEqual(self.address, unit_info['public-address'])
         self.assertEqual(1, mock_juju_status.call_count)
+
+
+@mock.patch('helpers.websocket.create_connection')
+class TestWebSocketClient(unittest.TestCase):
+
+    url = 'wss://example.com:17070'
+
+    def setUp(self):
+        self.client = WebSocketClient(self.url)
+
+    def test_connect(self, mock_create_connection):
+        # The WebSocket connection is correctly established.
+        self.client.connect()
+        mock_create_connection.assert_called_once_with(self.url)
+
+    def test_send(self, mock_create_connection):
+        # A request is correctly sent, and a response is returned.
+        request = {'request': 'foo'}
+        expected_request = json.dumps(request)
+        expected_response = {'response': 'bar'}
+        mock_connection = mock_create_connection()
+        mock_connection.recv.return_value = json.dumps(expected_response)
+        self.client.connect()
+        response = self.client.send(request)
+        self.assertEqual(expected_response, response)
+        mock_connection.send.assert_called_once_with(expected_request)
+
+    def test_close(self, mock_create_connection):
+        # A WebSocket connection is correctly terminated.
+        self.client.connect()
+        self.client.close()
+        mock_create_connection().close.assert_called_once_with()

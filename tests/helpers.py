@@ -24,6 +24,7 @@ import re
 import subprocess
 import time
 
+import websocket
 import yaml
 
 
@@ -226,3 +227,30 @@ def wait_for_unit(sevice):
                 'the service unit is in an error state: {}'.format(state))
         if state == 'started':
             return unit
+
+
+class WebSocketClient(object):
+    """A simple blocking WebSocket client used in functional tests."""
+
+    def __init__(self, url):
+        self._url = url
+        self._conn = None
+
+    def connect(self):
+        """Connect to the WebSocket server."""
+        self._conn = websocket.create_connection(self._url)
+
+    def send(self, request):
+        """Send the given WebSocket request.
+
+        Return the decoded WebSocket response returned by the server.
+        Block until the server response is received.
+        """
+        self._conn.send(json.dumps(request))
+        response = self._conn.recv()
+        return json.loads(response)
+
+    def close(self):
+        """Close the WebSocket connection."""
+        self._conn.close()
+        self._conn = None
