@@ -111,7 +111,7 @@ def get_admin_secret():
     """
     # Retrieve the current environment.
     env = juju_env()
-    if env is  None:
+    if env is None:
         raise ValueError('Unable to retrieve the current environment name.')
     # Load and parse the Juju environments file.
     path = os.path.expanduser('~/.juju/environments.yaml')

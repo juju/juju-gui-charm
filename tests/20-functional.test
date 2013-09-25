@@ -25,6 +25,7 @@ import urlparse
 from selenium.webdriver import Firefox
 from selenium.webdriver.support import ui
 from xvfbwrapper import Xvfb
+import yaml
 
 # XXX 2013-07-30 benji bug=872264: Don't use juju_deploy directly, use
 # DeployTestMixin.juju_deploy instead.  See comment in the method.
@@ -339,6 +340,11 @@ class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
         })
         self.assertNotIn('Error', response)
         self.assertIn('DeploymentId', response['Response'])
+        # Schedule the removal of the services deployed processing the bundle.
+        bundle_data = yaml.safe_load(example.BUNDLE1)
+        services = bundle_data['bundle1']['services'].keys()
+        for service in services:
+            self.addCleanup(juju_destroy_service, service)
 
         # Start a second bundle deployment: the bundle name can be omitted if
         # the YAML contains only one bundle.
@@ -350,7 +356,13 @@ class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
         })
         self.assertNotIn('Error', response)
         self.assertIn('DeploymentId', response['Response'])
+        # Store the deployment id to be used later.
         deployment_id = response['Response']['DeploymentId']
+        # Schedule the removal of the services deployed processing the bundle.
+        bundle_data = yaml.safe_load(example.BUNDLE2)
+        services = bundle_data['bundle2']['services'].keys()
+        for service in services:
+            self.addCleanup(juju_destroy_service, service)
 
         # Check the bundle deployments status.
         response = client.send({
@@ -358,17 +370,14 @@ class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
             'Type': 'Deployer',
             'Request': 'Status',
         })
-        # TODO:
-         # {u'RequestId': 10,
-         # u'Response': {u'LastChanges': [{u'DeploymentId': 0,
-         #    u'Queue': 0,
-         #    u'Status': u'started',
-         #    u'Time': 1380039816},
-         #   {u'DeploymentId': 1,
-         #    u'Queue': 1,
-         #    u'Status': u'scheduled',
-         #    u'Time': 1380039881}]}}
-
+        self.assertIn('LastChanges', response['Response'])
+        changes = response['Response']['LastChanges']
+        self.assertEqual(2, len(changes))
+        change1, change2 = changes
+        self.assertEqual(0, change1['Queue'])
+        self.assertEqual('started', change1['Status'])
+        self.assertEqual(1, change2['Queue'])
+        self.assertEqual('scheduled', change2['Status'])
 
         # An error is returned trying to watch an unknown deployment.
         response = client.send({
@@ -393,12 +402,18 @@ class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
         watcher_id = response['Response']['WatcherId']
 
         # Observe three changes on the second deployment.
-        response = client.send({
-            'RequestId': counter.next(),
-            'Type': 'Deployer',
-            'Request': 'Next',
-            'Params': {'WatcherId': watcher_id},
-        })
+        for status in ('scheduled', 'started', 'completed'):
+            response = client.send({
+                'RequestId': counter.next(),
+                'Type': 'Deployer',
+                'Request': 'Next',
+                'Params': {'WatcherId': watcher_id},
+            })
+            self.assertNotIn('Error', response)
+            self.assertIn('Changes', response['Response'])
+            changes = response['Response']['Changes']
+            self.assertEqual(1, len(changes))
+            self.assertEqual(status, changes[0]['Status'])
 
         # An error is returned trying to re-deploy a bundle.
         response = client.send({
@@ -407,6 +422,11 @@ class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
             'Request': 'Import',
             'Params': {'YAML': example.BUNDLE1},
         })
+        self.assertIn('Error', response)
+        self.assertEqual(
+            'invalid request: service(s) already in the environment: '
+            'wordpress, mysql',
+            response['Error'])
 
         # Check the final bundle deployment status.
         response = client.send({
@@ -414,7 +434,11 @@ class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
             'Type': 'Deployer',
             'Request': 'Status',
         })
-
+        self.assertIn('LastChanges', response['Response'])
+        changes = response['Response']['LastChanges']
+        self.assertEqual(2, len(changes))
+        statuses = [change['Status'] for change in changes]
+        self.assertEqual(['completed', 'completed'], statuses)
 
 
 if __name__ == '__main__':
