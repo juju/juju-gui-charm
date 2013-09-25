@@ -278,7 +278,7 @@ class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
 
     @unittest.skipUnless(admin_secret, 'admin secret was not found')
     @unittest.skipIf(
-        is_legacy_juju, 'bundle deployments is only supported in juju-core')
+        is_legacy_juju, 'bundle deployments are only supported in juju-core')
     def test_deployer(self):
         # The builtin server supports deploying bundles using juju-deployer.
         counter = itertools.count()

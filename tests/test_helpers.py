@@ -337,7 +337,7 @@ class TestGetAdminSecret(unittest.TestCase):
         environments_path = os.path.join(juju_home, 'environments.yaml')
         with open(environments_path, 'w') as environments_file:
             environments_file.write(contents)
-        # Return a mock object that patching the environment context with the
+        # Return a mock object patching the environment context with the
         # temporary HOME and JUJU_ENV.
         environ = {'HOME': home}
         if juju_env is not None:
