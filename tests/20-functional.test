@@ -280,6 +280,7 @@ class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
                 'Params': {'AuthTag': 'user-admin', 'Password': admin_secret},
             })
             self.assertNotIn('Error', response)
+        return client
 
     def test_environment_connection(self):
         # Ensure the Juju GUI and builtin server are correctly set up.
