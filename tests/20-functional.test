@@ -251,6 +251,8 @@ class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
         # in this test case.
         unit_info = juju_deploy(cls.charm, options={'builtin-server': 'true'})
         cls.hostname = unit_info['public-address']
+        # The counter is used to produce API request identifiers.
+        cls.counter = itertools.count()
 
     @classmethod
     def tearDownClass(cls):
@@ -261,6 +263,23 @@ class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
             # XXX 2012-11-29 frankban bug=872264:
             # see DeployTestMixin.juju_deploy above.
             stop_services(cls.hostname, ['guiserver', 'juju-api-agent'])
+
+    def make_websocket_client(self, authenticated=True):
+        """Create and return a WebSocket client connected to the Juju backend.
+
+        If authenticated is set to True, also log in to the Juju API server.
+        """
+        client = WebSocketClient('wss://{}:443/ws'.format(self.hostname))
+        client.connect()
+        self.addCleanup(client.close)
+        if authenticated:
+            response = client.send({
+                'RequestId': self.counter.next(),
+                'Type': 'Admin',
+                'Request': 'Login',
+                'Params': {'AuthTag': 'user-admin', 'Password': admin_secret},
+            })
+            self.assertNotIn('Error', response)
 
     def test_environment_connection(self):
         # Ensure the Juju GUI and builtin server are correctly set up.
@@ -276,22 +295,14 @@ class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
         server_header = dict(headers)['server']
         self.assertIn('TornadoServer', server_header)
 
-    @unittest.skipUnless(admin_secret, 'admin secret was not found')
     @unittest.skipIf(
         is_legacy_juju, 'bundle deployments are only supported in juju-core')
-    def test_deployer(self):
-        # The builtin server supports deploying bundles using juju-deployer.
-        counter = itertools.count()
-
-        # Create a WebSocket connection to the builtin server.
-        client = WebSocketClient('wss://{}:443/ws'.format(self.hostname))
-        client.connect()
-        self.addCleanup(client.close)
-
+    def test_deployer_not_authenticated(self):
         # An error is returned trying to start a bundle deployment without
         # being authenticated.
+        client = self.make_websocket_client(authenticated=False)
         response = client.send({
-            'RequestId': counter.next(),
+            'RequestId': self.counter.next(),
             'Type': 'Deployer',
             'Request': 'Import',
             'Params': {'Name': 'bundle-name', 'YAML': 'foo: bar'},
@@ -300,18 +311,14 @@ class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
         self.assertEqual(
             'unauthorized access: no user logged in', response['Error'])
 
-        # Log in.
-        response = client.send({
-            'RequestId': counter.next(),
-            'Type': 'Admin',
-            'Request': 'Login',
-            'Params': {'AuthTag': 'user-admin', 'Password': admin_secret},
-        })
-        self.assertNotIn('Error', response)
-
+    @unittest.skipUnless(admin_secret, 'admin secret was not found')
+    @unittest.skipIf(
+        is_legacy_juju, 'bundle deployments are only supported in juju-core')
+    def test_deployer_invalid_bundle_name(self):
         # An error is returned trying to deploy a bundle with an invalid name.
+        client = self.make_websocket_client()
         response = client.send({
-            'RequestId': counter.next(),
+            'RequestId': self.counter.next(),
             'Type': 'Deployer',
             'Request': 'Import',
             'Params': {'Name': 'no-such', 'YAML': example.BUNDLE1},
@@ -320,9 +327,14 @@ class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
         self.assertEqual(
             'invalid request: bundle no-such not found', response['Error'])
 
+    @unittest.skipUnless(admin_secret, 'admin secret was not found')
+    @unittest.skipIf(
+        is_legacy_juju, 'bundle deployments are only supported in juju-core')
+    def test_deployer_invalid_bundle_yaml(self):
         # An error is returned trying to deploy an invalid bundle YAML.
+        client = self.make_websocket_client()
         response = client.send({
-            'RequestId': counter.next(),
+            'RequestId': self.counter.next(),
             'Type': 'Deployer',
             'Request': 'Import',
             'Params': {'Name': 'bundle-name', 'YAML': 42},
@@ -331,9 +343,32 @@ class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
         self.assertIn(
             'invalid request: invalid YAML contents', response['Error'])
 
+    @unittest.skipUnless(admin_secret, 'admin secret was not found')
+    @unittest.skipIf(
+        is_legacy_juju, 'bundle deployments are only supported in juju-core')
+    def test_deployer_watch_unknown_deployment(self):
+        # An error is returned trying to watch an unknown deployment.
+        client = self.make_websocket_client()
+        response = client.send({
+            'RequestId': self.counter.next(),
+            'Type': 'Deployer',
+            'Request': 'Watch',
+            'Params': {'DeploymentId': 424242},
+        })
+        self.assertIn('Error', response)
+        self.assertEqual(
+            'invalid request: deployment not found', response['Error'])
+
+    @unittest.skipUnless(admin_secret, 'admin secret was not found')
+    @unittest.skipIf(
+        is_legacy_juju, 'bundle deployments are only supported in juju-core')
+    def test_deployer(self):
+        # The builtin server supports deploying bundles using juju-deployer.
+        client = self.make_websocket_client()
+
         # Start a first bundle deployment.
         response = client.send({
-            'RequestId': counter.next(),
+            'RequestId': self.counter.next(),
             'Type': 'Deployer',
             'Request': 'Import',
             'Params': {'Name': 'bundle1', 'YAML': example.BUNDLE1},
@@ -349,7 +384,7 @@ class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
         # Start a second bundle deployment: the bundle name can be omitted if
         # the YAML contains only one bundle.
         response = client.send({
-            'RequestId': counter.next(),
+            'RequestId': self.counter.next(),
             'Type': 'Deployer',
             'Request': 'Import',
             'Params': {'YAML': example.BUNDLE2},
@@ -366,7 +401,7 @@ class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
 
         # Check the bundle deployments status.
         response = client.send({
-            'RequestId': counter.next(),
+            'RequestId': self.counter.next(),
             'Type': 'Deployer',
             'Request': 'Status',
         })
@@ -379,20 +414,9 @@ class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
         self.assertEqual(1, change2['Queue'])
         self.assertEqual('scheduled', change2['Status'])
 
-        # An error is returned trying to watch an unknown deployment.
-        response = client.send({
-            'RequestId': counter.next(),
-            'Type': 'Deployer',
-            'Request': 'Watch',
-            'Params': {'DeploymentId': 424242},
-        })
-        self.assertIn('Error', response)
-        self.assertEqual(
-            'invalid request: deployment not found', response['Error'])
-
         # Start watching the second deployment.
         response = client.send({
-            'RequestId': counter.next(),
+            'RequestId': self.counter.next(),
             'Type': 'Deployer',
             'Request': 'Watch',
             'Params': {'DeploymentId': deployment_id},
@@ -404,7 +428,7 @@ class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
         # Observe three changes on the second deployment.
         for status in ('scheduled', 'started', 'completed'):
             response = client.send({
-                'RequestId': counter.next(),
+                'RequestId': self.counter.next(),
                 'Type': 'Deployer',
                 'Request': 'Next',
                 'Params': {'WatcherId': watcher_id},
@@ -417,7 +441,7 @@ class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
 
         # An error is returned trying to re-deploy a bundle.
         response = client.send({
-            'RequestId': counter.next(),
+            'RequestId': self.counter.next(),
             'Type': 'Deployer',
             'Request': 'Import',
             'Params': {'YAML': example.BUNDLE1},
@@ -430,7 +454,7 @@ class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
 
         # Check the final bundle deployment status.
         response = client.send({
-            'RequestId': counter.next(),
+            'RequestId': self.counter.next(),
             'Type': 'Deployer',
             'Request': 'Status',
         })
