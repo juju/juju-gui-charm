@@ -16,27 +16,37 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import print_function
 import httplib
+import itertools
 import unittest
 import urlparse
 
 from selenium.webdriver import Firefox
 from selenium.webdriver.support import ui
 from xvfbwrapper import Xvfb
+import yaml
 
 # XXX 2013-07-30 benji bug=872264: Don't use juju_deploy directly, use
-# DeployTestMixin.juju_deploy instead.  See comment in stop_services.
+# DeployTestMixin.juju_deploy instead.  See comment in the method.
 from deploy import juju_deploy
 from helpers import (
+    get_admin_secret,
     juju_destroy_service,
     juju_version,
-    ssh,
+    stop_services,
+    WebSocketClient,
 )
-
+import example
 
 JUJU_GUI_TEST_BRANCH = 'lp:~juju-gui/juju-gui/charm-tests-branch'
 STAGING_SERVICES = ('haproxy', 'mediawiki', 'memcached', 'mysql', 'wordpress')
 is_legacy_juju = juju_version().major == 0
+try:
+    admin_secret = get_admin_secret()
+except ValueError as err:
+    admin_secret = None
+    print(err)
 
 
 class DeployTestMixin(object):
@@ -52,9 +62,7 @@ class DeployTestMixin(object):
         # Create a Selenium browser instance.
         selenium = self.selenium = Firefox()
         self.addCleanup(selenium.quit)
-
-    def tearDown(self):
-        juju_destroy_service(self.charm)
+        super(DeployTestMixin, self).setUp()
 
     def assertEnvironmentIsConnected(self):
         """Assert the GUI environment is connected to the Juju API agent."""
@@ -88,7 +96,7 @@ class DeployTestMixin(object):
         def page_ready(driver):
             driver.get(url)
             return driver.title == 'Juju Admin'
-        self.wait_for(page_ready, error='Juju GUI not found.')
+        self.wait_for(page_ready, error='Juju GUI not found.', timeout=60)
 
     def wait_for(self, condition, error=None, timeout=30):
         """Wait for condition to be True.
@@ -127,36 +135,38 @@ class DeployTestMixin(object):
         services = self.wait_for(services_found, 'Services not displayed.')
         return set([element.text for element in services])
 
-    def stop_services(self, hostname, services):
+    def juju_deploy(self, *args, **kwargs):
+        """Shim in our additional cleanup for pyJuju."""
         # XXX 2012-11-29 frankban bug=872264:
             # Just invoking ``juju destroy-service juju-gui`` in tearDown
             # should execute the ``stop`` hook, stopping all the services
             # started by the charm in the machine. Right now this does not
             # work in pyJuju, so the desired effect is achieved by keeping
             # track of started services and manually stopping them here.
-        target = 'ubuntu@{}'.format(hostname)
-        for service in services:
-            ssh(target, 'sudo', 'service', service, 'stop')
-
-    def juju_deploy(self, *args, **kws):
-        """Shim in our additional cleanup for pyJuju."""
-        # XXX 2012-11-29 frankban bug=872264: see *stop_services* above.
         # Once pyJuju works correctly or we drop support for it altogether, we
         # can remove this shim.
-        unit_info = juju_deploy(*args, **kws)
+        unit_info = juju_deploy(*args, **kwargs)
         if is_legacy_juju:
             hostname = unit_info['public-address']
-            services = ['haproxy', 'apache2']
+            options = kwargs.get('options', {})
+            # Either stop the builtin server or the old apache2/haproxy setup.
+            if options.get('builtin-server') == 'true':
+                services = ['guiserver']
+            else:
+                services = ['haproxy', 'apache2']
             # Staging uses improv, otherwise the API agent is used.
-            if kws.get('options').get('staging') == 'true':
+            if options.get('staging') == 'true':
                 services.append('juju-api-improv')
             else:
                 services.append('juju-api-agent')
-            self.addCleanup(self.stop_services, hostname, services)
+            self.addCleanup(stop_services, hostname, services)
         return unit_info
 
 
-class DeployTest(DeployTestMixin, unittest.TestCase):
+class TestDeploy(DeployTestMixin, unittest.TestCase):
+
+    def tearDown(self):
+        juju_destroy_service(self.charm)
 
     def test_api_agent(self):
         # Ensure the Juju GUI and API agent services are correctly set up.
@@ -185,20 +195,6 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         self.navigate_to(hostname)
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()
-
-    def test_builtin_server(self):
-        # Ensure the Juju GUI and builtin server are correctly set up.
-        unit_info = self.juju_deploy(
-            self.charm, options={'builtin-server': 'true'})
-        hostname = unit_info['public-address']
-        self.navigate_to(hostname)
-        self.handle_browser_warning()
-        self.assertEnvironmentIsConnected()
-        conn = httplib.HTTPSConnection(hostname)
-        conn.request('HEAD', '/')
-        headers = conn.getresponse().getheaders()
-        server_header = dict(headers)['server']
-        self.assertIn('TornadoServer', server_header)
 
     def test_branch_source(self):
         # Ensure the Juju GUI is correctly deployed from a Bazaar branch.
@@ -245,6 +241,229 @@ class DeployTest(DeployTestMixin, unittest.TestCase):
         conn.request('GET', '/juju-ui/version.js')
         message = 'ADDRESS in check-app-access.sh is not accessible.'
         self.assertEqual(200, conn.getresponse().status, message)
+
+
+class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        # Deploy the charm. The resulting service is used by all the tests
+        # in this test case.
+        unit_info = juju_deploy(cls.charm, options={'builtin-server': 'true'})
+        cls.hostname = unit_info['public-address']
+        # The counter is used to produce API request identifiers.
+        cls.counter = itertools.count()
+
+    @classmethod
+    def tearDownClass(cls):
+        # Destroy the GUI service, and perform additional clean up in the case
+        # we are in a pyJuju environment.
+        juju_destroy_service(cls.charm)
+        if is_legacy_juju:
+            # XXX 2012-11-29 frankban bug=872264:
+            # see DeployTestMixin.juju_deploy above.
+            stop_services(cls.hostname, ['guiserver', 'juju-api-agent'])
+
+    def make_websocket_client(self, authenticated=True):
+        """Create and return a WebSocket client connected to the Juju backend.
+
+        If authenticated is set to True, also log in to the Juju API server.
+        """
+        client = WebSocketClient('wss://{}:443/ws'.format(self.hostname))
+        client.connect()
+        self.addCleanup(client.close)
+        if authenticated:
+            response = client.send({
+                'RequestId': self.counter.next(),
+                'Type': 'Admin',
+                'Request': 'Login',
+                'Params': {'AuthTag': 'user-admin', 'Password': admin_secret},
+            })
+            self.assertNotIn('Error', response)
+        return client
+
+    def test_environment_connection(self):
+        # Ensure the Juju GUI and builtin server are correctly set up.
+        self.navigate_to(self.hostname)
+        self.handle_browser_warning()
+        self.assertEnvironmentIsConnected()
+
+    def test_headers(self):
+        # Ensure the Tornado headers are correctly sent.
+        conn = httplib.HTTPSConnection(self.hostname)
+        conn.request('HEAD', '/')
+        headers = conn.getresponse().getheaders()
+        server_header = dict(headers)['server']
+        self.assertIn('TornadoServer', server_header)
+
+    @unittest.skipIf(
+        is_legacy_juju, 'bundle deployments are only supported in juju-core')
+    def test_deployer_not_authenticated(self):
+        # An error is returned trying to start a bundle deployment without
+        # being authenticated.
+        client = self.make_websocket_client(authenticated=False)
+        response = client.send({
+            'RequestId': self.counter.next(),
+            'Type': 'Deployer',
+            'Request': 'Import',
+            'Params': {'Name': 'bundle-name', 'YAML': 'foo: bar'},
+        })
+        self.assertIn('Error', response)
+        self.assertEqual(
+            'unauthorized access: no user logged in', response['Error'])
+
+    @unittest.skipUnless(admin_secret, 'admin secret was not found')
+    @unittest.skipIf(
+        is_legacy_juju, 'bundle deployments are only supported in juju-core')
+    def test_deployer_invalid_bundle_name(self):
+        # An error is returned trying to deploy a bundle with an invalid name.
+        client = self.make_websocket_client()
+        response = client.send({
+            'RequestId': self.counter.next(),
+            'Type': 'Deployer',
+            'Request': 'Import',
+            'Params': {'Name': 'no-such', 'YAML': example.BUNDLE1},
+        })
+        self.assertIn('Error', response)
+        self.assertEqual(
+            'invalid request: bundle no-such not found', response['Error'])
+
+    @unittest.skipUnless(admin_secret, 'admin secret was not found')
+    @unittest.skipIf(
+        is_legacy_juju, 'bundle deployments are only supported in juju-core')
+    def test_deployer_invalid_bundle_yaml(self):
+        # An error is returned trying to deploy an invalid bundle YAML.
+        client = self.make_websocket_client()
+        response = client.send({
+            'RequestId': self.counter.next(),
+            'Type': 'Deployer',
+            'Request': 'Import',
+            'Params': {'Name': 'bundle-name', 'YAML': 42},
+        })
+        self.assertIn('Error', response)
+        self.assertIn(
+            'invalid request: invalid YAML contents', response['Error'])
+
+    @unittest.skipUnless(admin_secret, 'admin secret was not found')
+    @unittest.skipIf(
+        is_legacy_juju, 'bundle deployments are only supported in juju-core')
+    def test_deployer_watch_unknown_deployment(self):
+        # An error is returned trying to watch an unknown deployment.
+        client = self.make_websocket_client()
+        response = client.send({
+            'RequestId': self.counter.next(),
+            'Type': 'Deployer',
+            'Request': 'Watch',
+            'Params': {'DeploymentId': 424242},
+        })
+        self.assertIn('Error', response)
+        self.assertEqual(
+            'invalid request: deployment not found', response['Error'])
+
+    @unittest.skipUnless(admin_secret, 'admin secret was not found')
+    @unittest.skipIf(
+        is_legacy_juju, 'bundle deployments are only supported in juju-core')
+    def test_deployer(self):
+        # The builtin server supports deploying bundles using juju-deployer.
+        client = self.make_websocket_client()
+
+        # Start a first bundle deployment.
+        response = client.send({
+            'RequestId': self.counter.next(),
+            'Type': 'Deployer',
+            'Request': 'Import',
+            'Params': {'Name': 'bundle1', 'YAML': example.BUNDLE1},
+        })
+        self.assertNotIn('Error', response)
+        self.assertIn('DeploymentId', response['Response'])
+        # Schedule the removal of the services deployed processing the bundle.
+        bundle_data = yaml.safe_load(example.BUNDLE1)
+        services = bundle_data['bundle1']['services'].keys()
+        for service in services:
+            self.addCleanup(juju_destroy_service, service)
+
+        # Start a second bundle deployment: the bundle name can be omitted if
+        # the YAML contains only one bundle.
+        response = client.send({
+            'RequestId': self.counter.next(),
+            'Type': 'Deployer',
+            'Request': 'Import',
+            'Params': {'YAML': example.BUNDLE2},
+        })
+        self.assertNotIn('Error', response)
+        self.assertIn('DeploymentId', response['Response'])
+        # Store the deployment id to be used later.
+        deployment_id = response['Response']['DeploymentId']
+        # Schedule the removal of the services deployed processing the bundle.
+        bundle_data = yaml.safe_load(example.BUNDLE2)
+        services = bundle_data['bundle2']['services'].keys()
+        for service in services:
+            self.addCleanup(juju_destroy_service, service)
+
+        # Check the bundle deployments status.
+        response = client.send({
+            'RequestId': self.counter.next(),
+            'Type': 'Deployer',
+            'Request': 'Status',
+        })
+        self.assertIn('LastChanges', response['Response'])
+        changes = response['Response']['LastChanges']
+        self.assertEqual(2, len(changes))
+        change1, change2 = changes
+        self.assertEqual(0, change1['Queue'])
+        self.assertEqual('started', change1['Status'])
+        self.assertEqual(1, change2['Queue'])
+        self.assertEqual('scheduled', change2['Status'])
+
+        # Start watching the second deployment.
+        response = client.send({
+            'RequestId': self.counter.next(),
+            'Type': 'Deployer',
+            'Request': 'Watch',
+            'Params': {'DeploymentId': deployment_id},
+        })
+        self.assertNotIn('Error', response)
+        self.assertIn('WatcherId', response['Response'])
+        watcher_id = response['Response']['WatcherId']
+
+        # Observe three changes on the second deployment.
+        for status in ('scheduled', 'started', 'completed'):
+            response = client.send({
+                'RequestId': self.counter.next(),
+                'Type': 'Deployer',
+                'Request': 'Next',
+                'Params': {'WatcherId': watcher_id},
+            })
+            self.assertNotIn('Error', response)
+            self.assertIn('Changes', response['Response'])
+            changes = response['Response']['Changes']
+            self.assertEqual(1, len(changes))
+            self.assertEqual(status, changes[0]['Status'])
+
+        # An error is returned trying to re-deploy a bundle.
+        response = client.send({
+            'RequestId': self.counter.next(),
+            'Type': 'Deployer',
+            'Request': 'Import',
+            'Params': {'YAML': example.BUNDLE1},
+        })
+        self.assertIn('Error', response)
+        self.assertEqual(
+            'invalid request: service(s) already in the environment: '
+            'wordpress, mysql',
+            response['Error'])
+
+        # Check the final bundle deployment status.
+        response = client.send({
+            'RequestId': self.counter.next(),
+            'Type': 'Deployer',
+            'Request': 'Status',
+        })
+        self.assertIn('LastChanges', response['Response'])
+        changes = response['Response']['LastChanges']
+        self.assertEqual(2, len(changes))
+        statuses = [change['Status'] for change in changes]
+        self.assertEqual(['completed', 'completed'], statuses)
 
 
 if __name__ == '__main__':

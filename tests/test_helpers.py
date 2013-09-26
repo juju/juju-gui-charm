@@ -16,14 +16,20 @@
 
 """Juju GUI helpers tests."""
 
+from contextlib import contextmanager
 import json
+import os
+import shutil
 import subprocess
+import tempfile
 import unittest
 
 import mock
+import yaml
 
 from helpers import (
     command,
+    get_admin_secret,
     juju,
     juju_destroy_service,
     juju_env,
@@ -31,8 +37,10 @@ from helpers import (
     juju_version,
     ProcessError,
     retry,
+    stop_services,
     Version,
     wait_for_unit,
+    WebSocketClient,
 )
 
 
@@ -315,8 +323,113 @@ class TestRetry(unittest.TestCase):
         mock_sleep.assert_called_with(1)
 
 
+class TestGetAdminSecret(unittest.TestCase):
+
+    def mock_environment_file(self, contents, juju_env=None):
+        """Create a mock environment file containing the given contents."""
+        # Create a temporary home that will be used by get_admin_secret().
+        home = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, home)
+        # Create a juju home.
+        juju_home = os.path.join(home, '.juju')
+        os.mkdir(juju_home)
+        # Set up an environments file with the given contents.
+        environments_path = os.path.join(juju_home, 'environments.yaml')
+        with open(environments_path, 'w') as environments_file:
+            environments_file.write(contents)
+        # Return a mock object patching the environment context with the
+        # temporary HOME and JUJU_ENV.
+        environ = {'HOME': home}
+        if juju_env is not None:
+            environ['JUJU_ENV'] = juju_env
+        # The returned object can be used as a context manager.
+        return mock.patch('os.environ', environ)
+
+    @contextmanager
+    def assert_error(self, error):
+        """Ensure a ValueError is raised in the context block.
+
+        Also check that the exception includes the expected error message.
+        """
+        with self.assertRaises(ValueError) as context_manager:
+            yield
+        self.assertIn(error, str(context_manager.exception))
+
+    def test_no_env_name(self):
+        # A ValueError is raised if the env name is not included in the
+        # environment context.
+        expected = 'Unable to retrieve the current environment name.'
+        with self.mock_environment_file(''):
+            with self.assert_error(expected):
+                get_admin_secret()
+
+    def test_no_file(self):
+        # A ValueError is raised if the environments file is not found.
+        home = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, home)
+        expected = 'Unable to open environments file: [Errno 2] No such file'
+        with mock.patch('os.environ', {'HOME': home, 'JUJU_ENV': 'ec2'}):
+            with self.assert_error(expected):
+                get_admin_secret()
+
+    def test_invalid_yaml(self):
+        # A ValueError is raised if the environments file is not well formed.
+        with self.mock_environment_file(':', juju_env='ec2'):
+            with self.assert_error('Unable to parse environments file:'):
+                get_admin_secret()
+
+    def test_invalid_yaml_contents(self):
+        # A ValueError is raised if the environments file is not well formed.
+        with self.mock_environment_file('a-string', juju_env='ec2'):
+            with self.assert_error('Invalid YAML contents: a-string'):
+                get_admin_secret()
+
+    def test_no_env(self):
+        # A ValueError is raised if the environment is not found in the YAML.
+        contents = yaml.safe_dump({'environments': {'local': {}}})
+        with self.mock_environment_file(contents, juju_env='ec2'):
+            with self.assert_error('Environment ec2 not found'):
+                get_admin_secret()
+
+    def test_no_admin_secret(self):
+        # A ValueError is raised if the admin secret is not included in the
+        # environment info.
+        contents = yaml.safe_dump({'environments': {'ec2': {}}})
+        with self.mock_environment_file(contents, juju_env='ec2'):
+            with self.assert_error('Admin secret not found'):
+                get_admin_secret()
+
+    def test_ok(self):
+        # The environment admin secret is correctly returned.
+        contents = yaml.safe_dump({
+            'environments': {'ec2': {'admin-secret': 'Secret!'}},
+        })
+        with self.mock_environment_file(contents, juju_env='ec2'):
+            self.assertEqual('Secret!', get_admin_secret())
+
+
+@mock.patch('helpers.ssh')
+class TestStopServices(unittest.TestCase):
+
+    def test_single_service(self, mock_ssh):
+        # An ssh command is executed to stop a single service.
+        stop_services('my-host-name', ['foo'])
+        mock_ssh.assert_called_once_with(
+            'ubuntu@my-host-name', 'sudo', 'service', 'foo', 'stop')
+
+    def test_multiple_services(self, mock_ssh):
+        # An ssh command is executed for each given service.
+        stop_services('127.0.0.1', ['foo', 'bar'])
+        self.assertEqual(2, mock_ssh.call_count)
+        expected = [
+            mock.call('ubuntu@127.0.0.1', 'sudo', 'service', 'foo', 'stop'),
+            mock.call('ubuntu@127.0.0.1', 'sudo', 'service', 'bar', 'stop'),
+        ]
+        mock_ssh.assert_has_calls(expected)
+
+
 @mock.patch('helpers.juju_status')
-class TestWaitForService(unittest.TestCase):
+class TestWaitForUnit(unittest.TestCase):
 
     address = 'unit.example.com'
     service = 'test-service'
@@ -395,3 +508,35 @@ class TestWaitForService(unittest.TestCase):
         unit_info = wait_for_unit(self.service)
         self.assertEqual(self.address, unit_info['public-address'])
         self.assertEqual(1, mock_juju_status.call_count)
+
+
+@mock.patch('helpers.websocket.create_connection')
+class TestWebSocketClient(unittest.TestCase):
+
+    url = 'wss://example.com:17070'
+
+    def setUp(self):
+        self.client = WebSocketClient(self.url)
+
+    def test_connect(self, mock_create_connection):
+        # The WebSocket connection is correctly established.
+        self.client.connect()
+        mock_create_connection.assert_called_once_with(self.url)
+
+    def test_send(self, mock_create_connection):
+        # A request is correctly sent, and a response is returned.
+        request = {'request': 'foo'}
+        expected_request = json.dumps(request)
+        expected_response = {'response': 'bar'}
+        mock_connection = mock_create_connection()
+        mock_connection.recv.return_value = json.dumps(expected_response)
+        self.client.connect()
+        response = self.client.send(request)
+        self.assertEqual(expected_response, response)
+        mock_connection.send.assert_called_once_with(expected_request)
+
+    def test_close(self, mock_create_connection):
+        # A WebSocket connection is correctly terminated.
+        self.client.connect()
+        self.client.close()
+        mock_create_connection().close.assert_called_once_with()
