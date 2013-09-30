@@ -27,7 +27,8 @@ createvenv() {
     if [ ! -f "$ACTIVATE" -o "$REQUIREMENTS" -nt "$ACTIVATE" ]; then
         virtualenv --distribute $VENV
         . $VENV/bin/activate && \
-            yes w | pip install --use-mirrors -r $REQUIREMENTS
+            yes w | env BZR_PLUGIN_PATH='-user' \
+            pip install --use-mirrors -r $REQUIREMENTS
         touch $VENV/bin/activate
     fi
 }

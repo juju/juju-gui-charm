@@ -791,6 +791,28 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertIn("socket_url: 'ws://", js_conf)
         self.assertIn('socket_protocol: "ws"', js_conf)
 
+    @mock.patch('utils.legacy_juju')
+    def test_write_gui_config_default_python_password(self, mock_legacy_juju):
+        mock_legacy_juju.return_value = True
+        write_gui_config(
+            False, 'This is login help.', True, True, self.charmworld_url,
+            self.build_dir, config_js_path='config',
+            password='kumquat')
+        js_conf = self.files['config']
+        self.assertIn('user: "admin"', js_conf)
+        self.assertIn('password: "kumquat"', js_conf)
+
+    @mock.patch('utils.legacy_juju')
+    def test_write_gui_config_default_go_password(self, mock_legacy_juju):
+        mock_legacy_juju.return_value = False
+        write_gui_config(
+            False, 'This is login help.', True, True, self.charmworld_url,
+            self.build_dir, config_js_path='config',
+            password='kumquat')
+        js_conf = self.files['config']
+        self.assertIn('user: "user-admin"', js_conf)
+        self.assertIn('password: "kumquat"', js_conf)
+
     def test_setup_haproxy_config_insecure(self):
         setup_haproxy_config(self.ssl_cert_path, secure=False)
         # The insecure approach eliminates the https redirect.
