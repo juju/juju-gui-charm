@@ -406,15 +406,15 @@ def write_gui_config(
         console_enabled, login_help, readonly, in_staging, charmworld_url,
         build_dir, secure=True, sandbox=False,
         default_viewmode='sidebar', show_get_juju_button=False,
-        config_js_path=None, ga_key=''):
+        config_js_path=None, ga_key='', password=None):
     """Generate the GUI configuration file."""
     log('Generating the Juju GUI configuration file.')
     is_legacy_juju = legacy_juju()
-    user, password = None, None
-    if (is_legacy_juju and in_staging) or sandbox:
-        user, password = 'admin', 'admin'
-    else:
-        user, password = None, None
+    user = 'admin' if is_legacy_juju else 'user-admin'
+    # Normalize empty string passwords to None.
+    password = password if password else None
+    if password is None and ((is_legacy_juju and in_staging) or sandbox):
+        password = 'admin'
     api_backend = 'python' if is_legacy_juju else 'go'
     if secure:
         protocol = 'wss'
@@ -678,7 +678,7 @@ def setup_gui(release_tarball):
     release_dir = os.path.join(BASE_DIR, 'release')
     cmd_log(run('rm', '-rf', release_dir))
     os.mkdir(release_dir)
-    uncompress = command('tar', '-x', '-z', '-C', release_dir, '-f')
+    uncompress = command('tar', '-x', '-a', '-C', release_dir, '-f')
     cmd_log(uncompress(release_tarball))
     # Link the Juju GUI dir to the contents of the release tarball.
     cmd_log(run('ln', '-sf', first_path_in_dir(release_dir), JUJU_GUI_DIR))

@@ -148,7 +148,8 @@ class GuiMixin(object):
             build_dir, secure=config['secure'], sandbox=config['sandbox'],
             ga_key=config['ga-key'],
             default_viewmode=config['default-viewmode'],
-            show_get_juju_button=config['show-get-juju-button'])
+            show_get_juju_button=config['show-get-juju-button'],
+            password=config.get('password'))
         # Expose the service.
         charmhelpers.open_port(80)
         charmhelpers.open_port(443)

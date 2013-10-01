@@ -21,10 +21,7 @@ import errno
 import json
 import os
 
-# If the user's environment has "juju-origin: ppa" set, they will
-# automatically have access to python-charmhelpers and python-shelltoolbox.
-# However, we want to support environments that use the non-PPA environment as
-# well.  To do so, we need to install the Juju PPA, which we will do with a
+# We need to install the Juju PPA, which we will do with a
 # couple of functions that are actually maintained in python-shelltoolbox.
 import bootstrap_utils
 
@@ -39,8 +36,8 @@ bootstrap_utils.install_extra_repositories(config['repository-location'])
 # Python dependencies must be installed here so that the charm can import and
 # use required libraries.
 PYTHON_DEPENDENCIES = (
-    'python-apt', 'python-charmhelpers', 'python-launchpadlib',
-    'python-shelltoolbox', 'python-tempita',
+    'python-apt', 'python-launchpadlib', 'python-shelltoolbox',
+    'python-tempita',
 )
 bootstrap_utils.run(*(('apt-get', 'install', '-y') + PYTHON_DEPENDENCIES))
 
