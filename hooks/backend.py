@@ -149,7 +149,7 @@ class GuiMixin(object):
             ga_key=config['ga-key'],
             default_viewmode=config['default-viewmode'],
             show_get_juju_button=config['show-get-juju-button'],
-            password=config['password'])
+            password=config.get('password'))
         # Expose the service.
         charmhelpers.open_port(80)
         charmhelpers.open_port(443)
