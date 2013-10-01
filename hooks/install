@@ -21,8 +21,8 @@ import errno
 import json
 import os
 
-# We need to install the Juju PPA, which we will do with a
-# couple of functions that are actually maintained in python-shelltoolbox.
+# We need to install the Juju PPA, which we will do with a couple of functions
+# that are actually maintained in python-shelltoolbox.
 import bootstrap_utils
 
 
