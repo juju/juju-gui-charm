@@ -33,7 +33,7 @@ unittest: setup
 
 ensure-juju-test:
 	@which juju-test > /dev/null \
-	    || (echo 'The "juju-test" command is missing.  See HACKING.md.' \
+		|| (echo 'The "juju-test" command is missing.  See HACKING.md.' \
 		; false)
 
 ftest: setup ensure-juju-test
