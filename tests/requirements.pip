@@ -34,7 +34,7 @@ PyYAML==3.10
 # GUI server.
 futures==2.1.4
 -e bzr+http://launchpad.net/juju-deployer/darwin#egg=juju-deployer
-tornado==3.1
+tornado==3.1.1
 
 # Charm hooks.
 -e bzr+http://launchpad.net/charm-tools#egg=charm-tools
