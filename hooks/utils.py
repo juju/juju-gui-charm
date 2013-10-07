@@ -44,7 +44,6 @@ __all__ = [
     'remove_apache_setup',
     'remove_haproxy_setup',
     'render_to_file',
-    'repository_missing',
     'save_or_create_certificates',
     'setup_apache_config',
     'setup_gui',
@@ -735,13 +734,6 @@ def find_missing_packages(*packages):
     return missing
 
 
-def repository_missing(repository):
-    """Return True if the given apt repository is not installed.
-
-    Return False otherwise.
-    """
-
-
 def install_missing_packages(packages, repository=None):
     """Install the required debian packages if they are missing.
 
@@ -750,7 +742,7 @@ def install_missing_packages(packages, repository=None):
     """
     missing = find_missing_packages(*packages)
     if missing:
-        if repository is not None and repository_missing(repository):
+        if repository is not None:
             log('Adding the apt repository {}.'.format(repository))
             install_extra_repositories(repository)
         log('Installing deb packages: {}.'.format(', '.join(missing)))

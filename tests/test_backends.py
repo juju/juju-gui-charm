@@ -270,6 +270,16 @@ class TestBackendCommands(unittest.TestCase):
             object_dict = dict(zip(mocks.keys(), context_managers))
             yield type('Mocks', (object,), object_dict)
 
+    def assert_write_gui_config_called(self, mocks, config):
+        """Ensure the mocked write_gui_config has been properly called."""
+        mocks.write_gui_config.assert_called_once_with(
+            config['juju-gui-console-enabled'], config['login-help'],
+            config['read-only'], config['staging'], config['charmworld-url'],
+            mocks.compute_build_dir(), secure=config['secure'],
+            sandbox=config['sandbox'], ga_key=config['ga-key'],
+            default_viewmode=config['default-viewmode'],
+            show_get_juju_button=config['show-get-juju-button'], password=None)
+
     def test_base_dir_created(self):
         # The base Juju GUI directory is correctly created.
         config = self.make_config()
@@ -390,13 +400,7 @@ class TestBackendCommands(unittest.TestCase):
         mocks.start_agent.assert_called_once_with(self.ssl_cert_path)
         mocks.compute_build_dir.assert_called_with(
             config['juju-gui-debug'], config['serve-tests'])
-        mocks.write_gui_config.assert_called_once_with(
-            config['juju-gui-console-enabled'], config['login-help'],
-            config['read-only'], config['staging'], config['charmworld-url'],
-            mocks.compute_build_dir(), secure=config['secure'],
-            sandbox=config['sandbox'], ga_key=config['ga-key'],
-            default_viewmode=config['default-viewmode'],
-            show_get_juju_button=config['show-get-juju-button'], password=None)
+        self.assert_write_gui_config_called(mocks, config)
         mocks.open_port.assert_has_calls([mock.call(80), mock.call(443)])
         mocks.start_haproxy_apache.assert_called_once_with(
             mocks.compute_build_dir(), config['serve-tests'],
@@ -413,13 +417,7 @@ class TestBackendCommands(unittest.TestCase):
         self.assertFalse(mocks.start_agent.called)
         mocks.compute_build_dir.assert_called_with(
             config['juju-gui-debug'], config['serve-tests'])
-        mocks.write_gui_config.assert_called_once_with(
-            config['juju-gui-console-enabled'], config['login-help'],
-            config['read-only'], config['staging'], config['charmworld-url'],
-            mocks.compute_build_dir(), secure=config['secure'],
-            sandbox=config['sandbox'], ga_key=config['ga-key'],
-            default_viewmode=config['default-viewmode'],
-            show_get_juju_button=config['show-get-juju-button'], password=None)
+        self.assert_write_gui_config_called(mocks, config)
         mocks.open_port.assert_has_calls([mock.call(80), mock.call(443)])
         mocks.start_haproxy_apache.assert_called_once_with(
             mocks.compute_build_dir(), config['serve-tests'],
@@ -436,13 +434,7 @@ class TestBackendCommands(unittest.TestCase):
         mocks.start_agent.assert_called_once_with(self.ssl_cert_path)
         mocks.compute_build_dir.assert_called_with(
             config['juju-gui-debug'], config['serve-tests'])
-        mocks.write_gui_config.assert_called_once_with(
-            config['juju-gui-console-enabled'], config['login-help'],
-            config['read-only'], config['staging'], config['charmworld-url'],
-            mocks.compute_build_dir(), secure=config['secure'],
-            sandbox=config['sandbox'], ga_key=config['ga-key'],
-            default_viewmode=config['default-viewmode'],
-            show_get_juju_button=config['show-get-juju-button'], password=None)
+        self.assert_write_gui_config_called(mocks, config)
         mocks.open_port.assert_has_calls([mock.call(80), mock.call(443)])
         mocks.start_builtin_server.assert_called_once_with(
             mocks.compute_build_dir(), self.ssl_cert_path,
@@ -460,13 +452,7 @@ class TestBackendCommands(unittest.TestCase):
         self.assertFalse(mocks.start_agent.called)
         mocks.compute_build_dir.assert_called_with(
             config['juju-gui-debug'], config['serve-tests'])
-        mocks.write_gui_config.assert_called_once_with(
-            config['juju-gui-console-enabled'], config['login-help'],
-            config['read-only'], config['staging'], config['charmworld-url'],
-            mocks.compute_build_dir(), secure=config['secure'],
-            sandbox=config['sandbox'], ga_key=config['ga-key'],
-            default_viewmode=config['default-viewmode'],
-            show_get_juju_button=config['show-get-juju-button'], password=None)
+        self.assert_write_gui_config_called(mocks, config)
         mocks.open_port.assert_has_calls([mock.call(80), mock.call(443)])
         mocks.start_builtin_server.assert_called_once_with(
             mocks.compute_build_dir(), self.ssl_cert_path,
