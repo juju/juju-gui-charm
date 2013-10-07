@@ -742,7 +742,6 @@ def repository_missing(repository):
     """
 
 
-
 def install_missing_packages(packages, repository=None):
     """Install the required debian packages if they are missing.
 

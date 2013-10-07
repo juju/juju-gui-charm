@@ -26,9 +26,7 @@ import shutil
 import tempfile
 import unittest
 
-import charmhelpers
 import mock
-import shelltoolbox
 
 import backend
 import utils
