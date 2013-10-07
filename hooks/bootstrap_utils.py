@@ -54,24 +54,5 @@ except ImportError:
             raise exception
         return stdout
 
-    def install_extra_repositories(*repositories):
-        """Install all of the extra repositories and update apt.
-
-        Given repositories can contain a "{distribution}" placeholder,
-        that will be replaced by current distribution codename.
-
-        :raises: subprocess.CalledProcessError
-        """
-        distribution = run('lsb_release', '-cs').strip()
-        # Starting from Oneiric, `apt-add-repository` is interactive by
-        # default, and requires a "-y" flag to be set.
-        assume_yes = None if distribution == 'lucid' else '-y'
-        for repo in repositories:
-            repository = repo.format(distribution=distribution)
-            run('apt-add-repository', assume_yes, repository)
-        run('apt-get', 'clean')
-        run('apt-get', 'update')
-
 else:
-    install_extra_repositories = shelltoolbox.install_extra_repositories
     run = shelltoolbox.run

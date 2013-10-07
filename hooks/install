@@ -18,20 +18,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import errno
-import json
 import os
 
-# We need to install the Juju PPA, which we will do with a couple of functions
-# that are actually maintained in python-shelltoolbox.
 import bootstrap_utils
 
-
-def get_config():
-    output = bootstrap_utils.run('config-get', '--format', 'json')
-    return json.loads(output)
-
-config = get_config()
-bootstrap_utils.install_extra_repositories(config['repository-location'])
 
 # Python dependencies must be installed here so that the charm can import and
 # use required libraries.
@@ -42,7 +32,11 @@ PYTHON_DEPENDENCIES = (
 bootstrap_utils.run(*(('apt-get', 'install', '-y') + PYTHON_DEPENDENCIES))
 
 
-from charmhelpers import log
+from charmhelpers import (
+    get_config,
+    log,
+)
+
 from utils import (
     config_json,
     log_hook,
