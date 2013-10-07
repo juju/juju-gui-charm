@@ -603,10 +603,12 @@ class DictDiffer:
     def changed(self):
         return set(key for key in self.intersect
                    if self.past_dict[key] != self.current_dict[key])
+
     @property
     def unchanged(self):
         return set(key for key in self.intersect
                    if self.past_dict[key] == self.current_dict[key])
+
     @property
     def modified(self):
         return self.current_dict != self.past_dict
