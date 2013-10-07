@@ -452,6 +452,11 @@ class TestParseSource(unittest.TestCase):
         # Restore the original utils.CURRENT_DIR.
         utils.CURRENT_DIR = self.original_current_dir
 
+    def test_latest_local_release(self):
+        # Ensure the latest local release is correctly parsed.
+        expected = ('local', None)
+        self.assertTupleEqual(expected, parse_source('local'))
+
     def test_latest_stable_release(self):
         # Ensure the latest stable release is correctly parsed.
         expected = ('stable', None)

@@ -264,6 +264,7 @@ def parse_source(source):
 
     Return a tuple of two elements representing info on how to deploy Juju GUI.
     Examples:
+       - ('local', None): latest local release;
        - ('stable', None): latest stable release;
        - ('stable', '0.1.0'): stable release v0.1.0;
        - ('trunk', None): latest trunk release;
@@ -281,7 +282,7 @@ def parse_source(source):
                 source = os.path.join(os.path.abspath(CURRENT_DIR), source)
             source = "file://%s" % source
         return 'url', source
-    if source in ('stable', 'trunk'):
+    if source in ('local', 'stable', 'trunk'):
         return source, None
     match = bzr_url_expression.match(source)
     if match is not None:

@@ -18,16 +18,20 @@ options:
   juju-gui-source:
     description: |
       Where to install Juju GUI from. Possible values are:
-      - 'stable' (default): the latest stable release will be deployed;
+      - local (default): the latest local release will be deployed. Releases
+        are stored in the releases directory of this charm;
+      - 'stable' the latest stable release will be deployed;
       - 'trunk': the latest trunk release will be deployed;
       - a stable version (e.g '0.1.0'): the specified stable version will be
-        deployed;
+        deployed. A suitable release is looked up in the local releases
+        repository (see the local choice above). If not found locally, the
+        release will be downloaded from Launchpad;
       - a trunk version (e.g '0.1.0+build.1'): the specified trunk version
         will be deployed;
       - a Bazaar branch (e.g. 'lp:juju-gui'): a release will be created and
         deployed from the specified Bazaar branch. 'http://' prefixed branches
         work as well. It is also possible to include the specific branch
-        revision, e.g. 'lp:juju-gui:42' will checkout revno 42.
+        revision, e.g. 'lp:juju-gui:42' will checkout revno 42;
       - a 'url:' prefixed url (ex: url:http://...) of a specific location
         to pull a release from.
     type: string
