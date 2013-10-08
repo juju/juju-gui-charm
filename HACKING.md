@@ -161,3 +161,17 @@ to see what hook you are supposed to run.
 
 All of this is described in more detail on the Juju site: this is an
 introduction to the process.
+
+## Upgrading the local releases repository ##
+
+The charm, in the default juju-gui-source configuration ("local"), deploys the
+GUI from the local releases repository. The repository is the `releases`
+directory located in the branch source, and contains GUI releases as tarball
+files. When a new GUI version is released, we want to also update the local
+repository. To do that, just copy the GUI tarball file to the `releases`
+directory, and commit a new revision of the charm.
+It is safe to remove the older files, and it is even recommended: too many
+releases can slow down the deployment process, especially when deploying from
+the local charm.
+Note that at least one release must be always present in the repository,
+otherwise the deployment process will fail.
