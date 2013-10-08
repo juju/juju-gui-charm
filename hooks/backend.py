@@ -113,6 +113,7 @@ class GoMixin(object):
 class GuiMixin(object):
     """Install and start the GUI and its dependencies."""
 
+    # The curl package is used to download release tarballs from Launchpad.
     debs = ('curl',)
 
     def install(self, backend):
@@ -223,10 +224,9 @@ class BuiltinServerMixin(ServerInstallMixinBase):
 
 
 def call_methods(objects, name, *args):
-    """For each given object, call, if present the method named name.
+    """For each given object, call, if present, the method named name.
 
     Pass the given args.
-    If reverse is True, the method is called on the reversed list of objects.
     """
     for obj in objects:
         method = getattr(obj, name, None)
@@ -307,13 +307,19 @@ class Backend(object):
         call_methods(self.mixins, 'install', self)
 
     def start(self):
-        """Execute the charm starting steps."""
+        """Execute the charm's "start" steps."""
         call_methods(self.mixins, 'start', self)
 
     def stop(self):
-        """Execute the charm stopping steps."""
+        """Execute the charm's "stop" steps.
+
+        Iterate through the mixins in reverse order.
+        """
         call_methods(reversed(self.mixins), 'stop', self)
 
     def destroy(self):
-        """Execute the charm removal steps."""
+        """Execute the charm removal steps.
+
+        Iterate through the mixins in reverse order.
+        """
         call_methods(reversed(self.mixins), 'destroy', self)
