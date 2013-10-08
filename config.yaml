@@ -27,7 +27,9 @@ options:
         repository (see the local choice above). If not found locally, the
         release will be downloaded from Launchpad;
       - a trunk version (e.g '0.1.0+build.1'): the specified trunk version
-        will be deployed;
+        will be deployed. A suitable release is looked up in the local releases
+        repository (see the local choice above). If not found locally, the
+        release will be downloaded from Launchpad;
       - a Bazaar branch (e.g. 'lp:juju-gui'): a release will be created and
         deployed from the specified Bazaar branch. 'http://' prefixed branches
         work as well. It is also possible to include the specific branch

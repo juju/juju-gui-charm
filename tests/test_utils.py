@@ -39,16 +39,19 @@ from utils import (
     _get_by_attr,
     cmd_log,
     compute_build_dir,
+    download_release,
+    fetch_gui_release,
     first_path_in_dir,
     get_api_address,
-    get_release_file_url,
+    get_launchpad_release,
+    get_npm_cache_archive_url,
+    get_release_file_path,
     get_zookeeper_address,
+    install_builtin_server,
+    install_missing_packages,
     legacy_juju,
     log_hook,
     parse_source,
-    get_npm_cache_archive_url,
-    install_builtin_server,
-    install_missing_packages,
     remove_apache_setup,
     remove_haproxy_setup,
     render_to_file,
@@ -92,6 +95,108 @@ class TestAttrDict(unittest.TestCase):
         # corresponding to an existent key.
         with self.assertRaises(AttributeError):
             AttrDict().myattr
+
+
+@mock.patch('utils.run')
+@mock.patch('utils.log')
+@mock.patch('utils.cmd_log', mock.Mock())
+class TestDownloadRelease(unittest.TestCase):
+
+    def test_download(self, mock_log, mock_run):
+        # A release is properly downloaded using curl.
+        url = 'http://download.example.com/release.tgz'
+        filename = 'local-release.tgz'
+        destination = download_release(url, filename)
+        expected_destination = os.path.join(os.getcwd(), 'releases', filename)
+        self.assertEqual(expected_destination, destination)
+        expected_log = 'Downloading release file: {} --> {}.'.format(
+            url, expected_destination)
+        mock_log.assert_called_once_with(expected_log)
+        mock_run.assert_called_once_with(
+            'curl', '-L', '-o', expected_destination, url)
+
+
+@mock.patch('utils.log', mock.Mock())
+class TestFetchGuiRelease(unittest.TestCase):
+
+    release_path = '/my/release.tgz'
+
+    @contextmanager
+    def patch_launchpad(self, origin, version):
+        """Mock the functions used to download a release from Launchpad.
+
+        Ensure all the functions are called correctly.
+        """
+        url = 'http://launchpad.example.com/release.tgz/file'
+        filename = 'release.tgz'
+        patch_launchpad = mock.patch('utils.Launchpad')
+        patch_get_launchpad_release = mock.patch(
+            'utils.get_launchpad_release',
+            mock.Mock(return_value=(url, filename)),
+        )
+        patch_download_release = mock.patch(
+            'utils.download_release',
+            mock.Mock(return_value=self.release_path),
+        )
+        with patch_launchpad as mock_launchpad:
+            with patch_get_launchpad_release as mock_get_launchpad_release:
+                with patch_download_release as mock_download_release:
+                    yield
+        login = mock_launchpad.login_anonymously
+        login.assert_called_once_with('Juju GUI charm', 'production')
+        mock_get_launchpad_release.assert_called_once_with(
+            login().projects['juju-gui'], origin, version)
+        mock_download_release.assert_called_once_with(url, filename)
+
+    @mock.patch('utils.download_release')
+    def test_url(self, mock_download_release):
+        # The release is retrieved from an URL.
+        mock_download_release.return_value = self.release_path
+        url = 'http://download.example.com/release.tgz'
+        path = fetch_gui_release('url', url)
+        self.assertEqual(self.release_path, path)
+        mock_download_release.assert_called_once_with(url, 'url-release.tgz')
+
+    @mock.patch('utils.get_release_file_path')
+    def test_local(self, mock_get_release_file_path):
+        # The last local release is requested.
+        mock_get_release_file_path.return_value = self.release_path
+        path = fetch_gui_release('local', None)
+        self.assertEqual(self.release_path, path)
+        mock_get_release_file_path.assert_called_once_with()
+
+    @mock.patch('utils.get_release_file_path')
+    def test_version_found(self, mock_get_release_file_path):
+        # A release version is specified and found locally.
+        mock_get_release_file_path.return_value = self.release_path
+        path = fetch_gui_release('stable', '0.1.42')
+        self.assertEqual(self.release_path, path)
+        mock_get_release_file_path.assert_called_once_with('0.1.42')
+
+    @mock.patch('utils.get_release_file_path')
+    def test_version_not_found(self, mock_get_release_file_path):
+         # A release version is specified but not found locally.
+        mock_get_release_file_path.return_value = None
+        with self.patch_launchpad('stable', '0.1.42'):
+            path = fetch_gui_release('stable', '0.1.42')
+        self.assertEqual(self.release_path, path)
+        mock_get_release_file_path.assert_called_once_with('0.1.42')
+
+    @mock.patch('utils.get_release_file_path')
+    def test_stable(self, mock_get_release_file_path):
+        # The last stable release is requested.
+        with self.patch_launchpad('stable', None):
+            path = fetch_gui_release('stable', None)
+        self.assertEqual(self.release_path, path)
+        self.assertFalse(mock_get_release_file_path.called)
+
+    @mock.patch('utils.get_release_file_path')
+    def test_trunk(self, mock_get_release_file_path):
+        # The last development release is requested.
+        with self.patch_launchpad('trunk', None):
+            path = fetch_gui_release('trunk', None)
+        self.assertEqual(self.release_path, path)
+        self.assertFalse(mock_get_release_file_path.called)
 
 
 class TestFirstPathInDir(unittest.TestCase):
@@ -184,6 +289,97 @@ class TestGetApiAddress(unittest.TestCase):
             self.assertRaises(IOError, get_api_address, unit_dir)
 
 
+class TestGetReleaseFilePath(unittest.TestCase):
+
+    def setUp(self):
+        self.playground = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.playground)
+
+    def mock_releases_dir(self):
+        """Mock the releases directory."""
+        return mock.patch('utils.RELEASES_DIR', self.playground)
+
+    def assert_path(self, filename, path):
+        """Ensure the absolute path of filename equals the given path."""
+        expected = os.path.join(self.playground, filename)
+        self.assertEqual(expected, path)
+
+    @contextmanager
+    def assert_error(self):
+        """Ensure the code executed in the context block raises a ValueError.
+
+        Also check the error message.
+        """
+        with self.assertRaises(ValueError) as context_manager:
+            yield
+        error = str(context_manager.exception)
+        self.assertEqual('Error: no releases found in the charm.', error)
+
+    def add(self, filename):
+        """Create a release file in the playground directory."""
+        path = os.path.join(self.playground, filename)
+        open(path, 'w').close()
+
+    def test_last_release(self):
+        # The last release is correctly retrieved.
+        self.add('juju-gui-0.12.1.tgz')
+        self.add('juju-gui-1.2.3.tgz')
+        self.add('juju-gui-2.0.1+build.42.tgz')
+        self.add('juju-gui-2.0.1.tgz')
+        with self.mock_releases_dir():
+            path = get_release_file_path()
+        self.assert_path('juju-gui-2.0.1.tgz', path)
+
+    def test_no_releases(self):
+        # A ValueError is raised if no releases are found.
+        with self.mock_releases_dir():
+            with self.assert_error():
+                get_release_file_path()
+
+    def test_no_releases_with_files(self):
+        # A ValueError is raised if no releases are found.
+        # Extraneous files are ignored while looking for releases.
+        self.add('jujugui-1.2.3.tgz')  # Wrong prefix.
+        self.add('juju-gui-1.2.tgz')  # Missing patch version number.
+        self.add('juju-gui-1.2.3.bz2')  # Wrong file extension.
+        self.add('juju-gui-1.2.3.4.tgz')  # Wrong version.
+        self.add('juju-gui-1.2.3.build.42.tgz')  # Missing "+" separator.
+        self.add('juju-gui-1.2.3+built.42.tgz')  # Typo.
+        self.add('juju-gui-1.2.3+build.42.47.tgz')  # Invalid bzr revno.
+        self.add('juju-gui-1.2.3+build.42.bz2')  # Wrong file extension again.
+        with self.mock_releases_dir():
+            with self.assert_error():
+                print get_release_file_path()
+
+    def test_stable_version(self):
+        # A specific stable version is correctly retrieved.
+        self.add('juju-gui-1.2.3.tgz')
+        self.add('juju-gui-2.0.1+build.42.tgz')
+        self.add('juju-gui-2.0.1.tgz')
+        self.add('juju-gui-3.2.1.tgz')
+        with self.mock_releases_dir():
+            path = get_release_file_path('2.0.1')
+        self.assert_path('juju-gui-2.0.1.tgz', path)
+
+    def test_development_version(self):
+        # A specific development version is correctly retrieved.
+        self.add('juju-gui-1.2.3+build.4247.tgz')
+        self.add('juju-gui-2.42.47+build.4247.tgz')
+        self.add('juju-gui-2.42.47.tgz')
+        self.add('juju-gui-3.42.47+build.4247.tgz')
+        with self.mock_releases_dir():
+            path = get_release_file_path('2.42.47+build.4247')
+        self.assert_path('juju-gui-2.42.47+build.4247.tgz', path)
+
+    def test_version_not_found(self):
+        # None is returned if the requested version is not found.
+        self.add('juju-gui-1.2.3.tgz')
+        self.add('juju-GUI-1.42.47.tgz')  # This is not a valid release.
+        with self.mock_releases_dir():
+            path = get_release_file_path('1.42.47')
+        self.assertIsNone(path)
+
+
 class TestLegacyJuju(unittest.TestCase):
 
     def setUp(self):
@@ -261,7 +457,7 @@ class FileStub(object):
         return self.file_link
 
 
-class TestGetReleaseFileUrl(unittest.TestCase):
+class TestGetLaunchpadRelease(unittest.TestCase):
 
     project = AttrDict(
         series=(
@@ -308,43 +504,48 @@ class TestGetReleaseFileUrl(unittest.TestCase):
 
     def test_latest_stable_release(self):
         # Ensure the correct URL is returned for the latest stable release.
-        url = get_release_file_url(self.project, 'stable', None)
+        url, name = get_launchpad_release(self.project, 'stable', None)
         self.assertEqual('http://example.com/0.1.1.tgz', url)
+        self.assertEqual('0.1.1.tgz', name)
 
     def test_latest_trunk_release(self):
         # Ensure the correct URL is returned for the latest trunk release.
-        url = get_release_file_url(self.project, 'trunk', None)
+        url, name = get_launchpad_release(self.project, 'trunk', None)
         self.assertEqual('http://example.com/0.1.1+build.1.tgz', url)
+        self.assertEqual('0.1.1+build.1.tgz', name)
 
     def test_specific_stable_release(self):
         # Ensure the correct URL is returned for a specific version of the
         # stable release.
-        url = get_release_file_url(self.project, 'stable', '0.1.0')
+        url, name = get_launchpad_release(self.project, 'stable', '0.1.0')
         self.assertEqual('http://example.com/0.1.0.tgz', url)
+        self.assertEqual('0.1.0.tgz', name)
 
     def test_specific_trunk_release(self):
         # Ensure the correct URL is returned for a specific version of the
         # trunk release.
-        url = get_release_file_url(self.project, 'trunk', '0.1.0+build.1')
+        url, name = get_launchpad_release(
+            self.project, 'trunk', '0.1.0+build.1')
         self.assertEqual('http://example.com/0.1.0+build.1.tgz', url)
+        self.assertEqual('0.1.0+build.1.tgz', name)
 
     def test_series_not_found(self):
         # A ValueError is raised if the series cannot be found.
         with self.assertRaises(ValueError) as cm:
-            get_release_file_url(self.project, 'unstable', None)
+            get_launchpad_release(self.project, 'unstable', None)
         self.assertIn('series not found', str(cm.exception))
 
     def test_no_releases(self):
         # A ValueError is raised if the series does not contain releases.
         project = AttrDict(series=[AttrDict(name='stable', releases=[])])
         with self.assertRaises(ValueError) as cm:
-            get_release_file_url(project, 'stable', None)
+            get_launchpad_release(project, 'stable', None)
         self.assertIn('series does not contain releases', str(cm.exception))
 
     def test_release_not_found(self):
         # A ValueError is raised if the release cannot be found.
         with self.assertRaises(ValueError) as cm:
-            get_release_file_url(self.project, 'stable', '2.0')
+            get_launchpad_release(self.project, 'stable', '2.0')
         self.assertIn('release not found', str(cm.exception))
 
     def test_file_not_found(self):
@@ -358,7 +559,7 @@ class TestGetReleaseFileUrl(unittest.TestCase):
             ],
         )
         with self.assertRaises(ValueError) as cm:
-            get_release_file_url(project, 'stable', None)
+            get_launchpad_release(project, 'stable', None)
         self.assertIn('file not found', str(cm.exception))
 
     def test_file_not_found_in_latest_release(self):
@@ -378,8 +579,9 @@ class TestGetReleaseFileUrl(unittest.TestCase):
                 ),
             ],
         )
-        url = get_release_file_url(project, 'stable', None)
+        url, name = get_launchpad_release(project, 'stable', None)
         self.assertEqual('http://example.com/0.1.0.tgz', url)
+        self.assertEqual('0.1.0.tgz', name)
 
 
 class TestGetZookeeperAddress(unittest.TestCase):
