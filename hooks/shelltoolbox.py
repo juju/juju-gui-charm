@@ -1,6 +1,11 @@
 # Copyright 2012 Canonical Ltd.
 
-# This file is part of python-shell-toolbox.
+# This file is taken from the python-shelltoolbox package.
+#
+# IMPORTANT: Do not modify this file to add or change functionality.  If you
+# really feel the need to do so, first convert our code to the shelltoolbox
+# library, and modify it instead (or modify the helpers or utils module here,
+# as appropriate).
 #
 # python-shell-toolbox is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by the
