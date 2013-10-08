@@ -36,6 +36,7 @@ __all__ = [
     'get_npm_cache_archive_url',
     'get_release_file_url',
     'get_zookeeper_address',
+    'install_missing_packages',
     'legacy_juju',
     'log_hook',
     'parse_source',
@@ -78,6 +79,7 @@ from shelltoolbox import (
     apt_get_install,
     command,
     environ,
+    install_extra_repositories,
     run,
     script_name,
     search_file,
@@ -153,12 +155,6 @@ bzr_url_expression = re.compile(r"""
 """, re.VERBOSE)
 
 results_log = None
-
-
-def _get_build_dependencies():
-    """Install deb dependencies for building."""
-    log('Installing build dependencies.')
-    cmd_log(apt_get_install(*DEB_BUILD_DEPENDENCIES))
 
 
 def get_api_address(unit_dir=None):
@@ -623,8 +619,6 @@ def prime_npm_cache(npm_cache_url):
 
 def fetch_gui_from_branch(branch_url, revision, logpath):
     """Retrieve the Juju GUI from a branch and build a release archive."""
-    # Make sure we have the needed dependencies.
-    _get_build_dependencies()
     # Inject NPM packages into the cache for faster building.
     prime_npm_cache(get_npm_cache_archive_url())
     # Create a release starting from a branch.
@@ -738,3 +732,20 @@ def find_missing_packages(*packages):
             continue
         missing.add(pkg_name)
     return missing
+
+
+def install_missing_packages(packages, repository=None):
+    """Install the required debian packages if they are missing.
+
+    If repository is not None, add the given apt repository before installing
+    the dependencies.
+    """
+    missing = find_missing_packages(*packages)
+    if missing:
+        if repository is not None:
+            log('Adding the apt repository {}.'.format(repository))
+            install_extra_repositories(repository)
+        log('Installing deb packages: {}.'.format(', '.join(missing)))
+        cmd_log(apt_get_install(*missing))
+    else:
+        log('No missing deb packages.')

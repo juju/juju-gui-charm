@@ -48,6 +48,7 @@ from utils import (
     parse_source,
     get_npm_cache_archive_url,
     install_builtin_server,
+    install_missing_packages,
     remove_apache_setup,
     remove_haproxy_setup,
     render_to_file,
@@ -866,6 +867,55 @@ class TestRemoveApacheSetup(unittest.TestCase):
         # Nothing happens if the configuration does not already exist.
         remove_apache_setup()
         self.assertEqual(0, mock_run.call_count)
+
+
+@mock.patch('utils.find_missing_packages')
+@mock.patch('utils.install_extra_repositories')
+@mock.patch('utils.apt_get_install')
+@mock.patch('utils.log')
+@mock.patch('utils.cmd_log', mock.Mock())
+class TestInstallMissingPackages(unittest.TestCase):
+
+    packages = ('pkg1', 'pkg2', 'pkg3')
+    repository = 'ppa:my/repository'
+
+    def test_missing(
+            self, mock_log, mock_apt_get_install,
+            mock_install_extra_repositories, mock_find_missing_packages):
+        # The extra repository and packages are correctly installed.
+        repository = self.repository
+        mock_find_missing_packages.return_value = ['pkg1', 'pkg2']
+        install_missing_packages(self.packages, repository=repository)
+        mock_find_missing_packages.assert_called_once_with(*self.packages)
+        mock_install_extra_repositories.assert_called_once_with(repository)
+        mock_apt_get_install.assert_called_once_with('pkg1', 'pkg2')
+        mock_log.assert_has_calls([
+            mock.call('Adding the apt repository ppa:my/repository.'),
+            mock.call('Installing deb packages: pkg1, pkg2.')
+        ])
+
+    def test_missing_no_repository(
+            self, mock_log, mock_apt_get_install,
+            mock_install_extra_repositories, mock_find_missing_packages):
+        # No repositories are installed if not passed.
+        mock_find_missing_packages.return_value = ['pkg1', 'pkg2']
+        install_missing_packages(self.packages)
+        mock_find_missing_packages.assert_called_once_with(*self.packages)
+        self.assertFalse(mock_install_extra_repositories.called)
+        mock_apt_get_install.assert_called_once_with('pkg1', 'pkg2')
+        mock_log.assert_called_once_with(
+            'Installing deb packages: pkg1, pkg2.')
+
+    def test_no_missing(
+            self, mock_log, mock_apt_get_install,
+            mock_install_extra_repositories, mock_find_missing_packages):
+        # Nothing is installed if no missing packages are found.
+        mock_find_missing_packages.return_value = []
+        install_missing_packages(self.packages, repository=self.repository)
+        mock_find_missing_packages.assert_called_once_with(*self.packages)
+        self.assertFalse(mock_install_extra_repositories.called)
+        self.assertFalse(mock_apt_get_install.called)
+        mock_log.assert_called_once_with('No missing deb packages.')
 
 
 class TestNpmCache(unittest.TestCase):

@@ -18,31 +18,27 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import errno
-import json
 import os
 
-# We need to install the Juju PPA, which we will do with a couple of functions
-# that are actually maintained in python-shelltoolbox.
-import bootstrap_utils
+from charmhelpers import (
+    get_config,
+    log,
+)
+from shelltoolbox import (
+    apt_get_install,
+    run,
+)
 
-
-def get_config():
-    output = bootstrap_utils.run('config-get', '--format', 'json')
-    return json.loads(output)
-
-config = get_config()
-bootstrap_utils.install_extra_repositories(config['repository-location'])
 
 # Python dependencies must be installed here so that the charm can import and
 # use required libraries.
-PYTHON_DEPENDENCIES = (
-    'python-apt', 'python-launchpadlib', 'python-shelltoolbox',
-    'python-tempita',
-)
-bootstrap_utils.run(*(('apt-get', 'install', '-y') + PYTHON_DEPENDENCIES))
+PYTHON_DEPENDENCIES = ('python-apt', 'python-launchpadlib', 'python-tempita')
+
+log('Installing base Python dependnecies: {}.'.format(
+    ', '.join(PYTHON_DEPENDENCIES)))
+apt_get_install(*PYTHON_DEPENDENCIES)
 
 
-from charmhelpers import log
 from utils import (
     config_json,
     log_hook,
@@ -60,7 +56,7 @@ def main():
         for module in dirnames:
             filename = os.path.join('exec.d', module, 'charm-pre-install')
             try:
-                bootstrap_utils.run(filename)
+                run(filename)
             except OSError, e:
                 # If the exec.d file does not exist or is not runnable or
                 # is not a directory, assume we can recover.  Log the problem

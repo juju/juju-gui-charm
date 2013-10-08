@@ -183,7 +183,7 @@ options:
       This is a temporary option: the built-in server will be
       the only server in the future.
     type: boolean
-    default: false
+    default: true
   builtin-server-logging:
     description: |
       Set the GUI server log level. Possible values are debug, info, warning

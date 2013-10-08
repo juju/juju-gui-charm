@@ -207,8 +207,11 @@ class TestDeploy(DeployTestMixin, unittest.TestCase):
 
     def test_cache_headers(self):
         # Make sure the correct cache headers are sent.
-        unit_info = self.juju_deploy(
-            self.charm, options={'juju-gui-source': JUJU_GUI_TEST_BRANCH})
+        options = {
+            'builtin-server': False,
+            'juju-gui-source': JUJU_GUI_TEST_BRANCH,
+        }
+        unit_info = self.juju_deploy(self.charm, options=options)
         hostname = unit_info['public-address']
         conn = httplib.HTTPSConnection(hostname)
         conn.request('HEAD', '/')

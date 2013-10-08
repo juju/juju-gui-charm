@@ -37,10 +37,8 @@ futures==2.1.4
 tornado==3.1.1
 
 # Charm hooks.
--e bzr+http://launchpad.net/charm-tools#egg=charm-tools
 launchpadlib==1.10.2
 python-apt==0.8.5
--e bzr+http://launchpad.net/python-shelltoolbox#egg=python-shelltoolbox
 Tempita==0.5.1
 
 # Charm tests + GUI server tests.
