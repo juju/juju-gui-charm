@@ -32,12 +32,15 @@ from guiserver.bundles import utils
 from guiserver.tests import helpers
 
 
-@mock.patch('time.time', mock.Mock(return_value=1234))
+mock_time = mock.patch('time.time', mock.Mock(return_value=12345))
+
+
+@mock_time
 class TestCreateChange(unittest.TestCase):
 
     def test_status(self):
         # The change includes the deployment status.
-        expected = {'DeploymentId': 0, 'Status': utils.STARTED, 'Time': 1234}
+        expected = {'DeploymentId': 0, 'Status': utils.STARTED, 'Time': 12345}
         obtained = utils.create_change(0, utils.STARTED)
         self.assertEqual(expected, obtained)
 
@@ -46,7 +49,7 @@ class TestCreateChange(unittest.TestCase):
         expected = {
             'DeploymentId': 1,
             'Status': utils.SCHEDULED,
-            'Time': 1234,
+            'Time': 12345,
             'Queue': 42,
         }
         obtained = utils.create_change(1, utils.SCHEDULED, queue=42)
@@ -57,7 +60,7 @@ class TestCreateChange(unittest.TestCase):
         expected = {
             'DeploymentId': 2,
             'Status': utils.COMPLETED,
-            'Time': 1234,
+            'Time': 12345,
             'Error': 'an error',
         }
         obtained = utils.create_change(2, utils.COMPLETED, error='an error')
@@ -68,7 +71,7 @@ class TestCreateChange(unittest.TestCase):
         expected = {
             'DeploymentId': 3,
             'Status': utils.COMPLETED,
-            'Time': 1234,
+            'Time': 12345,
             'Queue': 47,
             'Error': 'an error',
         }
@@ -139,7 +142,7 @@ class TestObserver(unittest.TestCase):
         self.assert_watcher(watcher1, deployment1)
         self.assert_watcher(watcher2, deployment2)
 
-    @mock.patch('time.time', mock.Mock(return_value=1234))
+    @mock_time
     def test_notify_scheduled(self):
         # It is possible to notify a new queue position for a deployment.
         deployment_id = self.observer.add_deployment()
@@ -148,13 +151,13 @@ class TestObserver(unittest.TestCase):
         expected = {
             'DeploymentId': deployment_id,
             'Status': utils.SCHEDULED,
-            'Time': 1234,
+            'Time': 12345,
             'Queue': 3,
         }
         self.assertEqual(expected, watcher.getlast())
         self.assertFalse(watcher.closed)
 
-    @mock.patch('time.time', mock.Mock(return_value=12345))
+    @mock_time
     def test_notify_started(self):
         # It is possible to notify that a deployment is (about to be) started.
         deployment_id = self.observer.add_deployment()
@@ -169,7 +172,21 @@ class TestObserver(unittest.TestCase):
         self.assertEqual(expected, watcher.getlast())
         self.assertFalse(watcher.closed)
 
-    @mock.patch('time.time', mock.Mock(return_value=123456))
+    @mock_time
+    def test_notify_cancelled(self):
+        # It is possible to notify that a deployment has been cancelled.
+        deployment_id = self.observer.add_deployment()
+        watcher = self.observer.deployments[deployment_id]
+        self.observer.notify_cancelled(deployment_id)
+        expected = {
+            'DeploymentId': deployment_id,
+            'Status': utils.CANCELLED,
+            'Time': 12345,
+        }
+        self.assertEqual(expected, watcher.getlast())
+        self.assertTrue(watcher.closed)
+
+    @mock_time
     def test_notify_completed(self):
         # It is possible to notify that a deployment is completed.
         deployment_id = self.observer.add_deployment()
@@ -178,12 +195,12 @@ class TestObserver(unittest.TestCase):
         expected = {
             'DeploymentId': deployment_id,
             'Status': utils.COMPLETED,
-            'Time': 123456,
+            'Time': 12345,
         }
         self.assertEqual(expected, watcher.getlast())
         self.assertTrue(watcher.closed)
 
-    @mock.patch('time.time', mock.Mock(return_value=1234567))
+    @mock_time
     def test_notify_error(self):
         # It is possible to notify that an error occurred during a deployment.
         deployment_id = self.observer.add_deployment()
@@ -192,7 +209,7 @@ class TestObserver(unittest.TestCase):
         expected = {
             'DeploymentId': deployment_id,
             'Status': utils.COMPLETED,
-            'Time': 1234567,
+            'Time': 12345,
             'Error': 'bad wolf',
         }
         self.assertEqual(expected, watcher.getlast())

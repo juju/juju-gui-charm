@@ -25,19 +25,20 @@ python-debian==0.1.21
 # GUI server -> juju deployer.
 bzr==2.6.0
 
+# Charm tests + juju deployer.
+websocket-client==0.12.0
+
 # Charm hooks + GUI server.
 PyYAML==3.10
 
 # GUI server.
 futures==2.1.4
 -e bzr+http://launchpad.net/juju-deployer/darwin#egg=juju-deployer
-tornado==3.1
+tornado==3.1.1
 
 # Charm hooks.
--e bzr+http://launchpad.net/charm-tools#egg=charm-tools
 launchpadlib==1.10.2
 python-apt==0.8.5
--e bzr+http://launchpad.net/python-shelltoolbox#egg=python-shelltoolbox
 Tempita==0.5.1
 
 # Charm tests + GUI server tests.

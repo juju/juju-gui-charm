@@ -30,7 +30,7 @@ connections are bidirectional, using the WebSocket protocol on the same port as
 the HTTPS connection, allowing changes in the Juju environment to be propagated
 and shown immediately by the browser. """
 
-VERSION = (0, 1, 0)
+VERSION = (0, 2, 1)
 
 
 def get_version():

@@ -18,7 +18,7 @@ browsers.
 
 ## Demo and Staging Servers ##
 
-The Juju GUI runs the Juju Charm Store on 
+The Juju GUI runs the Juju Charm Store on
 [jujucharms.com](http://jujucharms.com).  From there,  you can browse charms,
 try the GUI, and build an example environment to export for use elsewhere.
 
@@ -78,10 +78,29 @@ environment's `admin-secret`, found in `~/.juju/environments.yaml`.
 
 ### Deploying behind a firewall ###
 
-While we may change this in the future to make firewall deploys simpler, this
-charm pulls the latest release from the Juju GUI page on Launchpad.  If you
-are behind a firewall, however, this may not be available to you.  In this case,
-you can configure the charm to pull the GUI release from a location you specify.
+When using the default options the charm uses the network connection only for
+installing Deb packages from the default Ubuntu repositories. For this reason
+the charm can be deployed behind a firewall in the usual way:
+
+    juju deploy juju-gui
+
+There are situations and customizations in which the charm needs to connect to
+Launchpad:
+
+- juju-gui-source is set to "stable" or "trunk": in this cases the charm pulls
+  the latest stable or development release from Launchpad;
+- juju-gui-source is set to a branch (e.g. "lp:juju-gui"): in this case the
+  charm retrieves a checkout of the specified branch from Launchpad, and adds
+  an external Launchpad PPA to install build dependencies;
+- juju-gui-source is set to a specific version number not available in the
+  local store (i.e. in the releases directory of the deployed charm): in this
+  case the release is downloaded from Launchpad;
+- builtin-server is set to false: in this case the charm adds an external
+  Launchpad PPA to install the legacy server dependencies.
+
+If, for any reason, you need to use the legacy server, it is still possible to
+deploy behind a firewall configuring the charm to pull the GUI release from a
+location you specify.
 
 For both Juju Core and PyJuju, you must simply do the following steps.  Note
 that PyJuju must do these steps, plus another set described further below.
@@ -116,6 +135,18 @@ lp:~hazmat/juju/rapi-rollup") and copy the branch to the gui service machine.
 path is *not* a file:// URI).
 
 3. Retry as described in the step 3 above (`juju resolved --retry juju-gui/0`).
+
+### Upgrading the charm behind a firewall ###
+
+When a new version of Juju GUI is released, the charm is updated to include the
+new release in the local releases repository. Assuming the new version is
+1.0.1, after upgrading the charm, it is possible to also upgrade to the newer
+Juju GUI release by running the following:
+
+    juju set juju-gui-source=1.0.1
+
+In this case the new version will be found in the local repository and
+therefore the charm will not attempt to connect to Launchpad.
 
 ### Deploying to a chosen machine ###
 

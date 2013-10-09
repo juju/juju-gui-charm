@@ -21,21 +21,24 @@ __all__ = [
     'APACHE_PORTS',
     'API_PORT',
     'CURRENT_DIR',
-    'JUJU_DIR',
+    'JUJU_AGENT_DIR',
     'JUJU_GUI_DIR',
     'JUJU_PEM',
     'WEB_PORT',
     'cmd_log',
     'compute_build_dir',
+    'download_release',
     'fetch_api',
     'fetch_gui_from_branch',
     'fetch_gui_release',
     'find_missing_packages',
     'first_path_in_dir',
     'get_api_address',
+    'get_launchpad_release',
     'get_npm_cache_archive_url',
-    'get_release_file_url',
+    'get_release_file_path',
     'get_zookeeper_address',
+    'install_missing_packages',
     'legacy_juju',
     'log_hook',
     'parse_source',
@@ -59,6 +62,7 @@ __all__ = [
 ]
 
 from contextlib import contextmanager
+from distutils.version import LooseVersion
 import errno
 import json
 import os
@@ -67,7 +71,7 @@ import re
 import shutil
 from subprocess import CalledProcessError
 import tempfile
-from urlparse import urlparse
+import urlparse
 
 import apt
 import tempita
@@ -78,6 +82,7 @@ from shelltoolbox import (
     apt_get_install,
     command,
     environ,
+    install_extra_repositories,
     run,
     script_name,
     search_file,
@@ -103,16 +108,19 @@ IMPROV = 'juju-api-improv'
 API_PORT = 8080
 WEB_PORT = 8000
 
+BASE_DIR = '/var/lib/juju-gui'
 CURRENT_DIR = os.getcwd()
 CONFIG_DIR = os.path.join(CURRENT_DIR, 'config')
-JUJU_DIR = os.path.join(CURRENT_DIR, 'juju')
-JUJU_GUI_DIR = os.path.join(CURRENT_DIR, 'juju-gui')
+JUJU_AGENT_DIR = os.path.join(BASE_DIR, 'juju')
+JUJU_GUI_DIR = os.path.join(BASE_DIR, 'juju-gui')
+RELEASES_DIR = os.path.join(CURRENT_DIR, 'releases')
 # Builtin server dependencies. The order of these requirements is important.
 SERVER_DEPENDENCIES = (
     'futures-2.1.4.tar.gz',
-    'tornado-3.1.tar.gz',
+    'tornado-3.1.1.tar.gz',
+    'websocket-client-0.12.0.tar.gz',
     'jujuclient-0.0.9.tar.gz',
-    'juju-deployer-0.2.2.tar.gz',
+    'juju-deployer-0.2.3.tar.gz',
 )
 SERVER_DIR = os.path.join(CURRENT_DIR, 'server')
 
@@ -149,14 +157,16 @@ bzr_url_expression = re.compile(r"""
     (?::(\d+))?  # Optional branch revision.
     $  # End of line.
 """, re.VERBOSE)
+release_expression = re.compile(r"""
+    juju-gui-  # Juju GUI prefix.
+    (
+        \d+\.\d+\.\d+  # Major, minor, and patch version numbers.
+        (?:\+build\.\d+)?  # Optional bzr revno for development releases.
+    )
+    \.tgz  # File extension.
+""", re.VERBOSE)
 
 results_log = None
-
-
-def _get_build_dependencies():
-    """Install deb dependencies for building."""
-    log('Installing build dependencies.')
-    cmd_log(apt_get_install(*DEB_BUILD_DEPENDENCIES))
 
 
 def get_api_address(unit_dir=None):
@@ -202,14 +212,15 @@ def _get_by_attr(collection, attr, value):
             return item
 
 
-def get_release_file_url(project, series_name, release_version):
-    """Return the URL of the release file hosted in Launchpad.
+def get_launchpad_release(project, series_name, release_version):
+    """Return the URL and the name of the release file hosted in Launchpad.
 
     The returned URL points to a release file for the given project, series
     name and release version.
     The argument *project* is a project object as returned by launchpadlib.
     The arguments *series_name* and *release_version* are strings. If
-    *release_version* is None, the URL of the latest release will be returned.
+    *release_version* is None, the URL and file name of the latest release will
+    be returned.
     """
     series = _get_by_attr(project.series, 'name', series_name)
     if series is None:
@@ -225,8 +236,10 @@ def get_release_file_url(project, series_name, release_version):
         releases = [release]
     for release in releases:
         for file_ in release.files:
-            if str(file_).endswith('.tgz'):
-                return file_.file_link
+            file_url = str(file_)
+            if file_url.endswith('.tgz'):
+                filename = os.path.split(urlparse.urlsplit(file_url).path)[1]
+                return file_.file_link, filename
     raise ValueError('%r: file not found' % release_version)
 
 
@@ -266,6 +279,7 @@ def parse_source(source):
 
     Return a tuple of two elements representing info on how to deploy Juju GUI.
     Examples:
+       - ('local', None): latest local release;
        - ('stable', None): latest stable release;
        - ('stable', '0.1.0'): stable release v0.1.0;
        - ('trunk', None): latest trunk release;
@@ -278,12 +292,12 @@ def parse_source(source):
     if source.startswith('url:'):
         source = source[4:]
         # Support file paths, including relative paths.
-        if urlparse(source).scheme == '':
+        if urlparse.urlparse(source).scheme == '':
             if not source.startswith('/'):
                 source = os.path.join(os.path.abspath(CURRENT_DIR), source)
             source = "file://%s" % source
         return 'url', source
-    if source in ('stable', 'trunk'):
+    if source in ('local', 'stable', 'trunk'):
         return source, None
     match = bzr_url_expression.match(source)
     if match is not None:
@@ -336,7 +350,7 @@ def start_improv(staging_env, ssl_cert_path):
     """Start a simulated juju environment using ``improv.py``."""
     log('Setting up the staging Upstart script.')
     context = {
-        'juju_dir': JUJU_DIR,
+        'juju_dir': JUJU_AGENT_DIR,
         'keys': ssl_cert_path,
         'port': API_PORT,
         'staging_env': staging_env,
@@ -365,7 +379,7 @@ def start_agent(ssl_cert_path, read_only=False):
     zookeeper = get_zookeeper_address(agent_file)
     log('Setting up the API agent Upstart script.')
     context = {
-        'juju_dir': JUJU_DIR,
+        'juju_dir': JUJU_AGENT_DIR,
         'keys': ssl_cert_path,
         'port': API_PORT,
         'zookeeper': zookeeper,
@@ -386,7 +400,7 @@ def stop_agent():
     cmd_log(run('rm', '-f', AGENT_INIT_PATH))
 
 
-def compute_build_dir(in_staging, serve_tests):
+def compute_build_dir(juju_gui_debug, serve_tests):
     """Compute the build directory."""
     with su('root'):
         run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
@@ -394,7 +408,7 @@ def compute_build_dir(in_staging, serve_tests):
         # External insecure resources are still loaded when testing in the
         # debug environment. For now, switch to the production environment if
         # the charm is configured to serve tests.
-    if in_staging and not serve_tests:
+    if juju_gui_debug and not serve_tests:
         build_dirname = 'build-debug'
     else:
         build_dirname = 'build-prod'
@@ -403,17 +417,17 @@ def compute_build_dir(in_staging, serve_tests):
 
 def write_gui_config(
         console_enabled, login_help, readonly, in_staging, charmworld_url,
-        build_dir, secure=True, sandbox=False, use_analytics=False,
+        build_dir, secure=True, sandbox=False,
         default_viewmode='sidebar', show_get_juju_button=False,
-        config_js_path=None):
+        config_js_path=None, ga_key='', password=None):
     """Generate the GUI configuration file."""
     log('Generating the Juju GUI configuration file.')
     is_legacy_juju = legacy_juju()
-    user, password = None, None
-    if (is_legacy_juju and in_staging) or sandbox:
-        user, password = 'admin', 'admin'
-    else:
-        user, password = None, None
+    user = 'admin' if is_legacy_juju else 'user-admin'
+    # Normalize empty string passwords to None.
+    password = password if password else None
+    if password is None and ((is_legacy_juju and in_staging) or sandbox):
+        password = 'admin'
     api_backend = 'python' if is_legacy_juju else 'go'
     if secure:
         protocol = 'wss'
@@ -432,7 +446,7 @@ def write_gui_config(
         'protocol': json.dumps(protocol),
         'sandbox': json.dumps(sandbox),
         'charmworld_url': json.dumps(charmworld_url),
-        'use_analytics': json.dumps(use_analytics),
+        'ga_key': json.dumps(ga_key),
         'default_viewmode': json.dumps(default_viewmode),
         'show_get_juju_button': json.dumps(show_get_juju_button),
     }
@@ -498,15 +512,15 @@ def setup_apache_config(build_dir, serve_tests=False):
 
 def remove_apache_setup():
     """Remove Apache setup."""
-    log('Removing Apache setup.')
-    with su('root'):
-        run('a2dismod', 'headers')
-        run('a2dissite', 'juju-gui')
-        run('a2ensite', 'default')
-    if os.path.exists(APACHE_PORTS):
-        cmd_log(run('rm', '-f', APACHE_PORTS))
     if os.path.exists(APACHE_SITE):
+        log('Removing Apache setup.')
         cmd_log(run('rm', '-f', APACHE_SITE))
+        with su('root'):
+            run('a2dismod', 'headers')
+            run('a2dissite', 'juju-gui')
+            run('a2ensite', 'default')
+        if os.path.exists(APACHE_PORTS):
+            cmd_log(run('rm', '-f', APACHE_PORTS))
 
 
 def start_haproxy_apache(
@@ -598,7 +612,7 @@ def get_npm_cache_archive_url(Launchpad=Launchpad):
     launchpad = Launchpad.login_anonymously('Juju GUI charm', 'production')
     project = launchpad.projects['juju-gui']
     # Find the URL of the most recently created NPM cache archive.
-    npm_cache_url = get_release_file_url(project, 'npm-cache', None)
+    npm_cache_url, _ = get_launchpad_release(project, 'npm-cache', None)
     return npm_cache_url
 
 
@@ -621,8 +635,6 @@ def prime_npm_cache(npm_cache_url):
 
 def fetch_gui_from_branch(branch_url, revision, logpath):
     """Retrieve the Juju GUI from a branch and build a release archive."""
-    # Make sure we have the needed dependencies.
-    _get_build_dependencies()
     # Inject NPM packages into the cache for faster building.
     prime_npm_cache(get_npm_cache_archive_url())
     # Create a release starting from a branch.
@@ -645,39 +657,92 @@ def fetch_gui_from_branch(branch_url, revision, logpath):
         os.path.join(juju_gui_source_dir, 'releases'))
 
 
+def download_release(url, filename):
+    """Download a Juju GUI release from the given URL.
+
+    Save the resulting file as filename in the local releases repository.
+    Return the full path of the saved file.
+    """
+    destination = os.path.join(RELEASES_DIR, filename)
+    log('Downloading release file: {} --> {}.'.format(url, destination))
+    cmd_log(run('curl', '-L', '-o', destination, url))
+    return destination
+
+
+def get_release_file_path(version=None):
+    """Return the local path of the release file with the given version.
+
+    If version is None, return the path of the last release.
+    Raise a ValueError if no releases are found in the local repository.
+    """
+    version_path_map = {}
+    # Collect the locally stored releases.
+    for filename in os.listdir(RELEASES_DIR):
+        match = release_expression.match(filename)
+        if match is not None:
+            release_version = match.groups()[0]
+            release_path = os.path.join(RELEASES_DIR, filename)
+            version_path_map[release_version] = release_path
+    # We expect the charm to include at least one release file.
+    if not version_path_map:
+        raise ValueError('Error: no releases found in the charm.')
+    if version is None:
+        # Return the path of the last release.
+        last_version = sorted(version_path_map.keys(), key=LooseVersion)[-1]
+        return version_path_map[last_version]
+    # Return the path of the release with the requested version, or None if
+    # the release is not found.
+    return version_path_map.get(version)
+
+
 def fetch_gui_release(origin, version):
-    """Retrieve a Juju GUI release."""
+    """Retrieve a Juju GUI release. Return the release tarball local path.
+
+    The release file can be retrieved from:
+      - an arbitrary URL (if origin is "url");
+      - the local releases repository (if origin is "local" or if a release
+        version is specified and the corresponding file is present locally);
+      - Launchpad (in all the other cases).
+    """
     log('Retrieving Juju GUI release.')
     if origin == 'url':
-        file_url = version
-    else:
-        # Retrieve a release from Launchpad.
-        launchpad = Launchpad.login_anonymously(
-            'Juju GUI charm', 'production')
-        project = launchpad.projects['juju-gui']
-        file_url = get_release_file_url(project, origin, version)
-    log('Downloading release file from %s.' % file_url)
-    release_tarball = os.path.join(CURRENT_DIR, 'release.tgz')
-    cmd_log(run('curl', '-L', '-o', release_tarball, file_url))
-    return release_tarball
+        return download_release(version, 'url-release.tgz')
+    if origin == 'local':
+        path = get_release_file_path()
+        log('Using a local release: {}'.format(path))
+        return path
+    # Handle "stable" and "trunk" origins.
+    if version is not None:
+        # If the user specified a version, before attempting to download the
+        # requested release from Launchpad, check if that version is already
+        # stored locally.
+        path = get_release_file_path(version)
+        if path is not None:
+            log('Using a local release: {}'.format(path))
+            return path
+    # Retrieve a release from Launchpad.
+    launchpad = Launchpad.login_anonymously('Juju GUI charm', 'production')
+    project = launchpad.projects['juju-gui']
+    url, filename = get_launchpad_release(project, origin, version)
+    return download_release(url, filename)
 
 
 def fetch_api(juju_api_branch):
     """Retrieve the Juju branch, removing it first if already there."""
     # Retrieve Juju API source checkout.
     log('Retrieving Juju API source checkout.')
-    cmd_log(run('rm', '-rf', JUJU_DIR))
-    cmd_log(bzr_checkout(juju_api_branch, JUJU_DIR))
+    cmd_log(run('rm', '-rf', JUJU_AGENT_DIR))
+    cmd_log(bzr_checkout(juju_api_branch, JUJU_AGENT_DIR))
 
 
 def setup_gui(release_tarball):
     """Set up Juju GUI."""
     # Uncompress the release tarball.
     log('Installing Juju GUI.')
-    release_dir = os.path.join(CURRENT_DIR, 'release')
+    release_dir = os.path.join(BASE_DIR, 'release')
     cmd_log(run('rm', '-rf', release_dir))
     os.mkdir(release_dir)
-    uncompress = command('tar', '-x', '-z', '-C', release_dir, '-f')
+    uncompress = command('tar', '-x', '-a', '-C', release_dir, '-f')
     cmd_log(uncompress(release_tarball))
     # Link the Juju GUI dir to the contents of the release tarball.
     cmd_log(run('ln', '-sf', first_path_in_dir(release_dir), JUJU_GUI_DIR))
@@ -736,3 +801,20 @@ def find_missing_packages(*packages):
             continue
         missing.add(pkg_name)
     return missing
+
+
+def install_missing_packages(packages, repository=None):
+    """Install the required debian packages if they are missing.
+
+    If repository is not None, add the given apt repository before installing
+    the dependencies.
+    """
+    missing = find_missing_packages(*packages)
+    if missing:
+        if repository is not None:
+            log('Adding the apt repository {}.'.format(repository))
+            install_extra_repositories(repository)
+        log('Installing deb packages: {}.'.format(', '.join(missing)))
+        cmd_log(apt_get_install(*missing))
+    else:
+        log('No missing deb packages.')

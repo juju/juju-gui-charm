@@ -38,19 +38,40 @@ The mixins appear in the code in the order they are instantiated by the
 backend. Keeping them that way is useful.
 """
 
+import errno
 import os
+import shutil
 
-import charmhelpers
-import shelltoolbox
+from charmhelpers import (
+    log,
+    open_port,
+)
 
 import utils
+
+
+class SetUpMixin(object):
+    """Handle the overall set up and clean up processes."""
+
+    def install(self, backend):
+        log('Setting up base dir: {}.'.format(utils.BASE_DIR))
+        try:
+            os.makedirs(utils.BASE_DIR)
+        except OSError as err:
+            # The base directory might already exist: ignore the error.
+            if err.errno != errno.EEXIST:
+                raise
+
+    def destroy(self, backend):
+        log('Cleaning up base dir: {}.'.format(utils.BASE_DIR))
+        shutil.rmtree(utils.BASE_DIR)
 
 
 class PythonInstallMixinBase(object):
     """Provide a common "install" method to ImprovMixin and PythonMixin."""
 
     def install(self, backend):
-        if (not os.path.exists(utils.JUJU_DIR) or
+        if (not os.path.exists(utils.JUJU_AGENT_DIR) or
                 backend.different('staging', 'juju-api-branch')):
             utils.fetch_api(backend.config['juju-api-branch'])
 
@@ -88,36 +109,31 @@ class GoMixin(object):
 
     debs = ('python-yaml',)
 
-    def install(self, backend):
-        # When juju-core deploys the charm, the charm directory (which hosts
-        # the GUI itself) is permissioned too strictly; set the perms on that
-        # directory to be friendly for Apache.
-        # Bug: 1202772
-        utils.cmd_log(shelltoolbox.run('chmod', '+x', utils.CURRENT_DIR))
-
 
 class GuiMixin(object):
     """Install and start the GUI and its dependencies."""
 
+    # The curl package is used to download release tarballs from Launchpad.
     debs = ('curl',)
 
     def install(self, backend):
         """Install the GUI and dependencies."""
-        # If the given installable thing ("backend") requires one or more debs
-        # that are not yet installed, install them.
-        missing = utils.find_missing_packages(*backend.debs)
-        if missing:
-            utils.cmd_log(
-                shelltoolbox.apt_get_install(*backend.debs))
         # If the source setting has changed since the last time this was run,
         # get the code, from either a static release or a branch as specified
         # by the souce setting, and install it.
         if backend.different('juju-gui-source'):
             # Get a tarball somehow.
-            logpath = backend.config['command-log-file']
             origin, version_or_branch = utils.parse_source(
                 backend.config['juju-gui-source'])
             if origin == 'branch':
+                logpath = backend.config['command-log-file']
+                # Make sure we have the required build dependencies.
+                # Note that we also need to add the juju-gui repository
+                # containing our version of nodejs.
+                log('Installing build dependencies.')
+                utils.install_missing_packages(
+                    utils.DEB_BUILD_DEPENDENCIES,
+                    repository=backend.config['repository-location'])
                 branch_url, revision = version_or_branch
                 release_tarball_path = utils.fetch_gui_from_branch(
                     branch_url, revision, logpath)
@@ -128,20 +144,21 @@ class GuiMixin(object):
             utils.setup_gui(release_tarball_path)
 
     def start(self, backend):
-        charmhelpers.log('Starting Juju GUI.')
+        log('Starting Juju GUI.')
         config = backend.config
         build_dir = utils.compute_build_dir(
-            config['staging'], config['serve-tests'])
+            config['juju-gui-debug'], config['serve-tests'])
         utils.write_gui_config(
             config['juju-gui-console-enabled'], config['login-help'],
             config['read-only'], config['staging'], config['charmworld-url'],
             build_dir, secure=config['secure'], sandbox=config['sandbox'],
-            use_analytics=config['use-analytics'],
+            ga_key=config['ga-key'],
             default_viewmode=config['default-viewmode'],
-            show_get_juju_button=config['show-get-juju-button'])
+            show_get_juju_button=config['show-get-juju-button'],
+            password=config.get('password'))
         # Expose the service.
-        charmhelpers.open_port(80)
-        charmhelpers.open_port(443)
+        open_port(80)
+        open_port(443)
 
 
 class ServerInstallMixinBase(object):
@@ -164,6 +181,8 @@ class HaproxyApacheMixin(ServerInstallMixinBase):
     """Manage haproxy and Apache via Upstart."""
 
     debs = ('apache2', 'haproxy', 'openssl')
+    # We need to add the juju-gui PPA containing our customized haproxy.
+    ppa_required = True
 
     def install(self, backend):
         self._setup_certificates(backend)
@@ -171,7 +190,7 @@ class HaproxyApacheMixin(ServerInstallMixinBase):
     def start(self, backend):
         config = backend.config
         build_dir = utils.compute_build_dir(
-            config['staging'], config['serve-tests'])
+            config['juju-gui-debug'], config['serve-tests'])
         utils.start_haproxy_apache(
             build_dir, config['serve-tests'], config['ssl-cert-path'],
             config['secure'])
@@ -194,7 +213,7 @@ class BuiltinServerMixin(ServerInstallMixinBase):
     def start(self, backend):
         config = backend.config
         build_dir = utils.compute_build_dir(
-            config['staging'], config['serve-tests'])
+            config['juju-gui-debug'], config['serve-tests'])
         utils.start_builtin_server(
             build_dir, config['ssl-cert-path'], config['serve-tests'],
             config['sandbox'], config['builtin-server-logging'],
@@ -204,31 +223,15 @@ class BuiltinServerMixin(ServerInstallMixinBase):
         utils.stop_builtin_server()
 
 
-def chain_methods(name):
-    """Helper to compose a set of mixin objects into a callable.
+def call_methods(objects, name, *args):
+    """For each given object, call, if present, the method named name.
 
-    Each method is called in the context of its mixin instance, and its
-    argument is the Backend instance.
+    Pass the given args.
     """
-    # Chain method calls through all implementing mixins.
-    def method(self):
-        for mixin in self.mixins:
-            a_callable = getattr(type(mixin), name, None)
-            if a_callable is not None:
-                a_callable(mixin, self)
-    method.__name__ = name
-    return method
-
-
-def merge_properties(name):
-    """Helper to merge one property from mixin objects into a unified set."""
-    @property
-    def method(self):
-        result = set()
-        for mixin in self.mixins:
-            result |= set(getattr(type(mixin), name, frozenset()))
-        return result
-    return method
+    for obj in objects:
+        method = getattr(obj, name, None)
+        if method is not None:
+            method(*args)
 
 
 class Backend(object):
@@ -252,7 +255,7 @@ class Backend(object):
         if prev_config is None:
             prev_config = {}
         self.prev_config = prev_config
-        self.mixins = []
+        self.mixins = [SetUpMixin()]
 
         is_legacy_juju = utils.legacy_juju()
 
@@ -284,10 +287,39 @@ class Backend(object):
         current, previous = self.config.get, self.prev_config.get
         return any(current(key) != previous(key) for key in keys)
 
-    # Composed methods.
-    install = chain_methods('install')
-    start = chain_methods('start')
-    stop = chain_methods('stop')
+    def get_dependencies(self):
+        """Return a tuple (debs, repository) representing dependencies."""
+        debs = set()
+        needs_ppa = False
+        # Collect the required dependencies and check if adding the juju-gui
+        # PPA is required.
+        for mixin in self.mixins:
+            debs.update(getattr(mixin, 'debs', ()))
+            if getattr(mixin, 'ppa_required', False):
+                needs_ppa = True
+        return debs, self.config['repository-location'] if needs_ppa else None
 
-    # Merged properties.
-    debs = merge_properties('debs')
+    def install(self):
+        """Execute the installation steps."""
+        debs, repository = self.get_dependencies()
+        log('Installing dependencies.')
+        utils.install_missing_packages(debs, repository=repository)
+        call_methods(self.mixins, 'install', self)
+
+    def start(self):
+        """Execute the charm's "start" steps."""
+        call_methods(self.mixins, 'start', self)
+
+    def stop(self):
+        """Execute the charm's "stop" steps.
+
+        Iterate through the mixins in reverse order.
+        """
+        call_methods(reversed(self.mixins), 'stop', self)
+
+    def destroy(self):
+        """Execute the charm removal steps.
+
+        Iterate through the mixins in reverse order.
+        """
+        call_methods(reversed(self.mixins), 'destroy', self)

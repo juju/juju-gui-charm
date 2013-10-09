@@ -16,9 +16,6 @@
 
 """Juju GUI server bundles support.
 
-XXX frankban: note that the following is a work in progress. Some of the
-objects described below are not yet implemented.
-
 This package includes the objects and functions required to support deploying
 bundles in juju-core. The base pieces of the infrastructure are placed in the
 base module:
@@ -44,12 +41,12 @@ base module:
       the WebSocket request/response aspects, or how incoming data is retrieved
       or generated.
 
-      The Deployer implementation in this module uses the juju-deployer library
-      to import the provided bundle into the Juju environment. Since the
-      mentioned operations are executed in a separate process, it is safe for
-      the Deployer to interact with the blocking juju-deployer library.
-      Those blocking functions are defined in the blocking module of this
-      package, described below.
+      The Deployer implementation in this package uses the juju-deployer
+      library to import the provided bundle into the Juju environment. Since
+      the mentioned operations are executed in a separate process, it is safe
+      for the Deployer to interact with the blocking juju-deployer library.
+      Those blocking functions are defined in the guiserver module of the
+      juju-deployer project, described below.
 
       Note that the Deployer is not intended to store request related data: one
       instance is created once when the application is bootstrapped and used as
@@ -63,23 +60,24 @@ base module:
       views module of this package. The DeployMiddleware dispatches requests
       and collect responses to be sent back to the API client.
 
-The views and blocking modules are responsible of handling the request/response
-process and of starting/scheduling bundle deployments.
+The views module is responsible for handling the request/response process and
+of starting/scheduling bundle deployments.
 
     - views: as already mentioned, the functions in this module handle the
       requests from the API client, and set up responses. Since the views have
       access to the Deployer (described above), they can start/queue bundle
       deployments.
 
-    - blocking: all the blocking functions interacting with the juju-deployer
-      library belong here. Specifically this module defines two functions:
-        - validate: validate a bundle based on the state of the Juju env.;
-        - import_bundle: starts the bundle deployment process.
+The deployer.guiserver module in the juju-deployer library is responsible for
+validating a bundle and starting a deployment. Specifically the module defines
+two functions:
+    - validate: validate a bundle based on the state of the Juju env.;
+    - import_bundle: starts the bundle deployment process.
 
 The infrastructure described above can be summarized like the following
 (each arrow meaning "calls"):
     - request handling: request -> DeployMiddleware -> views
-    - deployment handling: views -> Deployer -> blocking
+    - deployment handling: views -> Deployer -> deployer.guiserver
     - response handling: views -> response
 
 While the DeployMiddleware parses the request data and statically validates
@@ -98,8 +96,10 @@ A deployment request looks like the following:
         'Params': {'Name': 'bundle-name', 'YAML': 'bundles'},
     }
 
-In the future it will be possible to pass "URL" in place of "YAML" in order to
-deploy a bundle from a URL.
+In the request parameters above, the YAML field stores the YAML encoded
+contents representing one or more bundles, and the Name field is the name of
+the specific bundle (included in YAML) that must be deployed. The Name
+parameter is optional in the case YAML includes only one bundle.
 
 After receiving a deployment request, the DeployMiddleware sends a response
 indicating whether or not the request has been accepted. This response is sent
@@ -193,7 +193,9 @@ bundle deployment in the queue. The Deployer implementation processes one
 bundle at the time. A Queue value of zero means the deployment will be started
 as soon as possible.
 
-The Status can be one of the following: 'scheduled', 'started' and 'completed'.
+The Status can be one of the following: 'scheduled', 'started', 'completed' and
+'cancelled. See the next section for an explanation of how to cancel a pending
+(scheduled) deployment.
 
 The Time field indicates the number of seconds since the epoch at the time of
 the change.
@@ -220,6 +222,40 @@ the watch request will always return only the last change:
 XXX frankban: a timeout to delete completed deployments history will be
 eventually implemented.
 
+Cancelling a deployment.
+------------------------
+
+It is possible to cancel the execution of scheduled deployments by sending a
+Cancel request, e.g.:
+
+    {
+        'RequestId': 5,
+        'Type': 'Deployer',
+        'Request': 'Cancel',
+        'Params': {'DeploymentId': 42},
+    }
+
+Note that it is allowed to cancel a deployment only if it is not yet started,
+i.e. if it is in a 'scheduled' state.
+
+If any error occurs, the response is like this:
+
+    {
+        'RequestId': 5,
+        'Response': {},
+        'Error': 'some error: error details',
+    }
+
+Usually an error response is returned when either an invalid deployment id was
+provided or the request attempted to cancel an already started deployment.
+
+If the deployment is successfully cancelled, the response is the following:
+
+    {
+        'RequestId': 5,
+        'Response': {},
+    }
+
 Deployments status.
 -------------------
 
@@ -227,7 +263,7 @@ To retrieve the current status of all the active/scheduled bundle deployments,
 the client can send the following request:
 
     {
-        'RequestId': 5,
+        'RequestId': 6,
         'Type': 'Deployer',
         'Request': 'Status',
     }
@@ -236,29 +272,29 @@ In the two examples below, the first one represents a response with errors,
 the second one is a successful response:
 
     {
-        'RequestId': 5,
+        'RequestId': 6,
         'Response': {},
         'Error': 'some error: error details',
     }
 
     {
-        'RequestId': 5,
+        'RequestId': 6,
         'Response': {
             'LastChanges': [
-                {'DeploymentId': 42, 'Status': 'completed', 'Time': 1377080001,
+                {'DeploymentId': 1, 'Status': 'completed', 'Time': 1377080001,
                  'Error': 'error'},
-                {'DeploymentId': 43, 'Status': 'completed',
-                 'Time': 1377080002},
-                {'DeploymentId': 44, 'Status': 'started', 'Time': 1377080003,
+                {'DeploymentId': 2, 'Status': 'completed', 'Time': 1377080002},
+                {'DeploymentId': 3, 'Status': 'started', 'Time': 1377080003,
                  'Queue': 0},
-                {'DeploymentId': 45, 'Status': 'scheduled', 'Time': 1377080004,
+                {'DeploymentId': 4, 'Status': 'cancelled', 'Time': 1377080004},
+                {'DeploymentId': 5, 'Status': 'scheduled', 'Time': 1377080005,
                  'Queue': 1},
             ],
         },
     }
 
 In the second response above, the Error field in the first attempted deployment
-(42) contains details about an error that occurred while deploying a bundle.
+(1) contains details about an error that occurred while deploying a bundle.
 This means that bundle deployment has been completed but an error occurred
 during the process.
 """

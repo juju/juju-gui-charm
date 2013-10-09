@@ -78,14 +78,19 @@ def _validate_import_params(params):
 
     Raise a ValueError if data represents an invalid request.
     """
-    name = params.get('Name')
     contents = params.get('YAML')
-    if not (name and contents):
+    if contents is None:
         raise ValueError('invalid data parameters')
     try:
         bundles = yaml.load(contents, Loader=yaml.SafeLoader)
     except Exception as err:
         raise ValueError('invalid YAML contents: {}'.format(err))
+    name = params.get('Name')
+    if name is None:
+        # The Name is optional if the YAML contents contain only one bunlde.
+        if len(bundles) == 1:
+            return bundles.items()[0]
+        raise ValueError('invalid data parameters: no bundle name provided')
     bundle = bundles.get(name)
     if bundle is None:
         raise ValueError('bundle {} not found'.format(name))
@@ -160,6 +165,28 @@ def next(request, deployer):
     if changes is None:
         raise response(error='invalid request: invalid watcher identifier')
     raise response({'Changes': changes})
+
+
+@gen.coroutine
+@require_authenticated_user
+def cancel(request, deployer):
+    """Cancel the given pending deployment.
+
+    The deployment is identified in the request by the DeploymentId parameter.
+    If the request is not valid or the deployment cannot be cancelled (e.g.
+    because it is already started) an error response is returned.
+
+    Request: 'Cancel'.
+    Parameters example: {'DeploymentId': 42}.
+    """
+    deployment_id = request.params.get('DeploymentId')
+    if deployment_id is None:
+        raise response(error='invalid request: invalid data parameters')
+    # Use the Deployer instance to cancel the deployment.
+    err = deployer.cancel(deployment_id)
+    if err is not None:
+        raise response(error='invalid request: {}'.format(err))
+    raise response()
 
 
 @gen.coroutine

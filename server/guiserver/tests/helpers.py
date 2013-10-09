@@ -25,7 +25,6 @@ import unittest
 
 import mock
 from tornado import websocket
-import yaml
 
 from guiserver import auth
 from guiserver.bundles import base
@@ -140,52 +139,6 @@ class BundlesTestMixin(object):
     """Add helper methods for testing the GUI server bundles support."""
 
     apiurl = 'wss://api.example.com:17070'
-    bundle = """
-        envExport:
-          series: precise
-          services:
-            wordpress:
-              charm: "cs:precise/wordpress-15"
-              num_units: 1
-              options:
-                debug: "no"
-                engine: nginx
-                tuning: single
-                "wp-content": ""
-              annotations:
-                "gui-x": 313
-                "gui-y": 51
-            mysql:
-              charm: "cs:precise/mysql-26"
-              num_units: 1
-              options:
-                "binlog-format": MIXED
-                "block-size": "5"
-                "dataset-size": "80%"
-                flavor: distro
-                "ha-bindiface": eth0
-                "ha-mcastport": "5411"
-                "max-connections": "-1"
-                "preferred-storage-engine": InnoDB
-                "query-cache-size": "-1"
-                "query-cache-type": "OFF"
-                "rbd-name": mysql1
-                "tuning-level": safest
-                vip: ""
-                vip_cidr: "24"
-                vip_iface: eth0
-              annotations:
-                "gui-x": 669.5
-                "gui-y": -33.5
-          relations:
-            - - "wordpress:db"
-              - "mysql:db"
-    """
-
-    def get_name_and_bundle(self):
-        """Return a tuple (bundle name, contents) parsing self.bundle."""
-        all_contents = yaml.load(self.bundle)
-        return all_contents.items()[0]
 
     def make_deployer(self, apiversion=base.SUPPORTED_API_VERSIONS[0]):
         """Create and return a Deployer instance."""
@@ -243,12 +196,13 @@ class BundlesTestMixin(object):
     def patch_validate(self, side_effect=None):
         """Mock the blocking validate function."""
         mock_validate = MultiProcessMock(side_effect=side_effect)
-        return mock.patch('guiserver.bundles.blocking.validate', mock_validate)
+        validate_path = 'guiserver.bundles.base.blocking.validate'
+        return mock.patch(validate_path, mock_validate)
 
     def patch_import_bundle(self, side_effect=None):
         """Mock the blocking import_bundle function."""
         mock_import_bundle = MultiProcessMock(side_effect=side_effect)
-        import_bundle_path = 'guiserver.bundles.blocking.import_bundle'
+        import_bundle_path = 'guiserver.bundles.base.blocking.import_bundle'
         return mock.patch(import_bundle_path, mock_import_bundle)
 
 

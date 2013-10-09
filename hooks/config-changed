@@ -36,19 +36,17 @@ def main():
     config = get_config()
     prev_config = config_json.get()
     diff = DictDiffer(config, prev_config)
-
     if not diff.modified:
         log("No configuration changes, exiting.")
         sys.exit(0)
 
     log('Updating configuration.')
     backend = Backend(config, prev_config)
-
-    backend.install()
     if prev_config:
         # Stop whatever the old config was.
         prev_backend = Backend(prev_config)
         prev_backend.stop()
+    backend.install()
     backend.start()
 
     # Record new configuration

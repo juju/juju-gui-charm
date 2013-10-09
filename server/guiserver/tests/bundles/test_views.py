@@ -108,6 +108,22 @@ class TestImportBundle(
         self.assertEqual(0, len(self.deployer.mock_calls))
 
     @gen_test
+    def test_no_name_failure(self):
+        # An error response is returned if the requested bundle name is not
+        # provided and the YAML contents include multiple bundles
+        params = {'YAML': 'bundle1: contents1\nbundle2: contents2'}
+        request = self.make_view_request(params=params)
+        response = yield self.view(request, self.deployer)
+        expected_response = {
+            'Response': {},
+            'Error': 'invalid request: invalid data parameters: '
+                     'no bundle name provided',
+        }
+        self.assertEqual(expected_response, response)
+        # The Deployer methods have not been called.
+        self.assertEqual(0, len(self.deployer.mock_calls))
+
+    @gen_test
     def test_bundle_not_found(self):
         # An error response is returned if the requested bundle name is not
         # found in the bundle YAML contents.
@@ -153,6 +169,22 @@ class TestImportBundle(
         response = yield self.view(request, self.deployer)
         expected_response = {'Response': {'DeploymentId': 42}}
         self.assertEqual(expected_response, response)
+        # Ensure the Deployer methods have been correctly called.
+        args = (request.user, 'mybundle', 'mycontents')
+        self.deployer.validate.assert_called_once_with(*args)
+        self.deployer.import_bundle.assert_called_once_with(*args)
+
+    @gen_test
+    def test_no_name_success(self):
+        # The process succeeds if the bundle name is not provided but the
+        # YAML contents include just one bundle.
+        params = {'YAML': 'mybundle: mycontents'}
+        request = self.make_view_request(params=params)
+        # Set up the Deployer mock.
+        self.deployer.validate.return_value = self.make_future(None)
+        self.deployer.import_bundle.return_value = 42
+        # Execute the view.
+        yield self.view(request, self.deployer)
         # Ensure the Deployer methods have been correctly called.
         args = (request.user, 'mybundle', 'mycontents')
         self.deployer.validate.assert_called_once_with(*args)
@@ -233,6 +265,43 @@ class TestNext(
         self.assertEqual(expected_response, response)
         # Ensure the Deployer methods have been correctly called.
         self.deployer.next.assert_called_once_with(42)
+
+
+class TestCancel(
+        ViewsTestMixin, helpers.BundlesTestMixin, LogTrapTestCase,
+        AsyncTestCase):
+
+    def get_view(self):
+        return views.cancel
+
+    @gen_test
+    def test_invalid_deployment(self):
+        # An error response is returned if the deployment identifier is not
+        # valid.
+        request = self.make_view_request(params={'DeploymentId': 42})
+        # Set up the Deployer mock.
+        self.deployer.cancel.return_value = 'bad wolf'
+        # Execute the view.
+        response = yield self.view(request, self.deployer)
+        expected_response = {
+            'Response': {},
+            'Error': 'invalid request: bad wolf',
+        }
+        self.assertEqual(expected_response, response)
+        # Ensure the Deployer methods have been correctly called.
+        self.deployer.cancel.assert_called_once_with(42)
+
+    @gen_test
+    def test_success(self):
+        # An empty response is returned if everything is ok.
+        request = self.make_view_request(params={'DeploymentId': 42})
+        # Set up the Deployer mock.
+        self.deployer.cancel.return_value = None
+        # Execute the view.
+        response = yield self.view(request, self.deployer)
+        self.assertEqual({'Response': {}}, response)
+        # Ensure the Deployer methods have been correctly called.
+        self.deployer.cancel.assert_called_once_with(42)
 
 
 class TestStatus(

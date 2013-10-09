@@ -14,9 +14,10 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-JUJUTEST = juju-test --timeout=90m -v -e "$(JUJU_ENV)" --upload-tools
+JUJUTEST = juju-test --timeout=120m -v -e "$(JUJU_ENV)" --upload-tools
 VENV = ./tests/.venv
-SYSDEPS = build-essential bzr libapt-pkg-dev python-pip python-virtualenv xvfb
+SYSDEPS = build-essential bzr libapt-pkg-dev python-pip python-virtualenv xvfb \
+		libpython-dev
 
 all: setup
 
@@ -32,7 +33,7 @@ unittest: setup
 
 ensure-juju-test:
 	@which juju-test > /dev/null \
-	    || (echo 'The "juju-test" command is missing.  See HACKING.md.' \
+		|| (echo 'The "juju-test" command is missing.  See HACKING.md.' \
 		; false)
 
 ftest: setup ensure-juju-test

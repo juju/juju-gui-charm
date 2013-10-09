@@ -111,7 +111,8 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         # Wait for the deployment to be completed.
         self.wait()
         mock_import_bundle.assert_called_once_with(
-            self.apiurl, self.user.password, 'bundle', self.bundle)
+            self.apiurl, self.user.password, 'bundle', self.bundle,
+            base.IMPORTER_OPTIONS)
         mock_import_bundle.assert_called_in_a_separate_process()
 
     def test_watch(self):
@@ -195,12 +196,74 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         # Wait for the deployment to be completed.
         self.wait()
 
-    @gen_test
     def test_invalid_watcher(self):
         # None is returned if the watcher id is not valid.
         deployer = self.make_deployer()
         changes = deployer.next(42)
         self.assertIsNone(changes)
+
+    @gen_test
+    def test_cancel(self):
+        # It is possible to cancel the execution of a pending deployment.
+        deployer = self.make_deployer()
+        with self.patch_import_bundle():
+            # The test callback is passed to the first deployment because we
+            # expect the second one to be immediately cancelled.
+            deployer.import_bundle(
+                self.user, 'bundle', self.bundle, test_callback=self.stop)
+            deployment_id = deployer.import_bundle(
+                self.user, 'bundle', self.bundle)
+        watcher_id = deployer.watch(deployment_id)
+        self.assertIsNone(deployer.cancel(deployment_id))
+        # We expect two changes: the second one should notify the deployment
+        # has been cancelled.
+        yield deployer.next(watcher_id)
+        changes = yield deployer.next(watcher_id)
+        self.assert_change(changes, deployment_id, utils.CANCELLED)
+        # Wait for the deployment to be completed.
+        self.wait()
+
+    def test_cancel_unknown_deployment(self):
+        # An error is returned when trying to cancel an invalid deployment.
+        deployer = self.make_deployer()
+        error = deployer.cancel(42)
+        self.assertEqual('deployment not found or already completed', error)
+
+    @gen_test
+    def test_cancel_completed_deployment(self):
+        # An error is returned when trying to cancel a completed deployment.
+        deployer = self.make_deployer()
+        with self.patch_import_bundle():
+            deployment_id = deployer.import_bundle(
+                self.user, 'bundle', self.bundle, test_callback=self.stop)
+        watcher_id = deployer.watch(deployment_id)
+        # Assume the deployment is completed after two changes.
+        yield deployer.next(watcher_id)
+        yield deployer.next(watcher_id)
+        error = deployer.cancel(deployment_id)
+        self.assertEqual('deployment not found or already completed', error)
+        # Wait for the deployment to be completed.
+        self.wait()
+
+    @gen_test
+    def test_cancel_started_deployment(self):
+        # An error is returned when trying to cancel a deployment already
+        # started.
+        deployer = self.make_deployer()
+        with self.patch_import_bundle() as mock_import_bundle:
+            deployment_id = deployer.import_bundle(
+                self.user, 'bundle', self.bundle, test_callback=self.stop)
+        watcher_id = deployer.watch(deployment_id)
+        # Wait until the deployment is started.
+        yield deployer.next(watcher_id)
+        while True:
+            if mock_import_bundle.call_count:
+                break
+        error = deployer.cancel(deployment_id)
+        self.assertEqual('unable to cancel the deployment', error)
+        # Wait for the deployment to be completed.
+        yield deployer.next(watcher_id)
+        self.wait()
 
     def test_initial_status(self):
         # The initial deployer status is an empty list.

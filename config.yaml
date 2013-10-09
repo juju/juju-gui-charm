@@ -17,21 +17,34 @@
 options:
   juju-gui-source:
     description: |
-      Where to install Juju GUI from. Possible values are:
-      - 'stable' (default): the latest stable release will be deployed;
-      - 'trunk': the latest trunk release will be deployed;
-      - a stable version (e.g '0.1.0'): the specified stable version will be
-        deployed;
-      - a trunk version (e.g '0.1.0+build.1'): the specified trunk version
-        will be deployed;
-      - a Bazaar branch (e.g. 'lp:juju-gui'): a release will be created and
-        deployed from the specified Bazaar branch. 'http://' prefixed branches
+      Where to install Juju GUI from. Possible values the following.
+      - 'local' (default): The latest local release will be deployed. Releases
+        are stored in the releases directory of this charm.
+      - 'stable': The latest release from the "stable" series will be deployed.
+      - 'trunk': The latest release from the "trunk" series will be deployed.
+        Please note that this is not a build of the current Juju GUI trunk.
+        For that functionality, use "lp:juju-gui", as described below.
+      - a stable version (e.g '0.1.0'): The specified stable version will be
+        deployed. A suitable release is looked up in the local releases
+        repository (see the "local" choice above). If not found locally, the
+        release will be downloaded from Launchpad.
+      - a trunk version (e.g '0.1.0+build.1'): The specified trunk version
+        will be deployed. A suitable release is looked up in the local releases
+        repository (see the "local" choice above). If not found locally, the
+        release will be downloaded from Launchpad.
+      - a Bazaar branch (e.g. 'lp:juju-gui'): A release will be created and
+        deployed from the specified Bazaar branch. "http://"" prefixed branches
         work as well. It is also possible to include the specific branch
-        revision, e.g. 'lp:juju-gui:42' will checkout revno 42.
-      - a 'url:' prefixed url (ex: url:http://...) of a specific location
-        to pull a release from.
+        revision, e.g. "lp:juju-gui:42" will checkout revno 42.
+      - a "url:"" prefixed url: The release found at the given URL
+        (ex: url:http://... or url:file://...) will be deployed.
     type: string
-    default: stable
+    default: local
+  juju-gui-debug:
+    description: |
+      Run Juju GUI in debug mode, serving the uncompressed GUI source files.
+    type: boolean
+    default: false
   juju-api-branch:
     description: |
       The Juju API Bazaar branch (implementing the WebSocket server).  Since
@@ -42,9 +55,9 @@ options:
   staging:
     description: |
       Connect the Juju GUI to the staging backend (i.e. a simulated Juju
-      environment).  Currently juju-core does not support the staging
-      backend. For this reason, this option is ignored if the charm is
-      deployed using juju-core.
+      environment).  Currently juju-core does not support the staging backend.
+      For this reason, an error is raised if this option is enabled in a
+      juju-core environment.
     type: boolean
     default: false
   staging-environment:
@@ -112,6 +125,11 @@ options:
       Do not set unless you understand and accept the risks.
     type: boolean
     default: true
+  password:
+    description: |
+      If given, the password to use for the environment to immediately
+      connect.  Do not set unless you understand and accept the risks.
+    type: string
   sandbox:
     description: |
       Run using an in-memory sandbox rather than a real (or even improv) Juju
@@ -139,19 +157,20 @@ options:
       'add-apt-repository'.
     type: string
     default: ppa:juju-gui-charmers/stable
-  use-analytics:
+  ga-key:
     description: |
+      The Google Analytics key to use.  Set to blank to disable analytics.
       The team developing the Juju GUI benefits from understanding how
-      different deployments use the tool.  By enabling this setting,
+      different deployments use the tool.  By keeping the default key value,
       anonymized usage data is reported back using Google Analytics.  The type
       of data collected includes the charms that are deployed and the number
       of units per service.  Use of analytics is optional but we hope you will
       allow us to improve our tool based on your experience.
-    type: boolean
-    default: true
+    type: string
+    default: UA-41463568-2
   default-viewmode:
     description: |
-      What the charmbrowser's default viewmode should be. Possible options are:
+      What the default viewmode  for the charmbrowser should be. Possible options are:
       - 'sidebar' (default): the charmwbrowser will appear as a sidebar. This
         is also known as build mode.
       - 'fullscreen': the charmbrowser will appear in full screen, hiding the
@@ -172,7 +191,7 @@ options:
       This is a temporary option: the built-in server will be
       the only server in the future.
     type: boolean
-    default: false
+    default: true
   builtin-server-logging:
     description: |
       Set the GUI server log level. Possible values are debug, info, warning
@@ -185,7 +204,7 @@ options:
       A string that will be prepended to instance name to set the host name
       in nagios. So for instance the hostname would be something like:
           juju-myservice-0
-      If you're running multiple environments with the same services in them
+      If you are running multiple environments with the same services in them
       this allows you to differentiate between them.
     type: string
     default: "juju"
