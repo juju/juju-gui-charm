@@ -324,11 +324,19 @@ class TestGetReleaseFilePath(unittest.TestCase):
         # The last release is correctly retrieved.
         self.add('juju-gui-0.12.1.tgz')
         self.add('juju-gui-1.2.3.tgz')
-        self.add('juju-gui-2.0.1+build.42.tgz')
+        self.add('juju-gui-2.0.0+build.42.tgz')
         self.add('juju-gui-2.0.1.tgz')
         with self.mock_releases_dir():
             path = get_release_file_path()
         self.assert_path('juju-gui-2.0.1.tgz', path)
+
+    def test_ordering(self):
+        # Release versions are correctly ordered.
+        self.add('juju-gui-0.12.1.tgz')
+        self.add('juju-gui-0.9.1.tgz')
+        with self.mock_releases_dir():
+            path = get_release_file_path()
+        self.assert_path('juju-gui-0.12.1.tgz', path)
 
     def test_no_releases(self):
         # A ValueError is raised if no releases are found.

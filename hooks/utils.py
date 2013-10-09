@@ -62,6 +62,7 @@ __all__ = [
 ]
 
 from contextlib import contextmanager
+from distutils.version import LooseVersion
 import errno
 import json
 import os
@@ -218,8 +219,8 @@ def get_launchpad_release(project, series_name, release_version):
     name and release version.
     The argument *project* is a project object as returned by launchpadlib.
     The arguments *series_name* and *release_version* are strings. If
-    *release_version* is None, the URL and name of the latest release will be
-    returned.
+    *release_version* is None, the URL and file name of the latest release will
+    be returned.
     """
     series = _get_by_attr(project.series, 'name', series_name)
     if series is None:
@@ -674,23 +675,24 @@ def get_release_file_path(version=None):
     If version is None, return the path of the last release.
     Raise a ValueError if no releases are found in the local repository.
     """
-    version_path_map = []
+    version_path_map = {}
     # Collect the locally stored releases.
-    for filename in sorted(os.listdir(RELEASES_DIR)):
+    for filename in os.listdir(RELEASES_DIR):
         match = release_expression.match(filename)
         if match is not None:
             release_version = match.groups()[0]
             release_path = os.path.join(RELEASES_DIR, filename)
-            version_path_map.append((release_version, release_path))
+            version_path_map[release_version] = release_path
     # We expect the charm to include at least one release file.
     if not version_path_map:
         raise ValueError('Error: no releases found in the charm.')
     if version is None:
         # Return the path of the last release.
-        return version_path_map[-1][1]
+        last_version = sorted(version_path_map.keys(), key=LooseVersion)[-1]
+        return version_path_map[last_version]
     # Return the path of the release with the requested version, or None if
     # the release is not found.
-    return dict(version_path_map).get(version)
+    return version_path_map.get(version)
 
 
 def fetch_gui_release(origin, version):
