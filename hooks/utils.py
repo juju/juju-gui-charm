@@ -27,14 +27,16 @@ __all__ = [
     'WEB_PORT',
     'cmd_log',
     'compute_build_dir',
+    'download_release',
     'fetch_api',
     'fetch_gui_from_branch',
     'fetch_gui_release',
     'find_missing_packages',
     'first_path_in_dir',
     'get_api_address',
+    'get_launchpad_release',
     'get_npm_cache_archive_url',
-    'get_release_file_url',
+    'get_release_file_path',
     'get_zookeeper_address',
     'install_missing_packages',
     'legacy_juju',
@@ -60,6 +62,7 @@ __all__ = [
 ]
 
 from contextlib import contextmanager
+from distutils.version import LooseVersion
 import errno
 import json
 import os
@@ -68,7 +71,7 @@ import re
 import shutil
 from subprocess import CalledProcessError
 import tempfile
-from urlparse import urlparse
+import urlparse
 
 import apt
 import tempita
@@ -110,6 +113,7 @@ CURRENT_DIR = os.getcwd()
 CONFIG_DIR = os.path.join(CURRENT_DIR, 'config')
 JUJU_AGENT_DIR = os.path.join(BASE_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(BASE_DIR, 'juju-gui')
+RELEASES_DIR = os.path.join(CURRENT_DIR, 'releases')
 # Builtin server dependencies. The order of these requirements is important.
 SERVER_DEPENDENCIES = (
     'futures-2.1.4.tar.gz',
@@ -152,6 +156,14 @@ bzr_url_expression = re.compile(r"""
     ((?:lp:|http:\/\/)[^:]+)  # Branch URL (scheme + domain/path).
     (?::(\d+))?  # Optional branch revision.
     $  # End of line.
+""", re.VERBOSE)
+release_expression = re.compile(r"""
+    juju-gui-  # Juju GUI prefix.
+    (
+        \d+\.\d+\.\d+  # Major, minor, and patch version numbers.
+        (?:\+build\.\d+)?  # Optional bzr revno for development releases.
+    )
+    \.tgz  # File extension.
 """, re.VERBOSE)
 
 results_log = None
@@ -200,14 +212,15 @@ def _get_by_attr(collection, attr, value):
             return item
 
 
-def get_release_file_url(project, series_name, release_version):
-    """Return the URL of the release file hosted in Launchpad.
+def get_launchpad_release(project, series_name, release_version):
+    """Return the URL and the name of the release file hosted in Launchpad.
 
     The returned URL points to a release file for the given project, series
     name and release version.
     The argument *project* is a project object as returned by launchpadlib.
     The arguments *series_name* and *release_version* are strings. If
-    *release_version* is None, the URL of the latest release will be returned.
+    *release_version* is None, the URL and file name of the latest release will
+    be returned.
     """
     series = _get_by_attr(project.series, 'name', series_name)
     if series is None:
@@ -223,8 +236,10 @@ def get_release_file_url(project, series_name, release_version):
         releases = [release]
     for release in releases:
         for file_ in release.files:
-            if str(file_).endswith('.tgz'):
-                return file_.file_link
+            file_url = str(file_)
+            if file_url.endswith('.tgz'):
+                filename = os.path.split(urlparse.urlsplit(file_url).path)[1]
+                return file_.file_link, filename
     raise ValueError('%r: file not found' % release_version)
 
 
@@ -264,6 +279,7 @@ def parse_source(source):
 
     Return a tuple of two elements representing info on how to deploy Juju GUI.
     Examples:
+       - ('local', None): latest local release;
        - ('stable', None): latest stable release;
        - ('stable', '0.1.0'): stable release v0.1.0;
        - ('trunk', None): latest trunk release;
@@ -276,12 +292,12 @@ def parse_source(source):
     if source.startswith('url:'):
         source = source[4:]
         # Support file paths, including relative paths.
-        if urlparse(source).scheme == '':
+        if urlparse.urlparse(source).scheme == '':
             if not source.startswith('/'):
                 source = os.path.join(os.path.abspath(CURRENT_DIR), source)
             source = "file://%s" % source
         return 'url', source
-    if source in ('stable', 'trunk'):
+    if source in ('local', 'stable', 'trunk'):
         return source, None
     match = bzr_url_expression.match(source)
     if match is not None:
@@ -596,7 +612,7 @@ def get_npm_cache_archive_url(Launchpad=Launchpad):
     launchpad = Launchpad.login_anonymously('Juju GUI charm', 'production')
     project = launchpad.projects['juju-gui']
     # Find the URL of the most recently created NPM cache archive.
-    npm_cache_url = get_release_file_url(project, 'npm-cache', None)
+    npm_cache_url, _ = get_launchpad_release(project, 'npm-cache', None)
     return npm_cache_url
 
 
@@ -641,21 +657,74 @@ def fetch_gui_from_branch(branch_url, revision, logpath):
         os.path.join(juju_gui_source_dir, 'releases'))
 
 
+def download_release(url, filename):
+    """Download a Juju GUI release from the given URL.
+
+    Save the resulting file as filename in the local releases repository.
+    Return the full path of the saved file.
+    """
+    destination = os.path.join(RELEASES_DIR, filename)
+    log('Downloading release file: {} --> {}.'.format(url, destination))
+    cmd_log(run('curl', '-L', '-o', destination, url))
+    return destination
+
+
+def get_release_file_path(version=None):
+    """Return the local path of the release file with the given version.
+
+    If version is None, return the path of the last release.
+    Raise a ValueError if no releases are found in the local repository.
+    """
+    version_path_map = {}
+    # Collect the locally stored releases.
+    for filename in os.listdir(RELEASES_DIR):
+        match = release_expression.match(filename)
+        if match is not None:
+            release_version = match.groups()[0]
+            release_path = os.path.join(RELEASES_DIR, filename)
+            version_path_map[release_version] = release_path
+    # We expect the charm to include at least one release file.
+    if not version_path_map:
+        raise ValueError('Error: no releases found in the charm.')
+    if version is None:
+        # Return the path of the last release.
+        last_version = sorted(version_path_map.keys(), key=LooseVersion)[-1]
+        return version_path_map[last_version]
+    # Return the path of the release with the requested version, or None if
+    # the release is not found.
+    return version_path_map.get(version)
+
+
 def fetch_gui_release(origin, version):
-    """Retrieve a Juju GUI release."""
+    """Retrieve a Juju GUI release. Return the release tarball local path.
+
+    The release file can be retrieved from:
+      - an arbitrary URL (if origin is "url");
+      - the local releases repository (if origin is "local" or if a release
+        version is specified and the corresponding file is present locally);
+      - Launchpad (in all the other cases).
+    """
     log('Retrieving Juju GUI release.')
     if origin == 'url':
-        file_url = version
-    else:
-        # Retrieve a release from Launchpad.
-        launchpad = Launchpad.login_anonymously(
-            'Juju GUI charm', 'production')
-        project = launchpad.projects['juju-gui']
-        file_url = get_release_file_url(project, origin, version)
-    log('Downloading release file from %s.' % file_url)
-    release_tarball = os.path.join(CURRENT_DIR, 'release.tgz')
-    cmd_log(run('curl', '-L', '-o', release_tarball, file_url))
-    return release_tarball
+        return download_release(version, 'url-release.tgz')
+    if origin == 'local':
+        path = get_release_file_path()
+        log('Using a local release: {}'.format(path))
+        return path
+    # Handle "stable" and "trunk" origins.
+    if version is not None:
+        # If the user specified a version, before attempting to download the
+        # requested release from Launchpad, check if that version is already
+        # stored locally.
+        path = get_release_file_path(version)
+        if path is not None:
+            log('Using a local release: {}'.format(path))
+            return path
+    # Retrieve a release from Launchpad.
+    launchpad = Launchpad.login_anonymously('Juju GUI charm', 'production')
+    project = launchpad.projects['juju-gui']
+    url, filename = get_launchpad_release(project, origin, version)
+    return download_release(url, filename)
 
 
 def fetch_api(juju_api_branch):

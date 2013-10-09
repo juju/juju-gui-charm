@@ -168,9 +168,20 @@ class TestDeploy(DeployTestMixin, unittest.TestCase):
     def tearDown(self):
         juju_destroy_service(self.charm)
 
-    def test_api_agent(self):
-        # Ensure the Juju GUI and API agent services are correctly set up.
+    def test_local_release(self):
+        # Ensure the Juju GUI and API agent services are correctly set up when
+        # deploying the local release.
         unit_info = self.juju_deploy(self.charm)
+        hostname = unit_info['public-address']
+        self.navigate_to(hostname)
+        self.handle_browser_warning()
+        self.assertEnvironmentIsConnected()
+
+    def test_stable_release(self):
+        # Ensure the Juju GUI and API agent services are correctly set up when
+        # deploying the stable release.
+        options = {'juju-gui-source': 'stable'}
+        unit_info = self.juju_deploy(self.charm, options=options)
         hostname = unit_info['public-address']
         self.navigate_to(hostname)
         self.handle_browser_warning()
@@ -189,8 +200,7 @@ class TestDeploy(DeployTestMixin, unittest.TestCase):
 
     def test_sandbox(self):
         # The GUI is correctly deployed and set up in sandbox mode.
-        unit_info = self.juju_deploy(
-            self.charm, options={'builtin-server': 'true', 'sandbox': 'true'})
+        unit_info = self.juju_deploy(self.charm, options={'sandbox': 'true'})
         hostname = unit_info['public-address']
         self.navigate_to(hostname)
         self.handle_browser_warning()
@@ -198,15 +208,16 @@ class TestDeploy(DeployTestMixin, unittest.TestCase):
 
     def test_branch_source(self):
         # Ensure the Juju GUI is correctly deployed from a Bazaar branch.
-        unit_info = self.juju_deploy(
-            self.charm, options={'juju-gui-source': JUJU_GUI_TEST_BRANCH})
+        options = {'juju-gui-source': JUJU_GUI_TEST_BRANCH}
+        unit_info = self.juju_deploy(self.charm, options=options)
         hostname = unit_info['public-address']
         self.navigate_to(hostname)
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()
 
-    def test_cache_headers(self):
-        # Make sure the correct cache headers are sent.
+    def test_legacy_server(self):
+        # The legacy apache + haproxy server configuration works correctly.
+        # Also make sure the correct cache headers are sent.
         options = {
             'builtin-server': False,
             'juju-gui-source': JUJU_GUI_TEST_BRANCH,
@@ -236,8 +247,8 @@ class TestDeploy(DeployTestMixin, unittest.TestCase):
 
     def test_nrpe_check_available(self):
         # Make sure the check-app-access.sh script's ADDRESS is available.
-        unit_info = self.juju_deploy(
-            self.charm, options={'juju-gui-source': JUJU_GUI_TEST_BRANCH})
+        options = {'juju-gui-source': JUJU_GUI_TEST_BRANCH}
+        unit_info = self.juju_deploy(self.charm, options=options)
         hostname = unit_info['public-address']
         conn = httplib.HTTPSConnection(hostname)
         # This request matches the ADDRESS var in the script.
@@ -252,7 +263,7 @@ class TestBuiltinServer(DeployTestMixin, unittest.TestCase):
     def setUpClass(cls):
         # Deploy the charm. The resulting service is used by all the tests
         # in this test case.
-        unit_info = juju_deploy(cls.charm, options={'builtin-server': 'true'})
+        unit_info = juju_deploy(cls.charm)
         cls.hostname = unit_info['public-address']
         # The counter is used to produce API request identifiers.
         cls.counter = itertools.count()
