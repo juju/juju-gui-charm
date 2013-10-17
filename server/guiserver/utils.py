@@ -56,11 +56,11 @@ def json_decode_dict(message):
     try:
         data = escape.json_decode(message)
     except ValueError:
-        msg = 'JSON decoder: message is not valid JSON: {}'.format(message)
+        msg = 'JSON decoder: message is not valid JSON: {!r}'.format(message)
         logging.warning(msg)
         return None
     if not isinstance(data, collections.Mapping):
-        msg = 'JSON decoder: message is not a dict: {}'.format(message)
+        msg = 'JSON decoder: message is not a dict: {!r}'.format(message)
         logging.warning(msg)
         return None
     return data

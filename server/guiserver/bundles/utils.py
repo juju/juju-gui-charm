@@ -21,7 +21,10 @@ import itertools
 import logging
 import time
 
-from tornado import gen
+from tornado import (
+    gen,
+    escape,
+)
 
 from guiserver.watchers import AsyncWatcher
 
@@ -140,6 +143,6 @@ def response(info=None, error=None):
         info = {}
     data = {'Response': info}
     if error is not None:
-        logging.error('deployer: {}'.format(error))
+        logging.error('deployer: {}'.format(escape.utf8(error)))
         data['Error'] = error
     return gen.Return(data)

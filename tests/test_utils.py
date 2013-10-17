@@ -119,24 +119,26 @@ class TestDownloadRelease(unittest.TestCase):
 @mock.patch('utils.log', mock.Mock())
 class TestFetchGuiRelease(unittest.TestCase):
 
-    release_path = '/my/release.tgz'
+    sources = tuple(
+        {'filename': 'release.' + extension,
+         'release_path': '/my/release.' + extension}
+        for extension in ('tgz', 'xz'))
 
     @contextmanager
-    def patch_launchpad(self, origin, version):
+    def patch_launchpad(self, origin, version, source):
         """Mock the functions used to download a release from Launchpad.
 
         Ensure all the functions are called correctly.
         """
-        url = 'http://launchpad.example.com/release.tgz/file'
-        filename = 'release.tgz'
+        url = 'http://launchpad.example.com/' + source['filename'] + '/file'
         patch_launchpad = mock.patch('utils.Launchpad')
         patch_get_launchpad_release = mock.patch(
             'utils.get_launchpad_release',
-            mock.Mock(return_value=(url, filename)),
+            mock.Mock(return_value=(url, source['filename'])),
         )
         patch_download_release = mock.patch(
             'utils.download_release',
-            mock.Mock(return_value=self.release_path),
+            mock.Mock(return_value=source['release_path']),
         )
         with patch_launchpad as mock_launchpad:
             with patch_get_launchpad_release as mock_get_launchpad_release:
@@ -146,57 +148,68 @@ class TestFetchGuiRelease(unittest.TestCase):
         login.assert_called_once_with('Juju GUI charm', 'production')
         mock_get_launchpad_release.assert_called_once_with(
             login().projects['juju-gui'], origin, version)
-        mock_download_release.assert_called_once_with(url, filename)
+        mock_download_release.assert_called_once_with(url, source['filename'])
 
     @mock.patch('utils.download_release')
     def test_url(self, mock_download_release):
         # The release is retrieved from an URL.
-        mock_download_release.return_value = self.release_path
-        url = 'http://download.example.com/release.tgz'
-        path = fetch_gui_release('url', url)
-        self.assertEqual(self.release_path, path)
-        mock_download_release.assert_called_once_with(url, 'url-release.tgz')
+        for source in self.sources:
+            mock_download_release.return_value = source['release_path']
+            url = 'http://download.example.com/' + source['filename']
+            path = fetch_gui_release('url', url)
+            self.assertEqual(source['release_path'], path)
+            mock_download_release.assert_called_once_with(
+                url, 'url-' + source['filename'])
+            mock_download_release.reset_mock()
 
     @mock.patch('utils.get_release_file_path')
     def test_local(self, mock_get_release_file_path):
         # The last local release is requested.
-        mock_get_release_file_path.return_value = self.release_path
-        path = fetch_gui_release('local', None)
-        self.assertEqual(self.release_path, path)
-        mock_get_release_file_path.assert_called_once_with()
+        for source in self.sources:
+            mock_get_release_file_path.return_value = source['release_path']
+            path = fetch_gui_release('local', None)
+            self.assertEqual(source['release_path'], path)
+            mock_get_release_file_path.assert_called_once_with()
+            mock_get_release_file_path.reset_mock()
 
     @mock.patch('utils.get_release_file_path')
     def test_version_found(self, mock_get_release_file_path):
         # A release version is specified and found locally.
-        mock_get_release_file_path.return_value = self.release_path
-        path = fetch_gui_release('stable', '0.1.42')
-        self.assertEqual(self.release_path, path)
-        mock_get_release_file_path.assert_called_once_with('0.1.42')
+        for source in self.sources:
+            mock_get_release_file_path.return_value = source['release_path']
+            path = fetch_gui_release('stable', '0.1.42')
+            self.assertEqual(source['release_path'], path)
+            mock_get_release_file_path.assert_called_once_with('0.1.42')
+            mock_get_release_file_path.reset_mock()
 
     @mock.patch('utils.get_release_file_path')
     def test_version_not_found(self, mock_get_release_file_path):
-         # A release version is specified but not found locally.
-        mock_get_release_file_path.return_value = None
-        with self.patch_launchpad('stable', '0.1.42'):
-            path = fetch_gui_release('stable', '0.1.42')
-        self.assertEqual(self.release_path, path)
-        mock_get_release_file_path.assert_called_once_with('0.1.42')
+        # A release version is specified but not found locally.
+        for source in self.sources:
+            mock_get_release_file_path.return_value = None
+            with self.patch_launchpad('stable', '0.1.42', source):
+                path = fetch_gui_release('stable', '0.1.42')
+            self.assertEqual(source['release_path'], path)
+            mock_get_release_file_path.assert_called_once_with('0.1.42')
+            mock_get_release_file_path.reset_mock()
 
     @mock.patch('utils.get_release_file_path')
     def test_stable(self, mock_get_release_file_path):
         # The last stable release is requested.
-        with self.patch_launchpad('stable', None):
-            path = fetch_gui_release('stable', None)
-        self.assertEqual(self.release_path, path)
-        self.assertFalse(mock_get_release_file_path.called)
+        for source in self.sources:
+            with self.patch_launchpad('stable', None, source):
+                path = fetch_gui_release('stable', None)
+            self.assertEqual(source['release_path'], path)
+            self.assertFalse(mock_get_release_file_path.called)
 
     @mock.patch('utils.get_release_file_path')
     def test_trunk(self, mock_get_release_file_path):
         # The last development release is requested.
-        with self.patch_launchpad('trunk', None):
-            path = fetch_gui_release('trunk', None)
-        self.assertEqual(self.release_path, path)
-        self.assertFalse(mock_get_release_file_path.called)
+        for source in self.sources:
+            with self.patch_launchpad('trunk', None, source):
+                path = fetch_gui_release('trunk', None)
+            self.assertEqual(source['release_path'], path)
+            self.assertFalse(mock_get_release_file_path.called)
 
 
 class TestFirstPathInDir(unittest.TestCase):
@@ -329,6 +342,16 @@ class TestGetReleaseFilePath(unittest.TestCase):
         with self.mock_releases_dir():
             path = get_release_file_path()
         self.assert_path('juju-gui-2.0.1.tgz', path)
+
+    def test_xz(self):
+        # The last release is correctly retrieved for xz files too.
+        self.add('juju-gui-0.12.1.tgz')
+        self.add('juju-gui-1.2.3.tgz')
+        self.add('juju-gui-2.0.0+build.42.tgz')
+        self.add('juju-gui-2.0.1.xz')
+        with self.mock_releases_dir():
+            path = get_release_file_path()
+        self.assert_path('juju-gui-2.0.1.xz', path)
 
     def test_ordering(self):
         # Release versions are correctly ordered.
@@ -590,6 +613,24 @@ class TestGetLaunchpadRelease(unittest.TestCase):
         url, name = get_launchpad_release(project, 'stable', None)
         self.assertEqual('http://example.com/0.1.0.tgz', url)
         self.assertEqual('0.1.0.tgz', name)
+
+    def test_xz_files_are_found(self):
+        project = AttrDict(
+            series=[
+                AttrDict(
+                    name='stable',
+                    releases=[
+                        AttrDict(
+                            version='0.1.0',
+                            files=[FileStub('http://example.com/0.1.0.xz')],
+                        ),
+                    ],
+                ),
+            ],
+        )
+        url, name = get_launchpad_release(project, 'stable', None)
+        self.assertEqual('http://example.com/0.1.0.xz', url)
+        self.assertEqual('0.1.0.xz', name)
 
 
 class TestGetZookeeperAddress(unittest.TestCase):

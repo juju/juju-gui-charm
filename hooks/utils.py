@@ -163,7 +163,7 @@ release_expression = re.compile(r"""
         \d+\.\d+\.\d+  # Major, minor, and patch version numbers.
         (?:\+build\.\d+)?  # Optional bzr revno for development releases.
     )
-    \.tgz  # File extension.
+    \.(?:tgz|xz)  # File extension.
 """, re.VERBOSE)
 
 results_log = None
@@ -237,7 +237,7 @@ def get_launchpad_release(project, series_name, release_version):
     for release in releases:
         for file_ in release.files:
             file_url = str(file_)
-            if file_url.endswith('.tgz'):
+            if file_url.endswith('.tgz') or file_url.endswith('.xz'):
                 filename = os.path.split(urlparse.urlsplit(file_url).path)[1]
                 return file_.file_link, filename
     raise ValueError('%r: file not found' % release_version)
@@ -706,7 +706,11 @@ def fetch_gui_release(origin, version):
     """
     log('Retrieving Juju GUI release.')
     if origin == 'url':
-        return download_release(version, 'url-release.tgz')
+        # "version" is a url.
+        _, _, extension = version.rpartition('.')
+        if extension not in ('tgz', 'xz'):
+            extension = 'xz'
+        return download_release(version, 'url-release.' + extension)
     if origin == 'local':
         path = get_release_file_path()
         log('Using a local release: {}'.format(path))

@@ -112,7 +112,8 @@ class WebSocketHandler(websocket.WebSocketHandler):
         # to the Juju API server was established.
         while self.connected and self.juju_connected and len(queue):
             message = queue.popleft()
-            logging.debug(self._summary + 'queue -> juju: {}'.format(message))
+            encoded = message.encode('utf-8')
+            logging.debug(self._summary + 'queue -> juju: {}'.format(encoded))
             self.juju_connection.write_message(message)
 
     def select_subprotocol(self, subprotocols):
@@ -144,10 +145,11 @@ class WebSocketHandler(websocket.WebSocketHandler):
             if not self.user.is_authenticated:
                 self.auth.process_request(data)
         # Propagate messages to the Juju API server.
+        encoded = message.encode('utf-8')
         if self.juju_connected:
-            logging.debug(self._summary + 'client -> juju: {}'.format(message))
+            logging.debug(self._summary + 'client -> juju: {}'.format(encoded))
             return self.juju_connection.write_message(message)
-        logging.debug(self._summary + 'client -> queue: {}'.format(message))
+        logging.debug(self._summary + 'client -> queue: {}'.format(encoded))
         self._juju_message_queue.append(message)
 
     def on_juju_message(self, message):
@@ -161,7 +163,8 @@ class WebSocketHandler(websocket.WebSocketHandler):
         data = json_decode_dict(message)
         if (data is not None) and self.auth.in_progress():
             self.auth.process_response(data)
-        logging.debug(self._summary + 'juju -> client: {}'.format(message))
+        encoded = message.encode('utf-8')
+        logging.debug(self._summary + 'juju -> client: {}'.format(encoded))
         self.write_message(message)
 
     def on_close(self):

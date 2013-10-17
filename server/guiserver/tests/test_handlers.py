@@ -244,10 +244,20 @@ class TestWebSocketHandlerProxy(
         self.assertEqual(self.hello_message, message)
 
     @gen_test
+    def test_end_to_end_proxy_non_ascii(self):
+        # Non-ascii messages are correctly forwarded from the client to the
+        # echo server and back to the client.
+        snowman = u'{"Here is a snowman\u00a1": "\u2603"}'
+        client = yield self.make_client()
+        client.write_message(snowman)
+        message = yield client.read_message()
+        self.assertEqual(snowman, message)
+
+    @gen_test
     def test_invalid_json(self):
         # A warning is logged if the message is not valid JSON.
         client = yield self.make_client()
-        expected_log = 'JSON decoder: message is not valid JSON: not-json'
+        expected_log = "JSON decoder: message is not valid JSON: u'not-json'"
         with ExpectLog('', expected_log, required=True):
             client.write_message('not-json')
             yield client.read_message()
@@ -256,7 +266,7 @@ class TestWebSocketHandlerProxy(
     def test_not_a_dict(self):
         # A warning is logged if the decoded message is not a dict.
         client = yield self.make_client()
-        expected_log = 'JSON decoder: message is not a dict: "not-a-dict"'
+        expected_log = 'JSON decoder: message is not a dict: u\'"not-a-dict"\''
         with ExpectLog('', expected_log, required=True):
             client.write_message('"not-a-dict"')
             yield client.read_message()
