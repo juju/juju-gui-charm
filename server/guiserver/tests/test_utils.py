@@ -98,14 +98,14 @@ class TestJsonDecodeDict(unittest.TestCase):
     def test_invalid_json(self):
         # If the message is not a valid JSON string, a warning is logged and
         # None is returned.
-        expected_log = 'JSON decoder: message is not valid JSON: not-json'
+        expected_log = "JSON decoder: message is not valid JSON: 'not-json'"
         with ExpectLog('', expected_log, required=True):
             self.assertIsNone(utils.json_decode_dict('not-json'))
 
     def test_invalid_type(self):
         # If the resulting object is not a dict-like object, a warning is
         # logged and None is returned.
-        expected_log = 'JSON decoder: message is not a dict: "not-a-dict"'
+        expected_log = 'JSON decoder: message is not a dict: \'"not-a-dict"\''
         with ExpectLog('', expected_log, required=True):
             self.assertIsNone(utils.json_decode_dict('"not-a-dict"'))
 
