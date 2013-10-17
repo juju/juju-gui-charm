@@ -60,7 +60,7 @@ class User(object):
         return '<User: {} ({})>'.format(username, status)
 
     def __str__(self):
-        return self.username
+        return self.username.encode('utf-8')
 
 
 class AuthMiddleware(object):
