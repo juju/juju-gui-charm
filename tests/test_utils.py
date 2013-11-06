@@ -1110,12 +1110,13 @@ class TestRemoveApacheSetup(unittest.TestCase):
         apache_site = tempfile.mkdtemp()
         with mock.patch('utils.APACHE_SITE', apache_site):
             remove_apache_setup()
-        self.assertEqual(4, mock_run.call_count)
+        self.assertEqual(5, mock_run.call_count)
         expected_calls = [
             mock.call('rm', '-f', apache_site),
             mock.call('a2dismod', 'headers'),
             mock.call('a2dissite', 'juju-gui'),
-            mock.call('a2ensite', 'default')
+            mock.call('a2ensite', 'default'),
+            mock.call('rm', '-f', '/etc/apache2/ports.conf'),
         ]
         mock_run.assert_has_calls(expected_calls)
 

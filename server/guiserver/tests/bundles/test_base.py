@@ -23,6 +23,7 @@ from tornado.testing import(
     gen_test,
 )
 
+import deployer.cli
 from guiserver import auth
 from guiserver.bundles import (
     base,
@@ -114,6 +115,14 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
             self.apiurl, self.user.password, 'bundle', self.bundle,
             base.IMPORTER_OPTIONS)
         mock_import_bundle.assert_called_in_a_separate_process()
+
+    def test_options_are_fully_populated(self):
+        # The options passed to the deployer match what it expects and are not
+        # missing any entries.
+        default_options = deployer.cli.setup_parser().parse_args([]).__dict__
+        expected_options = sorted(default_options.keys())
+        passed_options = sorted(base.IMPORTER_OPTIONS.__dict__.keys())
+        self.assertEqual(expected_options, passed_options)
 
     def test_watch(self):
         # To start observing a deployment progress, a client can obtain a

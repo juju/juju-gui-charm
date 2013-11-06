@@ -28,7 +28,7 @@ createvenv() {
         virtualenv --distribute $VENV
         . $VENV/bin/activate && \
             yes w | env BZR_PLUGIN_PATH='-user' \
-            pip install --use-mirrors -r $REQUIREMENTS
+            pip install --use-mirrors -r $REQUIREMENTS --find-links deps
         touch $VENV/bin/activate
     fi
 }

@@ -119,8 +119,8 @@ SERVER_DEPENDENCIES = (
     'futures-2.1.4.tar.gz',
     'tornado-3.1.1.tar.gz',
     'websocket-client-0.12.0.tar.gz',
-    'jujuclient-0.0.9.tar.gz',
-    'juju-deployer-0.2.3.tar.gz',
+    'jujuclient-0.13.tar.gz',
+    'juju-deployer-0.2.8.tar.gz',
 )
 SERVER_DIR = os.path.join(CURRENT_DIR, 'server')
 
