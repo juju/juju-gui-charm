@@ -274,6 +274,26 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         yield deployer.next(watcher_id)
         self.wait()
 
+    def test_sanitize_constraints_called(self):
+        # Before deploying a bundle its constraints are sanitized to remove
+        # any invalid constraints because juju-core will choke on them
+        # (causing the deployment to fail silently).
+        deployer = self.make_deployer()
+        sanitize_called = []
+        def mock_sanitize_constraints(bundle):
+            self.assertIs(bundle, self.bundle)
+            sanitize_called.append(True)
+            return bundle
+        with mock.patch(
+                'guiserver.bundles.base.sanitize_constraints',
+                mock_sanitize_constraints) as sanitize_constraints:
+            with self.patch_import_bundle() as mock_import_bundle:
+                deployment_id = deployer.import_bundle(
+                    self.user, 'bundle', self.bundle, test_callback=self.stop)
+        # Wait for the deployment to be completed.
+        self.wait()
+        self.assertTrue(sanitize_called)
+
     def test_initial_status(self):
         # The initial deployer status is an empty list.
         deployer = self.make_deployer()

@@ -54,6 +54,11 @@ SUPPORTED_API_VERSIONS = ['go']
 IMPORTER_OPTIONS = deployer.cli.setup_parser().parse_args([])
 
 
+def sanitize_constraints(bundle):
+    """Remove any constraints not known to be supported by Juju."""
+    return bundle
+
+
 class Deployer(object):
     """Handle the bundle deployment process.
 
@@ -135,6 +140,9 @@ class Deployer(object):
 
         Return the deployment identifier assigned to this deployment process.
         """
+        # Juju does not like unexpected constraints so we have to filter out
+        # any that are non-standard.
+        bundle = sanitize_constraints(bundle)
         # Start observing this deployment, retrieve the next available
         # deployment id and notify its position at the end of the queue.
         deployment_id = self._observer.add_deployment()
