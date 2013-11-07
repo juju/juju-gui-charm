@@ -227,7 +227,10 @@ class InfoHandler(web.RequestHandler):
     def get(self):
         """Handle GET requests."""
         info = self.get_info(self.application.settings)
-        self.write(escape.json_encode(info))
+        # In Tornado Web handlers, just writing a dict JSON encodes the
+        # response contents and sets the proper content type header
+        # (application/json; charset=UTF-8).
+        self.write(info)
 
 
 class HttpsRedirectHandler(web.RequestHandler):
