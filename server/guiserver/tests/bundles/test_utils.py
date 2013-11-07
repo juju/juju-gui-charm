@@ -267,6 +267,30 @@ class TestPrepareConstraints(unittest.TestCase):
             str(context_manager.exception))
 
 
+class TestPrepareBundle(unittest.TestCase):
+
+    def test_constraints_conversion(self):
+        # Service constraints stored as strings are converted to a dict.
+        bundle = {
+            'services': {
+                'django': {'constraints': 'arch=i386,cpu-cores=4,mem=2000'},
+            },
+        }
+        expected = {
+            'services': {
+                'django': {
+                    'constraints': {
+                        'arch': 'i386',
+                        'cpu-cores': '4',
+                        'mem': '2000',
+                    },
+                },
+            },
+        }
+        utils.prepare_bundle(bundle)
+        self.assertEqual(expected, bundle)
+
+
 class TestRequireAuthenticatedUser(
         helpers.BundlesTestMixin, LogTrapTestCase, AsyncTestCase):
 
