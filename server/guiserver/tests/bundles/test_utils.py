@@ -258,12 +258,20 @@ class TestPrepareConstraints(unittest.TestCase):
         expected = {'cpu-cores': '4', 'mem': '2000'}
         self.assertEqual(expected, utils._prepare_constraints(constraints))
 
-    def test_invalid_string_constraints(self):
+    def test_unsupported_string_constraints(self):
         # A ValueError is raised if unsupported string constraints are found.
         with self.assertRaises(ValueError) as context_manager:
             utils._prepare_constraints('cpu-cores=4,invalid1=1,invalid2=2')
         self.assertEqual(
             'unsupported constraints: invalid1, invalid2',
+            str(context_manager.exception))
+
+    def test_invalid_string_constraints(self):
+        # A ValueError is raised if unsupported string constraints are found.
+        with self.assertRaises(ValueError) as context_manager:
+            utils._prepare_constraints('arch=,cpu-cores=,')
+        self.assertEqual(
+            'invalid constraints: arch=,cpu-cores=,',
             str(context_manager.exception))
 
 
@@ -289,6 +297,53 @@ class TestPrepareBundle(unittest.TestCase):
         }
         utils.prepare_bundle(bundle)
         self.assertEqual(expected, bundle)
+
+    def test_constraints_deletion(self):
+        # Empty service constraints are deleted.
+        bundle = {'services': {'django': {'constraints': ''}}}
+        expected = {'services': {'django': {}}}
+        utils.prepare_bundle(bundle)
+        self.assertEqual(expected, bundle)
+
+    def test_no_constraints(self):
+        # A bundle with no constraints is not modified.
+        bundle = {'services': {'django': {}}}
+        expected = bundle.copy()
+        utils.prepare_bundle(bundle)
+        self.assertEqual(expected, bundle)
+
+    def test_dict_constraints(self):
+        # A bundle with valid constraints as dict is not modified.
+        bundle = {
+            'services': {
+                'django': {
+                    'constraints': {
+                        'arch': 'i386',
+                        'cpu-cores': '4',
+                        'mem': '2000',
+                    },
+                },
+            },
+        }
+        expected = bundle.copy()
+        utils.prepare_bundle(bundle)
+        self.assertEqual(expected, bundle)
+
+    def test_invalid_bundle(self):
+        # A ValueError is raised if the bundle is not well structured.
+        with self.assertRaises(ValueError) as context_manager:
+            utils.prepare_bundle('invalid')
+        self.assertEqual(
+            'the bundle data is not well formed',
+            str(context_manager.exception))
+
+    def test_no_services(self):
+        # A ValueError is raised if the bundle does not include services.
+        with self.assertRaises(ValueError) as context_manager:
+            utils.prepare_bundle({})
+        self.assertEqual(
+            'the bundle does not contain any services',
+            str(context_manager.exception))
 
 
 class TestRequireAuthenticatedUser(

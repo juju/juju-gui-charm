@@ -129,7 +129,11 @@ def _prepare_constraints(constraints):
     Raise a ValueError if unsupported constraints are present.
     """
     if not isinstance(constraints, collections.Mapping):
-        constraints = dict(i.split('=') for i in constraints.split(','))
+        try:
+            constraints = dict(i.split('=') for i in constraints.split(','))
+        except ValueError:
+            # A ValueError is raised if constraints are invalid, e.g. "cpu=,".
+            raise ValueError('invalid constraints: {}'.format(constraints))
     unsupported = set(constraints).difference(ALLOWED_CONSTRAINTS)
     if unsupported:
         msg = 'unsupported constraints: {}'.format(
