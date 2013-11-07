@@ -119,6 +119,9 @@ SERVER_DEPENDENCIES = (
     'futures-2.1.4.tar.gz',
     'tornado-3.1.1.tar.gz',
     'websocket-client-0.12.0.tar.gz',
+    # XXX frankban 2013-11-07: we are currently using a customized jujuclient
+    # version built from this branch:
+    # lp:~frankban/python-jujuclient/pickable-enverror.
     'jujuclient-0.13.tar.gz',
     # XXX frankban 2013-11-07: we are currently using a customized deployer
     # version built from this branch: lp:~frankban/juju-deployer/guienv-fixes.
