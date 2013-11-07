@@ -120,6 +120,8 @@ SERVER_DEPENDENCIES = (
     'tornado-3.1.1.tar.gz',
     'websocket-client-0.12.0.tar.gz',
     'jujuclient-0.13.tar.gz',
+    # XXX frankban 2013-11-07: we are currently using a customized deployer
+    # version built from this branch: lp:~frankban/juju-deployer/guienv-fixes.
     'juju-deployer-0.2.8.tar.gz',
 )
 SERVER_DIR = os.path.join(CURRENT_DIR, 'server')
