@@ -431,6 +431,9 @@ class TestInfoHandler(LogTrapTestCase, AsyncHTTPTestCase):
         }
         response = self.fetch('/info')
         self.assertEqual(200, response.code)
+        self.assertEqual(
+            'application/json; charset=UTF-8',
+            response.headers['Content-Type'])
         info = escape.json_decode(response.body)
         self.assertEqual(expected, info)
 
