@@ -16,6 +16,8 @@
 
 """Tests for the bundle deployment base objects."""
 
+from deployer import cli as deployer_cli
+import jujuclient
 import mock
 from tornado import gen
 from tornado.testing import(
@@ -29,6 +31,15 @@ from guiserver.bundles import (
     utils,
 )
 from guiserver.tests import helpers
+
+
+def import_bundle_mock(apiurl, password, name, bundle, options):
+    """Used to test bundle deployment failures.
+
+    This function is defined at module level so that it can be easily pickled
+    and reused in another process.
+    """
+    raise jujuclient.EnvError({'Error': 'bad wolf'})
 
 
 @mock.patch('time.time', mock.Mock(return_value=42))
@@ -115,6 +126,14 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
             base.IMPORTER_OPTIONS)
         mock_import_bundle.assert_called_in_a_separate_process()
 
+    def test_options_are_fully_populated(self):
+        # The options passed to the deployer match what it expects and are not
+        # missing any entries.
+        default_options = deployer_cli.setup_parser().parse_args([]).__dict__
+        expected_options = sorted(default_options.keys())
+        passed_options = sorted(base.IMPORTER_OPTIONS.__dict__.keys())
+        self.assertEqual(expected_options, passed_options)
+
     def test_watch(self):
         # To start observing a deployment progress, a client can obtain a
         # watcher id for the given deployment job.
@@ -195,6 +214,26 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
             changes, deployment_id, utils.COMPLETED, error='bad wolf')
         # Wait for the deployment to be completed.
         self.wait()
+
+    def test_import_bundle_exception_propagation(self):
+        # An EnvError is correctly propagated from the separate process to the
+        # main thread.
+        deployer = self.make_deployer()
+        import_bundle_path = 'guiserver.bundles.base.blocking.import_bundle'
+        with mock.patch(import_bundle_path, import_bundle_mock):
+            deployer.import_bundle(
+                self.user, 'bundle', self.bundle, test_callback=self.stop)
+        # Wait for the deployment to be completed.
+        self.wait()
+        status = deployer.status()
+        self.assertEqual(1, len(status))
+        expected = {
+            'DeploymentId': 0,
+            'Status': utils.COMPLETED,
+            'Error': "<Env Error - Details:\n {   'Error': 'bad wolf'}\n >",
+            'Time': 42,
+        }
+        self.assertEqual(expected, status[0])
 
     def test_invalid_watcher(self):
         # None is returned if the watcher id is not valid.

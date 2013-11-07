@@ -1108,14 +1108,17 @@ class TestRemoveApacheSetup(unittest.TestCase):
     def test_existing_configuration(self, mock_run):
         # The Apache configuration is cleaned up if previously set up.
         apache_site = tempfile.mkdtemp()
+        apache_ports = os.path.join(apache_site, 'ports.conf')
+        self.addCleanup(shutil.rmtree, apache_site)
         with mock.patch('utils.APACHE_SITE', apache_site):
-            remove_apache_setup()
+            with mock.patch('utils.APACHE_PORTS', apache_ports):
+                remove_apache_setup()
         self.assertEqual(4, mock_run.call_count)
         expected_calls = [
             mock.call('rm', '-f', apache_site),
             mock.call('a2dismod', 'headers'),
             mock.call('a2dissite', 'juju-gui'),
-            mock.call('a2ensite', 'default')
+            mock.call('a2ensite', 'default'),
         ]
         mock_run.assert_has_calls(expected_calls)
 

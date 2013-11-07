@@ -64,6 +64,7 @@ from tornado import gen
 import yaml
 
 from guiserver.bundles.utils import (
+    prepare_bundle,
     require_authenticated_user,
     response,
 )
@@ -82,7 +83,7 @@ def _validate_import_params(params):
     if contents is None:
         raise ValueError('invalid data parameters')
     try:
-        bundles = yaml.load(contents, Loader=yaml.SafeLoader)
+        bundles = yaml.safe_load(contents)
     except Exception as err:
         raise ValueError('invalid YAML contents: {}'.format(err))
     name = params.get('Name')
@@ -113,6 +114,12 @@ def import_bundle(request, deployer):
         name, bundle = _validate_import_params(request.params)
     except ValueError as err:
         raise response(error='invalid request: {}'.format(err))
+    # Validate and prepare the bundle.
+    try:
+        prepare_bundle(bundle)
+    except ValueError as err:
+        error = 'invalid request: invalid bundle {}: {}'.format(name, err)
+        raise response(error=error)
     # Validate the bundle against the current state of the Juju environment.
     err = yield deployer.validate(request.user, name, bundle)
     if err is not None:

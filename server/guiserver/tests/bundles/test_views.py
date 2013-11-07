@@ -140,9 +140,43 @@ class TestImportBundle(
 
     @gen_test
     def test_invalid_bundle(self):
+        # An error response is returned if the bundle is not well formed.
+        params = {'Name': 'mybundle', 'YAML': 'mybundle: not valid'}
+        request = self.make_view_request(params=params)
+        response = yield self.view(request, self.deployer)
+        expected_response = {
+            'Response': {},
+            'Error': 'invalid request: invalid bundle mybundle: '
+                     'the bundle data is not well formed',
+        }
+        self.assertEqual(expected_response, response)
+        # The Deployer methods have not been called.
+        self.assertEqual(0, len(self.deployer.mock_calls))
+
+    @gen_test
+    def test_invalid_bundle_constraints(self):
+        # An error response is returned if the bundle includes services with
+        # unsupported constraints.
+        params = {
+            'Name': 'mybundle',
+            'YAML': 'mybundle: {services: {django: {constraints: invalid=1}}}',
+        }
+        request = self.make_view_request(params=params)
+        response = yield self.view(request, self.deployer)
+        expected_response = {
+            'Response': {},
+            'Error': 'invalid request: invalid bundle mybundle: '
+                     'unsupported constraints: invalid',
+        }
+        self.assertEqual(expected_response, response)
+        # The Deployer methods have not been called.
+        self.assertEqual(0, len(self.deployer.mock_calls))
+
+    @gen_test
+    def test_undeployable_bundle(self):
         # An error response is returned if the bundle cannot be imported in the
         # current Juju environment.
-        params = {'Name': 'mybundle', 'YAML': 'mybundle: mycontents'}
+        params = {'Name': 'mybundle', 'YAML': 'mybundle: {services: {}}'}
         request = self.make_view_request(params=params)
         # Simulate an error returned by the Deployer validate method.
         self.deployer.validate.return_value = self.make_future('an error')
@@ -155,12 +189,12 @@ class TestImportBundle(
         self.assertEqual(expected_response, response)
         # The Deployer validate method has been called.
         self.deployer.validate.assert_called_once_with(
-            request.user, 'mybundle', 'mycontents')
+            request.user, 'mybundle', {'services': {}})
 
     @gen_test
     def test_success(self):
         # The response includes the deployment identifier.
-        params = {'Name': 'mybundle', 'YAML': 'mybundle: mycontents'}
+        params = {'Name': 'mybundle', 'YAML': 'mybundle: {services: {}}'}
         request = self.make_view_request(params=params)
         # Set up the Deployer mock.
         self.deployer.validate.return_value = self.make_future(None)
@@ -170,7 +204,7 @@ class TestImportBundle(
         expected_response = {'Response': {'DeploymentId': 42}}
         self.assertEqual(expected_response, response)
         # Ensure the Deployer methods have been correctly called.
-        args = (request.user, 'mybundle', 'mycontents')
+        args = (request.user, 'mybundle', {'services': {}})
         self.deployer.validate.assert_called_once_with(*args)
         self.deployer.import_bundle.assert_called_once_with(*args)
 
@@ -178,7 +212,7 @@ class TestImportBundle(
     def test_no_name_success(self):
         # The process succeeds if the bundle name is not provided but the
         # YAML contents include just one bundle.
-        params = {'YAML': 'mybundle: mycontents'}
+        params = {'YAML': 'mybundle: {services: {}}'}
         request = self.make_view_request(params=params)
         # Set up the Deployer mock.
         self.deployer.validate.return_value = self.make_future(None)
@@ -186,7 +220,7 @@ class TestImportBundle(
         # Execute the view.
         yield self.view(request, self.deployer)
         # Ensure the Deployer methods have been correctly called.
-        args = (request.user, 'mybundle', 'mycontents')
+        args = (request.user, 'mybundle', {'services': {}})
         self.deployer.validate.assert_called_once_with(*args)
         self.deployer.import_bundle.assert_called_once_with(*args)
 

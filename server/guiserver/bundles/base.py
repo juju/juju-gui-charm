@@ -30,6 +30,7 @@ from concurrent.futures import (
     ProcessPoolExecutor,
 )
 from deployer import guiserver as blocking
+import deployer.cli
 from tornado import gen
 from tornado.ioloop import IOLoop
 from tornado.util import ObjectDict
@@ -49,18 +50,8 @@ process.EXTRA_QUEUED_CALLS = 0
 # Juju API versions supported by the GUI server Deployer.
 # Tests use the first API version in this list.
 SUPPORTED_API_VERSIONS = ['go']
-# Options used by the juju-deployer Importer instance.
-IMPORTER_OPTIONS = ObjectDict(
-    branch_only=False,  # Avoid just updating VCS branches and exiting.
-    deploy_delay=0,  # Do not sleep between 'deploy' commands.
-    no_local_mods=True,  # Disallow deployment of locally-modified charms.
-    overrides=None,  # Do not override config options.
-    rel_wait=60,  # Wait for 1 minute before checking for relation errors.
-    retry_count=0,  # Do not retry on unit errors.
-    timeout=45*60,  # Set a 45 minutes timeout for the entire deployment.
-    update_charms=False,  # Do not update existing charm branches.
-    watch=False,  # Do not watch environment changes on console.
-)
+# Options used by the juju-deployer.  The defaults work for us.
+IMPORTER_OPTIONS = deployer.cli.setup_parser().parse_args([])
 
 
 class Deployer(object):
