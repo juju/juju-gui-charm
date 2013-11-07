@@ -22,7 +22,6 @@ import os
 import time
 
 from tornado import (
-    escape,
     gen,
     web,
     websocket,
