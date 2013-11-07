@@ -16,15 +16,14 @@
 
 """Tests for the bundle deployment base objects."""
 
+from deployer import cli as deployer_cli
 import mock
 from tornado import gen
 from tornado.testing import(
     AsyncTestCase,
     gen_test,
 )
-import unittest
 
-import deployer.cli
 from guiserver import auth
 from guiserver.bundles import (
     base,
@@ -120,7 +119,7 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
     def test_options_are_fully_populated(self):
         # The options passed to the deployer match what it expects and are not
         # missing any entries.
-        default_options = deployer.cli.setup_parser().parse_args([]).__dict__
+        default_options = deployer_cli.setup_parser().parse_args([]).__dict__
         expected_options = sorted(default_options.keys())
         passed_options = sorted(base.IMPORTER_OPTIONS.__dict__.keys())
         self.assertEqual(expected_options, passed_options)
@@ -275,28 +274,6 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         yield deployer.next(watcher_id)
         self.wait()
 
-    def test_sanitize_constraints_called(self):
-        # Before deploying a bundle its constraints are sanitized to remove
-        # any invalid constraints because juju-core will choke on them
-        # (causing the deployment to fail silently).
-        deployer = self.make_deployer()
-        sanitize_called = []
-        def mock_sanitize_bundle_constraints(bundle):
-            self.assertIs(bundle, self.bundle)
-            sanitize_called.append(True)
-            return bundle
-        mock_import_bundle = helpers.MultiProcessMock()
-        import_bundle_path = 'guiserver.bundles.base.blocking.import_bundle'
-        with mock.patch('guiserver.bundles.base.sanitize_bundle_constraints',
-                mock_sanitize_bundle_constraints):
-            with mock.patch(import_bundle_path, mock_import_bundle
-                    ) as import_bundle:
-                deployment_id = deployer.import_bundle(
-                    self.user, 'bundle', self.bundle, test_callback=self.stop)
-        # Wait for the deployment to be completed.
-        self.wait()
-        self.assertTrue(sanitize_called)
-
     def test_initial_status(self):
         # The initial deployer status is an empty list.
         deployer = self.make_deployer()
@@ -318,68 +295,6 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         self.assertEqual(utils.COMPLETED, change2['Status'])
         self.assertEqual(deployment1, change1['DeploymentId'])
         self.assertEqual(deployment2, change2['DeploymentId'])
-
-
-class TestConstraintSanitizing(unittest.TestCase):
-    """Since juju-core doesn't like unrecognized constraints we filter them.
-    """
-
-    def test_sanitize_bundle_constraints_calls_sanitize_constraints(self):
-        # Each service in a bundle can have constraints.  Each service has its
-        # constraints individually sanitized by sanitize_constraints().
-        faux_bundle = {
-            'bundle-name': {
-                'services': {
-                    'service-one': {'constraints': 'foo=1'},
-                    'service-two': {'constraints': 'bar=2'},
-                    }
-                }
-            }
-
-        with mock.patch('guiserver.bundles.base.sanitize_constraints'
-                ) as sanitize_constraints_mock:
-            base.sanitize_bundle_constraints(faux_bundle)
-        sanitize_constraints_mock.assert_any_call('foo=1')
-        sanitize_constraints_mock.assert_any_call('bar=2')
-
-    def test_service_with_no_constraints(self):
-        # Services with no constraints undergo no sanitization.
-        faux_bundle = {
-            'bundle-name': {
-                'services': {
-                    'service-one': {},
-                    }
-                }
-            }
-
-        with mock.patch('guiserver.bundles.base.sanitize_constraints'
-                ) as sanitize_constraints_mock:
-            base.sanitize_bundle_constraints(faux_bundle)
-        # Assert that there were no calls to sanitize_bundle_constraints.
-        sanitize_constraints_mock.assert_has_calls([])
-
-    def test_sanitize_constraints(self):
-        self.assertEqual(
-            base.sanitize_constraints(''),
-            '')
-        self.assertEqual(
-            base.sanitize_constraints('cpu=1'),
-            '')
-        self.assertEqual(
-            base.sanitize_constraints('cpu=,mem=,arch='),
-            'mem=,arch=')
-        self.assertEqual(
-            base.sanitize_constraints('cpu-power=1'),
-            'cpu-power=1')
-        self.assertEqual(
-            base.sanitize_constraints('cpu-power=1,mem=3'),
-            'cpu-power=1,mem=3')
-        self.assertEqual(
-            base.sanitize_constraints('cpu-power=1,cpu-cores=2,mem=3,arch=X'),
-            'cpu-power=1,cpu-cores=2,mem=3,arch=X')
-        self.assertEqual(
-            base.sanitize_constraints('cpu-power=1,foo=bar,mem=3'),
-            'cpu-power=1,mem=3')
 
 
 class TestDeployMiddleware(helpers.BundlesTestMixin, AsyncTestCase):

@@ -165,7 +165,7 @@ class BundlesTestMixin(object):
         If encoded is set to True, the returned message will be JSON encoded.
         """
         defaults = {
-            'Import': {'Name': 'bundle', 'YAML': 'bundle: contents'},
+            'Import': {'Name': 'bundle', 'YAML': 'bundle: {services: {}}'},
             'Watch': {'DeploymentId': 0},
             'Next': {'WatcherId': 0},
             'Status': {},
@@ -199,20 +199,11 @@ class BundlesTestMixin(object):
         validate_path = 'guiserver.bundles.base.blocking.validate'
         return mock.patch(validate_path, mock_validate)
 
-    @contextmanager
     def patch_import_bundle(self, side_effect=None):
         """Mock the blocking import_bundle function."""
         mock_import_bundle = MultiProcessMock(side_effect=side_effect)
         import_bundle_path = 'guiserver.bundles.base.blocking.import_bundle'
-        sanitize_bundle_constraints_path = (
-            'guiserver.bundles.base.sanitize_bundle_constraints')
-        def mock_sanitize_bundle_constraints(bundle):
-            return bundle
-        with mock.patch(sanitize_bundle_constraints_path,
-                mock_sanitize_bundle_constraints):
-            with mock.patch(import_bundle_path, mock_import_bundle
-                    ) as import_bundle:
-                yield import_bundle
+        return mock.patch(import_bundle_path, mock_import_bundle)
 
 
 class WSSTestMixin(object):
