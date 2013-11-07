@@ -165,7 +165,7 @@ class BundlesTestMixin(object):
         If encoded is set to True, the returned message will be JSON encoded.
         """
         defaults = {
-            'Import': {'Name': 'bundle', 'YAML': 'bundle: contents'},
+            'Import': {'Name': 'bundle', 'YAML': 'bundle: {services: {}}'},
             'Watch': {'DeploymentId': 0},
             'Next': {'WatcherId': 0},
             'Status': {},

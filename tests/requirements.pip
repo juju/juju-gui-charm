@@ -24,6 +24,7 @@ python-debian==0.1.21
 
 # GUI server -> juju deployer.
 bzr==2.6.0
+jujuclient==0.13.0
 
 # Charm tests + juju deployer.
 websocket-client==0.12.0
