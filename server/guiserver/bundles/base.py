@@ -52,10 +52,29 @@ process.EXTRA_QUEUED_CALLS = 0
 SUPPORTED_API_VERSIONS = ['go']
 # Options used by the juju-deployer.  The defaults work for us.
 IMPORTER_OPTIONS = deployer.cli.setup_parser().parse_args([])
+# Only some constraints are allowed.
+ALLOWED_CONSTRAINTS = ['cpu-power', 'cpu-cores', 'mem', 'arch']
 
 
-def sanitize_constraints(bundle):
+def sanitize_constraints(constraints):
+    if constraints == '':
+        return ''
+    sanitized = []
+    for key, value in [x.split('=') for x in constraints.split(',')]:
+        if key in ALLOWED_CONSTRAINTS:
+            sanitized.append((key, value))
+    return ','.join('='.join(constraint) for constraint in sanitized)
+
+
+def sanitize_bundle_constraints(bundle):
     """Remove any constraints not known to be supported by Juju."""
+    assert len(bundle.values()) == 1, 'only one bundle expected'
+    services = bundle.values()[0].get('services')
+    if services:
+        for service in services.values():
+            if service.has_key('constraints'):
+                service['constraints'] = sanitize_constraints(
+                    service['constraints'])
     return bundle
 
 
@@ -142,7 +161,7 @@ class Deployer(object):
         """
         # Juju does not like unexpected constraints so we have to filter out
         # any that are non-standard.
-        bundle = sanitize_constraints(bundle)
+        bundle = sanitize_bundle_constraints(bundle)
         # Start observing this deployment, retrieve the next available
         # deployment id and notify its position at the end of the queue.
         deployment_id = self._observer.add_deployment()
