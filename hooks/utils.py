@@ -114,19 +114,6 @@ CONFIG_DIR = os.path.join(CURRENT_DIR, 'config')
 JUJU_AGENT_DIR = os.path.join(BASE_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(BASE_DIR, 'juju-gui')
 RELEASES_DIR = os.path.join(CURRENT_DIR, 'releases')
-# Builtin server dependencies. The order of these requirements is important.
-SERVER_DEPENDENCIES = (
-    'futures-2.1.4.tar.gz',
-    'tornado-3.1.1.tar.gz',
-    'websocket-client-0.12.0.tar.gz',
-    # XXX frankban 2013-11-07: we are currently using a customized jujuclient
-    # version built from this branch:
-    # lp:~frankban/python-jujuclient/pickable-enverror.
-    'jujuclient-0.13.tar.gz',
-    # XXX frankban 2013-11-07: we are currently using a customized deployer
-    # version built from this branch: lp:~frankban/juju-deployer/guienv-fixes.
-    'juju-deployer-0.2.8.tar.gz',
-)
 SERVER_DIR = os.path.join(CURRENT_DIR, 'server')
 
 APACHE_CFG_DIR = os.path.join(os.path.sep, 'etc', 'apache2')
@@ -553,10 +540,15 @@ def stop_haproxy_apache():
 def install_builtin_server():
     """Install the builtin server code."""
     log('Installing the builtin server dependencies.')
-    for dependency_name in SERVER_DEPENDENCIES:
-        dependency = os.path.join(CURRENT_DIR, 'deps', dependency_name)
-        with su('root'):
-            cmd_log(run('pip', 'install', dependency))
+    deps = os.path.join(CURRENT_DIR, 'deps')
+    requirements = os.path.join(CURRENT_DIR, 'server-requirements.pip')
+    # Install the builtin server dependencies avoiding to download requirements
+    # from the network.
+    with su('root'):
+        cmd_log(run(
+            'pip', 'install', '--no-index', '--no-dependencies',
+            '--find-links', deps, '-r', requirements
+        ))
     log('Installing the builtin server.')
     setup_cmd = os.path.join(SERVER_DIR, 'setup.py')
     with su('root'):
