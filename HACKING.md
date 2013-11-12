@@ -184,4 +184,4 @@ be set up without downloading dependencies from the network (pypi) and so the
 charm deployment succeeds also behind a firewall.
 To upgrade the dependencies, add a tarball to the `deps` directory, remove the
 old dependency if required, and update the `server-requirements.pip` file.
-At this point, running `make` should update the virtualenv used for tests.
+At this point, running `make` should also update the virtualenv used for tests.
