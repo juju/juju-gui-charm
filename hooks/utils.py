@@ -547,7 +547,7 @@ def install_builtin_server():
     with su('root'):
         cmd_log(run(
             'pip', 'install', '--no-index', '--no-dependencies',
-            '--find-links', deps, '-r', requirements
+            '--find-links', 'file:///{}'.format(deps), '-r', requirements
         ))
     log('Installing the builtin server.')
     setup_cmd = os.path.join(SERVER_DIR, 'setup.py')
