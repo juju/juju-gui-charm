@@ -21,6 +21,9 @@ SYSDEPS = build-essential bzr libapt-pkg-dev python-pip python-virtualenv xvfb \
 
 all: setup
 
+# The virtualenv is created by the 00-setup script and not here. This way we
+# support the juju-test plugin, which calls the executable file in alphabetical
+# order.
 setup:
 	@./tests/00-setup
 
