@@ -29,7 +29,7 @@ bundle1:
         engine: nginx
         tuning: single
         "wp-content": ""
-      constraints: "cpu-cores=4,arch=i386"
+      constraints: "cpu-cores=4,mem=4000"
       annotations:
         "gui-x": 313
         "gui-y": 51
