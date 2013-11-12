@@ -1109,7 +1109,6 @@ class TestInstallBuiltinServer(unittest.TestCase):
         install_builtin_server()
         charm_dir = os.path.abspath(
             os.path.join(os.path.dirname(__file__), '..'))
-        deps = os.path.join(charm_dir, 'deps')
         mock_log.assert_has_calls([
             mock.call('Installing the builtin server dependencies.'),
             mock.call('Installing the builtin server.'),
