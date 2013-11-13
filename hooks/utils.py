@@ -74,11 +74,20 @@ import tempfile
 import urlparse
 
 import apt
-import tempita
-
 from launchpadlib.launchpad import Launchpad
+import tempita
+import yaml
+
+from charmhelpers import (
+    get_config,
+    log,
+    RESTART,
+    service_control,
+    START,
+    STOP,
+    unit_get,
+)
 from shelltoolbox import (
-    Serializer,
     apt_get_install,
     command,
     environ,
@@ -86,16 +95,8 @@ from shelltoolbox import (
     run,
     script_name,
     search_file,
+    Serializer,
     su,
-)
-from charmhelpers import (
-    RESTART,
-    START,
-    STOP,
-    get_config,
-    log,
-    service_control,
-    unit_get,
 )
 
 
@@ -173,7 +174,6 @@ def get_api_address(unit_dir=None):
     # The JUJU_API_ADDRESSES environment variable is not included in the hooks
     # context in older releases of juju-core.  Retrieve it from the machiner
     # agent file instead.
-    import yaml  # python-yaml is only installed if juju-core is used.
     if unit_dir is None:
         base_dir = os.path.join(CURRENT_DIR, '..', '..')
     else:

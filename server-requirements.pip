@@ -18,6 +18,8 @@
 
 # Note: the order of the following dependencies is important! The last ones
 # depends on the previous.
+# The python-bzrlib and python-yaml dependencies are installed using apt in
+# the charm hooks.
 
 futures==2.1.4
 tornado==3.1.1
