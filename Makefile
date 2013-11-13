@@ -34,9 +34,14 @@ unittest: setup
 	./tests/10-unit.test
 	./tests/11-server.test
 
-ensure-juju-test:
+ensure-juju-env:
+ifndef JUJU_ENV
+	$(error JUJU_ENV must be set.  See HACKING.md)
+endif
+
+ensure-juju-test: ensure-juju-env
 	@which juju-test > /dev/null \
-		|| (echo 'The "juju-test" command is missing.  See HACKING.md.' \
+		|| (echo 'The "juju-test" command is missing.  See HACKING.md' \
 		; false)
 
 ftest: setup ensure-juju-test
@@ -76,5 +81,5 @@ help:
 	@echo '  service to be started.  If JUJU_ENV is not passed, the charm will'
 	@echo '  be deployed in the default Juju environment.'
 
-.PHONY: all clean deploy ensure-juju-test ftest help jujutest lint setup test \
-    unittest
+.PHONY: all clean deploy ensure-juju-test ensure-juju-env ftest help \
+    jujutest lint setup test unittest
