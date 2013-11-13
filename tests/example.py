@@ -29,12 +29,13 @@ bundle1:
         engine: nginx
         tuning: single
         "wp-content": ""
+      constraints: "cpu-cores=4,mem=4000"
       annotations:
         "gui-x": 313
         "gui-y": 51
     mysql:
       charm: "cs:precise/mysql-26"
-      num_units: 1
+      num_units: 2
       options:
         "binlog-format": MIXED
         "block-size": "5"

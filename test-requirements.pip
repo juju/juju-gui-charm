@@ -24,18 +24,12 @@ python-debian==0.1.21
 
 # GUI server -> juju deployer.
 bzr==2.6.0
-jujuclient==0.13
-
-# Charm tests + juju deployer.
-websocket-client==0.12.0
 
 # Charm hooks + GUI server.
 PyYAML==3.10
 
 # GUI server.
-futures==2.1.4
-juju-deployer==0.2.8
-tornado==3.1.1
+-r server-requirements.pip
 
 # Charm hooks.
 launchpadlib==1.10.2
@@ -43,6 +37,8 @@ python-apt==0.8.5
 Tempita==0.5.1
 
 # Charm tests + GUI server tests.
+# Note that websocket-client, required by charm integration tests,
+# is already installed by server-requirements.
 flake8==2.0
 mock==1.0.1
 
