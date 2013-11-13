@@ -20,10 +20,6 @@
 import errno
 import os
 
-from charmhelpers import (
-    get_config,
-    log,
-)
 from shelltoolbox import (
     apt_get_install,
     run,
@@ -32,12 +28,20 @@ from shelltoolbox import (
 
 # Python dependencies must be installed here so that the charm can import and
 # use required libraries.
-PYTHON_DEPENDENCIES = ('python-apt', 'python-launchpadlib', 'python-tempita')
+PYTHON_DEPENDENCIES = (
+    'python-apt', 'python-launchpadlib', 'python-tempita', 'python-yaml')
 
-log('Installing base Python dependnecies: {}.'.format(
+run('juju-log', '--', 'Installing base Python dependencies: {}.'.format(
     ', '.join(PYTHON_DEPENDENCIES)))
 apt_get_install(*PYTHON_DEPENDENCIES)
 
+
+# The charmhelpers module depends on python-yaml and must be imported only
+# after the installation of the Python dependencies above.
+from charmhelpers import (
+    get_config,
+    log,
+)
 
 from utils import (
     config_json,
