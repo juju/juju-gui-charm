@@ -175,3 +175,13 @@ releases can slow down the deployment process, especially when deploying from
 the local charm.
 Note that at least one release must be always present in the repository,
 otherwise the deployment process will fail.
+
+## Upgrading the builtin server dependencies ##
+
+The builtin server dependencies are stored in the `deps` directory located in
+the branch source. This way, when the charm is deployed, the builtin server can
+be set up without downloading dependencies from the network (pypi) and so the
+charm deployment succeeds also behind a firewall.
+To upgrade the dependencies, add a tarball to the `deps` directory, remove the
+old dependency if required, and update the `server-requirements.pip` file.
+At this point, running `make` should also update the virtualenv used for tests.
