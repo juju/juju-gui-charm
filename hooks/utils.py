@@ -420,7 +420,7 @@ def write_gui_config(
     password = password if password else None
     if password is None and ((is_legacy_juju and in_staging) or sandbox):
         password = 'admin'
-    api_backend = 'python' if is_legacy_juju else 'go'
+    api_backend = 'python' if (is_legacy_juju and not sandbox) else 'go'
     if secure:
         protocol = 'wss'
     else:
