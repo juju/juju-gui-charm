@@ -96,7 +96,8 @@ def _validate_import_params(params):
         if len(bundles) == 1:
             name = bundles.keys()[0]
         else:
-            raise ValueError('invalid data parameters: no bundle name provided')
+            raise ValueError(
+                'invalid data parameters: no bundle name provided')
     bundle = bundles.get(name)
     if bundle is None:
         raise ValueError('bundle {} not found'.format(name))

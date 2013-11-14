@@ -69,7 +69,7 @@ class Deployer(object):
     singleton by all WebSocket requests.
     """
 
-    def __init__(self, apiurl, apiversion, io_loop=None):
+    def __init__(self, apiurl, apiversion, charmworldurl=None, io_loop=None):
         """Initialize the deployer.
 
         The apiurl argument is the URL of the juju-core WebSocket server.
@@ -77,6 +77,7 @@ class Deployer(object):
         """
         self._apiurl = apiurl
         self._apiversion = apiversion
+        self._charmworldurl = charmworldurl
         if io_loop is None:
             io_loop = IOLoop.current()
         self._io_loop = io_loop
@@ -186,10 +187,8 @@ class Deployer(object):
             self._observer.notify_position(deploy_id, position)
         # Increment the Charmworld deployment count upon successful
         # deployment.
-        bundle_id = self.bundle_ids.get(deployment_id)
         if bundle_id is not None:
-            utils.increment_deployment_counter(bundle_id)
-            del self.bundle_ids[deployment_id]
+            utils.increment_deployment_counter(bundle_id, self.charmworldurl)
 
     def watch(self, deployment_id):
         """Start watching a deployment and return a watcher identifier.

@@ -23,7 +23,6 @@ import logging
 import time
 
 from tornado.httpclient import AsyncHTTPClient
-from tornado.ioloop import IOLoop
 from tornado import (
     gen,
     escape,
@@ -209,17 +208,27 @@ def response(info=None, error=None):
 
 
 @gen.coroutine
-def increment_deployment_counter(bundle_id):
+def increment_deployment_counter(bundle_id, charmworld_url):
     """Increment the deployment count in Charmworld.
 
-    If the POST fails we log the error but don't report it.  This counter is a
-    'best effort' attempt but it will not impede our deployment of the bundle.
+    If the call to Charmworld fails we log the error but don't report it.
+    This counter is a 'best effort' attempt but it will not impede our
+    deployment of the bundle.
+
+    Arguments are:
+          - bundle_id: the ID for the bundle in Charmworld.
+          - charmworld_url: the URL for charmworld, including the protocol.
+            If None, do nothing.
+
     Returns False if an exception is raised otherwise True.
     """
     # This will eventually be the charmworld url from the commandline.
-    host = 'manage.jujucharms.com'
+    if charmworld_url is None:
+        gen.Return(True)
+
     path = 'metric/deployments/increment'
-    url = 'http://{}/api/3/bundle/{}/{}'.format(host, bundle_id, path)
+    url = '{}/api/3/bundle/{}/{}'.format(charmworld_url, bundle_id, path)
+    logging.info('Incrementing bundle deployment count using\n{}.'.format(url))
     client = AsyncHTTPClient()
     # We use a GET instead of a POST since there is not request body.
     try:

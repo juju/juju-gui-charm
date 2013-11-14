@@ -424,9 +424,19 @@ class TestResponse(LogTrapTestCase, unittest.TestCase):
             utils.response(error='an error occurred')
 
 
-class TestIncrementDeploymentCounter(unittest.TestCase):
+class TestIncrementDeploymentCounter(LogTrapTestCase, unittest.TestCase):
 
-    def test_valid_bundle_id(self):
+    def test_no_cw_url_returns_true(self):
         bundle_id = '~bac/muletrain/wiki'
-        ok = utils.increment_deployment_counter(bundle_id)
+        ok = utils.increment_deployment_counter(bundle_id, None)
+        self.assertTrue(ok)
+
+    def test_increment_url_logged(self):
+        bundle_id = '~bac/muletrain/wiki'
+        cw_url = 'http://my.charmworld.example.com'
+        expected = (
+            'Incrementing bundle.+\n{}/api/3/bundle/'
+            '{}/metric/deployments/increment.').format(cw_url, bundle_id)
+        with ExpectLog('', expected, required=True):
+            ok = utils.increment_deployment_counter(bundle_id, cw_url)
         self.assertTrue(ok)

@@ -39,7 +39,8 @@ def server():
     guiroot = options.guiroot
     static_path = os.path.join(guiroot, 'juju-ui')
     # Set up the bundle deployer.
-    deployer = Deployer(options.apiurl, options.apiversion)
+    deployer = Deployer(options.apiurl, options.apiversion,
+                        options.charmworldurl)
     # Set up handlers.
     server_handlers = []
     if not options.sandbox:
