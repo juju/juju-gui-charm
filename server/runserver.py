@@ -25,6 +25,7 @@ Arguments example:
     --insecure
     --sandbox
     --logging=debug|info|warning|error
+    --charmworldurl="https://manage.jujucharms.com/"
 
 The --sslpath option is ignored if --insecure is set.
 The --apiurl and --apiversion options are ignored if --sandbox is set.

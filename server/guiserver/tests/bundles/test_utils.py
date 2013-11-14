@@ -422,3 +422,11 @@ class TestResponse(LogTrapTestCase, unittest.TestCase):
         # An error log is written when a failure response is generated.
         with ExpectLog('', 'deployer: an error occurred', required=True):
             utils.response(error='an error occurred')
+
+
+class TestIncrementDeploymentCounter(unittest.TestCase):
+
+    def test_valid_bundle_id(self):
+        bundle_id = '~bac/muletrain/wiki'
+        ok = utils.increment_deployment_counter(bundle_id)
+        self.assertTrue(ok)

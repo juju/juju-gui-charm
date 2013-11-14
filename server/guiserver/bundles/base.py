@@ -92,6 +92,8 @@ class Deployer(object):
         self._queue = []
         # The futures attribute maps deployment identifiers to Futures.
         self._futures = {}
+        # The bundle_ids maps deployment identifiers to bundle_ids.
+        self.bundle_ids = {}
 
     @gen.coroutine
     def validate(self, user, name, bundle):
@@ -117,15 +119,16 @@ class Deployer(object):
         except Exception as err:
             raise gen.Return(str(err))
 
-    def import_bundle(self, user, name, bundle, test_callback=None):
+    def import_bundle(self, user, name, bundle, bundle_id, test_callback=None):
         """Schedule a deployment bundle import process.
 
         The deployment is executed in a separate process.
 
-        Three arguments are required:
+        The following arguments are required:
           - user: the current authenticated user;
-          - name: then name of the bundle to be imported;
+          - name: the name of the bundle to be imported;
           - bundle: a YAML decoded object representing the bundle contents.
+          - bundle_id: the ID of the bundle.  May be None.
 
         It is possible to also provide an optional test_callback that will be
         called when the deployment is completed. Note that this functionality
@@ -146,8 +149,11 @@ class Deployer(object):
         future = self._run_executor.submit(
             blocking.import_bundle,
             self._apiurl, user.password, name, bundle, IMPORTER_OPTIONS)
-        add_future(self._io_loop, future, self._import_callback, deployment_id)
+        add_future(self._io_loop, future, self._import_callback,
+                   deployment_id, bundle_id)
         self._futures[deployment_id] = future
+        if bundle_id is not None:
+            self.bundle_ids[deployment_id] = bundle_id
         # If a customized callback is provided, schedule it as well.
         if test_callback is not None:
             add_future(self._io_loop, future, test_callback)
@@ -157,7 +163,7 @@ class Deployer(object):
         self._run_executor.submit(time.sleep, 1)
         return deployment_id
 
-    def _import_callback(self, deployment_id, future):
+    def _import_callback(self, deployment_id, bundle_id, future):
         """Callback called when a deployment process is completed.
 
         This callback, scheduled in self.import_bundle(), receives the
@@ -178,6 +184,12 @@ class Deployer(object):
         # Notify the new position of all remaining deployments in the queue.
         for position, deploy_id in enumerate(self._queue):
             self._observer.notify_position(deploy_id, position)
+        # Increment the Charmworld deployment count upon successful
+        # deployment.
+        bundle_id = self.bundle_ids.get(deployment_id)
+        if bundle_id is not None:
+            utils.increment_deployment_counter(bundle_id)
+            del self.bundle_ids[deployment_id]
 
     def watch(self, deployment_id):
         """Start watching a deployment and return a watcher identifier.
@@ -232,7 +244,7 @@ class DeployMiddleware(object):
 
     This class handles the process of parsing requests from the GUI, checking
     if any incoming message is a deployment request, ensuring that the request
-    is well formed and, if so, forwarding the requests to the bundle views.
+    is well-formed and, if so, forwarding the requests to the bundle views.
 
     Assuming that:
       - user is a guiserver.auth.User instance (used by this middleware in

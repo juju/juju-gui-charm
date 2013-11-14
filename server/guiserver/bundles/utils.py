@@ -22,6 +22,8 @@ import itertools
 import logging
 import time
 
+from tornado.httpclient import AsyncHTTPClient
+from tornado.ioloop import IOLoop
 from tornado import (
     gen,
     escape,
@@ -204,3 +206,27 @@ def response(info=None, error=None):
         logging.error('deployer: {}'.format(escape.utf8(error)))
         data['Error'] = error
     return gen.Return(data)
+
+
+@gen.coroutine
+def increment_deployment_counter(bundle_id):
+    """Increment the deployment count in Charmworld.
+
+    If the POST fails we log the error but don't report it.  This counter is a
+    'best effort' attempt but it will not impede our deployment of the bundle.
+    Returns False if an exception is raised otherwise True.
+    """
+    # This will eventually be the charmworld url from the commandline.
+    host = 'manage.jujucharms.com'
+    path = 'metric/deployments/increment'
+    url = 'http://{}/api/3/bundle/{}/{}'.format(host, bundle_id, path)
+    client = AsyncHTTPClient()
+    # We use a GET instead of a POST since there is not request body.
+    try:
+        response = yield client.fetch(url, callback=None)
+    except Exception as e:
+        logging.error('Attempt to increment deployment counter failed.')
+        logging.error('URL: {}'.format(url))
+        logging.error('Exception: {}'.format(e.message))
+        gen.Return(False)
+    gen.Return(response.code == 200)

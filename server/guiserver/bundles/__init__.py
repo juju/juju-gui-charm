@@ -93,7 +93,10 @@ A deployment request looks like the following:
         'RequestId': 1,
         'Type': 'Deployer',
         'Request': 'Import',
-        'Params': {'Name': 'bundle-name', 'YAML': 'bundles'},
+        'Params': {'Name': 'bundle-name',
+                   'YAML': 'bundles',
+                   'BundleID': 'id'
+                  },
     }
 
 In the request parameters above, the YAML field stores the YAML encoded

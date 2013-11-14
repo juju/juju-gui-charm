@@ -116,6 +116,10 @@ def setup():
              'an in-memory backend. When this is set to True, the GUI server '
              'does not listen to incoming WebSocket connections, and '
              'therefore the --apiurl and --apiversion options are ignored.')
+    define(
+        'charmworldurl', type=str,
+        help='The URL to use for Charmworld.')
+
     # In Tornado, parsing the options also sets up the default logger.
     parse_command_line()
     _validate_required('guiroot')
