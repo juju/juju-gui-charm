@@ -32,7 +32,7 @@ createvenv() {
             yes w | env BZR_PLUGIN_PATH='-user' \
             pip install --use-mirrors -r $TEST_REQUIREMENTS --find-links deps
         retcode=$?
-        [ $retcode -eq 0 ] && touch $ACTIVATE || rm -f $ACTIVATE
+        [ $retcode -eq 0 ] && touch $ACTIVATE || touch $TEST_REQUIREMENTS
     fi
     return $retcode
 }
