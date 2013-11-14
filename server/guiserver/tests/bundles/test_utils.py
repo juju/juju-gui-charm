@@ -428,15 +428,21 @@ class TestIncrementDeploymentCounter(LogTrapTestCase, unittest.TestCase):
 
     def test_no_cw_url_returns_true(self):
         bundle_id = '~bac/muletrain/wiki'
-        ok = utils.increment_deployment_counter(bundle_id, None)
+        mock_path = 'tornado.httpclient.AsyncHTTPClient.fetch'
+        import pdb; pdb.set_trace(); # DO NOT COMMIT
+        with mock.patch(mock_path) as mock_fetch:
+            ok = utils.increment_deployment_counter(bundle_id, None)
         self.assertTrue(ok)
 
     def test_increment_url_logged(self):
         bundle_id = '~bac/muletrain/wiki'
         cw_url = 'http://my.charmworld.example.com'
-        expected = (
-            'Incrementing bundle.+\n{}/api/3/bundle/'
-            '{}/metric/deployments/increment.').format(cw_url, bundle_id)
+        url = '{}/api/3/bundle/{}/metric/deployments/increment'.format(
+            cw_url, bundle_id)
+        expected = 'Incrementing bundle.+\n{}.'.format(url)
         with ExpectLog('', expected, required=True):
-            ok = utils.increment_deployment_counter(bundle_id, cw_url)
+            mock_path = 'tornado.httpclient.AsyncHTTPClient.fetch'
+            with mock.patch(mock_path) as mock_fetch:
+                ok = utils.increment_deployment_counter(bundle_id, cw_url)
+        mock_fetch.assert_called_once_with(url, callback=None)
         self.assertTrue(ok)
