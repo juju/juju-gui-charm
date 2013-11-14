@@ -222,9 +222,8 @@ def increment_deployment_counter(bundle_id, charmworld_url):
 
     Returns False if an exception is raised otherwise True.
     """
-    # This will eventually be the charmworld url from the commandline.
     if charmworld_url is None:
-        gen.Return(True)
+        raise gen.Return(True)
 
     path = 'metric/deployments/increment'
     url = '{}/api/3/bundle/{}/{}'.format(charmworld_url, bundle_id, path)
@@ -232,10 +231,11 @@ def increment_deployment_counter(bundle_id, charmworld_url):
     client = AsyncHTTPClient()
     # We use a GET instead of a POST since there is not request body.
     try:
-        response = yield client.fetch(url, callback=None)
-    except Exception as e:
+        resp = yield client.fetch(url, callback=None)
+    except Exception as exc:
         logging.error('Attempt to increment deployment counter failed.')
         logging.error('URL: {}'.format(url))
-        logging.error('Exception: {}'.format(e.message))
-        gen.Return(False)
-    gen.Return(response.code == 200)
+        logging.error('Exception: {}'.format(exc.message))
+        raise gen.Return(False)
+    success = bool(resp.code == 200)
+    raise gen.Return(success)

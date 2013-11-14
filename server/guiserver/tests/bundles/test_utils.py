@@ -18,6 +18,7 @@
 
 import unittest
 
+from concurrent.futures import Future
 import mock
 from tornado import gen
 from tornado.testing import(
@@ -424,25 +425,49 @@ class TestResponse(LogTrapTestCase, unittest.TestCase):
             utils.response(error='an error occurred')
 
 
-class TestIncrementDeploymentCounter(LogTrapTestCase, unittest.TestCase):
+def mock_fetch_factory(response_code):
+    def fetch(*args, **kwargs):
+        class FakeResponse(object):
+            pass
+        resp = FakeResponse()
+        resp.code = response_code
+        future = Future()
+        future.set_result(resp)
+        return future
+    return fetch
 
+
+class TestIncrementDeploymentCounter(LogTrapTestCase, AsyncTestCase):
+
+    @gen_test
     def test_no_cw_url_returns_true(self):
         bundle_id = '~bac/muletrain/wiki'
         mock_path = 'tornado.httpclient.AsyncHTTPClient.fetch'
-        import pdb; pdb.set_trace(); # DO NOT COMMIT
-        with mock.patch(mock_path) as mock_fetch:
-            ok = utils.increment_deployment_counter(bundle_id, None)
+        with mock.patch(mock_path):
+            ok = yield utils.increment_deployment_counter(bundle_id, None)
         self.assertTrue(ok)
 
+    @gen_test
     def test_increment_url_logged(self):
         bundle_id = '~bac/muletrain/wiki'
         cw_url = 'http://my.charmworld.example.com'
         url = '{}/api/3/bundle/{}/metric/deployments/increment'.format(
             cw_url, bundle_id)
         expected = 'Incrementing bundle.+\n{}.'.format(url)
+        mock_fetch = mock_fetch_factory(200)
         with ExpectLog('', expected, required=True):
             mock_path = 'tornado.httpclient.AsyncHTTPClient.fetch'
-            with mock.patch(mock_path) as mock_fetch:
-                ok = utils.increment_deployment_counter(bundle_id, cw_url)
-        mock_fetch.assert_called_once_with(url, callback=None)
+            with mock.patch(mock_path, mock_fetch):
+                ok = yield utils.increment_deployment_counter(
+                    bundle_id, cw_url)
         self.assertTrue(ok)
+
+    @gen_test
+    def test_increment_errors(self):
+        bundle_id = '~bac/muletrain/wiki'
+        cw_url = 'http://my.charmworld.example.com'
+        mock_path = 'tornado.httpclient.AsyncHTTPClient.fetch'
+        mock_fetch = mock_fetch_factory(404)
+        with mock.patch(mock_path, mock_fetch):
+            ok = yield utils.increment_deployment_counter(bundle_id, cw_url)
+        self.assertFalse(ok)
