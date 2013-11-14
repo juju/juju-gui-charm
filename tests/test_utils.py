@@ -1059,6 +1059,18 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertIn('password: "kumquat"', js_conf)
 
     @mock.patch('utils.legacy_juju')
+    def test_write_gui_config_default_sandbox_backend(self, mock_legacy_juju):
+        mock_legacy_juju.return_value = True
+        write_gui_config(
+            False, 'This is login help.', True, True, self.charmworld_url,
+            self.build_dir, config_js_path='config',
+            password='kumquat', sandbox=True)
+        js_conf = self.files['config']
+        # Because this is sandbox, the apiBackend is always go, even though it
+        # is legacy_juju.
+        self.assertIn('apiBackend: "go"', js_conf)
+
+    @mock.patch('utils.legacy_juju')
     def test_write_gui_config_default_go_password(self, mock_legacy_juju):
         mock_legacy_juju.return_value = False
         write_gui_config(
