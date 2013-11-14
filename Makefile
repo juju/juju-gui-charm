@@ -16,8 +16,9 @@
 
 JUJUTEST = juju-test --timeout=120m -v -e "$(JUJU_ENV)"
 VENV = ./tests/.venv
-SYSDEPS = build-essential bzr libapt-pkg-dev python-pip python-virtualenv xvfb \
-		libpython-dev
+SYSDEPS = build-essential bzr libapt-pkg-dev libpython-dev python-pip \
+	python-virtualenv rsync xvfb
+
 
 all: setup
 
