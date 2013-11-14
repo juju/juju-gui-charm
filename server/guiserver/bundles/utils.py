@@ -226,7 +226,7 @@ def increment_deployment_counter(bundle_id, charmworld_url):
         raise gen.Return(True)
 
     path = 'metric/deployments/increment'
-    url = '{}/api/3/bundle/{}/{}'.format(charmworld_url, bundle_id, path)
+    url = '{}api/3/bundle/{}/{}'.format(charmworld_url, bundle_id, path)
     logging.info('Incrementing bundle deployment count using\n{}.'.format(url))
     client = AsyncHTTPClient()
     # We use a GET instead of a POST since there is not request body.

@@ -204,7 +204,7 @@ class TestBackendCommands(unittest.TestCase):
         config = {
             'builtin-server': True,
             'builtin-server-logging': 'info',
-            'charmworld-url': 'http://charmworld.example.com',
+            'charmworld-url': 'http://charmworld.example.com/',
             'command-log-file': self.command_log_file,
             'default-viewmode': 'sidebar',
             'ga-key': 'my-key',

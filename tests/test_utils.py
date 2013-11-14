@@ -834,7 +834,7 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.run_call_count = 0
         self.fake_zk_address = '192.168.5.26'
         self.build_dir = 'juju-gui/build-'
-        self.charmworld_url = 'http://charmworld.example.com'
+        self.charmworld_url = 'http://charmworld.example.com/'
         self.ssl_cert_path = 'ssl/cert/path'
 
         # Monkey patches.
@@ -995,7 +995,7 @@ class TestStartImprovAgentGui(unittest.TestCase):
             '--testsroot="{}/test/"'.format(JUJU_GUI_DIR), guiserver_conf)
         self.assertIn('--insecure', guiserver_conf)
         self.assertNotIn('--sandbox', guiserver_conf)
-        self.assertIn('--charmworldurl="http://charmworld.example.com"',
+        self.assertIn('--charmworldurl="http://charmworld.example.com/"',
                       guiserver_conf)
 
     def test_write_builtin_server_startup_sandbox_and_logging(self):
@@ -1016,7 +1016,7 @@ class TestStartImprovAgentGui(unittest.TestCase):
         start_builtin_server(
             JUJU_GUI_DIR, self.ssl_cert_path, serve_tests=False, sandbox=False,
             builtin_server_logging='info', insecure=False,
-            charmworld_url='http://charmworld.example.com')
+            charmworld_url='http://charmworld.example.com/')
         self.assertEqual(self.svc_ctl_call_count, 1)
         self.assertEqual(self.service_names, ['guiserver'])
         self.assertEqual(self.actions, [charmhelpers.RESTART])
@@ -1041,7 +1041,7 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertIn('readOnly: true', js_conf)
         self.assertIn("socket_url: 'wss://", js_conf)
         self.assertIn('socket_protocol: "wss"', js_conf)
-        self.assertIn('charmworldURL: "http://charmworld.example.com"',
+        self.assertIn('charmworldURL: "http://charmworld.example.com/"',
                       js_conf)
         self.assertIn('GA_key: "UA-123456"', js_conf)
 

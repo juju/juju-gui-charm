@@ -452,8 +452,8 @@ class TestIncrementDeploymentCounter(LogTrapTestCase, AsyncTestCase):
     @gen_test
     def test_increment_url_logged(self):
         bundle_id = '~bac/muletrain/wiki'
-        cw_url = 'http://my.charmworld.example.com'
-        url = '{}/api/3/bundle/{}/metric/deployments/increment'.format(
+        cw_url = 'http://my.charmworld.example.com/'
+        url = '{}api/3/bundle/{}/metric/deployments/increment'.format(
             cw_url, bundle_id)
         expected = 'Incrementing bundle.+\n{}.'.format(url)
         called_with = []
@@ -471,7 +471,7 @@ class TestIncrementDeploymentCounter(LogTrapTestCase, AsyncTestCase):
     @gen_test
     def test_increment_errors(self):
         bundle_id = '~bac/muletrain/wiki'
-        cw_url = 'http://my.charmworld.example.com'
+        cw_url = 'http://my.charmworld.example.com/'
         mock_path = 'tornado.httpclient.AsyncHTTPClient.fetch'
         mock_fetch = mock_fetch_factory(404)
         with mock.patch(mock_path, mock_fetch):
