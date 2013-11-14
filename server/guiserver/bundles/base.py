@@ -188,7 +188,8 @@ class Deployer(object):
         # Increment the Charmworld deployment count upon successful
         # deployment.
         if bundle_id is not None:
-            utils.increment_deployment_counter(bundle_id, self.charmworldurl)
+            utils.increment_deployment_counter(
+                bundle_id, self.charmworldurl)
 
     def watch(self, deployment_id):
         """Start watching a deployment and return a watcher identifier.

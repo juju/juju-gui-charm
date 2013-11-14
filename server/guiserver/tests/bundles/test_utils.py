@@ -425,8 +425,10 @@ class TestResponse(LogTrapTestCase, unittest.TestCase):
             utils.response(error='an error occurred')
 
 
-def mock_fetch_factory(response_code):
+def mock_fetch_factory(response_code, called_with=None):
     def fetch(*args, **kwargs):
+        if called_with is not None:
+            called_with.append((args[1:], kwargs))
         class FakeResponse(object):
             pass
         resp = FakeResponse()
@@ -454,13 +456,17 @@ class TestIncrementDeploymentCounter(LogTrapTestCase, AsyncTestCase):
         url = '{}/api/3/bundle/{}/metric/deployments/increment'.format(
             cw_url, bundle_id)
         expected = 'Incrementing bundle.+\n{}.'.format(url)
-        mock_fetch = mock_fetch_factory(200)
+        called_with = []
+        mock_fetch = mock_fetch_factory(200, called_with)
         with ExpectLog('', expected, required=True):
             mock_path = 'tornado.httpclient.AsyncHTTPClient.fetch'
             with mock.patch(mock_path, mock_fetch):
                 ok = yield utils.increment_deployment_counter(
                     bundle_id, cw_url)
         self.assertTrue(ok)
+        called_args, called_kwargs = called_with[0]
+        self.assertEqual(url, called_args[0])
+        self.assertEqual(dict(callback=None), called_kwargs)
 
     @gen_test
     def test_increment_errors(self):
