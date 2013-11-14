@@ -77,6 +77,8 @@ class Deployer(object):
         """
         self._apiurl = apiurl
         self._apiversion = apiversion
+        if not charmworldurl.endswith('/'):
+            charmworldurl = charmworldurl + '/'
         self._charmworldurl = charmworldurl
         if io_loop is None:
             io_loop = IOLoop.current()
