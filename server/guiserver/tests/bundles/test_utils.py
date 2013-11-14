@@ -429,8 +429,10 @@ def mock_fetch_factory(response_code, called_with=None):
     def fetch(*args, **kwargs):
         if called_with is not None:
             called_with.append((args[1:], kwargs))
+
         class FakeResponse(object):
             pass
+
         resp = FakeResponse()
         resp.code = response_code
         future = Future()
