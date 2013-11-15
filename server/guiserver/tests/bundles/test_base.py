@@ -46,8 +46,10 @@ class FakeFuture(object):
     def __init__(self, cancelled=False, exception=None):
         self._cancelled = cancelled
         self._exception = exception
+
     def cancelled(self):
         return self._cancelled
+
     def exception(self):
         return self._exception
 
