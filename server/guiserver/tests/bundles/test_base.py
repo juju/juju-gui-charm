@@ -42,6 +42,16 @@ def import_bundle_mock(apiurl, password, name, bundle, options):
     raise jujuclient.EnvError({'Error': 'bad wolf'})
 
 
+class FakeFuture(object):
+    def __init__(self, cancelled=False, exception=None):
+        self._cancelled = cancelled
+        self._exception = exception
+    def cancelled(self):
+        return self._cancelled
+    def exception(self):
+        return self._exception
+
+
 @mock.patch('time.time', mock.Mock(return_value=42))
 class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
 
@@ -336,6 +346,64 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         self.assertEqual(utils.COMPLETED, change2['Status'])
         self.assertEqual(deployment1, change1['DeploymentId'])
         self.assertEqual(deployment2, change2['DeploymentId'])
+
+    def test_import_callback_cancelled(self):
+        deployer = self.make_deployer()
+        deployer_id = 123
+        deployer._queue.append(deployer_id)
+        deployer._futures[deployer_id] = None
+        mock_path = 'guiserver.bundles.utils.increment_deployment_counter'
+        future = FakeFuture(True)
+        with mock.patch.object(
+                deployer._observer, 'notify_cancelled') as mock_notify:
+            with mock.patch(mock_path) as mock_incrementer:
+                deployer._import_callback(deployer_id, None, future)
+        mock_notify.assert_called_with(deployer_id)
+        self.assertFalse(mock_incrementer.called)
+
+    def test_import_callback_error(self):
+        deployer = self.make_deployer()
+        deployer_id = 123
+        deployer._queue.append(deployer_id)
+        deployer._futures[deployer_id] = None
+        mock_path = 'guiserver.bundles.utils.increment_deployment_counter'
+        future = FakeFuture(exception='aiiee')
+        with mock.patch.object(
+                deployer._observer, 'notify_completed') as mock_notify:
+            with mock.patch(mock_path) as mock_incrementer:
+                deployer._import_callback(deployer_id, None, future)
+        mock_notify.assert_called_with(deployer_id, error='aiiee')
+        self.assertFalse(mock_incrementer.called)
+
+    def test_import_callback_no_bundleid(self):
+        deployer = self.make_deployer()
+        deployer_id = 123
+        deployer._queue.append(deployer_id)
+        deployer._futures[deployer_id] = None
+        mock_path = 'guiserver.bundles.utils.increment_deployment_counter'
+        future = FakeFuture()
+        with mock.patch.object(
+                deployer._observer, 'notify_completed') as mock_notify:
+            with mock.patch(mock_path) as mock_incrementer:
+                deployer._import_callback(deployer_id, None, future)
+        mock_notify.assert_called_with(deployer_id, error=None)
+        self.assertFalse(mock_incrementer.called)
+
+    def test_import_callback_success(self):
+        deployer = self.make_deployer()
+        deployer_id = 123
+        bundle_id = '~jorge/basket/bundle'
+        deployer._charmworldurl = 'http://cw.example.com'
+        deployer._queue.append(deployer_id)
+        deployer._futures[deployer_id] = None
+        mock_path = 'guiserver.bundles.utils.increment_deployment_counter'
+        future = FakeFuture()
+        with mock.patch.object(
+                deployer._observer, 'notify_completed') as mock_notify:
+            with mock.patch(mock_path) as mock_incrementer:
+                deployer._import_callback(deployer_id, bundle_id, future)
+        mock_notify.assert_called_with(deployer_id, error=None)
+        mock_incrementer.assert_called_with(bundle_id, deployer._charmworldurl)
 
 
 class TestDeployMiddleware(helpers.BundlesTestMixin, AsyncTestCase):

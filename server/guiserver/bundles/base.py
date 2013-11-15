@@ -189,7 +189,7 @@ class Deployer(object):
         # deployment.
         if success and bundle_id is not None:
             utils.increment_deployment_counter(
-                bundle_id, self.charmworldurl)
+                bundle_id, self._charmworldurl)
 
     def watch(self, deployment_id):
         """Start watching a deployment and return a watcher identifier.
