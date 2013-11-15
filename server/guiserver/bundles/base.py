@@ -172,11 +172,13 @@ class Deployer(object):
         if future.cancelled():
             # Notify a deployment has been cancelled.
             self._observer.notify_cancelled(deployment_id)
+            success = False
         else:
             exception = future.exception()
             error = None if exception is None else str(exception)
             # Notify a deployment completed.
             self._observer.notify_completed(deployment_id, error=error)
+            success = (error == None)
         # Remove the completed deployment job from the queue.
         self._queue.remove(deployment_id)
         del self._futures[deployment_id]
@@ -185,7 +187,7 @@ class Deployer(object):
             self._observer.notify_position(deploy_id, position)
         # Increment the Charmworld deployment count upon successful
         # deployment.
-        if bundle_id is not None and error is None:
+        if success and bundle_id is not None:
             utils.increment_deployment_counter(
                 bundle_id, self.charmworldurl)
 
