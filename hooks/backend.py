@@ -106,8 +106,7 @@ class PythonMixin(PythonInstallMixinBase):
 
 class GoMixin(object):
     """Manage the real Go juju-core backend."""
-
-    debs = ('python-yaml',)
+    pass
 
 
 class GuiMixin(object):

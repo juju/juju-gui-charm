@@ -33,12 +33,10 @@ import utils
 
 
 EXPECTED_PYTHON_LEGACY_DEBS = ('apache2', 'curl', 'haproxy', 'openssl')
-EXPECTED_GO_LEGACY_DEBS = (
-    'apache2', 'curl', 'haproxy', 'openssl', 'python-yaml')
+EXPECTED_GO_LEGACY_DEBS = ('apache2', 'curl', 'haproxy', 'openssl')
 EXPECTED_PYTHON_BUILTIN_DEBS = (
     'curl', 'openssl', 'python-bzrlib', 'python-pip')
-EXPECTED_GO_BUILTIN_DEBS = (
-    'curl', 'openssl', 'python-bzrlib', 'python-pip', 'python-yaml')
+EXPECTED_GO_BUILTIN_DEBS = ('curl', 'openssl', 'python-bzrlib', 'python-pip')
 
 simulate_pyjuju = mock.patch('utils.legacy_juju', mock.Mock(return_value=True))
 simulate_juju_core = mock.patch(

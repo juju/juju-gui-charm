@@ -34,7 +34,6 @@ from utils import (
     API_PORT,
     JUJU_GUI_DIR,
     JUJU_PEM,
-    SERVER_DEPENDENCIES,
     WEB_PORT,
     _get_by_attr,
     cmd_log,
@@ -978,9 +977,9 @@ class TestStartImprovAgentGui(unittest.TestCase):
 
     def test_install_builtin_server(self):
         install_builtin_server()
-        # The function executes one "pip install" call for each dependency, and
-        # a final "python setup.py" call for the GUI server itself.
-        self.assertEqual(self.run_call_count, len(SERVER_DEPENDENCIES) + 1)
+        # Two run calls are executed: one for the dependencies, one for the
+        # server itself.
+        self.assertEqual(2, self.run_call_count)
 
     def test_write_builtin_server_startup(self):
         write_builtin_server_startup(
@@ -1065,6 +1064,18 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertIn('password: "kumquat"', js_conf)
 
     @mock.patch('utils.legacy_juju')
+    def test_write_gui_config_default_sandbox_backend(self, mock_legacy_juju):
+        mock_legacy_juju.return_value = True
+        write_gui_config(
+            False, 'This is login help.', True, True, self.charmworld_url,
+            self.build_dir, config_js_path='config',
+            password='kumquat', sandbox=True)
+        js_conf = self.files['config']
+        # Because this is sandbox, the apiBackend is always go, even though it
+        # is legacy_juju.
+        self.assertIn('apiBackend: "go"', js_conf)
+
+    @mock.patch('utils.legacy_juju')
     def test_write_gui_config_default_go_password(self, mock_legacy_juju):
         mock_legacy_juju.return_value = False
         write_gui_config(
@@ -1102,6 +1113,32 @@ class TestStartImprovAgentGui(unittest.TestCase):
             self.build_dir, sandbox=True, show_get_juju_button=True,
             config_js_path='config')
         self.assertIn('showGetJujuButton: true', self.files['config'])
+
+
+@mock.patch('utils.run')
+@mock.patch('utils.log')
+@mock.patch('utils.cmd_log', mock.Mock())
+@mock.patch('utils.su', mock.MagicMock())
+class TestInstallBuiltinServer(unittest.TestCase):
+
+    def test_call(self, mock_log, mock_run):
+        # The builtin server its correctly installed.
+        install_builtin_server()
+        charm_dir = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), '..'))
+        mock_log.assert_has_calls([
+            mock.call('Installing the builtin server dependencies.'),
+            mock.call('Installing the builtin server.'),
+        ])
+        mock_run.assert_has_calls([
+            mock.call(
+                'pip', 'install', '--no-index', '--no-dependencies',
+                '--find-links', 'file:///{}/deps'.format(charm_dir),
+                '-r', os.path.join(charm_dir, 'server-requirements.pip')),
+            mock.call(
+                '/usr/bin/python',
+                os.path.join(charm_dir, 'server', 'setup.py'), 'install')
+        ])
 
 
 @mock.patch('utils.run')

@@ -74,11 +74,20 @@ import tempfile
 import urlparse
 
 import apt
-import tempita
-
 from launchpadlib.launchpad import Launchpad
+import tempita
+import yaml
+
+from charmhelpers import (
+    get_config,
+    log,
+    RESTART,
+    service_control,
+    START,
+    STOP,
+    unit_get,
+)
 from shelltoolbox import (
-    Serializer,
     apt_get_install,
     command,
     environ,
@@ -86,16 +95,8 @@ from shelltoolbox import (
     run,
     script_name,
     search_file,
+    Serializer,
     su,
-)
-from charmhelpers import (
-    RESTART,
-    START,
-    STOP,
-    get_config,
-    log,
-    service_control,
-    unit_get,
 )
 
 
@@ -114,19 +115,6 @@ CONFIG_DIR = os.path.join(CURRENT_DIR, 'config')
 JUJU_AGENT_DIR = os.path.join(BASE_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(BASE_DIR, 'juju-gui')
 RELEASES_DIR = os.path.join(CURRENT_DIR, 'releases')
-# Builtin server dependencies. The order of these requirements is important.
-SERVER_DEPENDENCIES = (
-    'futures-2.1.4.tar.gz',
-    'tornado-3.1.1.tar.gz',
-    'websocket-client-0.12.0.tar.gz',
-    # XXX frankban 2013-11-07: we are currently using a customized jujuclient
-    # version built from this branch:
-    # lp:~frankban/python-jujuclient/pickable-enverror.
-    'jujuclient-0.13.tar.gz',
-    # XXX frankban 2013-11-07: we are currently using a customized deployer
-    # version built from this branch: lp:~frankban/juju-deployer/guienv-fixes.
-    'juju-deployer-0.2.8.tar.gz',
-)
 SERVER_DIR = os.path.join(CURRENT_DIR, 'server')
 
 APACHE_CFG_DIR = os.path.join(os.path.sep, 'etc', 'apache2')
@@ -186,7 +174,6 @@ def get_api_address(unit_dir=None):
     # The JUJU_API_ADDRESSES environment variable is not included in the hooks
     # context in older releases of juju-core.  Retrieve it from the machiner
     # agent file instead.
-    import yaml  # python-yaml is only installed if juju-core is used.
     if unit_dir is None:
         base_dir = os.path.join(CURRENT_DIR, '..', '..')
     else:
@@ -433,7 +420,7 @@ def write_gui_config(
     password = password if password else None
     if password is None and ((is_legacy_juju and in_staging) or sandbox):
         password = 'admin'
-    api_backend = 'python' if is_legacy_juju else 'go'
+    api_backend = 'python' if (is_legacy_juju and not sandbox) else 'go'
     if secure:
         protocol = 'wss'
     else:
@@ -553,10 +540,15 @@ def stop_haproxy_apache():
 def install_builtin_server():
     """Install the builtin server code."""
     log('Installing the builtin server dependencies.')
-    for dependency_name in SERVER_DEPENDENCIES:
-        dependency = os.path.join(CURRENT_DIR, 'deps', dependency_name)
-        with su('root'):
-            cmd_log(run('pip', 'install', dependency))
+    deps = os.path.join(CURRENT_DIR, 'deps')
+    requirements = os.path.join(CURRENT_DIR, 'server-requirements.pip')
+    # Install the builtin server dependencies avoiding to download requirements
+    # from the network.
+    with su('root'):
+        cmd_log(run(
+            'pip', 'install', '--no-index', '--no-dependencies',
+            '--find-links', 'file:///{}'.format(deps), '-r', requirements
+        ))
     log('Installing the builtin server.')
     setup_cmd = os.path.join(SERVER_DIR, 'setup.py')
     with su('root'):
