@@ -27,6 +27,7 @@ from tornado.testing import(
     gen_test,
     LogTrapTestCase,
 )
+import urllib
 
 from guiserver import watchers
 from guiserver.bundles import utils
@@ -447,17 +448,38 @@ class TestIncrementDeploymentCounter(LogTrapTestCase, AsyncTestCase):
     def test_no_cw_url_returns_true(self):
         bundle_id = '~bac/muletrain/wiki'
         mock_path = 'tornado.httpclient.AsyncHTTPClient.fetch'
-        with mock.patch(mock_path):
+        with mock.patch(mock_path) as mock_fetch:
             ok = yield utils.increment_deployment_counter(bundle_id, None)
-        self.assertTrue(ok)
+        self.assertFalse(ok)
+        self.assertFalse(mock_fetch.called)
+
+    @gen_test
+    def test_increment_nonstring_bundle_id(self):
+        bundle_id = 4
+        cw_url = 'http://my.charmworld.example.com/'
+        mock_path = 'tornado.httpclient.AsyncHTTPClient.fetch'
+        with mock.patch(mock_path) as mock_fetch:
+            ok = yield utils.increment_deployment_counter(bundle_id, cw_url)
+        self.assertFalse(ok)
+        self.assertFalse(mock_fetch.called)
+
+    @gen_test
+    def test_increment_nonstring_cwurl(self):
+        bundle_id = u'~bac/muletrain/wiki'
+        cw_url = 7
+        mock_path = 'tornado.httpclient.AsyncHTTPClient.fetch'
+        with mock.patch(mock_path) as mock_fetch:
+            ok = yield utils.increment_deployment_counter(bundle_id, cw_url)
+        self.assertFalse(ok)
+        self.assertFalse(mock_fetch.called)
 
     @gen_test
     def test_increment_url_logged(self):
         bundle_id = '~bac/muletrain/wiki'
         cw_url = 'http://my.charmworld.example.com/'
-        url = '{}api/3/bundle/{}/metric/deployments/increment'.format(
+        url = u'{}api/3/bundle/{}/metric/deployments/increment'.format(
             cw_url, bundle_id)
-        expected = 'Incrementing bundle.+\n{}.'.format(url)
+        expected = 'Incrementing bundle.+'
         called_with = []
         mock_fetch = mock_fetch_factory(200, called_with)
         with ExpectLog('', expected, required=True):
@@ -467,7 +489,7 @@ class TestIncrementDeploymentCounter(LogTrapTestCase, AsyncTestCase):
                     bundle_id, cw_url)
         self.assertTrue(ok)
         called_args, called_kwargs = called_with[0]
-        self.assertEqual(url, called_args[0])
+        self.assertEqual(url, urllib.unquote(called_args[0]))
         self.assertEqual(dict(callback=None), called_kwargs)
 
     @gen_test

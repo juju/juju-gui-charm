@@ -21,12 +21,13 @@ from functools import wraps
 import itertools
 import logging
 import time
+import urllib
 
-from tornado.httpclient import AsyncHTTPClient
 from tornado import (
     gen,
     escape,
 )
+from tornado.httpclient import AsyncHTTPClient
 
 from guiserver.watchers import AsyncWatcher
 
@@ -220,14 +221,21 @@ def increment_deployment_counter(bundle_id, charmworld_url):
           - charmworld_url: the URL for charmworld, including the protocol.
             If None, do nothing.
 
-    Returns False if an exception is raised otherwise True.
+    Returns True if the counter is successfully incremented else False.
     """
     if charmworld_url is None:
-        raise gen.Return(True)
+        raise gen.Return(False)
+
+    if not all((isinstance(bundle_id, basestring),
+                isinstance(charmworld_url, basestring))):
+        raise gen.Return(False)
 
     path = 'metric/deployments/increment'
-    url = '{}api/3/bundle/{}/{}'.format(charmworld_url, bundle_id, path)
-    logging.info('Incrementing bundle deployment count using\n{}.'.format(url))
+    url = u'{}api/3/bundle/{}/{}'.format(
+        charmworld_url,
+        urllib.quote(bundle_id), path)
+    logging.info('Incrementing bundle deployment count using\n{}.'.format(
+        url.encode('utf-8')))
     client = AsyncHTTPClient()
     # We use a GET instead of a POST since there is not request body.
     try:
@@ -235,7 +243,7 @@ def increment_deployment_counter(bundle_id, charmworld_url):
     except Exception as exc:
         logging.error('Attempt to increment deployment counter failed.')
         logging.error('URL: {}'.format(url))
-        logging.error('Exception: {}'.format(exc.message))
+        logging.exception(exc)
         raise gen.Return(False)
     success = bool(resp.code == 200)
     raise gen.Return(success)

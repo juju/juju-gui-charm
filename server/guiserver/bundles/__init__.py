@@ -93,16 +93,19 @@ A deployment request looks like the following:
         'RequestId': 1,
         'Type': 'Deployer',
         'Request': 'Import',
-        'Params': {'Name': 'bundle-name',
-                   'YAML': 'bundles',
-                   'BundleID': 'id'
-                  },
+        'Params': {
+            'Name': 'bundle-name',
+            'YAML': 'bundles',
+            'BundleID': 'id'
+        },
     }
 
 In the request parameters above, the YAML field stores the YAML encoded
 contents representing one or more bundles, and the Name field is the name of
 the specific bundle (included in YAML) that must be deployed. The Name
-parameter is optional in the case YAML includes only one bundle.
+parameter is optional in the case YAML includes only one bundle.  The BundleID
+is optional and is used for incrementing the deployment counter in
+Charmworld.
 
 After receiving a deployment request, the DeployMiddleware sends a response
 indicating whether or not the request has been accepted. This response is sent

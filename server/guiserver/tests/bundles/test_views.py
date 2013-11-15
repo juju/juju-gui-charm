@@ -210,7 +210,6 @@ class TestImportBundle(
         self.deployer.import_bundle.assert_called_once_with(*args)
 
     # The following tests exercise views._validate_import_params directly.
-    @gen_test
     def test_no_name_success(self):
         # The process succeeds if the bundle name is not provided but the
         # YAML contents include just one bundle.
@@ -219,7 +218,6 @@ class TestImportBundle(
         expected = ('mybundle', {'services': {}}, None)
         self.assertEqual(expected, results)
 
-    @gen_test
     def test_id_provided(self):
         params = {'YAML': 'mybundle: {services: {}}',
                   'BundleID': '~jorge/wiki/3/smallwiki'}
@@ -227,7 +225,6 @@ class TestImportBundle(
         expected = ('mybundle', {'services': {}}, '~jorge/wiki/3/smallwiki')
         self.assertEqual(expected, results)
 
-    @gen_test
     def test_id_and_name_provided(self):
         params = {'YAML': 'mybundle: {services: {}}',
                   'Name': 'mybundle',

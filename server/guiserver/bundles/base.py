@@ -95,8 +95,6 @@ class Deployer(object):
         self._queue = []
         # The futures attribute maps deployment identifiers to Futures.
         self._futures = {}
-        # The bundle_ids maps deployment identifiers to bundle_ids.
-        self.bundle_ids = {}
 
     @gen.coroutine
     def validate(self, user, name, bundle):
@@ -155,8 +153,6 @@ class Deployer(object):
         add_future(self._io_loop, future, self._import_callback,
                    deployment_id, bundle_id)
         self._futures[deployment_id] = future
-        if bundle_id is not None:
-            self.bundle_ids[deployment_id] = bundle_id
         # If a customized callback is provided, schedule it as well.
         if test_callback is not None:
             add_future(self._io_loop, future, test_callback)
@@ -189,7 +185,7 @@ class Deployer(object):
             self._observer.notify_position(deploy_id, position)
         # Increment the Charmworld deployment count upon successful
         # deployment.
-        if bundle_id is not None:
+        if bundle_id is not None and error is None:
             utils.increment_deployment_counter(
                 bundle_id, self.charmworldurl)
 
