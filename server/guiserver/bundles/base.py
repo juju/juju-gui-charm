@@ -178,7 +178,7 @@ class Deployer(object):
             error = None if exception is None else str(exception)
             # Notify a deployment completed.
             self._observer.notify_completed(deployment_id, error=error)
-            success = (error == None)
+            success = (error is None)
         # Remove the completed deployment job from the queue.
         self._queue.remove(deployment_id)
         del self._futures[deployment_id]
