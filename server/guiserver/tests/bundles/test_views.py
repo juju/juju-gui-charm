@@ -206,13 +206,38 @@ class TestImportBundle(
         # Ensure the Deployer methods have been correctly called.
         args = (request.user, 'mybundle', {'services': {}})
         self.deployer.validate.assert_called_once_with(*args)
+        args = (request.user, 'mybundle', {'services': {}}, None)
         self.deployer.import_bundle.assert_called_once_with(*args)
 
-    @gen_test
+    # The following tests exercise views._validate_import_params directly.
     def test_no_name_success(self):
         # The process succeeds if the bundle name is not provided but the
         # YAML contents include just one bundle.
         params = {'YAML': 'mybundle: {services: {}}'}
+        results = views._validate_import_params(params)
+        expected = ('mybundle', {'services': {}}, None)
+        self.assertEqual(expected, results)
+
+    def test_id_provided(self):
+        params = {'YAML': 'mybundle: {services: {}}',
+                  'BundleID': '~jorge/wiki/3/smallwiki'}
+        results = views._validate_import_params(params)
+        expected = ('mybundle', {'services': {}}, '~jorge/wiki/3/smallwiki')
+        self.assertEqual(expected, results)
+
+    def test_id_and_name_provided(self):
+        params = {'YAML': 'mybundle: {services: {}}',
+                  'Name': 'mybundle',
+                  'BundleID': '~jorge/wiki/3/smallwiki'}
+        results = views._validate_import_params(params)
+        expected = ('mybundle', {'services': {}}, '~jorge/wiki/3/smallwiki')
+        self.assertEqual(expected, results)
+
+    @gen_test
+    def test_id_passed_to_deployer(self):
+        params = {'YAML': 'mybundle: {services: {}}',
+                  'Name': 'mybundle',
+                  'BundleID': '~jorge/wiki/3/smallwiki'}
         request = self.make_view_request(params=params)
         # Set up the Deployer mock.
         self.deployer.validate.return_value = self.make_future(None)
@@ -222,6 +247,8 @@ class TestImportBundle(
         # Ensure the Deployer methods have been correctly called.
         args = (request.user, 'mybundle', {'services': {}})
         self.deployer.validate.assert_called_once_with(*args)
+        args = (request.user, 'mybundle', {'services': {}},
+                '~jorge/wiki/3/smallwiki')
         self.deployer.import_bundle.assert_called_once_with(*args)
 
 

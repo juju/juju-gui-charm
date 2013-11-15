@@ -202,7 +202,7 @@ class TestBackendCommands(unittest.TestCase):
         config = {
             'builtin-server': True,
             'builtin-server-logging': 'info',
-            'charmworld-url': 'http://charmworld.example.com',
+            'charmworld-url': 'http://charmworld.example.com/',
             'command-log-file': self.command_log_file,
             'default-viewmode': 'sidebar',
             'ga-key': 'my-key',
@@ -437,7 +437,8 @@ class TestBackendCommands(unittest.TestCase):
         mocks.start_builtin_server.assert_called_once_with(
             mocks.compute_build_dir(), self.ssl_cert_path,
             config['serve-tests'], config['sandbox'],
-            config['builtin-server-logging'], not config['secure'])
+            config['builtin-server-logging'], not config['secure'],
+            config['charmworld-url'])
         self.assertFalse(mocks.start_haproxy_apache.called)
 
     def test_start_go_builtin(self):
@@ -455,7 +456,8 @@ class TestBackendCommands(unittest.TestCase):
         mocks.start_builtin_server.assert_called_once_with(
             mocks.compute_build_dir(), self.ssl_cert_path,
             config['serve-tests'], config['sandbox'],
-            config['builtin-server-logging'], not config['secure'])
+            config['builtin-server-logging'], not config['secure'],
+            config['charmworld-url'])
         self.assertFalse(mocks.start_haproxy_apache.called)
 
     def test_stop_python_legacy(self):
