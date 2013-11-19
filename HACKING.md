@@ -185,3 +185,24 @@ charm deployment succeeds also behind a firewall.
 To upgrade the dependencies, add a tarball to the `deps` directory, remove the
 old dependency if required, and update the `server-requirements.pip` file.
 At this point, running `make` should also update the virtualenv used for tests.
+
+## Upgrading the test dependencies ##
+
+The tests also have a number of dependencies.  For speed and reliability, these
+are also in a directory.  However, they are not necessary for normal use of the
+charm, and so, unlike the server dependencies, they are not part of the normal
+charm branch.  The 00-setup script makes a lightweight checkout of the branch
+lp:~juju-gui-charmers/juju-gui/charm-download-cache and then uses this to build
+the test virtual environment.
+
+To take best advantage of this approach, either use the same charm branch
+repeatedly for development; or develop the charm within a parent directory
+in which you have run `bzr init-repo`, so that the different branches can use
+the local cache; or both.
+
+To upgrade test dependencies, add them to the `test-requirements.pip` file and
+add the tarballs to the download-cache branch.  You may need to temporarily
+disable the `--no-allow-external` and `--no-index` flags in 00-setup to get
+new transitive dependencies.  Once you do, run `pip freeze` to add the
+transitive dependencies to the `test-requirements.pip` file, and make sure to
+add those tarballs to the download cache as well.

@@ -6,3 +6,4 @@ server/build
 server/dist
 server/MANIFEST
 tests/.venv
+tests/download-cache
