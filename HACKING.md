@@ -209,11 +209,11 @@ add those tarballs to the download cache as well.
 
 ## Builtin server bundle support ##
 
-The builtin server starts/schedule bundle deployment processes when it receives
-Deployer Import API requests. The user can then observe the deployment progress
-using the GUI. The builtin server also exposes the possibility to watch a
-bundle deployment progress: see `server/guiserver/bundles/__init__.py` for a
-detailed description of the API request/response process.
+The builtin server starts/schedules bundle deployment processes when it
+receives Deployer Import API requests. The user can then observe the deployment
+progress using the GUI. The builtin server also exposes the possibility to
+watch a bundle deployment progress: see `server/guiserver/bundles/__init__.py`
+for a detailed description of the API request/response process.
 
 Under the hood, the builtin server leverages the juju-deployer library in order
 to import a bundle. Since juju-deployer is not asynchronous, the actual
