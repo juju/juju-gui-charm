@@ -45,3 +45,22 @@ mock==1.0.1
 # Charm tests.
 selenium==2.34.0
 xvfbwrapper==0.2.2
+
+
+## The following requirements were added by pip --freeze:
+argparse==1.2.1
+httplib2==0.8
+keyring==3.2.1
+lazr.authentication==0.1.2
+lazr.restfulclient==0.13.3
+lazr.uri==1.0.3
+mccabe==0.2.1
+oauth==1.0.1
+pep8==1.4.6
+pyflakes==0.7.3
+simplejson==3.3.1
+testresources==0.2.7
+wadllib==1.3.2
+wsgi-intercept==0.6.0
+wsgiref==0.1.2
+zope.interface==4.0.5

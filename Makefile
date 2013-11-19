@@ -62,6 +62,7 @@ lint: setup
 clean:
 	find . -name '*.pyc' -delete
 	rm -rf $(VENV)
+	rm -rf tests/download-cache
 
 deploy: setup
 	$(VENV)/bin/python ./tests/deploy.py

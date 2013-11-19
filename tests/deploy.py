@@ -30,7 +30,7 @@ from helpers import (
 )
 
 
-rsync = command('rsync', '-a', '--exclude', '.bzr', '--exclude', '.venv')
+rsync = command('rsync', '-a', '--exclude', '.bzr', '--exclude', '/tests')
 
 
 def setup_repository(name, source, series='precise'):

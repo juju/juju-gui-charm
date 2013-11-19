@@ -94,11 +94,8 @@ class TestSetupRepository(unittest.TestCase):
         # unwanted directories.
         repo = setup_repository(self.name, self.source)
         charm_dir = os.path.join(repo, 'precise', self.name)
-        test_dir_name = os.path.basename(self.tests_dir)
         expected = set([
-            os.path.basename(self.root_file),
-            test_dir_name + os.path.sep,
-            os.path.join(test_dir_name, os.path.basename(self.tests_file))
+            os.path.basename(self.root_file)
         ])
         self.assert_files_equal(expected, charm_dir)
 
