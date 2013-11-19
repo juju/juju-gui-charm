@@ -113,7 +113,7 @@ class Observer(object):
         """
         watcher_id = self._watcher_counter.next()
         self.watchers[watcher_id] = deployment_id
-        logging.info('deployment {} observed by watcher {}'.format(
+        logging.debug('deployment {} observed by watcher {}'.format(
             deployment_id, watcher_id))
         return watcher_id
 
@@ -127,7 +127,7 @@ class Observer(object):
         status = SCHEDULED if position else STARTED
         change = create_change(deployment_id, status, queue=position)
         watcher.put(change)
-        logging.info('deployment {} now in position {}'.format(
+        logging.debug('deployment {} now in position {}'.format(
             deployment_id, position))
 
     def notify_cancelled(self, deployment_id):
