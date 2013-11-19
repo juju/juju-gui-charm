@@ -23,6 +23,7 @@ from tornado import gen
 from tornado.testing import(
     AsyncTestCase,
     gen_test,
+    LogTrapTestCase,
 )
 
 from guiserver import auth
@@ -55,7 +56,7 @@ class FakeFuture(object):
 
 
 @mock.patch('time.time', mock.Mock(return_value=42))
-class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
+class TestDeployer(helpers.BundlesTestMixin, LogTrapTestCase, AsyncTestCase):
 
     bundle = {'foo': 'bar'}
     user = auth.User(
