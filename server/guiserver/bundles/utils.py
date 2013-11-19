@@ -77,7 +77,7 @@ def message_from_error(exception):
     if message:
         logging.error('error message: {}'.format(message))
     else:
-        logging.error('no error message')
+        logging.error('empty error message')
         message = 'no further details can be provided'
     return message
 

@@ -185,7 +185,8 @@ def next(request, deployer):
     changes = yield deployer.next(watcher_id)
     if changes is None:
         raise response(error='invalid request: invalid watcher identifier')
-    logging.info('next: returning changes for watcher {}'.format(watcher_id))
+    logging.info('next: returning changes for watcher {}:\n{}'.format(
+        watcher_id, changes))
     raise response({'Changes': changes})
 
 
