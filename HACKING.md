@@ -185,3 +185,39 @@ charm deployment succeeds also behind a firewall.
 To upgrade the dependencies, add a tarball to the `deps` directory, remove the
 old dependency if required, and update the `server-requirements.pip` file.
 At this point, running `make` should also update the virtualenv used for tests.
+
+## Builtin server bundle support ##
+
+The builtin server starts/schedule bundle deployment processes when it receives
+Deployer Import API requests. The user can then observe the deployment progress
+using the GUI. The builtin server also exposes the possibility to watch a
+bundle deployment progress: see `server/guiserver/bundles/__init__.py` for a
+detailed description of the API request/response process.
+
+Under the hood, the builtin server leverages the juju-deployer library in order
+to import a bundle. Since juju-deployer is not asynchronous, the actual
+deployment is executed in a separate process.
+
+### Debugging bundle support ###
+
+Sometimes, when an error occurs during bundle deployments, it is not obvious
+where to retrieve information about what is going on.
+The GUI builtin server exposes some bundle information in two places:
+
+- https://<juju-gui-url>/gui-server-info displays in JSON format the current
+  status of all scheduled/started/completed bundle deployments;
+- /var/log/upstart/guiserver.log is the builtin server log file, which includes
+  logs output from the juju-deployer library.
+
+Moreover, setting `builtin-server-logging=debug` gives more debugging
+information, e.g. it prints to the log the contents of the WebSocket messages
+sent by the client (usually the Juju GUI) and by the Juju API server.
+As mentioned, juju-deployer works on its own sandbox and uses its own API
+connections, and for this reason the WebSocket traffic it generates is not
+logged.
+
+Sometimes, while debugging, it is convenient to restart the builtin server
+(which also empties the bundle deployments queue). To do that, run the
+following in the Juju GUI machine:
+
+    service guiserver restart
