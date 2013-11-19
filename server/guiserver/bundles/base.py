@@ -174,11 +174,14 @@ class Deployer(object):
             self._observer.notify_cancelled(deployment_id)
             success = False
         else:
+            error = None
+            success = True
             exception = future.exception()
-            error = None if exception is None else str(exception)
+            if exception is not None:
+                error = utils.message_from_error(exception)
+                success = False
             # Notify a deployment completed.
             self._observer.notify_completed(deployment_id, error=error)
-            success = (error is None)
         # Remove the completed deployment job from the queue.
         self._queue.remove(deployment_id)
         del self._futures[deployment_id]

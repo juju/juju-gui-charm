@@ -60,6 +60,8 @@ using "yield", and they must return their results using "raise response(...)"
 (the latter will be eventually fixed switching to a newer version of Python).
 """
 
+import logging
+
 from tornado import gen
 import yaml
 
@@ -132,6 +134,7 @@ def import_bundle(request, deployer):
     if err is not None:
         raise response(error='invalid request: {}'.format(err))
     # Add the bundle deployment to the Deployer queue.
+    logging.info('import_bundle: scheduling {!r} deployment'.format(name))
     deployment_id = deployer.import_bundle(
         request.user, name, bundle, bundle_id)
     raise response({'DeploymentId': deployment_id})
@@ -156,6 +159,8 @@ def watch(request, deployer):
     watcher_id = deployer.watch(deployment_id)
     if watcher_id is None:
         raise response(error='invalid request: deployment not found')
+    logging.info('watch: deployment {} being observed by watcher {}'.format(
+        deployment_id, watcher_id))
     raise response({'WatcherId': watcher_id})
 
 
@@ -176,9 +181,12 @@ def next(request, deployer):
     if watcher_id is None:
         raise response(error='invalid request: invalid data parameters')
     # Wait for the Deployer to send changes.
+    logging.info('next: requested changes for watcher {}'.format(watcher_id))
     changes = yield deployer.next(watcher_id)
     if changes is None:
         raise response(error='invalid request: invalid watcher identifier')
+    logging.info('next: returning changes for watcher {}:\n{}'.format(
+        watcher_id, changes))
     raise response({'Changes': changes})
 
 
@@ -201,6 +209,7 @@ def cancel(request, deployer):
     err = deployer.cancel(deployment_id)
     if err is not None:
         raise response(error='invalid request: {}'.format(err))
+    logging.info('cancel: deployment {} cancelled'.format(deployment_id))
     raise response()
 
 
@@ -216,4 +225,5 @@ def status(request, deployer):
         error = 'invalid request: invalid data parameters: {}'.format(params)
         raise response(error=error)
     last_changes = deployer.status()
+    logging.info('status: returning last changes')
     raise response({'LastChanges': last_changes})

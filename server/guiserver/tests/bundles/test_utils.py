@@ -82,7 +82,28 @@ class TestCreateChange(unittest.TestCase):
         self.assertEqual(expected, obtained)
 
 
-class TestObserver(unittest.TestCase):
+class TestMessageFromError(LogTrapTestCase, unittest.TestCase):
+
+    def test_with_message(self):
+        # The error message is logged and returned.
+        expected_type = "error type: <type 'exceptions.ValueError'>"
+        expected_message = 'error message: bad wolf'
+        with ExpectLog('', expected_type, required=True):
+            with ExpectLog('', expected_message, required=True):
+                error = utils.message_from_error(ValueError('bad wolf'))
+        self.assertEqual('bad wolf', error)
+
+    def test_without_message(self):
+        # A placeholder message is returned.
+        expected_type = "error type: <type 'exceptions.SystemExit'>"
+        expected_message = 'empty error message'
+        with ExpectLog('', expected_type, required=True):
+            with ExpectLog('', expected_message, required=True):
+                error = utils.message_from_error(SystemExit())
+        self.assertEqual('no further details can be provided', error)
+
+
+class TestObserver(LogTrapTestCase, unittest.TestCase):
 
     def setUp(self):
         self.observer = utils.Observer()
@@ -115,6 +136,11 @@ class TestObserver(unittest.TestCase):
         deployment_id = self.observer.add_deployment()
         self.assertEqual(1, len(self.observer.deployments))
         self.assert_deployment(deployment_id)
+
+    def test_add_deployment_logs(self):
+        # A new deployment is properly logged.
+        with ExpectLog('', 'deployment 0 scheduled', required=True):
+            self.observer.add_deployment()
 
     def test_add_multiple_deployments(self):
         # Multiple deployments can be added to the observer.
@@ -188,6 +214,13 @@ class TestObserver(unittest.TestCase):
         self.assertEqual(expected, watcher.getlast())
         self.assertTrue(watcher.closed)
 
+    def test_notify_cancelled_logs(self):
+        # A deployment cancellation is properly logged.
+        deployment_id = self.observer.add_deployment()
+        expected = 'deployment {} cancelled'.format(deployment_id)
+        with ExpectLog('', expected, required=True):
+            self.observer.notify_cancelled(deployment_id)
+
     @mock_time
     def test_notify_completed(self):
         # It is possible to notify that a deployment is completed.
@@ -201,6 +234,13 @@ class TestObserver(unittest.TestCase):
         }
         self.assertEqual(expected, watcher.getlast())
         self.assertTrue(watcher.closed)
+
+    def test_notify_completed_logs(self):
+        # A deployment completion is properly logged.
+        deployment_id = self.observer.add_deployment()
+        expected = 'deployment {} completed'.format(deployment_id)
+        with ExpectLog('', expected, required=True):
+            self.observer.notify_completed(deployment_id)
 
     @mock_time
     def test_notify_error(self):

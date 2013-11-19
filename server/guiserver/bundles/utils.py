@@ -66,6 +66,22 @@ def create_change(deployment_id, status, queue=None, error=None):
     return result
 
 
+def message_from_error(exception):
+    """Return a (possibly) human readable message from the given exception.
+
+    Also log the error message to the log file.
+    """
+    logging.error('error deploying the bundle')
+    logging.error('error type: {}'.format(type(exception)))
+    message = str(exception).strip()
+    if message:
+        logging.error('error message: {}'.format(message))
+    else:
+        logging.error('empty error message')
+        message = 'no further details can be provided'
+    return message
+
+
 class Observer(object):
     """Handle multiple deployment watchers."""
 
@@ -87,6 +103,7 @@ class Observer(object):
         """
         deployment_id = self._deployment_counter.next()
         self.deployments[deployment_id] = AsyncWatcher()
+        logging.info('deployment {} scheduled'.format(deployment_id))
         return deployment_id
 
     def add_watcher(self, deployment_id):
@@ -96,6 +113,8 @@ class Observer(object):
         """
         watcher_id = self._watcher_counter.next()
         self.watchers[watcher_id] = deployment_id
+        logging.debug('deployment {} observed by watcher {}'.format(
+            deployment_id, watcher_id))
         return watcher_id
 
     def notify_position(self, deployment_id, position):
@@ -108,18 +127,22 @@ class Observer(object):
         status = SCHEDULED if position else STARTED
         change = create_change(deployment_id, status, queue=position)
         watcher.put(change)
+        logging.debug('deployment {} now in position {}'.format(
+            deployment_id, position))
 
     def notify_cancelled(self, deployment_id):
         """Add a change to the deployment watcher notifying it is cancelled."""
         watcher = self.deployments[deployment_id]
         change = create_change(deployment_id, CANCELLED)
         watcher.close(change)
+        logging.info('deployment {} cancelled'.format(deployment_id))
 
     def notify_completed(self, deployment_id, error=None):
         """Add a change to the deployment watcher notifying it is completed."""
         watcher = self.deployments[deployment_id]
         change = create_change(deployment_id, COMPLETED, error=error)
         watcher.close(change)
+        logging.info('deployment {} completed'.format(deployment_id))
 
 
 def _prepare_constraints(constraints):
