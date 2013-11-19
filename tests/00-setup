@@ -27,10 +27,13 @@ SERVER_REQUIREMENTS="server-requirements.pip"
 createvenv() {
     # Create a virtualenv if it does not exist, or it is older than requirements.
     retcode=0
+    updated_downloadcache=0
     if [ ! -d "$DOWNLOADCACHE" ]; then
         bzr co --lightweight lp:~juju-gui-charmers/juju-gui/charm-download-cache $DOWNLOADCACHE
+        updated_downloadcache=1
     fi
     if [ ! -f "$ACTIVATE" -o "$TEST_REQUIREMENTS" -nt "$ACTIVATE" -o "$SERVER_REQUIREMENTS" -nt "$ACTIVATE" ]; then
+        [ $updated_downloadcache -eq 0 ] && bzr up $DOWNLOADCACHE
         virtualenv --distribute $VENV
         . $ACTIVATE && \
             yes w | env BZR_PLUGIN_PATH='-user' \
