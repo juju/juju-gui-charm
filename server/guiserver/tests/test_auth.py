@@ -66,7 +66,8 @@ class AuthMiddlewareTestMixin(object):
         self.write_message = mock.Mock()
         self.tokens = auth.AuthenticationTokenHandler(io_loop=self.io_loop)
         self.auth = auth.AuthMiddleware(
-            self.user, self.get_auth_backend(), self.tokens, self.write_message)
+            self.user, self.get_auth_backend(), self.tokens,
+            self.write_message)
 
     def assert_user(self, username, password, is_authenticated):
         """Ensure the current user reflects the given values."""
