@@ -69,15 +69,6 @@ class AuthMiddlewareTestMixin(object):
             self.user, self.get_auth_backend(), self.tokens,
             self.write_message)
 
-    def make_token_login_request(
-        self, request_id=42, token='DEFACED', username=None, password=None):
-        if username is not None and password is not None:
-            self.tokens._data[token] = dict(
-                username=username, password=password, handle="handle")
-        return dict(
-            RequestId=request_id, Type='GUIToken', Request='Login',
-            Params={'Token': token})
-
     def assert_user(self, username, password, is_authenticated):
         """Ensure the current user reflects the given values."""
         user = self.user
@@ -160,7 +151,7 @@ class TestGoAuthMiddleware(
     def test_token_login_request(self):
         # The authentication process starts with a token login request also.
         request = self.make_token_login_request(
-            username='user', password='passwd')
+            self.tokens, username='user', password='passwd')
         response = self.auth.process_request(request)
         # The response now looks as if it were made without a token.
         self.assertEqual(
@@ -173,7 +164,7 @@ class TestGoAuthMiddleware(
     def test_token_login_success(self):
         # The user is logged in if the authentication process completes.
         request = self.make_token_login_request(
-            username='user', password='passwd')
+            self.tokens, username='user', password='passwd')
         self.auth.process_request(request)
         response = self.make_login_response()
         result = self.auth.process_response(response)
@@ -188,7 +179,7 @@ class TestGoAuthMiddleware(
     def test_token_login_failure(self):
         # The user is not logged in if the authentication process fails.
         request = self.make_token_login_request(
-            username='user', password='passwd')
+            self.tokens, username='user', password='passwd')
         self.auth.process_request(request)
         response = self.make_login_response(successful=False)
         result = self.auth.process_response(response)

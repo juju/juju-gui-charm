@@ -22,6 +22,7 @@ import os
 import time
 
 from tornado import (
+    escape,
     gen,
     web,
     websocket,
@@ -138,15 +139,26 @@ class WebSocketHandler(websocket.WebSocketHandler):
         established are queued for later delivery.
         """
         data = json_decode_dict(message)
+        encoded = None
         if data is not None:
             # Handle deployment requests.
             if self.deployment.requested(data):
                 return self.deployment.process_request(data)
             # Handle authentication requests.
             if not self.user.is_authenticated:
-                self.auth.process_request(data)
+                new_data = self.auth.process_request(data)
+                if new_data is None:
+                    # The None marker indicates that a response was sent.
+                    return
+                elif new_data != data:
+                    encoded = message = escape.json_encode(new_data)
+            # Handle authentication token requests.
+            elif self.tokens.token_requested(data):
+                return self.tokens.process_token_request(
+                    data, self.user, wrap_write_message(self))
         # Propagate messages to the Juju API server.
-        encoded = message.encode('utf-8')
+        if encoded is None:
+            encoded = message.encode('utf-8')
         if self.juju_connected:
             logging.debug(self._summary + 'client -> juju: {}'.format(encoded))
             return self.juju_connection.write_message(message)
@@ -163,7 +175,7 @@ class WebSocketHandler(websocket.WebSocketHandler):
             return self.on_juju_close()
         data = json_decode_dict(message)
         if (data is not None) and self.auth.in_progress():
-            self.auth.process_response(data)
+            message = escape.json_encode(self.auth.process_response(data))
         encoded = message.encode('utf-8')
         logging.debug(self._summary + 'juju -> client: {}'.format(encoded))
         self.write_message(message)
