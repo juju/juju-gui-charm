@@ -323,3 +323,40 @@ class AuthenticationTokenHandler(object):
                 'Expires': (now + self._max_life).isoformat() + 'Z'
             }
         })
+
+    def authentication_requested(self, data):
+        """Does data represents a token creation request? True or False."""
+        params = data.get('Params', {})
+        return (
+            'RequestId' in data and
+            data.get('Type') == 'GUIToken' and
+            data.get('Request') == 'Login' and
+            'Token' in params
+        )
+
+    def process_authentication_request(self, data, write_message):
+        """Get the credentials for the token, or send an error."""
+        credentials = self._data.pop(data['Params']['Token'], None)
+        if credentials is not None:
+            self._io_loop.remove_timeout(credentials['handle'])
+            return credentials['username'], credentials['password']
+        else:
+            write_message({
+                'RequestId': data['RequestId'],
+                'Error': 'unknown, fulfilled, or expired token',
+                'ErrorCode': 'unauthorized access',
+                'Response': {},
+            })
+            # None is an explicit return marker to say "I handled this".
+            # It is returned by default.
+
+    def process_authentication_response(self, data, user):
+        """Make a successful token authentication response.
+
+        This includes the username and password so that clients can then use
+        them.  For instance, the GUI stashes them in session storage so that
+        reloading the page does not require logging in again."""
+        return {
+            'RequestId': data['RequestId'],
+            'Response': {'AuthTag': user.username, 'Password': user.password}
+        }

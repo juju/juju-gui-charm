@@ -281,14 +281,15 @@ class TestAuthenticationTokenHandler(unittest.TestCase):
             self.assertTrue(is_token_requested, request)
 
     def test_not_token_requested(self):
+        # It rejects invalid token requests.
         requests = (
             dict(),
             dict(Type='GUIToken', Request='Create'),
             dict(RequestId=42, Request='Create'),
             dict(RequestId=42, Type='GUIToken'))
         for request in requests:
-            is_token_requested = self.tokens.token_requested(request)
-            self.assertFalse(is_token_requested, request)
+            token_requested = self.tokens.token_requested(request)
+            self.assertFalse(token_requested, request)
 
     @mock.patch('uuid.uuid4', mock.Mock(return_value=mock.Mock(hex='DEFACED')))
     @mock.patch('datetime.datetime',
@@ -296,6 +297,7 @@ class TestAuthenticationTokenHandler(unittest.TestCase):
                     **{'utcnow.return_value':
                        datetime.datetime(2013, 11, 21, 21)}))
     def test_process_token_request(self):
+        # It correctly responds to token requests.
         user = auth.User('user-admin', 'ADMINSECRET')
         write_message = mock.Mock()
         data = dict(RequestId=42, Type='GUIToken', Request='Create')
@@ -322,3 +324,85 @@ class TestAuthenticationTokenHandler(unittest.TestCase):
         self.io_loop.add_timeout.call_args[0][1]()
         self.assertFalse('DEFACED' in self.tokens._data)
 
+    def test_authentication_requested(self):
+        # It recognizes an authentication request.
+        request = dict(
+            RequestId=42, Type='GUIToken', Request='Login',
+            Params={'Token': 'DEFACED'})
+        auth_requested = self.tokens.authentication_requested(request)
+        self.assertTrue(auth_requested, request)
+
+    def test_not_authentication_requested(self):
+        # It rejects invalid authentication requests.
+        requests = (
+            dict(),
+            dict(Type='GUIToken', Request='Login', Params={'Token': 'T'}),
+            dict(RequestId=42, Request='Login', Params={'Token': 'DEFACED'}),
+            dict(RequestId=42, Type='GUIToken', Params={'Token': 'DEFACED'}),
+            dict(RequestId=42, Type='GUIToken', Request='Login'),
+            dict(RequestId=42, Type='GUIToken', Request='Login', Params={}))
+        for request in requests:
+            auth_requested = self.tokens.authentication_requested(request)
+            self.assertFalse(auth_requested, request)
+
+    def test_known_authentication_request(self):
+        # It correctly responds to authentication requests with known tokens.
+        username = 'user-admin'
+        password = 'ADMINSECRET'
+        self.tokens._data['DEFACED'] = dict(
+            handle='handle marker', username=username, password=password)
+        request = dict(
+            RequestId=42, Type='GUIToken', Request='Login',
+            Params={'Token': 'DEFACED'})
+        write_message = mock.Mock()
+        self.assertEqual(
+            (username, password),
+            self.tokens.process_authentication_request(request, write_message))
+        self.io_loop.remove_timeout.assert_called_with('handle marker')
+        self.assertFalse(write_message.called)
+        self.assertFalse('DEFACED' in self.tokens._data)
+
+    def test_unknown_authentication_request(self):
+        # It correctly rejects authentication requests with unknown tokens.
+        request = dict(
+            RequestId=42, Type='GUIToken', Request='Login',
+            Params={'Token': 'DEFACED'})
+        write_message = mock.Mock()
+        self.assertEqual(
+            None,
+            self.tokens.process_authentication_request(request, write_message))
+        self.assertFalse(self.io_loop.remove_timeout.called)
+        write_message.assert_called_with(dict(
+            RequestId=42,
+            Error='unknown, fulfilled, or expired token',
+            ErrorCode='unauthorized access',
+            Response={}))
+
+
+    @mock.patch('uuid.uuid4', mock.Mock(return_value=mock.Mock(hex='DEFACED')))
+    @mock.patch('datetime.datetime',
+                mock.Mock(
+                    **{'utcnow.return_value':
+                       datetime.datetime(2013, 11, 21, 21)}))
+    def test_token_request_and_authentication_collaborate(self):
+        # process_token_request and process_authentication_request collaborate.
+        # This is a small integration test of the two functions' interaction.
+        user = auth.User('user-admin', 'ADMINSECRET')
+        write_message = mock.Mock()
+        request = dict(RequestId=42, Type='GUIToken', Request='Create')
+        self.tokens.process_token_request(request, user, write_message)
+        request = dict(
+            RequestId=43, Type='GUIToken', Request='Login',
+            Params={'Token': 'DEFACED'})
+        self.assertEqual(
+            (user.username, user.password),
+            self.tokens.process_authentication_request(request, write_message))
+
+    def test_process_authentication_response(self):
+        # It translates a normal authentication success.
+        user = auth.User('user-admin', 'ADMINSECRET')
+        response = {'RequestId': 42, 'Response': {}}
+        self.assertEqual(
+            dict(RequestId=42,
+                Response=dict(AuthTag=user.username, Password=user.password)),
+            self.tokens.process_authentication_response(response, user))
