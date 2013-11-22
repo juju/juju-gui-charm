@@ -36,7 +36,11 @@ This module includes the pieces required to process user authentication:
       if the authentication succeeds.
 """
 
+import datetime
 import logging
+import uuid
+
+from tornado.ioloop import IOLoop
 
 
 class User(object):
@@ -219,3 +223,103 @@ def get_backend(apiversion):
     """Return the auth backend instance to use for the given API version."""
     backend_class = {'go': GoBackend, 'python': PythonBackend}[apiversion]
     return backend_class()
+
+
+class AuthenticationTokenHandler(object):
+    """Handle requests related to authentication tokens.
+
+    A token creation request looks like the following:
+
+        {
+            'RequestId': 42,
+            'Type': 'GUIToken',
+            'Request': 'Create',
+            'Params': {},
+        }
+
+    Here is an example of a token creation response.  Lifetime is in seconds.
+
+        {
+            'RequestId': 42,
+            'Response': {
+                'Token': 'TOKEN-STRING',
+                'Created': '2013-11-21T12:34:46.778866Z',
+                'Expires': '2013-11-21T12:36:46.778866Z'
+            }
+        }
+
+    A token authentication request looks like the following:
+
+        {
+            'RequestId': 42,
+            'Type': 'GUIToken',
+            'Request': 'Login',
+            'Params': {'Token': 'TOKEN-STRING'},
+        }
+
+    Here is an example of a successful login response:
+
+        {
+            'RequestId': 42,
+            'Response': {'AuthTag': 'user-admin', 'Password': 'ADMIN-SECRET'}
+        }
+
+    A login failure response is like the following:
+
+        {
+            'RequestId': 42,
+            'Error': 'unknown, fulfilled, or expired token',
+            'ErrorCode': 'unauthorized access',
+            'Response': {},
+        }
+
+    Juju itself might return a failure response like the following, but this
+    would be difficult or impossible to trigger as of this writing:
+
+        {
+            'RequestId': 42,
+            'Error': 'invalid entity name or password',
+            'ErrorCode': 'unauthorized access',
+            'Response': {},
+        }
+    """
+
+    def __init__(self, max_life=datetime.timedelta(minutes=2), io_loop=None):
+        self._max_life = max_life
+        if io_loop is None:
+            io_loop = IOLoop.current()
+        self._io_loop = io_loop
+        self._data = {}
+
+    def token_requested(self, data):
+        """Does data represent a token creation request?  True or False."""
+        return (
+            'RequestId' in data and
+            data.get('Type', None) == 'GUIToken' and
+            data.get('Request', None) == 'Create'
+        )
+
+    def process_token_request(self, data, user, write_message):
+        """Create a single-use, time-expired token and send it back."""
+        token = uuid.uuid4().hex
+        def expire_token():
+            self._data.pop(token, None)
+        handle = self._io_loop.add_timeout(self._max_life, expire_token)
+        now = datetime.datetime.utcnow()
+        # Stashing these is a security risk.  We currently deem this risk to
+        # be acceptably small.  Even keeping an authenticated websocket in
+        # memory seems to be of a similar risk profile, and we cannot operate
+        # without that.
+        self._data[token] = dict(
+            username=user.username,
+            password=user.password,
+            handle=handle
+            )
+        write_message({
+            'RequestId': data['RequestId'],
+            'Response': {
+                'Token': token,
+                'Created': now.isoformat() + 'Z',
+                'Expires': (now + self._max_life).isoformat() + 'Z'
+            }
+        })

@@ -16,8 +16,10 @@
 
 """Tests for the Juju GUI server authentication management."""
 
+import datetime
 import unittest
 
+import mock
 from tornado.testing import LogTrapTestCase
 
 from guiserver import auth
@@ -244,3 +246,79 @@ class TestPythonBackend(
         for request in requests:
             is_login = self.backend.request_is_login(request)
             self.assertFalse(is_login, request)
+
+
+class TestAuthenticationTokenHandler(unittest.TestCase):
+
+    def setUp(self):
+        super(TestAuthenticationTokenHandler, self).setUp()
+        self.io_loop = mock.Mock()
+        self.max_life = datetime.timedelta(minutes=1)
+        self.tokens = auth.AuthenticationTokenHandler(self.max_life, self.io_loop)
+
+    def test_explicit_initialization(self):
+        # The class accepted the explicit initialization.
+        self.assertEqual(self.max_life, self.tokens._max_life)
+        self.assertEqual(self.io_loop, self.tokens._io_loop)
+        self.assertEqual({}, self.tokens._data)
+
+    @mock.patch('tornado.ioloop.IOLoop.current',
+                mock.Mock(return_value='mockloop'))
+    def test_default_initialization(self):
+        # The class has sane initialization defaults.
+        tokens = auth.AuthenticationTokenHandler()
+        self.assertEqual(
+            datetime.timedelta(minutes=2), tokens._max_life)
+        self.assertEqual('mockloop', tokens._io_loop)
+
+    def test_token_requested(self):
+        # It recognizes a token request.
+        requests = (
+            dict(RequestId=42, Type='GUIToken', Request='Create'),
+            dict(RequestId=22, Type='GUIToken', Request='Create', Params={}))
+        for request in requests:
+            is_token_requested = self.tokens.token_requested(request)
+            self.assertTrue(is_token_requested, request)
+
+    def test_not_token_requested(self):
+        requests = (
+            dict(),
+            dict(Type='GUIToken', Request='Create'),
+            dict(RequestId=42, Request='Create'),
+            dict(RequestId=42, Type='GUIToken'))
+        for request in requests:
+            is_token_requested = self.tokens.token_requested(request)
+            self.assertFalse(is_token_requested, request)
+
+    @mock.patch('uuid.uuid4', mock.Mock(return_value=mock.Mock(hex='DEFACED')))
+    @mock.patch('datetime.datetime',
+                mock.Mock(
+                    **{'utcnow.return_value':
+                       datetime.datetime(2013, 11, 21, 21)}))
+    def test_process_token_request(self):
+        user = auth.User('user-admin', 'ADMINSECRET')
+        write_message = mock.Mock()
+        data = dict(RequestId=42, Type='GUIToken', Request='Create')
+        self.tokens.process_token_request(data, user, write_message)
+        write_message.assert_called_with(dict(
+            RequestId=42,
+            Response=dict(
+                Token='DEFACED',
+                Created='2013-11-21T21:00:00Z',
+                Expires='2013-11-21T21:01:00Z'
+            )
+        ))
+        self.assertTrue('DEFACED' in self.tokens._data)
+        self.assertEqual(
+            {'username', 'password', 'handle'},
+            set(self.tokens._data['DEFACED'].keys()))
+        self.assertEqual(
+            user.username, self.tokens._data['DEFACED']['username'])
+        self.assertEqual(
+            user.password, self.tokens._data['DEFACED']['password'])
+        self.assertEqual(
+            self.max_life, self.io_loop.add_timeout.call_args[0][0])
+        self.assertTrue('DEFACED' in self.tokens._data)
+        self.io_loop.add_timeout.call_args[0][1]()
+        self.assertFalse('DEFACED' in self.tokens._data)
+
