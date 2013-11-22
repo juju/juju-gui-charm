@@ -15,9 +15,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 JUJUTEST = juju-test --timeout=120m -v -e "$(JUJU_ENV)"
-VENV = ./tests/.venv
-SYSDEPS = build-essential bzr libapt-pkg-dev libpython-dev python-pip \
-	python-virtualenv rsync xvfb
+VENV = tests/.venv
+SYSDEPS = build-essential bzr libapt-pkg-dev libpython-dev python-virtualenv \
+	rsync xvfb
 
 
 all: setup
@@ -26,14 +26,16 @@ all: setup
 # support the juju-test plugin, which calls the executable files in
 # alphabetical order.
 setup:
-	@./tests/00-setup
+	tests/00-setup
+	# Ensure the correct version of pip has been installed
+	tests/.venv/bin/pip --version | grep "pip 1.4" || exit 1
 
 sysdeps:
 	sudo apt-get install --yes $(SYSDEPS)
 
 unittest: setup
-	./tests/10-unit.test
-	./tests/11-server.test
+	tests/10-unit.test
+	tests/11-server.test
 
 ensure-juju-env:
 ifndef JUJU_ENV
@@ -57,7 +59,7 @@ jujutest:
 
 lint: setup
 	@$(VENV)/bin/flake8 --show-source --exclude=.venv \
-		./hooks/ ./tests/ ./server/
+		hooks/ tests/ server/
 
 clean:
 	find . -name '*.pyc' -delete
@@ -65,7 +67,7 @@ clean:
 	rm -rf tests/download-cache
 
 deploy: setup
-	$(VENV)/bin/python ./tests/deploy.py
+	$(VENV)/bin/python tests/deploy.py
 
 help:
 	@echo -e 'Juju GUI charm - list of make targets:\n'
