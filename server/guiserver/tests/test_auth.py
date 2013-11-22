@@ -254,7 +254,8 @@ class TestAuthenticationTokenHandler(unittest.TestCase):
         super(TestAuthenticationTokenHandler, self).setUp()
         self.io_loop = mock.Mock()
         self.max_life = datetime.timedelta(minutes=1)
-        self.tokens = auth.AuthenticationTokenHandler(self.max_life, self.io_loop)
+        self.tokens = auth.AuthenticationTokenHandler(
+            self.max_life, self.io_loop)
 
     def test_explicit_initialization(self):
         # The class accepted the explicit initialization.
@@ -378,7 +379,6 @@ class TestAuthenticationTokenHandler(unittest.TestCase):
             ErrorCode='unauthorized access',
             Response={}))
 
-
     @mock.patch('uuid.uuid4', mock.Mock(return_value=mock.Mock(hex='DEFACED')))
     @mock.patch('datetime.datetime',
                 mock.Mock(
@@ -404,5 +404,5 @@ class TestAuthenticationTokenHandler(unittest.TestCase):
         response = {'RequestId': 42, 'Response': {}}
         self.assertEqual(
             dict(RequestId=42,
-                Response=dict(AuthTag=user.username, Password=user.password)),
+                 Response=dict(AuthTag=user.username, Password=user.password)),
             self.tokens.process_authentication_response(response, user))
