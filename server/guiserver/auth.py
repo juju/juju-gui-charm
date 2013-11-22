@@ -300,6 +300,7 @@ class AuthenticationTokenHandler(object):
     def process_token_request(self, data, user, write_message):
         """Create a single-use, time-expired token and send it back."""
         token = uuid.uuid4().hex
+
         def expire_token():
             self._data.pop(token, None)
         handle = self._io_loop.add_timeout(self._max_life, expire_token)
