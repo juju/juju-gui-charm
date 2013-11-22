@@ -76,12 +76,12 @@ class AuthMiddleware(object):
         self._backend = backend
         self._tokens = tokens
         self._write_message = write_message
-        self._request_id = None
+        self._request_ids = {}
 
     def in_progress(self):
-        """Return True if the authentication is in progress, False otherwise.
+        """Return True if authentication is in progress, False otherwise.
         """
-        return self._request_id is not None
+        return bool(self._request_ids)
 
     def process_request(self, data):
         """Parse the WebSocket data arriving from the client.
@@ -90,11 +90,33 @@ class AuthMiddleware(object):
         performed by the GUI user.
         """
         backend = self._backend
+        tokens = self._tokens
         request_id = backend.get_request_id(data)
-        if request_id is not None and backend.request_is_login(data):
-            self._request_id = request_id
-            credentials = backend.get_credentials(data)
-            self._user.username, self._user.password = credentials
+        if request_id is not None:
+            credentials = None
+            is_token = False
+            if backend.request_is_login(data):
+                credentials = backend.get_credentials(data)
+            elif tokens.authentication_requested(data):
+                is_token = True
+                credentials = tokens.process_authentication_request(
+                    data, self._write_message)
+                if credentials is None:
+                    # This means that the tokens object handled the request.
+                    return None
+                else:
+                    # We need a "real" authentication request.
+                    data = backend.make_request(request_id, *credentials)
+            if credentials is not None:
+                # Stashing credentials is a security risk.  We currently deem
+                # this risk to be acceptably small.  Even keeping an
+                # authenticated websocket in memory seems to be of a similar
+                # risk profile, and we cannot operate without that.
+                self._request_ids[request_id] = dict(
+                    is_token=is_token,
+                    username=credentials[0],
+                    password=credentials[1])
+        return data
 
     def process_response(self, data):
         """Parse the WebSocket data arriving from the Juju API server.
@@ -104,14 +126,23 @@ class AuthMiddleware(object):
         authentication succeeded.
         """
         request_id = self._backend.get_request_id(data)
-        if request_id == self._request_id:
+        if request_id in self._request_ids:
+            info = self._request_ids.pop(request_id)
+            user = self._user
             logged_in = self._backend.login_succeeded(data)
             if logged_in:
-                logging.info('auth: user {} logged in'.format(self._user))
-                self._user.is_authenticated = True
-            else:
-                self._user.username = self._user.password = ''
-            self._request_id = None
+                # Stashing credentials is a security risk.  We currently deem
+                # this risk to be acceptably small.  Even keeping an
+                # authenticated websocket in memory seems to be of a similar
+                # risk profile, and we cannot operate without that.
+                user.username = info['username']
+                user.password = info['password']
+                logging.info('auth: user {} logged in'.format(user))
+                user.is_authenticated = True
+                if info['is_token']:
+                    data = self._tokens.process_authentication_response(
+                        data, user)
+        return data
 
 
 class GoBackend(object):
@@ -163,6 +194,13 @@ class GoBackend(object):
         """Return True if data represents a successful login, False otherwise.
         """
         return 'Error' not in data
+
+    def make_request(self, request_id, username, password):
+        return dict(
+            RequestId=request_id,
+            Type='Admin',
+            Request='Login',
+            Params=dict(AuthTag=username, Password=password))
 
 
 class PythonBackend(object):
@@ -216,6 +254,13 @@ class PythonBackend(object):
         """
         return data.get('result') and not data.get('err')
 
+    def make_request(self, request_id, username, password):
+        return dict(
+            request_id=request_id,
+            op='login',
+            user=username,
+            password=password)
+
 
 def get_backend(apiversion):
     """Return the auth backend instance to use for the given API version."""
@@ -235,7 +280,7 @@ class AuthenticationTokenHandler(object):
             'Params': {},
         }
 
-    Here is an example of a token creation response.  Lifetime is in seconds.
+    Here is an example of a token creation response.
 
         {
             'RequestId': 42,
