@@ -102,6 +102,13 @@ class TestServer(AppsTestMixin, unittest.TestCase):
         deployer = self.assert_in_spec(spec, 'deployer')
         self.assertIsInstance(deployer, base.Deployer)
 
+    def test_tokens(self):
+        # The tokens instance is correctly passed to the WebSocket handler.
+        app = self.get_app()
+        spec = self.get_url_spec(app, r'^/ws$')
+        tokens = self.assert_in_spec(spec, 'tokens')
+        self.assertIsInstance(tokens, auth.AuthenticationTokenHandler)
+
     def test_sandbox(self):
         # The WebSocket handler is excluded if sandbox mode is enabled.
         app = self.get_app(sandbox=True)

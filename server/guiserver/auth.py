@@ -71,9 +71,11 @@ class AuthMiddleware(object):
     user logs out, there is no need to handle the log out process.
     """
 
-    def __init__(self, user, backend):
+    def __init__(self, user, backend, tokens, write_message):
         self._user = user
         self._backend = backend
+        self._tokens = tokens
+        self._write_message = write_message
         self._request_id = None
 
     def in_progress(self):

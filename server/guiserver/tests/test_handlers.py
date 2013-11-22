@@ -66,6 +66,7 @@ class WebSocketHandlerTestMixin(object):
         self.api_close_future = concurrent.Future()
         self.deployer = base.Deployer(
             self.apiurl, manage.DEFAULT_API_VERSION, io_loop=self.io_loop)
+        self.tokens = auth.AuthenticationTokenHandler(io_loop=self.io_loop)
         echo_options = {
             'close_future': self.api_close_future,
             'io_loop': self.io_loop,
@@ -75,6 +76,7 @@ class WebSocketHandlerTestMixin(object):
             'auth_backend': self.auth_backend,
             'deployer': self.deployer,
             'io_loop': self.io_loop,
+            'tokens': self.tokens,
         }
         return web.Application([
             (r'/echo', helpers.EchoWebSocketHandler, echo_options),
@@ -108,7 +110,8 @@ class WebSocketHandlerTestMixin(object):
         handler = self.make_handler(
             headers=headers, mock_protocol=mock_protocol)
         yield handler.initialize(
-            apiurl, self.auth_backend, self.deployer, self.io_loop)
+            apiurl, self.auth_backend, self.deployer, self.tokens,
+            self.io_loop)
         raise gen.Return(handler)
 
 
@@ -228,7 +231,8 @@ class TestWebSocketHandlerProxy(
         mock_path = 'guiserver.clients.WebSocketClientConnection.write_message'
         with mock.patch(mock_path) as mock_write_message:
             initialization = handler.initialize(
-                self.apiurl, self.auth_backend, self.io_loop)
+                self.apiurl, self.auth_backend, self.deployer, self.tokens,
+                io_loop=self.io_loop)
             handler.on_message(self.hello_message)
             self.assertFalse(mock_write_message.called)
             yield initialization
@@ -279,7 +283,9 @@ class TestWebSocketHandlerAuthentication(
     def setUp(self):
         super(TestWebSocketHandlerAuthentication, self).setUp()
         self.handler = self.make_handler(mock_protocol=True)
-        self.handler.initialize(self.apiurl, self.auth_backend, self.io_loop)
+        self.handler.initialize(
+            self.apiurl, self.auth_backend, self.deployer, self.tokens,
+            io_loop=self.io_loop)
 
     def send_login_request(self):
         """Create a login request and send it to the handler."""
