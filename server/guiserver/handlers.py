@@ -175,8 +175,9 @@ class WebSocketHandler(websocket.WebSocketHandler):
             return self.on_juju_close()
         data = json_decode_dict(message)
         if (data is not None) and self.auth.in_progress():
-            message = escape.json_encode(self.auth.process_response(data))
-        encoded = message.encode('utf-8')
+            encoded = escape.json_encode(self.auth.process_response(data))
+        else:
+            encoded = message.encode('utf-8')
         logging.debug(self._summary + 'juju -> client: {}'.format(encoded))
         self.write_message(message)
 
