@@ -235,7 +235,7 @@ class AuthenticationTokenHandler(object):
             'Params': {},
         }
 
-    Here is an example of a token creation response.  Lifetime is in seconds.
+    Here is an example of a token creation response.
 
         {
             'RequestId': 42,
@@ -324,7 +324,8 @@ class AuthenticationTokenHandler(object):
         })
 
     def authentication_requested(self, data):
-        """Does data represents a token creation request? True or False."""
+        """Does data represent a token authentication request? True or False.
+        """
         params = data.get('Params', {})
         return (
             'RequestId' in data and

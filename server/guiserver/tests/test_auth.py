@@ -308,7 +308,7 @@ class TestAuthenticationTokenHandler(unittest.TestCase):
         write_message = mock.Mock()
         data = dict(RequestId=42, Type='GUIToken', Request='Create')
         self.tokens.process_token_request(data, user, write_message)
-        write_message.assert_called_with(dict(
+        write_message.assert_called_once_with(dict(
             RequestId=42,
             Response=dict(
                 Token='DEFACED',
@@ -327,7 +327,8 @@ class TestAuthenticationTokenHandler(unittest.TestCase):
         self.assertEqual(
             self.max_life, self.io_loop.add_timeout.call_args[0][0])
         self.assertTrue('DEFACED' in self.tokens._data)
-        self.io_loop.add_timeout.call_args[0][1]()
+        expire_token = self.io_loop.add_timeout.call_args[0][1]
+        expire_token()
         self.assertFalse('DEFACED' in self.tokens._data)
 
     def test_authentication_requested(self):
@@ -364,7 +365,7 @@ class TestAuthenticationTokenHandler(unittest.TestCase):
         self.assertEqual(
             (username, password),
             self.tokens.process_authentication_request(request, write_message))
-        self.io_loop.remove_timeout.assert_called_with('handle marker')
+        self.io_loop.remove_timeout.assert_called_once_with('handle marker')
         self.assertFalse(write_message.called)
         self.assertFalse('DEFACED' in self.tokens._data)
 
@@ -378,7 +379,7 @@ class TestAuthenticationTokenHandler(unittest.TestCase):
             None,
             self.tokens.process_authentication_request(request, write_message))
         self.assertFalse(self.io_loop.remove_timeout.called)
-        write_message.assert_called_with(dict(
+        write_message.assert_called_once_with(dict(
             RequestId=42,
             Error='unknown, fulfilled, or expired token',
             ErrorCode='unauthorized access',
