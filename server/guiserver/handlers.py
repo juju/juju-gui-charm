@@ -151,7 +151,8 @@ class WebSocketHandler(websocket.WebSocketHandler):
                     # The None marker indicates that a response was sent.
                     return
                 elif new_data != data:
-                    encoded = message = escape.json_encode(new_data)
+                    encoded = escape.json_encode(new_data)
+                    message = encoded.decode('utf8')
             # Handle authentication token requests.
             elif self.tokens.token_requested(data):
                 return self.tokens.process_token_request(
@@ -175,8 +176,9 @@ class WebSocketHandler(websocket.WebSocketHandler):
             return self.on_juju_close()
         data = json_decode_dict(message)
         if (data is not None) and self.auth.in_progress():
-            encoded = message = escape.json_encode(
+            encoded = escape.json_encode(
                 self.auth.process_response(data))
+            message = encoded.decode('utf8')
         else:
             encoded = message.encode('utf-8')
         logging.debug(self._summary + 'juju -> client: {}'.format(encoded))
