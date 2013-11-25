@@ -34,7 +34,7 @@ createvenv() {
     fi
     if [ ! -f "$ACTIVATE" -o "$TEST_REQUIREMENTS" -nt "$ACTIVATE" -o "$SERVER_REQUIREMENTS" -nt "$ACTIVATE" ]; then
         [ $updated_downloadcache -eq 0 ] && bzr up $DOWNLOADCACHE
-        virtualenv --distribute $VENV
+        virtualenv --distribute --extra-search-dir=$DOWNLOADCACHE $VENV
         . $ACTIVATE && \
             yes w | env BZR_PLUGIN_PATH='-user' \
             pip install -r $TEST_REQUIREMENTS --find-links deps --find-links $DOWNLOADCACHE --no-allow-external --no-index
