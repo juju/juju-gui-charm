@@ -16,24 +16,32 @@
 
 """Juju GUI server authentication management.
 
-This module includes the pieces required to process user authentication:
+This module includes the pieces required to process user authentication.
 
-    - User: a simple data structure representing a logged in or anonymous user;
-    - authentication backends (GoBackend and PythonBackend): any object
-      implementing the following interface:
+    - User: this is a simple data structure representing a logged in or
+      anonymous user.
+    - Authentication backends (GoBackend and PythonBackend): the primary
+      purpose of auth backends is to provide the logic to parse requests' data
+      based on the API implementation currently in use. They can also be used
+      to create authentication requests.  They must implement the following
+      interface:
         - get_request_id(data) -> id or None;
         - request_is_login(data) -> bool;
         - get_credentials(data) -> (str, str);
-        - login_succeeded(data) -> bool.
-      The only purpose of auth backends is to provide the logic to parse
-      requests' data based on the API implementation currently in use. Backends
-      don't know anything about the authentication process or the current user,
-      and are not intended to store state: one backend (the one suitable for
-      the current API implementation) is instantiated once when the application
-      is bootstrapped and used as a singleton by all WebSocket requests;
-    - AuthMiddleware: process authentication requests and responses, using
-      the backend to parse the WebSocket messages, logging in the current user
-      if the authentication succeeds.
+        - login_succeeded(data) -> bool; and
+        - make_request(request_id, username, password) -> dict.
+      Backends don't know anything about the authentication process or the
+      current user, and are not intended to store state: one backend (the one
+      suitable for the current API implementation) is instantiated once when
+      the application is bootstrapped and used as a singleton by all WebSocket
+      requests.
+    - AuthMiddleware: this middleware processes authentication requests and
+      responses, using the backend to parse the WebSocket messages, logging in
+      the current user if the authentication succeeds.
+    - AuthenticationTokenHandler: This handles authentication token creation
+      and usage requests.  It is used both by the AuthMiddleware and by
+      handlers.WebSocketHandler in the ``on_message`` and ``on_juju_message``
+      methods.
 """
 
 import datetime
@@ -196,6 +204,7 @@ class GoBackend(object):
         return 'Error' not in data
 
     def make_request(self, request_id, username, password):
+        """Create and return an authentication request."""
         return dict(
             RequestId=request_id,
             Type='Admin',
@@ -255,6 +264,7 @@ class PythonBackend(object):
         return data.get('result') and not data.get('err')
 
     def make_request(self, request_id, username, password):
+        """Create and return an authentication request."""
         return dict(
             request_id=request_id,
             op='login',
@@ -280,7 +290,7 @@ class AuthenticationTokenHandler(object):
             'Params': {},
         }
 
-    Here is an example of a token creation response.
+    Here is an example of a successful token creation response.
 
         {
             'RequestId': 42,
@@ -289,6 +299,15 @@ class AuthenticationTokenHandler(object):
                 'Created': '2013-11-21T12:34:46.778866Z',
                 'Expires': '2013-11-21T12:36:46.778866Z'
             }
+        }
+
+    If the user is not authenticated, the failure response will look like this.
+
+        {
+            'RequestId': 42,
+            'Error': 'tokens can only be created by authenticated users.',
+            'ErrorCode': 'unauthorized access',
+            'Response': {},
         }
 
     A token authentication request looks like the following:
@@ -344,10 +363,18 @@ class AuthenticationTokenHandler(object):
 
     def process_token_request(self, data, user, write_message):
         """Create a single-use, time-expired token and send it back."""
+        if not user.is_authenticated:
+            write_message(dict(
+                RequestId=data['RequestId'],
+                Error='tokens can only be created by authenticated users.',
+                ErrorCode='unauthorized access',
+                Response={}))
+            return
         token = uuid.uuid4().hex
 
         def expire_token():
             self._data.pop(token, None)
+            logging.info('auth: expired token {}'.format(token))
         handle = self._io_loop.add_timeout(self._max_life, expire_token)
         now = datetime.datetime.utcnow()
         # Stashing these is a security risk.  We currently deem this risk to
@@ -381,8 +408,10 @@ class AuthenticationTokenHandler(object):
 
     def process_authentication_request(self, data, write_message):
         """Get the credentials for the token, or send an error."""
-        credentials = self._data.pop(data['Params']['Token'], None)
+        token = data['Params']['Token']
+        credentials = self._data.pop(token, None)
         if credentials is not None:
+            logging.info('auth: using token {}'.format(token))
             self._io_loop.remove_timeout(credentials['handle'])
             return credentials['username'], credentials['password']
         else:

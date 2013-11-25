@@ -364,8 +364,17 @@ class TestWebSocketHandlerAuthentication(
         request = json.dumps(
             dict(RequestId=42, Type='GUIToken', Request='Create'))
         self.handler.on_message(request)
-        self.assertFalse(self.handler.ws_connection.write_message.called)
-        self.assertEqual(1, len(self.handler._juju_message_queue))
+        message = self.handler.ws_connection.write_message.call_args[0][0]
+        self.assertEqual(
+            dict(
+                RequestId=42,
+                Error='tokens can only be created by authenticated users.',
+                ErrorCode='unauthorized access',
+                Response={},
+            ),
+            json.loads(message))
+        self.assertFalse(self.handler.juju_connected)
+        self.assertEqual(0, len(self.handler._juju_message_queue))
 
     def test_token_authentication_success(self):
         # It supports authenticating with a token.

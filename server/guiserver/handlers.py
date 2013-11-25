@@ -154,7 +154,7 @@ class WebSocketHandler(websocket.WebSocketHandler):
                     encoded = escape.json_encode(new_data)
                     message = encoded.decode('utf8')
             # Handle authentication token requests.
-            elif self.tokens.token_requested(data):
+            if self.tokens.token_requested(data):
                 return self.tokens.process_token_request(
                     data, self.user, wrap_write_message(self))
         # Propagate messages to the Juju API server.

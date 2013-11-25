@@ -368,7 +368,7 @@ class TestAuthenticationTokenHandler(unittest.TestCase):
                        datetime.datetime(2013, 11, 21, 21)}))
     def test_process_token_request(self):
         # It correctly responds to token requests.
-        user = auth.User('user-admin', 'ADMINSECRET')
+        user = auth.User('user-admin', 'ADMINSECRET', True)
         write_message = mock.Mock()
         data = dict(RequestId=42, Type='GUIToken', Request='Create')
         self.tokens.process_token_request(data, user, write_message)
@@ -394,6 +394,21 @@ class TestAuthenticationTokenHandler(unittest.TestCase):
         expire_token = self.io_loop.add_timeout.call_args[0][1]
         expire_token()
         self.assertFalse('DEFACED' in self.tokens._data)
+
+    def test_unauthenticated_process_token_request(self):
+        # Unauthenticated token requests get an informative error.
+        user = auth.User(is_authenticated=False)
+        write_message = mock.Mock()
+        data = dict(RequestId=42, Type='GUIToken', Request='Create')
+        self.tokens.process_token_request(data, user, write_message)
+        write_message.assert_called_once_with(dict(
+            RequestId=42,
+            Error='tokens can only be created by authenticated users.',
+            ErrorCode='unauthorized access',
+            Response={}
+        ))
+        self.assertEqual({}, self.tokens._data)
+        self.assertFalse(self.io_loop.add_timeout.called)
 
     def test_authentication_requested(self):
         # It recognizes an authentication request.
@@ -457,7 +472,7 @@ class TestAuthenticationTokenHandler(unittest.TestCase):
     def test_token_request_and_authentication_collaborate(self):
         # process_token_request and process_authentication_request collaborate.
         # This is a small integration test of the two functions' interaction.
-        user = auth.User('user-admin', 'ADMINSECRET')
+        user = auth.User('user-admin', 'ADMINSECRET', True)
         write_message = mock.Mock()
         request = dict(RequestId=42, Type='GUIToken', Request='Create')
         self.tokens.process_token_request(request, user, write_message)
@@ -470,7 +485,7 @@ class TestAuthenticationTokenHandler(unittest.TestCase):
 
     def test_process_authentication_response(self):
         # It translates a normal authentication success.
-        user = auth.User('user-admin', 'ADMINSECRET')
+        user = auth.User('user-admin', 'ADMINSECRET', True)
         response = {'RequestId': 42, 'Response': {}}
         self.assertEqual(
             dict(RequestId=42,
