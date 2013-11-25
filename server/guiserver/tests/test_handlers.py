@@ -16,6 +16,7 @@
 
 """Tests for the Juju GUI server handlers."""
 
+import datetime
 import json
 import os
 import shutil
@@ -329,6 +330,96 @@ class TestWebSocketHandlerAuthentication(
         self.send_login_response(True)
         self.assertFalse(self.handler.user.is_authenticated)
         self.assertFalse(self.handler.auth.in_progress())
+
+    @mock.patch('uuid.uuid4', mock.Mock(return_value=mock.Mock(hex='DEFACED')))
+    @mock.patch('datetime.datetime',
+                mock.Mock(
+                    **{'utcnow.return_value':
+                       datetime.datetime(2013, 11, 21, 21)}))
+    def test_token_request(self):
+        # It supports requesting a token when authenticated.
+        self.handler.user.username = 'user'
+        self.handler.user.password = 'passwd'
+        self.handler.user.is_authenticated = True
+        request = json.dumps(
+            dict(RequestId=42, Type='GUIToken', Request='Create'))
+        self.handler.on_message(request)
+        message = self.handler.ws_connection.write_message.call_args[0][0]
+        self.assertEqual(
+            dict(
+                RequestId=42,
+                Response=dict(
+                    Token='DEFACED',
+                    Created='2013-11-21T21:00:00Z',
+                    Expires='2013-11-21T21:02:00Z'
+                )
+            ),
+            json.loads(message))
+        self.assertFalse(self.handler.juju_connected)
+        self.assertEqual(0, len(self.handler._juju_message_queue))
+
+    def test_unauthenticated_token_request(self):
+        # When not authenticated, the request is passed on to Juju for error.
+        self.assertFalse(self.handler.user.is_authenticated)
+        request = json.dumps(
+            dict(RequestId=42, Type='GUIToken', Request='Create'))
+        self.handler.on_message(request)
+        message = self.handler.ws_connection.write_message.call_args[0][0]
+        self.assertEqual(
+            dict(
+                RequestId=42,
+                Error='tokens can only be created by authenticated users.',
+                ErrorCode='unauthorized access',
+                Response={},
+            ),
+            json.loads(message))
+        self.assertFalse(self.handler.juju_connected)
+        self.assertEqual(0, len(self.handler._juju_message_queue))
+
+    def test_token_authentication_success(self):
+        # It supports authenticating with a token.
+        request = self.make_token_login_request(
+            self.tokens, username='user', password='passwd')
+        with mock.patch.object(self.io_loop,
+                               'remove_timeout') as mock_remove_timeout:
+            self.handler.on_message(json.dumps(request))
+            mock_remove_timeout.assert_called_once_with('handle')
+        self.assertEqual(
+            self.make_login_request(
+                request_id=42, username='user', password='passwd'),
+            json.loads(self.handler._juju_message_queue[0]))
+        self.assertTrue(self.handler.auth.in_progress())
+        self.send_login_response(True)
+        self.assertEqual(
+            dict(RequestId=42,
+                 Response={'AuthTag': 'user', 'Password': 'passwd'}),
+            json.loads(
+                self.handler.ws_connection.write_message.call_args[0][0]))
+
+    def test_token_authentication_failure(self):
+        # It correctly handles a token that will not authenticate.
+        request = self.make_token_login_request(
+            self.tokens, username='user', password='passwd')
+        with mock.patch.object(self.io_loop,
+                               'remove_timeout') as mock_remove_timeout:
+            self.handler.on_message(json.dumps(request))
+            mock_remove_timeout.assert_called_once_with('handle')
+        self.send_login_response(False)
+        message = self.handler.ws_connection.write_message.call_args[0][0]
+        self.assertEqual(
+            'invalid entity name or password',
+            json.loads(message)['Error'])
+
+    def test_unknown_authentication_token(self):
+        # It correctly handles an unknown token.
+        request = self.make_token_login_request()
+        self.handler.on_message(json.dumps(request))
+        message = self.handler.ws_connection.write_message.call_args[0][0]
+        self.assertEqual(
+            'unknown, fulfilled, or expired token',
+            json.loads(message)['Error'])
+        self.assertFalse(self.handler.juju_connected)
+        self.assertEqual(0, len(self.handler._juju_message_queue))
 
 
 class TestWebSocketHandlerBundles(

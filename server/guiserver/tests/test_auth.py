@@ -78,17 +78,20 @@ class AuthMiddlewareTestMixin(object):
 
     def test_login_request(self):
         # The authentication process starts if a login request is processed.
+
         request = self.make_login_request(username='user', password='passwd')
-        self.auth.process_request(request)
+        response = self.auth.process_request(request)
+        self.assertEqual(request, response)
         self.assertTrue(self.auth.in_progress())
-        self.assert_user('user', 'passwd', False)
+        self.assert_user('', '', False)
 
     def test_login_success(self):
         # The user is logged in if the authentication process completes.
         request = self.make_login_request(username='user', password='passwd')
         self.auth.process_request(request)
         response = self.make_login_response()
-        self.auth.process_response(response)
+        result = self.auth.process_response(response)
+        self.assertEqual(response, result)
         self.assertFalse(self.auth.in_progress())
         self.assert_user('user', 'passwd', True)
 
@@ -97,7 +100,8 @@ class AuthMiddlewareTestMixin(object):
         request = self.make_login_request()
         self.auth.process_request(request)
         response = self.make_login_response(successful=False)
-        self.auth.process_response(response)
+        result = self.auth.process_response(response)
+        self.assertEqual(response, result)
         self.assertFalse(self.auth.in_progress())
         self.assert_user('', '', False)
 
@@ -110,10 +114,10 @@ class AuthMiddlewareTestMixin(object):
         response = self.make_login_response(request_id=47)
         self.auth.process_response(response)
         self.assertTrue(self.auth.in_progress())
-        self.assert_user('user', 'passwd', False)
+        self.assert_user('', '', False)
 
     def test_multiple_auth_requests(self):
-        # Only the last authentication request is taken into consideration.
+        # The last authentication request is honored.
         request1 = self.make_login_request(request_id=1)
         request2 = self.make_login_request(
             request_id=2, username='user2', password='passwd2')
@@ -122,8 +126,8 @@ class AuthMiddlewareTestMixin(object):
         # The first response arrives.
         response = self.make_login_response(request_id=1)
         self.auth.process_response(response)
-        # The user is still not autheticated and the auth is in progress.
-        self.assertFalse(self.user.is_authenticated)
+        # The user is authenticated but the auth is still in progress.
+        self.assertTrue(self.user.is_authenticated)
         self.assertTrue(self.auth.in_progress())
         # The second response arrives.
         response = self.make_login_response(request_id=2)
@@ -143,7 +147,61 @@ class AuthMiddlewareTestMixin(object):
 class TestGoAuthMiddleware(
         helpers.GoAPITestMixin, AuthMiddlewareTestMixin,
         LogTrapTestCase, unittest.TestCase):
-    pass
+
+    def test_token_login_request(self):
+        # The authentication process starts with a token login request also.
+        request = self.make_token_login_request(
+            self.tokens, username='user', password='passwd')
+        response = self.auth.process_request(request)
+        # The response now looks as if it were made without a token.
+        self.assertEqual(
+            self.make_login_request(username='user', password='passwd'),
+            response)
+        self.assertTrue(self.auth.in_progress())
+        self.assert_user('', '', False)
+        self.assertFalse(self.write_message.called)
+
+    def test_token_login_success(self):
+        # The user is logged in if the authentication process completes.
+        request = self.make_token_login_request(
+            self.tokens, username='user', password='passwd')
+        self.auth.process_request(request)
+        response = self.make_login_response()
+        result = self.auth.process_response(response)
+        self.assertEqual(
+            dict(RequestId=42,
+                 Response=dict(AuthTag='user', Password='passwd')),
+            result)
+        self.assertFalse(self.auth.in_progress())
+        self.assert_user('user', 'passwd', True)
+        self.assertFalse(self.write_message.called)
+
+    def test_token_login_failure(self):
+        # The user is not logged in if the authentication process fails.
+        request = self.make_token_login_request(
+            self.tokens, username='user', password='passwd')
+        self.auth.process_request(request)
+        response = self.make_login_response(successful=False)
+        result = self.auth.process_response(response)
+        self.assertEqual(response, result)
+        self.assertFalse(self.auth.in_progress())
+        self.assert_user('', '', False)
+        self.assertFalse(self.write_message.called)
+
+    def test_token_login_missing(self):
+        # The user is not logged in if the authentication process fails.
+        request = self.make_token_login_request()
+        response = self.auth.process_request(request)
+        # None is a marker indicating that the request has been handled and
+        # should not be continued on through to Juju.
+        self.assertIsNone(response)
+        self.write_message.assert_called_once_with(dict(
+            RequestId=42,
+            Error='unknown, fulfilled, or expired token',
+            ErrorCode='unauthorized access',
+            Response={}))
+        self.assertFalse(self.auth.in_progress())
+        self.assert_user('', '', False)
 
 
 class TestPythonAuthMiddleware(
@@ -191,6 +249,12 @@ class BackendTestMixin(object):
         # False is returned if the login attempt failed.
         response = self.make_login_response(successful=False)
         self.assertFalse(self.backend.login_succeeded(response))
+
+    def test_make_request(self):
+        expected = self.make_login_request(
+            request_id=42, username='user', password='passwd')
+        self.assertEqual(
+            expected, self.backend.make_request(42, 'user', 'passwd'))
 
 
 class TestGoBackend(
@@ -304,7 +368,7 @@ class TestAuthenticationTokenHandler(unittest.TestCase):
                        datetime.datetime(2013, 11, 21, 21)}))
     def test_process_token_request(self):
         # It correctly responds to token requests.
-        user = auth.User('user-admin', 'ADMINSECRET')
+        user = auth.User('user-admin', 'ADMINSECRET', True)
         write_message = mock.Mock()
         data = dict(RequestId=42, Type='GUIToken', Request='Create')
         self.tokens.process_token_request(data, user, write_message)
@@ -330,6 +394,21 @@ class TestAuthenticationTokenHandler(unittest.TestCase):
         expire_token = self.io_loop.add_timeout.call_args[0][1]
         expire_token()
         self.assertFalse('DEFACED' in self.tokens._data)
+
+    def test_unauthenticated_process_token_request(self):
+        # Unauthenticated token requests get an informative error.
+        user = auth.User(is_authenticated=False)
+        write_message = mock.Mock()
+        data = dict(RequestId=42, Type='GUIToken', Request='Create')
+        self.tokens.process_token_request(data, user, write_message)
+        write_message.assert_called_once_with(dict(
+            RequestId=42,
+            Error='tokens can only be created by authenticated users.',
+            ErrorCode='unauthorized access',
+            Response={}
+        ))
+        self.assertEqual({}, self.tokens._data)
+        self.assertFalse(self.io_loop.add_timeout.called)
 
     def test_authentication_requested(self):
         # It recognizes an authentication request.
@@ -393,7 +472,7 @@ class TestAuthenticationTokenHandler(unittest.TestCase):
     def test_token_request_and_authentication_collaborate(self):
         # process_token_request and process_authentication_request collaborate.
         # This is a small integration test of the two functions' interaction.
-        user = auth.User('user-admin', 'ADMINSECRET')
+        user = auth.User('user-admin', 'ADMINSECRET', True)
         write_message = mock.Mock()
         request = dict(RequestId=42, Type='GUIToken', Request='Create')
         self.tokens.process_token_request(request, user, write_message)
@@ -406,7 +485,7 @@ class TestAuthenticationTokenHandler(unittest.TestCase):
 
     def test_process_authentication_response(self):
         # It translates a normal authentication success.
-        user = auth.User('user-admin', 'ADMINSECRET')
+        user = auth.User('user-admin', 'ADMINSECRET', True)
         response = {'RequestId': 42, 'Response': {}}
         self.assertEqual(
             dict(RequestId=42,
