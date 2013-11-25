@@ -158,6 +158,12 @@ class TestWrapWriteMessage(unittest.TestCase):
             self.wrapped('hello')
         self.assertEqual([], self.messages)
 
+    def test_unicode(self):
+        # It handles unicode properly.
+        snowman = u'{"Here is a snowman\u00a1": "\u2603"}'
+        self.wrapped(snowman)
+        self.assertEqual(snowman, json.loads(self.messages[0]))
+
 
 class TestWsToHttp(unittest.TestCase):
 

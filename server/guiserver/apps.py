@@ -44,6 +44,7 @@ def server():
     # Set up handlers.
     server_handlers = []
     if not options.sandbox:
+        tokens = auth.AuthenticationTokenHandler()
         websocket_handler_options = {
             # The Juju API backend url.
             'apiurl': options.apiurl,
@@ -51,6 +52,8 @@ def server():
             'auth_backend': auth.get_backend(options.apiversion),
             # The Juju deployer to use for importing bundles.
             'deployer': deployer,
+            # The tokens collection for authentication token requests.
+            'tokens': tokens,
         }
         server_handlers.append(
             # Handle WebSocket connections.
