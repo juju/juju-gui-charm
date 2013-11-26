@@ -53,9 +53,12 @@ def setup_repository(name, source, series='precise'):
     return repo
 
 
+SERVICE_NAME_PREFIX = 'service-'
+
 def make_service_name():
     characters = string.ascii_lowercase
-    return ''.join([random.choice(characters) for x in xrange(20)])
+    suffix = ''.join([random.choice(characters) for x in xrange(20)])
+    return SERVICE_NAME_PREFIX + suffix
 
 
 def juju_deploy(

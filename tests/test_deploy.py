@@ -26,7 +26,9 @@ import mock
 import deploy
 from deploy import (
     juju_deploy,
+    make_service_name,
     setup_repository,
+    SERVICE_NAME_PREFIX,
 )
 
 
@@ -192,3 +194,14 @@ class TestJujuDeploy(unittest.TestCase):
         charm_url = 'local:raring/{}'.format(self.charm)
         command = self.call_deploy(series='raring')
         self.assertIn(charm_url, command)
+
+    def test_service_name(self):
+        # A random service name is generated for each service started.  That
+        # service name is provided to juju as the last argument.
+        command = self.call_deploy(series='raring')
+        # We'll take it as proof that the last argument is a random service
+        # name if it starts with the service name prefix and is the same
+        # length as another random service name.
+        service_name = command[-1]
+        self.assertTrue(service_name.startswith(SERVICE_NAME_PREFIX))
+        self.assertEqual(len(service_name), len(make_service_name()))
