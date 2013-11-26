@@ -330,7 +330,7 @@ class TestRetry(unittest.TestCase):
             """The first exception the callable will raise."""
         class OtherException(Exception):
             """The exception subsequent calls will raise."""
-        side_effect = (FirstException(),) + (OtherException(),) * 4
+        side_effect = [FirstException] + [OtherException] * 4
         mock_callable, decorated = self.make_callable(side_effect)
         # If the decorated function never succeeds, the first exception it
         # raised it reraised after all the retries have been exhausted.
