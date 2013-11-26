@@ -33,6 +33,7 @@ from deploy import (
 
 
 def contains(needle, haystack):
+    """Does the sequence (haystack) contain the given subsequence (needle)?"""
     for i in xrange(len(haystack)-len(needle)+1):
         for j in xrange(len(needle)):
             if haystack[i+j] != needle[j]:

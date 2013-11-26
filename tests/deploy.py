@@ -57,6 +57,7 @@ SERVICE_NAME_PREFIX = 'service-'
 
 
 def make_service_name():
+    """Generate a long, random service name."""
     characters = string.ascii_lowercase
     suffix = ''.join([random.choice(characters) for x in xrange(20)])
     return SERVICE_NAME_PREFIX + suffix
