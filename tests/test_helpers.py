@@ -322,6 +322,25 @@ class TestRetry(unittest.TestCase):
         self.assertEqual(5, mock_sleep.call_count)
         mock_sleep.assert_called_with(1)
 
+    def test_original_error_reporting(self, *ignored):
+        # The exception raised on the first failure is the one that is
+        # reraised if all retries fail, even if a different error is raised
+        # subsequently.
+        class FirstException(Exception):
+            """The first exception the callable will raise."""
+        class OtherException(Exception):
+            """The exception subsequent calls will raise."""
+        side_effect = (FirstException(),) + (OtherException(),) * 4
+        mock_callable, decorated = self.make_callable(side_effect)
+        # If the decorated function never succeeds, the first exception it
+        # raised it reraised after all the retries have been exhausted.
+        with self.assertRaises(FirstException):
+            decorated()
+        # The callable was called several times, it is just that the first
+        # exception is reraised.
+        self.assertGreater(mock_callable.call_count, 1)
+
+
 
 class TestGetAdminSecret(unittest.TestCase):
 

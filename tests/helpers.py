@@ -90,16 +90,16 @@ def retry(exception, tries=10, delay=1):
     def decorator(func):
         @wraps(func)
         def decorated(*args, **kwargs):
-            mtries = tries
+            tries_remaining = tries
             original_error = None
-            while mtries:
+            while tries_remaining:
                 try:
                     return func(*args, **kwargs)
-                except exception as error:
+                except Exception as error:
                     if original_error is None:
                         original_error = error
                     time.sleep(delay)
-                    mtries -= 1
+                    tries_remaining -= 1
             raise original_error
         return decorated
     return decorator
