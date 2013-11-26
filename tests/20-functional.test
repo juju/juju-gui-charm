@@ -33,7 +33,6 @@ from deploy import juju_deploy
 from helpers import (
     get_admin_secret,
     juju_destroy_service,
-    juju_status,
     juju_version,
     stop_services,
     WebSocketClient,
