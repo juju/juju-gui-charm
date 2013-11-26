@@ -341,7 +341,6 @@ class TestRetry(unittest.TestCase):
         self.assertGreater(mock_callable.call_count, 1)
 
 
-
 class TestGetAdminSecret(unittest.TestCase):
 
     def mock_environment_file(self, contents, juju_env=None):
