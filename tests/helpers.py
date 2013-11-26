@@ -82,7 +82,7 @@ Version = namedtuple('Version', 'major minor patch')
 def retry(exception, tries=10, delay=1):
     """If the decorated function raises the exception, wait and try it again.
 
-    Raise the exception raised by the last call if the function does not
+    Raise the exception raised by the first call if the function does not
     exit normally after the specified number of tries.
 
     Original from http://wiki.python.org/moin/PythonDecoratorLibrary#Retry.
@@ -90,14 +90,17 @@ def retry(exception, tries=10, delay=1):
     def decorator(func):
         @wraps(func)
         def decorated(*args, **kwargs):
-            mtries = tries
-            while mtries:
+            tries_remaining = tries
+            original_error = None
+            while tries_remaining:
                 try:
                     return func(*args, **kwargs)
-                except exception as err:
+                except Exception as error:
+                    if original_error is None:
+                        original_error = error
                     time.sleep(delay)
-                    mtries -= 1
-            raise err
+                    tries_remaining -= 1
+            raise original_error
         return decorated
     return decorator
 

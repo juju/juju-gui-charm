@@ -17,8 +17,12 @@
 """Juju GUI deploy helper."""
 
 from __future__ import print_function
+
+
 import json
 import os
+import random
+import string
 import tempfile
 
 from charmhelpers import make_charm_config_file
@@ -49,6 +53,16 @@ def setup_repository(name, source, series='precise'):
     return repo
 
 
+SERVICE_NAME_PREFIX = 'service-'
+
+
+def make_service_name():
+    """Generate a long, random service name."""
+    characters = string.ascii_lowercase
+    suffix = ''.join([random.choice(characters) for x in xrange(20)])
+    return SERVICE_NAME_PREFIX + suffix
+
+
 def juju_deploy(
         charm, options=None, force_machine=None, charm_source=None,
         series='precise'):
@@ -64,15 +78,17 @@ def juju_deploy(
         charm_source = os.path.join(os.path.dirname(__file__), '..')
     repo = setup_repository(charm, charm_source, series=series)
     args = ['deploy', '--repository', repo]
+    service_name = make_service_name()
     if options is not None:
-        config_file = make_charm_config_file({charm: options})
+        config_file = make_charm_config_file({service_name: options})
         args.extend(['--config', config_file.name])
     if force_machine is not None:
         args.extend(['--to', str(force_machine)])
     args.append('local:{}/{}'.format(series, charm))
+    args.append(service_name)
     juju(*args)
-    juju('expose', charm)
-    return wait_for_unit(charm)
+    juju('expose', service_name)
+    return wait_for_unit(service_name), service_name
 
 
 if __name__ == '__main__':
