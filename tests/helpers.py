@@ -82,7 +82,7 @@ Version = namedtuple('Version', 'major minor patch')
 def retry(exception, tries=10, delay=1):
     """If the decorated function raises the exception, wait and try it again.
 
-    Raise the exception raised by the last call if the function does not
+    Raise the exception raised by the first call if the function does not
     exit normally after the specified number of tries.
 
     Original from http://wiki.python.org/moin/PythonDecoratorLibrary#Retry.
