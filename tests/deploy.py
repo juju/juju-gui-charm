@@ -55,6 +55,7 @@ def setup_repository(name, source, series='precise'):
 
 SERVICE_NAME_PREFIX = 'service-'
 
+
 def make_service_name():
     characters = string.ascii_lowercase
     suffix = ''.join([random.choice(characters) for x in xrange(20)])
