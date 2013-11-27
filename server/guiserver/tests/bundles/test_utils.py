@@ -104,7 +104,6 @@ class TestMessageFromError(LogTrapTestCase, unittest.TestCase):
                 error = utils.message_from_error(exception)
         self.assertEqual('cannot parse json', error)
 
-
     def test_without_message(self):
         # A placeholder message is returned.
         expected_type = "error type: <type 'exceptions.SystemExit'>"
