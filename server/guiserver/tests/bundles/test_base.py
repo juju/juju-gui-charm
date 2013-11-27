@@ -250,7 +250,7 @@ class TestDeployer(helpers.BundlesTestMixin, LogTrapTestCase, AsyncTestCase):
         expected = {
             'DeploymentId': 0,
             'Status': utils.COMPLETED,
-            'Error': "<Env Error - Details:\n {   'Error': 'bad wolf'}\n >",
+            'Error': "bad wolf",
             'Time': 42,
         }
         self.assertEqual(expected, status[0])

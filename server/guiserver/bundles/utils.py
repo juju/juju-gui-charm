@@ -30,7 +30,7 @@ from tornado import (
 from tornado.httpclient import AsyncHTTPClient
 
 from guiserver.watchers import AsyncWatcher
-
+from jujuclient import EnvError
 
 # Change statuses.
 SCHEDULED = 'scheduled'
@@ -73,7 +73,10 @@ def message_from_error(exception):
     """
     logging.error('error deploying the bundle')
     logging.error('error type: {}'.format(type(exception)))
-    message = str(exception).strip()
+    if isinstance(exception, EnvError):
+        message = exception.message.strip()
+    else:
+        message = str(exception).strip()
     if message:
         logging.error('error message: {}'.format(message))
     else:
