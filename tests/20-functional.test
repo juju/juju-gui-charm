@@ -18,8 +18,10 @@
 
 from __future__ import print_function
 import httplib
+import json
 import itertools
 import unittest
+import urllib2
 import urlparse
 
 from selenium.webdriver import Firefox
@@ -63,7 +65,8 @@ def juju_deploy_gui(options=None):
     force_machine = None if is_legacy_juju else 0
     service_name = make_service_name(prefix='juju-gui-')
     unit_info = juju_deploy(
-        'juju-gui', service_name=service_name, force_machine=force_machine)
+        'juju-gui', service_name=service_name, options=options,
+        force_machine=force_machine)
     # XXX 2012-11-29 frankban bug=872264:
         # Just invoking ``juju destroy-service juju-gui`` in tearDown
         # should execute the ``stop`` hook, stopping all the services
@@ -187,6 +190,13 @@ class DeployTestMixin(object):
             self.addCleanup(stop_services, hostname, cleanup_services)
         return unit_info
 
+    def get_builtin_server_info(self, hostname):
+        """Return a dictionary of info as exposed by the builtin server."""
+        url = 'https://{}/gui-server-info'.format(hostname)
+        response = urllib2.urlopen(url)
+        self.assertEqual(200, response.code)
+        return json.load(response)
+
 
 class TestDeployOptions(DeployTestMixin, unittest.TestCase):
 
@@ -219,6 +229,9 @@ class TestDeployOptions(DeployTestMixin, unittest.TestCase):
         self.navigate_to(hostname)
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()
+        # Ensure the builtin server is set up to run in sandbox mode.
+        server_info = self.get_builtin_server_info(hostname)
+        self.assertTrue(server_info['sandbox'])
 
     def test_branch_source(self):
         # Ensure the Juju GUI is correctly deployed from a Bazaar branch.
@@ -232,7 +245,7 @@ class TestDeployOptions(DeployTestMixin, unittest.TestCase):
     def test_legacy_server(self):
         # The legacy apache + haproxy server configuration works correctly.
         # Also make sure the correct cache headers are sent.
-        unit_info = self.deploy_gui(options={'builtin-server': False})
+        unit_info = self.deploy_gui(options={'builtin-server': 'false'})
         hostname = unit_info['public-address']
         self.navigate_to(hostname)
         self.handle_browser_warning()
@@ -295,6 +308,9 @@ class TestBuiltinServerLocalRelease(DeployTestMixin, unittest.TestCase):
         self.navigate_to(self.hostname)
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()
+        # Ensure the builtin server is set up to be connected to the real env.
+        server_info = self.get_builtin_server_info(self.hostname)
+        self.assertFalse(server_info['sandbox'])
 
     def test_headers(self):
         # Ensure the Tornado headers are correctly sent.
