@@ -20,7 +20,9 @@ from collections import namedtuple
 from functools import wraps
 import json
 import os
+import random
 import re
+import string
 import subprocess
 import time
 
@@ -198,6 +200,13 @@ def juju_version():
         raise ValueError('invalid juju version: {!r}'.format(output))
     to_int = lambda num: 0 if num is None else int(num)
     return Version._make(map(to_int, match.groups()))
+
+
+def make_service_name(prefix='service-'):
+    """Generate a long, random service name."""
+    characters = string.ascii_lowercase
+    suffix = ''.join([random.choice(characters) for _ in range(20)])
+    return prefix + suffix
 
 
 def stop_services(hostname, services):

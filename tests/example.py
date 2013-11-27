@@ -24,6 +24,7 @@ bundle1:
     wordpress:
       charm: "cs:precise/wordpress-15"
       num_units: 1
+      to: '0'
       options:
         debug: "no"
         engine: nginx
@@ -67,6 +68,7 @@ bundle2:
     mediawiki:
       charm: "cs:precise/mediawiki-9"
       num_units: 1
+      to: '0'
       options:
         admins: ""
         debug: false
