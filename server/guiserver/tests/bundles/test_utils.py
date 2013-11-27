@@ -32,7 +32,7 @@ import urllib
 from guiserver import watchers
 from guiserver.bundles import utils
 from guiserver.tests import helpers
-
+from jujuclient import EnvError
 
 mock_time = mock.patch('time.time', mock.Mock(return_value=12345))
 
@@ -92,6 +92,18 @@ class TestMessageFromError(LogTrapTestCase, unittest.TestCase):
             with ExpectLog('', expected_message, required=True):
                 error = utils.message_from_error(ValueError('bad wolf'))
         self.assertEqual('bad wolf', error)
+
+    def test_env_error_extracted(self):
+        # An EnvError as returned from the Go environment is not suitable for
+        # display to the user.  The Error field is extracted and returned.
+        expected_type = "error type: <class 'jujuclient.EnvError'>"
+        expected_message = 'error message: cannot parse json'
+        with ExpectLog('', expected_type, required=True):
+            with ExpectLog('', expected_message, required=True):
+                exception = EnvError({'Error': 'cannot parse json'})
+                error = utils.message_from_error(exception)
+        self.assertEqual('cannot parse json', error)
+
 
     def test_without_message(self):
         # A placeholder message is returned.
