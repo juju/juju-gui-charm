@@ -317,7 +317,7 @@ class TestPythonBackend(
             self.assertFalse(is_login, request)
 
 
-class TestAuthenticationTokenHandler(unittest.TestCase):
+class TestAuthenticationTokenHandler(LogTrapTestCase, unittest.TestCase):
 
     def setUp(self):
         super(TestAuthenticationTokenHandler, self).setUp()

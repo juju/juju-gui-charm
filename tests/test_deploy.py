@@ -26,9 +26,7 @@ import mock
 import deploy
 from deploy import (
     juju_deploy,
-    make_service_name,
     setup_repository,
-    SERVICE_NAME_PREFIX,
 )
 
 
@@ -128,17 +126,18 @@ class TestJujuDeploy(unittest.TestCase):
     @mock.patch('deploy.wait_for_unit')
     def call_deploy(
             self, mock_wait_for_unit, mock_juju,
-            options=None, force_machine=None, charm_source=None,
-            series='precise'):
+            service_name=None, options=None, force_machine=None,
+            charm_source=None, series='precise'):
         mock_wait_for_unit.return_value = self.unit_info
         if charm_source is None:
             expected_source = os.path.join(os.path.dirname(__file__), '..')
         else:
             expected_source = charm_source
         deploy.setup_repository.reset_mock()
-        unit_info, service_name = juju_deploy(
-            self.charm, options=options, force_machine=force_machine,
-            charm_source=charm_source, series=series)
+        unit_info = juju_deploy(
+            self.charm, service_name=service_name, options=options,
+            force_machine=force_machine, charm_source=charm_source,
+            series=series)
         deploy.setup_repository.assert_called_once_with(
             self.charm, expected_source, series=series)
         # The unit address is correctly returned.
@@ -148,7 +147,7 @@ class TestJujuDeploy(unittest.TestCase):
         juju_calls = mock_juju.call_args_list
         self.assertEqual(2, len(juju_calls))
         # We expect a "juju expose" to have been called on the service.
-        expected_expose_call = mock.call('expose', service_name)
+        expected_expose_call = mock.call('expose', service_name or self.charm)
         deploy_call, expose_call = juju_calls
         self.assertEqual(expected_expose_call, expose_call)
         self.assertEqual(deploy_call[0][0], 'deploy')
@@ -196,13 +195,15 @@ class TestJujuDeploy(unittest.TestCase):
         command = self.call_deploy(series='raring')
         self.assertIn(charm_url, command)
 
-    def test_service_name(self):
-        # A random service name is generated for each service started.  That
-        # service name is provided to juju as the last argument.
-        command = self.call_deploy(series='raring')
-        # We'll take it as proof that the last argument is a random service
-        # name if it starts with the service name prefix and is the same
-        # length as another random service name.
+    def test_no_service_name(self):
+        # If the service name is not provided, the charm name is used.
+        command = self.call_deploy()
         service_name = command[-1]
-        self.assertTrue(service_name.startswith(SERVICE_NAME_PREFIX))
-        self.assertEqual(len(service_name), len(make_service_name()))
+        self.assertEqual(self.charm, service_name)
+
+    def test_service_name(self):
+        # A customized service name can be provided and it is passed to Juju as
+        # the last argument.
+        command = self.call_deploy(service_name='my-service')
+        service_name = command[-1]
+        self.assertEqual('my-service', service_name)

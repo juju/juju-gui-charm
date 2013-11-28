@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-JUJUTEST = juju-test --timeout=120m -v -e "$(JUJU_ENV)"
+JUJUTEST = yes | juju-test --timeout=40m -v -e "$(JUJU_ENV)"
 VENV = tests/.venv
 SYSDEPS = build-essential bzr libapt-pkg-dev libpython-dev python-virtualenv \
 	rsync xvfb
