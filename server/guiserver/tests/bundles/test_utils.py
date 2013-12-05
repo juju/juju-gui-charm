@@ -18,6 +18,7 @@
 
 import unittest
 
+from concurrent.futures import Future
 import mock
 from tornado import gen
 from tornado.testing import(
@@ -26,11 +27,12 @@ from tornado.testing import(
     gen_test,
     LogTrapTestCase,
 )
+import urllib
 
 from guiserver import watchers
 from guiserver.bundles import utils
 from guiserver.tests import helpers
-
+from jujuclient import EnvError
 
 mock_time = mock.patch('time.time', mock.Mock(return_value=12345))
 
@@ -80,7 +82,39 @@ class TestCreateChange(unittest.TestCase):
         self.assertEqual(expected, obtained)
 
 
-class TestObserver(unittest.TestCase):
+class TestMessageFromError(LogTrapTestCase, unittest.TestCase):
+
+    def test_with_message(self):
+        # The error message is logged and returned.
+        expected_type = "error type: <type 'exceptions.ValueError'>"
+        expected_message = 'error message: bad wolf'
+        with ExpectLog('', expected_type, required=True):
+            with ExpectLog('', expected_message, required=True):
+                error = utils.message_from_error(ValueError('bad wolf'))
+        self.assertEqual('bad wolf', error)
+
+    def test_env_error_extracted(self):
+        # An EnvError as returned from the Go environment is not suitable for
+        # display to the user.  The Error field is extracted and returned.
+        expected_type = "error type: <class 'jujuclient.EnvError'>"
+        expected_message = 'error message: cannot parse json'
+        with ExpectLog('', expected_type, required=True):
+            with ExpectLog('', expected_message, required=True):
+                exception = EnvError({'Error': 'cannot parse json'})
+                error = utils.message_from_error(exception)
+        self.assertEqual('cannot parse json', error)
+
+    def test_without_message(self):
+        # A placeholder message is returned.
+        expected_type = "error type: <type 'exceptions.SystemExit'>"
+        expected_message = 'empty error message'
+        with ExpectLog('', expected_type, required=True):
+            with ExpectLog('', expected_message, required=True):
+                error = utils.message_from_error(SystemExit())
+        self.assertEqual('no further details can be provided', error)
+
+
+class TestObserver(LogTrapTestCase, unittest.TestCase):
 
     def setUp(self):
         self.observer = utils.Observer()
@@ -113,6 +147,11 @@ class TestObserver(unittest.TestCase):
         deployment_id = self.observer.add_deployment()
         self.assertEqual(1, len(self.observer.deployments))
         self.assert_deployment(deployment_id)
+
+    def test_add_deployment_logs(self):
+        # A new deployment is properly logged.
+        with ExpectLog('', 'deployment 0 scheduled', required=True):
+            self.observer.add_deployment()
 
     def test_add_multiple_deployments(self):
         # Multiple deployments can be added to the observer.
@@ -186,6 +225,13 @@ class TestObserver(unittest.TestCase):
         self.assertEqual(expected, watcher.getlast())
         self.assertTrue(watcher.closed)
 
+    def test_notify_cancelled_logs(self):
+        # A deployment cancellation is properly logged.
+        deployment_id = self.observer.add_deployment()
+        expected = 'deployment {} cancelled'.format(deployment_id)
+        with ExpectLog('', expected, required=True):
+            self.observer.notify_cancelled(deployment_id)
+
     @mock_time
     def test_notify_completed(self):
         # It is possible to notify that a deployment is completed.
@@ -199,6 +245,13 @@ class TestObserver(unittest.TestCase):
         }
         self.assertEqual(expected, watcher.getlast())
         self.assertTrue(watcher.closed)
+
+    def test_notify_completed_logs(self):
+        # A deployment completion is properly logged.
+        deployment_id = self.observer.add_deployment()
+        expected = 'deployment {} completed'.format(deployment_id)
+        with ExpectLog('', expected, required=True):
+            self.observer.notify_completed(deployment_id)
 
     @mock_time
     def test_notify_error(self):
@@ -422,3 +475,80 @@ class TestResponse(LogTrapTestCase, unittest.TestCase):
         # An error log is written when a failure response is generated.
         with ExpectLog('', 'deployer: an error occurred', required=True):
             utils.response(error='an error occurred')
+
+
+def mock_fetch_factory(response_code, called_with=None):
+    def fetch(*args, **kwargs):
+        if called_with is not None:
+            called_with.append((args[1:], kwargs))
+
+        class FakeResponse(object):
+            pass
+
+        resp = FakeResponse()
+        resp.code = response_code
+        future = Future()
+        future.set_result(resp)
+        return future
+    return fetch
+
+
+class TestIncrementDeploymentCounter(LogTrapTestCase, AsyncTestCase):
+
+    @gen_test
+    def test_no_cw_url_returns_true(self):
+        bundle_id = '~bac/muletrain/wiki'
+        mock_path = 'tornado.httpclient.AsyncHTTPClient.fetch'
+        with mock.patch(mock_path) as mock_fetch:
+            ok = yield utils.increment_deployment_counter(bundle_id, None)
+        self.assertFalse(ok)
+        self.assertFalse(mock_fetch.called)
+
+    @gen_test
+    def test_increment_nonstring_bundle_id(self):
+        bundle_id = 4
+        cw_url = 'http://my.charmworld.example.com/'
+        mock_path = 'tornado.httpclient.AsyncHTTPClient.fetch'
+        with mock.patch(mock_path) as mock_fetch:
+            ok = yield utils.increment_deployment_counter(bundle_id, cw_url)
+        self.assertFalse(ok)
+        self.assertFalse(mock_fetch.called)
+
+    @gen_test
+    def test_increment_nonstring_cwurl(self):
+        bundle_id = u'~bac/muletrain/wiki'
+        cw_url = 7
+        mock_path = 'tornado.httpclient.AsyncHTTPClient.fetch'
+        with mock.patch(mock_path) as mock_fetch:
+            ok = yield utils.increment_deployment_counter(bundle_id, cw_url)
+        self.assertFalse(ok)
+        self.assertFalse(mock_fetch.called)
+
+    @gen_test
+    def test_increment_url_logged(self):
+        bundle_id = '~bac/muletrain/wiki'
+        cw_url = 'http://my.charmworld.example.com/'
+        url = u'{}api/3/bundle/{}/metric/deployments/increment'.format(
+            cw_url, bundle_id)
+        expected = 'Incrementing bundle.+'
+        called_with = []
+        mock_fetch = mock_fetch_factory(200, called_with)
+        with ExpectLog('', expected, required=True):
+            mock_path = 'tornado.httpclient.AsyncHTTPClient.fetch'
+            with mock.patch(mock_path, mock_fetch):
+                ok = yield utils.increment_deployment_counter(
+                    bundle_id, cw_url)
+        self.assertTrue(ok)
+        called_args, called_kwargs = called_with[0]
+        self.assertEqual(url, urllib.unquote(called_args[0]))
+        self.assertEqual(dict(callback=None), called_kwargs)
+
+    @gen_test
+    def test_increment_errors(self):
+        bundle_id = '~bac/muletrain/wiki'
+        cw_url = 'http://my.charmworld.example.com/'
+        mock_path = 'tornado.httpclient.AsyncHTTPClient.fetch'
+        mock_fetch = mock_fetch_factory(404)
+        with mock.patch(mock_path, mock_fetch):
+            ok = yield utils.increment_deployment_counter(bundle_id, cw_url)
+        self.assertFalse(ok)

@@ -23,10 +23,22 @@ import unittest
 
 import mock
 
+import deploy
 from deploy import (
     juju_deploy,
     setup_repository,
 )
+
+
+def contains(needle, haystack):
+    """Does the sequence (haystack) contain the given subsequence (needle)?"""
+    for i in xrange(len(haystack)-len(needle)+1):
+        for j in xrange(len(needle)):
+            if haystack[i+j] != needle[j]:
+                break
+        else:
+            return True
+    return False
 
 
 class TestSetupRepository(unittest.TestCase):
@@ -94,40 +106,39 @@ class TestSetupRepository(unittest.TestCase):
         # unwanted directories.
         repo = setup_repository(self.name, self.source)
         charm_dir = os.path.join(repo, 'precise', self.name)
-        test_dir_name = os.path.basename(self.tests_dir)
         expected = set([
-            os.path.basename(self.root_file),
-            test_dir_name + os.path.sep,
-            os.path.join(test_dir_name, os.path.basename(self.tests_file))
+            os.path.basename(self.root_file)
         ])
         self.assert_files_equal(expected, charm_dir)
 
 
+REPO_PATH = '/tmp/repo/'
+
+
+@mock.patch('deploy.setup_repository', mock.Mock(return_value=REPO_PATH))
 class TestJujuDeploy(unittest.TestCase):
 
     unit_info = {'public-address': 'unit.example.com'}
     charm = 'test-charm'
-    expose_call = mock.call('expose', charm)
     local_charm = 'local:precise/{}'.format(charm)
-    repo = '/tmp/repo/'
 
     @mock.patch('deploy.juju')
     @mock.patch('deploy.wait_for_unit')
-    @mock.patch('deploy.setup_repository')
     def call_deploy(
-            self, mock_setup_repository, mock_wait_for_unit, mock_juju,
-            options=None, force_machine=None, charm_source=None,
-            series='precise'):
-        mock_setup_repository.return_value = self.repo
+            self, mock_wait_for_unit, mock_juju,
+            service_name=None, options=None, force_machine=None,
+            charm_source=None, series='precise'):
         mock_wait_for_unit.return_value = self.unit_info
         if charm_source is None:
             expected_source = os.path.join(os.path.dirname(__file__), '..')
         else:
             expected_source = charm_source
+        deploy.setup_repository.reset_mock()
         unit_info = juju_deploy(
-            self.charm, options=options, force_machine=force_machine,
-            charm_source=charm_source, series=series)
-        mock_setup_repository.assert_called_once_with(
+            self.charm, service_name=service_name, options=options,
+            force_machine=force_machine, charm_source=charm_source,
+            series=series)
+        deploy.setup_repository.assert_called_once_with(
             self.charm, expected_source, series=series)
         # The unit address is correctly returned.
         self.assertEqual(self.unit_info, unit_info)
@@ -135,62 +146,64 @@ class TestJujuDeploy(unittest.TestCase):
         # Juju is called two times: deploy and expose.
         juju_calls = mock_juju.call_args_list
         self.assertEqual(2, len(juju_calls))
+        # We expect a "juju expose" to have been called on the service.
+        expected_expose_call = mock.call('expose', service_name or self.charm)
         deploy_call, expose_call = juju_calls
-        self.assertEqual(self.expose_call, expose_call)
-        return deploy_call
+        self.assertEqual(expected_expose_call, expose_call)
+        self.assertEqual(deploy_call[0][0], 'deploy')
+        return deploy_call[0]
 
     def test_deployment(self):
         # The function deploys and exposes the given charm.
-        expected_deploy_call = mock.call(
-            'deploy',
-            '--repository', self.repo,
-            self.local_charm,
-        )
-        deploy_call = self.call_deploy()
-        self.assertEqual(expected_deploy_call, deploy_call)
+        command = self.call_deploy()
+        # A local repository is included in the command.
+        self.assertTrue(contains(('--repository', REPO_PATH), command))
+        # The charm name is also included.
+        self.assertIn(self.local_charm, command)
 
     def test_options(self):
         # The function handles charm options.
         mock_config_file = mock.Mock()
         mock_config_file.name = '/tmp/config.yaml'
-        expected_deploy_call = mock.call(
-            'deploy',
-            '--repository', self.repo,
-            '--config', mock_config_file.name,
-            self.local_charm,
-        )
         with mock.patch('deploy.make_charm_config_file') as mock_callable:
             mock_callable.return_value = mock_config_file
-            deploy_call = self.call_deploy(options={'foo': 'bar'})
-        self.assertEqual(expected_deploy_call, deploy_call)
+            command = self.call_deploy(options={'foo': 'bar'})
+        # Since options were provided to the deploy call, a config file was
+        # created and passed to "juju deploy".
+        self.assertTrue(contains(('--config', mock_config_file.name), command))
 
     def test_force_machine(self):
         # The function can deploy charms in a specified machine.
-        expected_deploy_call = mock.call(
-            'deploy',
-            '--repository', self.repo,
-            '--to', '42',
-            self.local_charm,
-        )
-        deploy_call = self.call_deploy(force_machine=42)
-        self.assertEqual(expected_deploy_call, deploy_call)
+        command = self.call_deploy(force_machine=42)
+        self.assertTrue(contains(('--to', '42'), command))
 
     def test_charm_source(self):
         # The function can deploy a charm from a specific source.
-        expected_deploy_call = mock.call(
-            'deploy',
-            '--repository', self.repo,
-            self.local_charm,
-        )
-        deploy_call = self.call_deploy(charm_source='/tmp/source/')
-        self.assertEqual(expected_deploy_call, deploy_call)
+        with mock.patch('deploy.setup_repository') as mock_setup_repository:
+            charm_source = '/tmp/source/'
+            self.call_deploy(charm_source=charm_source)
+            # The setup_repository function is called with the charm source as
+            # its second argument.
+            setup_source = mock_setup_repository.mock_calls[0][1][1]
+        # The source provided to the "deploy" call is the same that was passed
+        # along to setup_repository.
+        self.assertEqual(setup_source, charm_source)
 
     def test_series(self):
         # The function can deploy a charm from a specific series.
-        expected_deploy_call = mock.call(
-            'deploy',
-            '--repository', self.repo,
-            'local:raring/{}'.format(self.charm)
-        )
-        deploy_call = self.call_deploy(series='raring')
-        self.assertEqual(expected_deploy_call, deploy_call)
+        charm_url = 'local:raring/{}'.format(self.charm)
+        command = self.call_deploy(series='raring')
+        self.assertIn(charm_url, command)
+
+    def test_no_service_name(self):
+        # If the service name is not provided, the charm name is used.
+        command = self.call_deploy()
+        service_name = command[-1]
+        self.assertEqual(self.charm, service_name)
+
+    def test_service_name(self):
+        # A customized service name can be provided and it is passed to Juju as
+        # the last argument.
+        command = self.call_deploy(service_name='my-service')
+        service_name = command[-1]
+        self.assertEqual('my-service', service_name)

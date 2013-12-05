@@ -96,6 +96,16 @@ class GoAPITestMixin(object):
             data['Error'] = 'invalid entity name or password'
         return json.dumps(data) if encoded else data
 
+    def make_token_login_request(self, tokens=None, request_id=42,
+                                 token='DEFACED', username=None,
+                                 password=None):
+        if username is not None and password is not None:
+            tokens._data[token] = dict(
+                username=username, password=password, handle="handle")
+        return dict(
+            RequestId=request_id, Type='GUIToken', Request='Login',
+            Params={'Token': token})
+
 
 class PythonAPITestMixin(object):
     """Add helper methods for testing the Python API implementation."""

@@ -833,7 +833,7 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.run_call_count = 0
         self.fake_zk_address = '192.168.5.26'
         self.build_dir = 'juju-gui/build-'
-        self.charmworld_url = 'http://charmworld.example'
+        self.charmworld_url = 'http://charmworld.example.com/'
         self.ssl_cert_path = 'ssl/cert/path'
 
         # Monkey patches.
@@ -983,7 +983,8 @@ class TestStartImprovAgentGui(unittest.TestCase):
 
     def test_write_builtin_server_startup(self):
         write_builtin_server_startup(
-            JUJU_GUI_DIR, self.ssl_cert_path, serve_tests=True, insecure=True)
+            JUJU_GUI_DIR, self.ssl_cert_path, serve_tests=True, insecure=True,
+            charmworld_url=self.charmworld_url)
         guiserver_conf = self.files['guiserver.conf']
         self.assertIn('description "GUIServer"', guiserver_conf)
         self.assertIn('--logging="info"', guiserver_conf)
@@ -993,6 +994,8 @@ class TestStartImprovAgentGui(unittest.TestCase):
             '--testsroot="{}/test/"'.format(JUJU_GUI_DIR), guiserver_conf)
         self.assertIn('--insecure', guiserver_conf)
         self.assertNotIn('--sandbox', guiserver_conf)
+        self.assertIn('--charmworldurl="http://charmworld.example.com/"',
+                      guiserver_conf)
 
     def test_write_builtin_server_startup_sandbox_and_logging(self):
         # The upstart configuration file for the GUI server is correctly
@@ -1011,7 +1014,8 @@ class TestStartImprovAgentGui(unittest.TestCase):
     def test_start_builtin_server(self):
         start_builtin_server(
             JUJU_GUI_DIR, self.ssl_cert_path, serve_tests=False, sandbox=False,
-            builtin_server_logging='info', insecure=False)
+            builtin_server_logging='info', insecure=False,
+            charmworld_url='http://charmworld.example.com/')
         self.assertEqual(self.svc_ctl_call_count, 1)
         self.assertEqual(self.service_names, ['guiserver'])
         self.assertEqual(self.actions, [charmhelpers.RESTART])
@@ -1036,7 +1040,8 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertIn('readOnly: true', js_conf)
         self.assertIn("socket_url: 'wss://", js_conf)
         self.assertIn('socket_protocol: "wss"', js_conf)
-        self.assertIn('charmworldURL: "http://charmworld.example"', js_conf)
+        self.assertIn('charmworldURL: "http://charmworld.example.com/"',
+                      js_conf)
         self.assertIn('GA_key: "UA-123456"', js_conf)
 
     def test_write_gui_config_insecure(self):
@@ -1057,6 +1062,18 @@ class TestStartImprovAgentGui(unittest.TestCase):
         js_conf = self.files['config']
         self.assertIn('user: "admin"', js_conf)
         self.assertIn('password: "kumquat"', js_conf)
+
+    @mock.patch('utils.legacy_juju')
+    def test_write_gui_config_default_sandbox_backend(self, mock_legacy_juju):
+        mock_legacy_juju.return_value = True
+        write_gui_config(
+            False, 'This is login help.', True, True, self.charmworld_url,
+            self.build_dir, config_js_path='config',
+            password='kumquat', sandbox=True)
+        js_conf = self.files['config']
+        # Because this is sandbox, the apiBackend is always go, even though it
+        # is legacy_juju.
+        self.assertIn('apiBackend: "go"', js_conf)
 
     @mock.patch('utils.legacy_juju')
     def test_write_gui_config_default_go_password(self, mock_legacy_juju):

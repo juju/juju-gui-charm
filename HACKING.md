@@ -185,3 +185,60 @@ charm deployment succeeds also behind a firewall.
 To upgrade the dependencies, add a tarball to the `deps` directory, remove the
 old dependency if required, and update the `server-requirements.pip` file.
 At this point, running `make` should also update the virtualenv used for tests.
+
+## Upgrading the test dependencies ##
+
+The tests also have a number of dependencies.  For speed and reliability, these
+are also in a directory.  However, they are not necessary for normal use of the
+charm, and so, unlike the server dependencies, they are not part of the normal
+charm branch.  The 00-setup script makes a lightweight checkout of the branch
+lp:~juju-gui-charmers/juju-gui/charm-download-cache and then uses this to build
+the test virtual environment.
+
+To take best advantage of this approach, either use the same charm branch
+repeatedly for development; or develop the charm within a parent directory
+in which you have run `bzr init-repo`, so that the different branches can use
+the local cache; or both.
+
+To upgrade test dependencies, add them to the `test-requirements.pip` file and
+add the tarballs to the download-cache branch.  You may need to temporarily
+disable the `--no-allow-external` and `--no-index` flags in 00-setup to get
+new transitive dependencies.  Once you do, run `pip freeze` to add the
+transitive dependencies to the `test-requirements.pip` file, and make sure to
+add those tarballs to the download cache as well.
+
+## Builtin server bundle support ##
+
+The builtin server starts/schedules bundle deployment processes when it
+receives Deployer Import API requests. The user can then observe the deployment
+progress using the GUI. The builtin server also exposes the possibility to
+watch a bundle deployment progress: see `server/guiserver/bundles/__init__.py`
+for a detailed description of the API request/response process.
+
+Under the hood, the builtin server leverages the juju-deployer library in order
+to import a bundle. Since juju-deployer is not asynchronous, the actual
+deployment is executed in a separate process.
+
+### Debugging bundle support ###
+
+Sometimes, when an error occurs during bundle deployments, it is not obvious
+where to retrieve information about what is going on.
+The GUI builtin server exposes some bundle information in two places:
+
+- https://<juju-gui-url>/gui-server-info displays in JSON format the current
+  status of all scheduled/started/completed bundle deployments;
+- /var/log/upstart/guiserver.log is the builtin server log file, which includes
+  logs output from the juju-deployer library.
+
+Moreover, setting `builtin-server-logging=debug` gives more debugging
+information, e.g. it prints to the log the contents of the WebSocket messages
+sent by the client (usually the Juju GUI) and by the Juju API server.
+As mentioned, juju-deployer works on its own sandbox and uses its own API
+connections, and for this reason the WebSocket traffic it generates is not
+logged.
+
+Sometimes, while debugging, it is convenient to restart the builtin server
+(which also empties the bundle deployments queue). To do that, run the
+following in the Juju GUI machine:
+
+    service guiserver restart

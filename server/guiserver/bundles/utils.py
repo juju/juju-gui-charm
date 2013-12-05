@@ -21,14 +21,16 @@ from functools import wraps
 import itertools
 import logging
 import time
+import urllib
 
 from tornado import (
     gen,
     escape,
 )
+from tornado.httpclient import AsyncHTTPClient
 
 from guiserver.watchers import AsyncWatcher
-
+from jujuclient import EnvError
 
 # Change statuses.
 SCHEDULED = 'scheduled'
@@ -64,6 +66,25 @@ def create_change(deployment_id, status, queue=None, error=None):
     return result
 
 
+def message_from_error(exception):
+    """Return a (possibly) human readable message from the given exception.
+
+    Also log the error message to the log file.
+    """
+    logging.error('error deploying the bundle')
+    logging.error('error type: {}'.format(type(exception)))
+    if isinstance(exception, EnvError):
+        message = exception.message.strip()
+    else:
+        message = str(exception).strip()
+    if message:
+        logging.error('error message: {}'.format(message))
+    else:
+        logging.error('empty error message')
+        message = 'no further details can be provided'
+    return message
+
+
 class Observer(object):
     """Handle multiple deployment watchers."""
 
@@ -85,6 +106,7 @@ class Observer(object):
         """
         deployment_id = self._deployment_counter.next()
         self.deployments[deployment_id] = AsyncWatcher()
+        logging.info('deployment {} scheduled'.format(deployment_id))
         return deployment_id
 
     def add_watcher(self, deployment_id):
@@ -94,6 +116,8 @@ class Observer(object):
         """
         watcher_id = self._watcher_counter.next()
         self.watchers[watcher_id] = deployment_id
+        logging.debug('deployment {} observed by watcher {}'.format(
+            deployment_id, watcher_id))
         return watcher_id
 
     def notify_position(self, deployment_id, position):
@@ -106,18 +130,22 @@ class Observer(object):
         status = SCHEDULED if position else STARTED
         change = create_change(deployment_id, status, queue=position)
         watcher.put(change)
+        logging.debug('deployment {} now in position {}'.format(
+            deployment_id, position))
 
     def notify_cancelled(self, deployment_id):
         """Add a change to the deployment watcher notifying it is cancelled."""
         watcher = self.deployments[deployment_id]
         change = create_change(deployment_id, CANCELLED)
         watcher.close(change)
+        logging.info('deployment {} cancelled'.format(deployment_id))
 
     def notify_completed(self, deployment_id, error=None):
         """Add a change to the deployment watcher notifying it is completed."""
         watcher = self.deployments[deployment_id]
         change = create_change(deployment_id, COMPLETED, error=error)
         watcher.close(change)
+        logging.info('deployment {} completed'.format(deployment_id))
 
 
 def _prepare_constraints(constraints):
@@ -204,3 +232,44 @@ def response(info=None, error=None):
         logging.error('deployer: {}'.format(escape.utf8(error)))
         data['Error'] = error
     return gen.Return(data)
+
+
+@gen.coroutine
+def increment_deployment_counter(bundle_id, charmworld_url):
+    """Increment the deployment count in Charmworld.
+
+    If the call to Charmworld fails we log the error but don't report it.
+    This counter is a 'best effort' attempt but it will not impede our
+    deployment of the bundle.
+
+    Arguments are:
+          - bundle_id: the ID for the bundle in Charmworld.
+          - charmworld_url: the URL for charmworld, including the protocol.
+            If None, do nothing.
+
+    Returns True if the counter is successfully incremented else False.
+    """
+    if charmworld_url is None:
+        raise gen.Return(False)
+
+    if not all((isinstance(bundle_id, basestring),
+                isinstance(charmworld_url, basestring))):
+        raise gen.Return(False)
+
+    path = 'metric/deployments/increment'
+    url = u'{}api/3/bundle/{}/{}'.format(
+        charmworld_url,
+        urllib.quote(bundle_id), path)
+    logging.info('Incrementing bundle deployment count using\n{}.'.format(
+        url.encode('utf-8')))
+    client = AsyncHTTPClient()
+    # We use a GET instead of a POST since there is not request body.
+    try:
+        resp = yield client.fetch(url, callback=None)
+    except Exception as exc:
+        logging.error('Attempt to increment deployment counter failed.')
+        logging.error('URL: {}'.format(url))
+        logging.exception(exc)
+        raise gen.Return(False)
+    success = bool(resp.code == 200)
+    raise gen.Return(success)

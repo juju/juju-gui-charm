@@ -420,7 +420,7 @@ def write_gui_config(
     password = password if password else None
     if password is None and ((is_legacy_juju and in_staging) or sandbox):
         password = 'admin'
-    api_backend = 'python' if is_legacy_juju else 'go'
+    api_backend = 'python' if (is_legacy_juju and not sandbox) else 'go'
     if secure:
         protocol = 'wss'
     else:
@@ -557,7 +557,7 @@ def install_builtin_server():
 
 def write_builtin_server_startup(
         gui_root, ssl_cert_path, serve_tests=False, sandbox=False,
-        builtin_server_logging='info', insecure=False):
+        builtin_server_logging='info', insecure=False, charmworld_url=''):
     """Generate the builtin server Upstart file."""
     log('Generating the builtin server Upstart file.')
     context = {
@@ -567,6 +567,7 @@ def write_builtin_server_startup(
         'sandbox': sandbox,
         'serve_tests': serve_tests,
         'ssl_cert_path': ssl_cert_path,
+        'charmworld_url': charmworld_url,
     }
     if not sandbox:
         is_legacy_juju = legacy_juju()
@@ -586,11 +587,12 @@ def write_builtin_server_startup(
 
 def start_builtin_server(
         build_dir, ssl_cert_path, serve_tests, sandbox, builtin_server_logging,
-        insecure):
+        insecure, charmworld_url):
     """Start the builtin server."""
     write_builtin_server_startup(
         build_dir, ssl_cert_path, serve_tests=serve_tests, sandbox=sandbox,
-        builtin_server_logging=builtin_server_logging, insecure=insecure)
+        builtin_server_logging=builtin_server_logging, insecure=insecure,
+        charmworld_url=charmworld_url)
     log('Starting the builtin server.')
     with su('root'):
         service_control(BUILTIN_SERVER, RESTART)

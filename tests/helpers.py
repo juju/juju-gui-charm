@@ -20,7 +20,9 @@ from collections import namedtuple
 from functools import wraps
 import json
 import os
+import random
 import re
+import string
 import subprocess
 import time
 
@@ -82,7 +84,7 @@ Version = namedtuple('Version', 'major minor patch')
 def retry(exception, tries=10, delay=1):
     """If the decorated function raises the exception, wait and try it again.
 
-    Raise the exception raised by the last call if the function does not
+    Raise the exception raised by the first call if the function does not
     exit normally after the specified number of tries.
 
     Original from http://wiki.python.org/moin/PythonDecoratorLibrary#Retry.
@@ -90,14 +92,17 @@ def retry(exception, tries=10, delay=1):
     def decorator(func):
         @wraps(func)
         def decorated(*args, **kwargs):
-            mtries = tries
-            while mtries:
+            tries_remaining = tries
+            original_error = None
+            while tries_remaining:
                 try:
                     return func(*args, **kwargs)
-                except exception as err:
+                except Exception as error:
+                    if original_error is None:
+                        original_error = error
                     time.sleep(delay)
-                    mtries -= 1
-            raise err
+                    tries_remaining -= 1
+            raise original_error
         return decorated
     return decorator
 
@@ -195,6 +200,13 @@ def juju_version():
         raise ValueError('invalid juju version: {!r}'.format(output))
     to_int = lambda num: 0 if num is None else int(num)
     return Version._make(map(to_int, match.groups()))
+
+
+def make_service_name(prefix='service-'):
+    """Generate a long, random service name."""
+    characters = string.ascii_lowercase
+    suffix = ''.join([random.choice(characters) for _ in range(20)])
+    return prefix + suffix
 
 
 def stop_services(hostname, services):

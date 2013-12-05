@@ -60,6 +60,8 @@ using "yield", and they must return their results using "raise response(...)"
 (the latter will be eventually fixed switching to a newer version of Python).
 """
 
+import logging
+
 from tornado import gen
 import yaml
 
@@ -71,11 +73,15 @@ from guiserver.bundles.utils import (
 
 
 def _validate_import_params(params):
-    """Parse the request data and return a (name, bundle) tuple.
+    """Parse the request data and return a (name, bundle, bundle_id) tuple.
 
     In the tuple:
       - name is the name of the bundle to be imported;
       - bundle is the YAML decoded bundle object.
+      - bundle_id is the permanent id of the bundle of the form
+        ~user/basketname/version/bundlename, e.g.
+        ~jorge/mediawiki/3/mediawiki-simple.  The bundle_id is optional and
+        will be None if not given.
 
     Raise a ValueError if data represents an invalid request.
     """
@@ -88,14 +94,17 @@ def _validate_import_params(params):
         raise ValueError('invalid YAML contents: {}'.format(err))
     name = params.get('Name')
     if name is None:
-        # The Name is optional if the YAML contents contain only one bunlde.
+        # The Name is optional if the YAML contents contain only one bundle.
         if len(bundles) == 1:
-            return bundles.items()[0]
-        raise ValueError('invalid data parameters: no bundle name provided')
+            name = bundles.keys()[0]
+        else:
+            raise ValueError(
+                'invalid data parameters: no bundle name provided')
     bundle = bundles.get(name)
     if bundle is None:
         raise ValueError('bundle {} not found'.format(name))
-    return name, bundle
+    bundle_id = params.get('BundleID')
+    return name, bundle, bundle_id
 
 
 @gen.coroutine
@@ -111,7 +120,7 @@ def import_bundle(request, deployer):
     """
     # Validate the request parameters.
     try:
-        name, bundle = _validate_import_params(request.params)
+        name, bundle, bundle_id = _validate_import_params(request.params)
     except ValueError as err:
         raise response(error='invalid request: {}'.format(err))
     # Validate and prepare the bundle.
@@ -125,7 +134,9 @@ def import_bundle(request, deployer):
     if err is not None:
         raise response(error='invalid request: {}'.format(err))
     # Add the bundle deployment to the Deployer queue.
-    deployment_id = deployer.import_bundle(request.user, name, bundle)
+    logging.info('import_bundle: scheduling {!r} deployment'.format(name))
+    deployment_id = deployer.import_bundle(
+        request.user, name, bundle, bundle_id)
     raise response({'DeploymentId': deployment_id})
 
 
@@ -148,6 +159,8 @@ def watch(request, deployer):
     watcher_id = deployer.watch(deployment_id)
     if watcher_id is None:
         raise response(error='invalid request: deployment not found')
+    logging.info('watch: deployment {} being observed by watcher {}'.format(
+        deployment_id, watcher_id))
     raise response({'WatcherId': watcher_id})
 
 
@@ -168,9 +181,12 @@ def next(request, deployer):
     if watcher_id is None:
         raise response(error='invalid request: invalid data parameters')
     # Wait for the Deployer to send changes.
+    logging.info('next: requested changes for watcher {}'.format(watcher_id))
     changes = yield deployer.next(watcher_id)
     if changes is None:
         raise response(error='invalid request: invalid watcher identifier')
+    logging.info('next: returning changes for watcher {}:\n{}'.format(
+        watcher_id, changes))
     raise response({'Changes': changes})
 
 
@@ -193,6 +209,7 @@ def cancel(request, deployer):
     err = deployer.cancel(deployment_id)
     if err is not None:
         raise response(error='invalid request: {}'.format(err))
+    logging.info('cancel: deployment {} cancelled'.format(deployment_id))
     raise response()
 
 
@@ -208,4 +225,5 @@ def status(request, deployer):
         error = 'invalid request: invalid data parameters: {}'.format(params)
         raise response(error=error)
     last_changes = deployer.status()
+    logging.info('status: returning last changes')
     raise response({'LastChanges': last_changes})

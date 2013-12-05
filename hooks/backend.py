@@ -216,7 +216,7 @@ class BuiltinServerMixin(ServerInstallMixinBase):
         utils.start_builtin_server(
             build_dir, config['ssl-cert-path'], config['serve-tests'],
             config['sandbox'], config['builtin-server-logging'],
-            not config['secure'])
+            not config['secure'], config['charmworld-url'])
 
     def stop(self, backend):
         utils.stop_builtin_server()

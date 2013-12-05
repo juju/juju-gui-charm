@@ -23,6 +23,7 @@ from tornado import gen
 from tornado.testing import(
     AsyncTestCase,
     gen_test,
+    LogTrapTestCase,
 )
 
 from guiserver import auth
@@ -42,8 +43,20 @@ def import_bundle_mock(apiurl, password, name, bundle, options):
     raise jujuclient.EnvError({'Error': 'bad wolf'})
 
 
+class FakeFuture(object):
+    def __init__(self, cancelled=False, exception=None):
+        self._cancelled = cancelled
+        self._exception = exception
+
+    def cancelled(self):
+        return self._cancelled
+
+    def exception(self):
+        return self._exception
+
+
 @mock.patch('time.time', mock.Mock(return_value=42))
-class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
+class TestDeployer(helpers.BundlesTestMixin, LogTrapTestCase, AsyncTestCase):
 
     bundle = {'foo': 'bar'}
     user = auth.User(
@@ -108,7 +121,8 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         deployer = self.make_deployer()
         with self.patch_import_bundle():
             deployment_id = deployer.import_bundle(
-                self.user, 'bundle', self.bundle, test_callback=self.stop)
+                self.user, 'bundle', self.bundle, bundle_id=None,
+                test_callback=self.stop)
         self.assertIsInstance(deployment_id, int)
         # Wait for the deployment to be completed.
         self.wait()
@@ -118,7 +132,8 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         deployer = self.make_deployer()
         with self.patch_import_bundle() as mock_import_bundle:
             deployer.import_bundle(
-                self.user, 'bundle', self.bundle, test_callback=self.stop)
+                self.user, 'bundle', self.bundle, bundle_id=None,
+                test_callback=self.stop)
         # Wait for the deployment to be completed.
         self.wait()
         mock_import_bundle.assert_called_once_with(
@@ -140,7 +155,8 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         deployer = self.make_deployer()
         with self.patch_import_bundle():
             deployment_id = deployer.import_bundle(
-                self.user, 'bundle', self.bundle, test_callback=self.stop)
+                self.user, 'bundle', self.bundle, bundle_id=None,
+                test_callback=self.stop)
         watcher_id = deployer.watch(deployment_id)
         self.assertIsInstance(watcher_id, int)
         # Wait for the deployment to be completed.
@@ -157,7 +173,8 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         deployer = self.make_deployer()
         with self.patch_import_bundle():
             deployment_id = deployer.import_bundle(
-                self.user, 'bundle', self.bundle, test_callback=self.stop)
+                self.user, 'bundle', self.bundle, bundle_id=None,
+                test_callback=self.stop)
         watcher_id = deployer.watch(deployment_id)
         # A first change is received notifying that the deployment is started.
         changes = yield deployer.next(watcher_id)
@@ -178,9 +195,10 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         deployer = self.make_deployer()
         with self.patch_import_bundle():
             deployment1 = deployer.import_bundle(
-                self.user, 'bundle', self.bundle)
+                self.user, 'bundle', self.bundle, bundle_id=None)
             deployment2 = deployer.import_bundle(
-                self.user, 'bundle', self.bundle, test_callback=self.stop)
+                self.user, 'bundle', self.bundle, bundle_id=None,
+                test_callback=self.stop)
         watcher1 = deployer.watch(deployment1)
         watcher2 = deployer.watch(deployment2)
         # The first deployment is started.
@@ -205,7 +223,8 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         deployer = self.make_deployer()
         with self.patch_import_bundle(side_effect=RuntimeError('bad wolf')):
             deployment_id = deployer.import_bundle(
-                self.user, 'bundle', self.bundle, test_callback=self.stop)
+                self.user, 'bundle', self.bundle, bundle_id=None,
+                test_callback=self.stop)
         watcher_id = deployer.watch(deployment_id)
         # We expect two changes: the second one should include the error.
         yield deployer.next(watcher_id)
@@ -222,7 +241,8 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         import_bundle_path = 'guiserver.bundles.base.blocking.import_bundle'
         with mock.patch(import_bundle_path, import_bundle_mock):
             deployer.import_bundle(
-                self.user, 'bundle', self.bundle, test_callback=self.stop)
+                self.user, 'bundle', self.bundle, bundle_id=None,
+                test_callback=self.stop)
         # Wait for the deployment to be completed.
         self.wait()
         status = deployer.status()
@@ -230,7 +250,7 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         expected = {
             'DeploymentId': 0,
             'Status': utils.COMPLETED,
-            'Error': "<Env Error - Details:\n {   'Error': 'bad wolf'}\n >",
+            'Error': "bad wolf",
             'Time': 42,
         }
         self.assertEqual(expected, status[0])
@@ -249,9 +269,10 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
             # The test callback is passed to the first deployment because we
             # expect the second one to be immediately cancelled.
             deployer.import_bundle(
-                self.user, 'bundle', self.bundle, test_callback=self.stop)
+                self.user, 'bundle', self.bundle, bundle_id=None,
+                test_callback=self.stop)
             deployment_id = deployer.import_bundle(
-                self.user, 'bundle', self.bundle)
+                self.user, 'bundle', self.bundle, bundle_id=None)
         watcher_id = deployer.watch(deployment_id)
         self.assertIsNone(deployer.cancel(deployment_id))
         # We expect two changes: the second one should notify the deployment
@@ -274,7 +295,8 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         deployer = self.make_deployer()
         with self.patch_import_bundle():
             deployment_id = deployer.import_bundle(
-                self.user, 'bundle', self.bundle, test_callback=self.stop)
+                self.user, 'bundle', self.bundle, bundle_id=None,
+                test_callback=self.stop)
         watcher_id = deployer.watch(deployment_id)
         # Assume the deployment is completed after two changes.
         yield deployer.next(watcher_id)
@@ -291,7 +313,8 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         deployer = self.make_deployer()
         with self.patch_import_bundle() as mock_import_bundle:
             deployment_id = deployer.import_bundle(
-                self.user, 'bundle', self.bundle, test_callback=self.stop)
+                self.user, 'bundle', self.bundle, bundle_id=None,
+                test_callback=self.stop)
         watcher_id = deployer.watch(deployment_id)
         # Wait until the deployment is started.
         yield deployer.next(watcher_id)
@@ -314,9 +337,10 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         deployer = self.make_deployer()
         with self.patch_import_bundle():
             deployment1 = deployer.import_bundle(
-                self.user, 'bundle', self.bundle)
+                self.user, 'bundle', self.bundle, bundle_id=None)
             deployment2 = deployer.import_bundle(
-                self.user, 'bundle', self.bundle, test_callback=self.stop)
+                self.user, 'bundle', self.bundle, bundle_id=None,
+                test_callback=self.stop)
         # Wait for the deployment to be completed.
         self.wait()
         # At this point we expect two completed deployments.
@@ -325,6 +349,64 @@ class TestDeployer(helpers.BundlesTestMixin, AsyncTestCase):
         self.assertEqual(utils.COMPLETED, change2['Status'])
         self.assertEqual(deployment1, change1['DeploymentId'])
         self.assertEqual(deployment2, change2['DeploymentId'])
+
+    def test_import_callback_cancelled(self):
+        deployer = self.make_deployer()
+        deployer_id = 123
+        deployer._queue.append(deployer_id)
+        deployer._futures[deployer_id] = None
+        mock_path = 'guiserver.bundles.utils.increment_deployment_counter'
+        future = FakeFuture(True)
+        with mock.patch.object(
+                deployer._observer, 'notify_cancelled') as mock_notify:
+            with mock.patch(mock_path) as mock_incrementer:
+                deployer._import_callback(deployer_id, None, future)
+        mock_notify.assert_called_with(deployer_id)
+        self.assertFalse(mock_incrementer.called)
+
+    def test_import_callback_error(self):
+        deployer = self.make_deployer()
+        deployer_id = 123
+        deployer._queue.append(deployer_id)
+        deployer._futures[deployer_id] = None
+        mock_path = 'guiserver.bundles.utils.increment_deployment_counter'
+        future = FakeFuture(exception='aiiee')
+        with mock.patch.object(
+                deployer._observer, 'notify_completed') as mock_notify:
+            with mock.patch(mock_path) as mock_incrementer:
+                deployer._import_callback(deployer_id, None, future)
+        mock_notify.assert_called_with(deployer_id, error='aiiee')
+        self.assertFalse(mock_incrementer.called)
+
+    def test_import_callback_no_bundleid(self):
+        deployer = self.make_deployer()
+        deployer_id = 123
+        deployer._queue.append(deployer_id)
+        deployer._futures[deployer_id] = None
+        mock_path = 'guiserver.bundles.utils.increment_deployment_counter'
+        future = FakeFuture()
+        with mock.patch.object(
+                deployer._observer, 'notify_completed') as mock_notify:
+            with mock.patch(mock_path) as mock_incrementer:
+                deployer._import_callback(deployer_id, None, future)
+        mock_notify.assert_called_with(deployer_id, error=None)
+        self.assertFalse(mock_incrementer.called)
+
+    def test_import_callback_success(self):
+        deployer = self.make_deployer()
+        deployer_id = 123
+        bundle_id = '~jorge/basket/bundle'
+        deployer._charmworldurl = 'http://cw.example.com'
+        deployer._queue.append(deployer_id)
+        deployer._futures[deployer_id] = None
+        mock_path = 'guiserver.bundles.utils.increment_deployment_counter'
+        future = FakeFuture()
+        with mock.patch.object(
+                deployer._observer, 'notify_completed') as mock_notify:
+            with mock.patch(mock_path) as mock_incrementer:
+                deployer._import_callback(deployer_id, bundle_id, future)
+        mock_notify.assert_called_with(deployer_id, error=None)
+        mock_incrementer.assert_called_with(bundle_id, deployer._charmworldurl)
 
 
 class TestDeployMiddleware(helpers.BundlesTestMixin, AsyncTestCase):
