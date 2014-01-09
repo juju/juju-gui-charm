@@ -1100,13 +1100,6 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertIn('user: "admin"', js_conf)
         self.assertIn('password: "admin"', js_conf)
 
-    def test_write_gui_config_fullscreen(self):
-        write_gui_config(
-            False, 'This is login help.', False, False, self.charmworld_url,
-            self.build_dir, sandbox=True, default_viewmode='fullscreen',
-            config_js_path='config')
-        self.assertIn('defaultViewmode: "fullscreen"', self.files['config'])
-
     def test_write_gui_config_with_button(self):
         write_gui_config(
             False, 'This is login help.', False, False, self.charmworld_url,
