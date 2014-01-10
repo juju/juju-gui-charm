@@ -204,7 +204,6 @@ class TestBackendCommands(unittest.TestCase):
             'builtin-server-logging': 'info',
             'charmworld-url': 'http://charmworld.example.com/',
             'command-log-file': self.command_log_file,
-            'default-viewmode': 'sidebar',
             'ga-key': 'my-key',
             'juju-api-branch': self.juju_api_branch,
             'juju-gui-debug': False,
@@ -275,7 +274,6 @@ class TestBackendCommands(unittest.TestCase):
             config['read-only'], config['staging'], config['charmworld-url'],
             mocks.compute_build_dir(), secure=config['secure'],
             sandbox=config['sandbox'], ga_key=config['ga-key'],
-            default_viewmode=config['default-viewmode'],
             show_get_juju_button=config['show-get-juju-button'], password=None)
 
     def test_base_dir_created(self):
