@@ -232,13 +232,7 @@ class Backend(object):
         self.prev_config = prev_config
         self.mixins = [SetUpMixin()]
 
-        is_legacy_juju = utils.legacy_juju()
-
-        if config['staging']:
-            if not is_legacy_juju:
-                raise ValueError('Unable to use staging with go backend')
-            self.mixins.append(ImprovMixin())
-        elif config['sandbox']:
+        if config['sandbox']:
             self.mixins.append(SandboxMixin())
         else:
             mixin = GoMixin()

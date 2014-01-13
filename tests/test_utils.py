@@ -795,7 +795,6 @@ class TestCmdLog(unittest.TestCase):
         charmhelpers.command = self.command
 
     def test_contents_logged(self):
-        import pdb; pdb.set_trace()
         cmd_log('foo')
         line = open(self.log_file_name, 'r').read()
         self.assertTrue(line.endswith(': juju-gui@INFO \nfoo\n'))

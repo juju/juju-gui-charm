@@ -89,7 +89,6 @@ from charmhelpers import (
 from shelltoolbox import (
     apt_get_install,
     command,
-    environ,
     install_extra_repositories,
     run,
     script_name,
@@ -273,7 +272,8 @@ def parse_source(source):
          in this case the second element includes the branch or SHA;
        - ('branch', ('https://github.com/juju/juju-gui.git', None): no
          revision is specified;
-       - ('url', 'http://example.com/gui.tar.gz'): release from a downloaded file.
+       - ('url', 'http://example.com/gui.tar.gz'): release from a downloaded
+         file.
     """
 
     def is_url(url_check):
@@ -655,11 +655,8 @@ def fetch_gui_from_branch(branch_url, revision, logpath):
     # Create a release starting from a branch.
     juju_gui_source_dir = os.path.join(CURRENT_DIR, 'juju-gui-source')
 
-    # checkout_args, revno = ([], 'latest revno') if revision is None else (
-    #     ['--revision', revision], 'revno {}'.format(revision))
-
     log('Retrieving Juju GUI source checkout from {} ({}).'.format(
-        branch_url, revno))
+        branch_url, revision))
 
     cmd_log(run('rm', '-rf', juju_gui_source_dir))
     checkout_args = [branch_url, juju_gui_source_dir]

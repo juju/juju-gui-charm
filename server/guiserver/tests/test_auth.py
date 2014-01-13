@@ -204,7 +204,6 @@ class TestGoAuthMiddleware(
         self.assert_user('', '', False)
 
 
-
 class BackendTestMixin(object):
     """Include tests for the authentication backends.
 
