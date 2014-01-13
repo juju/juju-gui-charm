@@ -324,9 +324,8 @@ def _setupLogging():
     # this basicConfig will be a noop and not setup the expected file handler
     # on the logger.
     root_logger = logging.getLogger()
-    if root_logger.handlers:
-        for handler in root_logger.handlers:
-            root_logger.removeHandler(handler)
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
 
     config = get_config()
     logging.basicConfig(
