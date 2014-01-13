@@ -204,11 +204,6 @@ class TestGoAuthMiddleware(
         self.assert_user('', '', False)
 
 
-class TestPythonAuthMiddleware(
-        helpers.PythonAPITestMixin, AuthMiddlewareTestMixin,
-        LogTrapTestCase, unittest.TestCase):
-    pass
-
 
 class BackendTestMixin(object):
     """Include tests for the authentication backends.
@@ -281,35 +276,6 @@ class TestGoBackend(
                 'Type': 'Admin',
                 'Request': 'Login',
                 'Params': {'Password': 'passwd'},
-            },
-        )
-        for request in requests:
-            is_login = self.backend.request_is_login(request)
-            self.assertFalse(is_login, request)
-
-
-class TestPythonBackend(
-        helpers.PythonAPITestMixin, BackendTestMixin, unittest.TestCase):
-
-    def test_request_is_not_login(self):
-        # False is returned if the passed data is not a login request.
-        requests = (
-            {},
-            {
-                'request_id': 42,
-                'op': 'INVALID',
-                'user': 'user',
-                'password': 'passwd',
-            },
-            {
-                'request_id': 42,
-                'op': 'login',
-                'password': 'passwd',
-            },
-            {
-                'request_id': 42,
-                'op': 'login',
-                'user': 'user',
             },
         )
         for request in requests:

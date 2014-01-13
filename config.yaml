@@ -21,23 +21,24 @@ options:
       - 'local' (default): The latest local release will be deployed. Releases
         are stored in the releases directory of this charm.
       - 'stable': The latest release from the "stable" series will be deployed.
-      - 'trunk': The latest release from the "trunk" series will be deployed.
-        Please note that this is not a build of the current Juju GUI trunk.
-        For that functionality, use "lp:juju-gui", as described below.
-      - a stable version (e.g '0.1.0'): The specified stable version will be
-        deployed. A suitable release is looked up in the local releases
-        repository (see the "local" choice above). If not found locally, the
-        release will be downloaded from Launchpad.
-      - a trunk version (e.g '0.1.0+build.1'): The specified trunk version
-        will be deployed. A suitable release is looked up in the local releases
-        repository (see the "local" choice above). If not found locally, the
-        release will be downloaded from Launchpad.
-      - a Bazaar branch (e.g. 'lp:juju-gui'): A release will be created and
-        deployed from the specified Bazaar branch. "http://"" prefixed branches
-        work as well. It is also possible to include the specific branch
-        revision, e.g. "lp:juju-gui:42" will checkout revno 42.
-      - a "url:"" prefixed url: The release found at the given URL
-        (ex: url:http://... or url:file://...) will be deployed.
+      - 'develop': The latest, in development, version from the Git repository.
+      - a specific release version (e.g '0.1.0' or '0.1.0+build.1'): The
+        specified stable version will be deployed. A suitable release is
+        looked up in the local releases repository (see the "local" choice
+        above). If not found locally, the release will be downloaded from
+        Launchpad.
+      - a Git branch (e.g. 'https://github.com/juju/juju-gui.git' or
+        'https://github.com/mitechie/juju-gui.git updated-test-runner'): A
+        release will be created and deployed from the specified Git
+        repository. You can include a branch name or a specific commit SHA
+        after the url to the Git repository to deploy that specific commit
+        point.
+
+        - Specify a commit SHA: (e.g.
+          'https://github.com/mitechie/juju-gui.git @de5e61bf9fa') will clone
+          the git repository and then check out the specified commit before
+          building the release.
+      - a URL: The release found at the given URL (ex: http://...) will be deployed.
     type: string
     default: local
   juju-gui-debug:
@@ -45,30 +46,6 @@ options:
       Run Juju GUI in debug mode, serving the uncompressed GUI source files.
     type: boolean
     default: false
-  juju-api-branch:
-    description: |
-      The Juju API Bazaar branch (implementing the WebSocket server).  Since
-      juju-core includes the WebSocket API server out of the box, this option
-      is ignored if the charm is deployed using juju-core.
-    type: string
-    default: lp:~hazmat/juju/rapi-rollup
-  staging:
-    description: |
-      Connect the Juju GUI to the staging backend (i.e. a simulated Juju
-      environment).  Currently juju-core does not support the staging backend.
-      For this reason, an error is raised if this option is enabled in a
-      juju-core environment.
-    type: boolean
-    default: false
-  staging-environment:
-    description: |
-      The environment JSON export used by the staging server. This option can
-      be used to change the topology of the simulated Juju environment.
-      Possible values are 'sample' and 'large'.  Currently juju-core does not
-      support the staging backend. For this reason, this option is ignored if
-      the charm is deployed using juju-core.
-    type: string
-    default: sample
   juju-gui-console-enabled:
     description: |
       Whether or not the console should be enabled for the browser.
@@ -168,16 +145,6 @@ options:
       allow us to improve our tool based on your experience.
     type: string
     default: UA-41463568-2
-  default-viewmode:
-    description: |
-      What the default viewmode  for the charmbrowser should be. Possible options are:
-      - 'sidebar' (default): the charmwbrowser will appear as a sidebar. This
-        is also known as build mode.
-      - 'fullscreen': the charmbrowser will appear in full screen, hiding the
-        canvas. This is also known as browse mode.
-      - 'minimized': the charmbrowser will be minimized by default, and hidden.
-    type: string
-    default: sidebar
   show-get-juju-button:
     description: |
       There are deployment modes for Juju GUI which are not intended as regular

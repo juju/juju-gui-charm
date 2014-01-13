@@ -73,22 +73,6 @@ class TestBackendProperties(unittest.TestCase):
         self.assert_dependencies(
             EXPECTED_PYTHON_LEGACY_DEBS, 'ppa:my/location', test_backend)
 
-    def test_python_staging_backend(self):
-        expected_mixins = (
-            'SetUpMixin', 'ImprovMixin', 'GuiMixin', 'HaproxyApacheMixin')
-        config = {
-            'builtin-server': False,
-            'repository-location': 'ppa:my/location',
-            'sandbox': False,
-            'staging': True,
-        }
-        with simulate_pyjuju:
-            test_backend = backend.Backend(config=config)
-            self.assert_mixins(expected_mixins, test_backend)
-            self.assert_dependencies(
-                EXPECTED_PYTHON_LEGACY_DEBS + ('zookeeper',),
-                'ppa:my/location', test_backend)
-
     def test_go_staging_backend(self):
         config = {'sandbox': False, 'staging': True, 'builtin-server': False}
         with simulate_juju_core:
@@ -97,28 +81,9 @@ class TestBackendProperties(unittest.TestCase):
         error = str(context_manager.exception)
         self.assertEqual('Unable to use staging with go backend', error)
 
-    def test_python_sandbox_backend(self):
-        with simulate_pyjuju:
-            self.check_sandbox_mode()
-
     def test_go_sandbox_backend(self):
         with simulate_juju_core:
             self.check_sandbox_mode()
-
-    def test_python_backend(self):
-        expected_mixins = (
-            'SetUpMixin', 'PythonMixin', 'GuiMixin', 'HaproxyApacheMixin')
-        config = {
-            'builtin-server': False,
-            'repository-location': 'ppa:my/location',
-            'sandbox': False,
-            'staging': False,
-        }
-        with simulate_pyjuju:
-            test_backend = backend.Backend(config=config)
-            self.assert_mixins(expected_mixins, test_backend)
-            self.assert_dependencies(
-                EXPECTED_PYTHON_LEGACY_DEBS, 'ppa:my/location', test_backend)
 
     def test_go_backend(self):
         expected_mixins = (
@@ -149,21 +114,6 @@ class TestBackendProperties(unittest.TestCase):
             self.assert_mixins(expected_mixins, test_backend)
             self.assert_dependencies(
                 EXPECTED_GO_BUILTIN_DEBS, None, test_backend)
-
-    def test_python_builtin_server(self):
-        config = {
-            'builtin-server': True,
-            'repository-location': 'ppa:my/location',
-            'sandbox': False,
-            'staging': False,
-        }
-        expected_mixins = (
-            'SetUpMixin', 'PythonMixin', 'GuiMixin', 'BuiltinServerMixin')
-        with simulate_pyjuju:
-            test_backend = backend.Backend(config)
-            self.assert_mixins(expected_mixins, test_backend)
-            self.assert_dependencies(
-                EXPECTED_PYTHON_BUILTIN_DEBS, None, test_backend)
 
     def test_sandbox_builtin_server(self):
         config = {
@@ -232,7 +182,6 @@ class TestBackendCommands(unittest.TestCase):
         mocks = {
             'base_dir': mock.patch('backend.utils.BASE_DIR', self.base_dir),
             'compute_build_dir': mock.patch('backend.utils.compute_build_dir'),
-            'fetch_api': mock.patch('backend.utils.fetch_api'),
             'fetch_gui_from_branch': mock.patch(
                 'backend.utils.fetch_gui_from_branch'),
             'fetch_gui_release': mock.patch('backend.utils.fetch_gui_release'),
@@ -295,24 +244,6 @@ class TestBackendCommands(unittest.TestCase):
             test_backend.destroy()
         self.assertFalse(os.path.exists(utils.BASE_DIR), utils.BASE_DIR)
 
-    def test_install_python_legacy_stable(self):
-        # Install a pyJuju backend with legacy server and stable release.
-        config = self.make_config({'builtin-server': False})
-        with simulate_pyjuju:
-            test_backend = backend.Backend(config=config)
-            with self.mock_all() as mocks:
-                test_backend.install()
-        mocks.install_missing_packages.assert_called_once_with(
-            set(EXPECTED_PYTHON_LEGACY_DEBS),
-            repository=self.repository_location)
-        mocks.fetch_api.assert_called_once_with(self.juju_api_branch)
-        mocks.parse_source.assert_called_once_with(self.juju_gui_source)
-        mocks.fetch_gui_release.assert_called_once_with(
-            *self.parse_source_return_value)
-        self.assertFalse(mocks.fetch_gui_from_branch.called)
-        mocks.setup_gui.assert_called_once_with(mocks.fetch_gui_release())
-        self.assertFalse(mocks.install_builtin_server.called)
-
     def test_install_go_legacy_stable(self):
         # Install a juju-core backend with legacy server and stable release.
         config = self.make_config({'builtin-server': False})
@@ -322,30 +253,12 @@ class TestBackendCommands(unittest.TestCase):
                 test_backend.install()
         mocks.install_missing_packages.assert_called_once_with(
             set(EXPECTED_GO_LEGACY_DEBS), repository=self.repository_location)
-        self.assertFalse(mocks.fetch_api.called)
         mocks.parse_source.assert_called_once_with(self.juju_gui_source)
         mocks.fetch_gui_release.assert_called_once_with(
             *self.parse_source_return_value)
         self.assertFalse(mocks.fetch_gui_from_branch.called)
         mocks.setup_gui.assert_called_once_with(mocks.fetch_gui_release())
         self.assertFalse(mocks.install_builtin_server.called)
-
-    def test_install_python_builtin_stable(self):
-        # Install a pyJuju backend with builtin server and stable release.
-        config = self.make_config({'builtin-server': True})
-        with simulate_pyjuju:
-            test_backend = backend.Backend(config=config)
-            with self.mock_all() as mocks:
-                test_backend.install()
-        mocks.install_missing_packages.assert_called_once_with(
-            set(EXPECTED_PYTHON_BUILTIN_DEBS), repository=None)
-        mocks.fetch_api.assert_called_once_with(self.juju_api_branch)
-        mocks.parse_source.assert_called_once_with(self.juju_gui_source)
-        mocks.fetch_gui_release.assert_called_once_with(
-            *self.parse_source_return_value)
-        self.assertFalse(mocks.fetch_gui_from_branch.called)
-        mocks.setup_gui.assert_called_once_with(mocks.fetch_gui_release())
-        mocks.install_builtin_server.assert_called_once_with()
 
     def test_install_go_builtin_stable(self):
         # Install a juju-core backend with builtin server and stable release.
@@ -356,7 +269,6 @@ class TestBackendCommands(unittest.TestCase):
                 test_backend.install()
         mocks.install_missing_packages.assert_called_once_with(
             set(EXPECTED_GO_BUILTIN_DEBS), repository=None)
-        self.assertFalse(mocks.fetch_api.called)
         mocks.parse_source.assert_called_once_with(self.juju_gui_source)
         mocks.fetch_gui_release.assert_called_once_with(
             *self.parse_source_return_value)
@@ -380,30 +292,12 @@ class TestBackendCommands(unittest.TestCase):
             with self.mock_all() as mocks:
                 test_backend.install()
         mocks.install_missing_packages.assert_has_calls(expected_calls)
-        self.assertFalse(mocks.fetch_api.called)
         mocks.parse_source.assert_called_once_with(self.juju_gui_source)
         mocks.fetch_gui_from_branch.assert_called_once_with(
             'lp:juju-gui', 42, self.command_log_file)
         self.assertFalse(mocks.fetch_gui_release.called)
         mocks.setup_gui.assert_called_once_with(mocks.fetch_gui_from_branch())
         mocks.install_builtin_server.assert_called_once_with()
-
-    def test_start_python_legacy(self):
-        # Start a pyJuju backend with legacy server.
-        config = self.make_config({'builtin-server': False})
-        with simulate_pyjuju:
-            test_backend = backend.Backend(config=config)
-            with self.mock_all() as mocks:
-                test_backend.start()
-        mocks.start_agent.assert_called_once_with(self.ssl_cert_path)
-        mocks.compute_build_dir.assert_called_with(
-            config['juju-gui-debug'], config['serve-tests'])
-        self.assert_write_gui_config_called(mocks, config)
-        mocks.open_port.assert_has_calls([mock.call(80), mock.call(443)])
-        mocks.start_haproxy_apache.assert_called_once_with(
-            mocks.compute_build_dir(), config['serve-tests'],
-            self.ssl_cert_path, config['secure'])
-        self.assertFalse(mocks.start_builtin_server.called)
 
     def test_start_go_legacy(self):
         # Start a juju-core backend with legacy server.
@@ -421,25 +315,6 @@ class TestBackendCommands(unittest.TestCase):
             mocks.compute_build_dir(), config['serve-tests'],
             self.ssl_cert_path, config['secure'])
         self.assertFalse(mocks.start_builtin_server.called)
-
-    def test_start_python_builtin(self):
-        # Start a pyJuju backend with builtin server.
-        config = self.make_config({'builtin-server': True})
-        with simulate_pyjuju:
-            test_backend = backend.Backend(config=config)
-            with self.mock_all() as mocks:
-                test_backend.start()
-        mocks.start_agent.assert_called_once_with(self.ssl_cert_path)
-        mocks.compute_build_dir.assert_called_with(
-            config['juju-gui-debug'], config['serve-tests'])
-        self.assert_write_gui_config_called(mocks, config)
-        mocks.open_port.assert_has_calls([mock.call(80), mock.call(443)])
-        mocks.start_builtin_server.assert_called_once_with(
-            mocks.compute_build_dir(), self.ssl_cert_path,
-            config['serve-tests'], config['sandbox'],
-            config['builtin-server-logging'], not config['secure'],
-            config['charmworld-url'])
-        self.assertFalse(mocks.start_haproxy_apache.called)
 
     def test_start_go_builtin(self):
         # Start a juju-core backend with builtin server.
@@ -460,17 +335,6 @@ class TestBackendCommands(unittest.TestCase):
             config['charmworld-url'])
         self.assertFalse(mocks.start_haproxy_apache.called)
 
-    def test_stop_python_legacy(self):
-        # Stop a pyJuju backend with legacy server.
-        config = self.make_config({'builtin-server': False})
-        with simulate_pyjuju:
-            test_backend = backend.Backend(config=config)
-            with self.mock_all() as mocks:
-                test_backend.stop()
-        mocks.stop_agent.assert_called_once_with()
-        mocks.stop_haproxy_apache.assert_called_once_with()
-        self.assertFalse(mocks.stop_builtin_server.called)
-
     def test_stop_go_legacy(self):
         # Stop a juju-core backend with legacy server.
         config = self.make_config({'builtin-server': False})
@@ -481,17 +345,6 @@ class TestBackendCommands(unittest.TestCase):
         self.assertFalse(mocks.stop_agent.called)
         mocks.stop_haproxy_apache.assert_called_once_with()
         self.assertFalse(mocks.stop_builtin_server.called)
-
-    def test_stop_python_builtin(self):
-        # Stop a pyJuju backend with builtin server.
-        config = self.make_config({'builtin-server': True})
-        with simulate_pyjuju:
-            test_backend = backend.Backend(config=config)
-            with self.mock_all() as mocks:
-                test_backend.stop()
-        mocks.stop_agent.assert_called_once_with()
-        mocks.stop_builtin_server.assert_called_once_with()
-        self.assertFalse(mocks.stop_haproxy_apache.called)
 
     def test_stop_go_builtin(self):
         # Stop a juju-core backend with builtin server.

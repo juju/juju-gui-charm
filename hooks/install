@@ -29,7 +29,9 @@ from shelltoolbox import (
 # Python dependencies must be installed here so that the charm can import and
 # use required libraries.
 PYTHON_DEPENDENCIES = (
-    'python-apt', 'python-launchpadlib', 'python-tempita', 'python-yaml')
+    'libapt-pkg-dev', 'python-apt', 'python-launchpadlib', 'python-tempita',
+    'python-yaml'
+)
 
 run('juju-log', '--', 'Installing base Python dependencies: {}.'.format(
     ', '.join(PYTHON_DEPENDENCIES)))

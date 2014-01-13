@@ -538,26 +538,12 @@ class TestGetLaunchpadRelease(unittest.TestCase):
         self.assertEqual('http://example.com/0.1.1.tgz', url)
         self.assertEqual('0.1.1.tgz', name)
 
-    def test_latest_trunk_release(self):
-        # Ensure the correct URL is returned for the latest trunk release.
-        url, name = get_launchpad_release(self.project, 'trunk', None)
-        self.assertEqual('http://example.com/0.1.1+build.1.tgz', url)
-        self.assertEqual('0.1.1+build.1.tgz', name)
-
     def test_specific_stable_release(self):
         # Ensure the correct URL is returned for a specific version of the
         # stable release.
         url, name = get_launchpad_release(self.project, 'stable', '0.1.0')
         self.assertEqual('http://example.com/0.1.0.tgz', url)
         self.assertEqual('0.1.0.tgz', name)
-
-    def test_specific_trunk_release(self):
-        # Ensure the correct URL is returned for a specific version of the
-        # trunk release.
-        url, name = get_launchpad_release(
-            self.project, 'trunk', '0.1.0+build.1')
-        self.assertEqual('http://example.com/0.1.0+build.1.tgz', url)
-        self.assertEqual('0.1.0+build.1.tgz', name)
 
     def test_series_not_found(self):
         # A ValueError is raised if the series cannot be found.
@@ -712,47 +698,37 @@ class TestParseSource(unittest.TestCase):
         expected = ('stable', None)
         self.assertTupleEqual(expected, parse_source('stable'))
 
-    def test_latest_trunk_release(self):
-        # Ensure the latest trunk release is correctly parsed.
-        expected = ('trunk', None)
-        self.assertTupleEqual(expected, parse_source('trunk'))
-
-    def test_stable_release(self):
+    @mock.patch('utils.log')
+    def test_stable_release(self, mock_log):
         # Ensure a specific stable release is correctly parsed.
         expected = ('stable', '0.1.0')
         self.assertTupleEqual(expected, parse_source('0.1.0'))
 
-    def test_trunk_release(self):
-        # Ensure a specific trunk release is correctly parsed.
-        expected = ('trunk', '0.1.0+build.1')
-        self.assertTupleEqual(expected, parse_source('0.1.0+build.1'))
-
-    def test_bzr_branch(self):
-        # Ensure a Bazaar branch is correctly parsed.
-        sources = ('lp:example', 'http://bazaar.launchpad.net/example')
+    def test_git_branch(self):
+        # Ensure a Git branch is correctly parsed.
+        sources = (
+            'https://github.com/juju/juju-gui.git',
+            'https://github.com/juju/juju-gui.git'
+        )
         for source in sources:
             expected = ('branch', (source, None))
             self.assertEqual(expected, parse_source(source))
 
-    def test_bzr_branch_and_revision(self):
+    def test_git_branch_and_revision(self):
         # A Bazaar branch is correctly parsed when including revision.
-        sources = ('lp:example:42', 'http://bazaar.launchpad.net/example:1')
+        sources = (
+            'https://github.com/juju/juju-gui.git test_feature',
+            'https://github.com/juju/juju-gui.git @de5e6',
+        )
+
         for source in sources:
-            expected = ('branch', tuple(source.rsplit(':', 1)))
+            expected = ('branch', tuple(source.rsplit(' ', 1)))
             self.assertEqual(expected, parse_source(source))
 
     def test_url(self):
         expected = ('url', 'http://example.com/gui')
         self.assertTupleEqual(
-            expected, parse_source('url:http://example.com/gui'))
-
-    def test_file_url(self):
-        expected = ('url', 'file:///foo/bar')
-        self.assertTupleEqual(expected, parse_source('url:/foo/bar'))
-
-    def test_relative_file_url(self):
-        expected = ('url', 'file:///current/dir/foo/bar')
-        self.assertTupleEqual(expected, parse_source('url:foo/bar'))
+            expected, parse_source('http://example.com/gui'))
 
 
 class TestRenderToFile(unittest.TestCase):
@@ -819,6 +795,7 @@ class TestCmdLog(unittest.TestCase):
         charmhelpers.command = self.command
 
     def test_contents_logged(self):
+        import pdb; pdb.set_trace()
         cmd_log('foo')
         line = open(self.log_file_name, 'r').read()
         self.assertTrue(line.endswith(': juju-gui@INFO \nfoo\n'))

@@ -28,7 +28,6 @@ __all__ = [
     'cmd_log',
     'compute_build_dir',
     'download_release',
-    'fetch_api',
     'fetch_gui_from_branch',
     'fetch_gui_release',
     'find_missing_packages',
@@ -130,26 +129,20 @@ IMPROV_INIT_PATH = os.path.join(SYS_INIT_DIR, 'juju-api-improv.conf')
 
 JUJU_PEM = 'juju.includes-private-key.pem'
 DEB_BUILD_DEPENDENCIES = (
-    'bzr', 'g++', 'imagemagick', 'make',  'nodejs', 'npm',
+    'bzr', 'g++', 'git', 'imagemagick', 'make',  'nodejs', 'npm',
 )
 
 
 # Store the configuration from on invocation to the next.
 config_json = Serializer(os.path.join(os.path.sep, 'tmp', 'config.json'))
 # Bazaar checkout command.
-bzr_checkout = command('bzr', 'co', '--lightweight')
+git_checkout = command('git', 'clone', '--depth', '1')
 # Whether or not the charm is deployed using juju-core.
 # If juju-core has been used to deploy the charm, an agent.conf file must
 # be present in the charm parent directory.
 legacy_juju = lambda: not os.path.exists(
     os.path.join(CURRENT_DIR, '..', 'agent.conf'))
 
-bzr_url_expression = re.compile(r"""
-    ^  # Beginning of line.
-    ((?:lp:|http:\/\/)[^:]+)  # Branch URL (scheme + domain/path).
-    (?::(\d+))?  # Optional branch revision.
-    $  # End of line.
-""", re.VERBOSE)
 release_expression = re.compile(r"""
     juju-gui-  # Juju GUI prefix.
     (
@@ -273,29 +266,51 @@ def parse_source(source):
     Examples:
        - ('local', None): latest local release;
        - ('stable', None): latest stable release;
-       - ('stable', '0.1.0'): stable release v0.1.0;
-       - ('trunk', None): latest trunk release;
-       - ('trunk', '0.1.0+build.1'): trunk release v0.1.0 bzr revision 1;
-       - ('branch', ('lp:juju-gui', 42): release is made from a branch -
-         in this case the second element includes the branch URL and revision;
-       - ('branch', ('lp:juju-gui', None): no revision is specified;
-       - ('url', 'http://example.com/gui'): release from a downloaded file.
+       - ('develop', None): latest build from git trunk;
+       - ('release', '0.1.0'): release v0.1.0;
+       - ('branch', ('https://github.com/juju/juju-gui.git', 'add-feature'):
+         release is made from a branch -
+         in this case the second element includes the branch or SHA;
+       - ('branch', ('https://github.com/juju/juju-gui.git', None): no
+         revision is specified;
+       - ('url', 'http://example.com/gui.tar.gz'): release from a downloaded file.
     """
-    if source.startswith('url:'):
-        source = source[4:]
+
+    def is_url(url_check):
+        if ' ' in url_check:
+            url_check, _ = url_check.split(' ')
+
+        if url_check.startswith('http') and not url_check.endswith('.git'):
+            return True
+        else:
+            return False
+
+    def is_branch(check_branch):
+        target = None
+        if ' ' in check_branch:
+            check_branch, target = check_branch.split(' ')
+
+        if check_branch.startswith('http') and check_branch.endswith('.git'):
+            return (check_branch, target)
+        else:
+            return False
+
+    if is_url(source):
         # Support file paths, including relative paths.
         if urlparse.urlparse(source).scheme == '':
             if not source.startswith('/'):
                 source = os.path.join(os.path.abspath(CURRENT_DIR), source)
             source = "file://%s" % source
         return 'url', source
-    if source in ('local', 'stable', 'trunk'):
+
+    if source in ('local', 'stable', 'develop'):
         return source, None
-    match = bzr_url_expression.match(source)
-    if match is not None:
-        return 'branch', match.groups()
-    if 'build' in source:
-        return 'trunk', source
+
+    check_branch = is_branch(source)
+    if (check_branch):
+        return ('branch', check_branch)
+
+    log('Source is defaulting to stable release.')
     return 'stable', source
 
 
@@ -636,22 +651,39 @@ def fetch_gui_from_branch(branch_url, revision, logpath):
     """Retrieve the Juju GUI from a branch and build a release archive."""
     # Inject NPM packages into the cache for faster building.
     prime_npm_cache(get_npm_cache_archive_url())
+
     # Create a release starting from a branch.
     juju_gui_source_dir = os.path.join(CURRENT_DIR, 'juju-gui-source')
-    checkout_args, revno = ([], 'latest revno') if revision is None else (
-        ['--revision', revision], 'revno {}'.format(revision))
+
+    # checkout_args, revno = ([], 'latest revno') if revision is None else (
+    #     ['--revision', revision], 'revno {}'.format(revision))
+
     log('Retrieving Juju GUI source checkout from {} ({}).'.format(
         branch_url, revno))
+
     cmd_log(run('rm', '-rf', juju_gui_source_dir))
-    checkout_args.extend([branch_url, juju_gui_source_dir])
-    cmd_log(bzr_checkout(*checkout_args))
+    checkout_args = [branch_url, juju_gui_source_dir]
+    cmd_log(git_checkout(*checkout_args))
+
+    # If there's a revision attempt to checkout that revision.
+    if revision:
+        if revision.startswith('@'):
+            revision = revision[1:]
+            cmd_log(run('git', 'checkout', revision))
+        else:
+            cmd_log(run('git', 'fetch', 'origin'))
+            cmd_log(run('git', 'checkout', '-b', revision,
+                        'origin/' + revision))
+
     log('Preparing a Juju GUI release.')
     logdir = os.path.dirname(logpath)
+
     fd, name = tempfile.mkstemp(prefix='make-distfile-', dir=logdir)
     log('Output from "make distfile" sent to %s' % name)
-    with environ(NO_BZR='1'):
-        run('make', '-C', juju_gui_source_dir, 'distfile',
-            stdout=fd, stderr=fd)
+
+    run('make', '-C', juju_gui_source_dir, 'distfile',
+        stdout=fd, stderr=fd)
+
     return first_path_in_dir(
         os.path.join(juju_gui_source_dir, 'releases'))
 
@@ -714,7 +746,7 @@ def fetch_gui_release(origin, version):
         path = get_release_file_path()
         log('Using a local release: {}'.format(path))
         return path
-    # Handle "stable" and "trunk" origins.
+    # Handle "stable"
     if version is not None:
         # If the user specified a version, before attempting to download the
         # requested release from Launchpad, check if that version is already
@@ -728,14 +760,6 @@ def fetch_gui_release(origin, version):
     project = launchpad.projects['juju-gui']
     url, filename = get_launchpad_release(project, origin, version)
     return download_release(url, filename)
-
-
-def fetch_api(juju_api_branch):
-    """Retrieve the Juju branch, removing it first if already there."""
-    # Retrieve Juju API source checkout.
-    log('Retrieving Juju API source checkout.')
-    cmd_log(run('rm', '-rf', JUJU_AGENT_DIR))
-    cmd_log(bzr_checkout(juju_api_branch, JUJU_AGENT_DIR))
 
 
 def setup_gui(release_tarball):
