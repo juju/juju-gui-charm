@@ -73,14 +73,6 @@ class TestBackendProperties(unittest.TestCase):
         self.assert_dependencies(
             EXPECTED_PYTHON_LEGACY_DEBS, 'ppa:my/location', test_backend)
 
-    def test_go_staging_backend(self):
-        config = {'sandbox': False, 'staging': True, 'builtin-server': False}
-        with simulate_juju_core:
-            with self.assertRaises(ValueError) as context_manager:
-                backend.Backend(config=config)
-        error = str(context_manager.exception)
-        self.assertEqual('Unable to use staging with go backend', error)
-
     def test_go_sandbox_backend(self):
         with simulate_juju_core:
             self.check_sandbox_mode()
