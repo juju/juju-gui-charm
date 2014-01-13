@@ -7,3 +7,5 @@ server/dist
 server/MANIFEST
 tests/.venv
 tests/download-cache
+juju-plugins
+juju-test
