@@ -319,6 +319,15 @@ def _setupLogging():
     global results_log
     if results_log is not None:
         return
+
+    # Make sure that the root logger isn't configured already. If it does,
+    # this basicConfig will be a noop and not setup the expected file handler
+    # on the logger.
+    root_logger = logging.getLogger()
+    if root_logger.handlers:
+        for handler in root_logger.handlers:
+            root_logger.removeHandler(handler)
+
     config = get_config()
     logging.basicConfig(
         filename=config['command-log-file'],
