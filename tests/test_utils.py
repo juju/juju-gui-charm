@@ -36,7 +36,7 @@ from utils import (
     JUJU_PEM,
     WEB_PORT,
     _get_by_attr,
-    cmd_log,
+    #cmd_log,
     compute_build_dir,
     download_release,
     fetch_gui_release,
