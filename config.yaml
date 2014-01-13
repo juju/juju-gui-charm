@@ -36,7 +36,7 @@ options:
         deployed from the specified Bazaar branch. "http://"" prefixed branches
         work as well. It is also possible to include the specific branch
         revision, e.g. "lp:juju-gui:42" will checkout revno 42.
-      - a "url:"" prefixed url: The release found at the given URL
+      - a "url:" prefixed url: The release found at the given URL
         (ex: url:http://... or url:file://...) will be deployed.
     type: string
     default: local
@@ -45,30 +45,6 @@ options:
       Run Juju GUI in debug mode, serving the uncompressed GUI source files.
     type: boolean
     default: false
-  juju-api-branch:
-    description: |
-      The Juju API Bazaar branch (implementing the WebSocket server).  Since
-      juju-core includes the WebSocket API server out of the box, this option
-      is ignored if the charm is deployed using juju-core.
-    type: string
-    default: lp:~hazmat/juju/rapi-rollup
-  staging:
-    description: |
-      Connect the Juju GUI to the staging backend (i.e. a simulated Juju
-      environment).  Currently juju-core does not support the staging backend.
-      For this reason, an error is raised if this option is enabled in a
-      juju-core environment.
-    type: boolean
-    default: false
-  staging-environment:
-    description: |
-      The environment JSON export used by the staging server. This option can
-      be used to change the topology of the simulated Juju environment.
-      Possible values are 'sample' and 'large'.  Currently juju-core does not
-      support the staging backend. For this reason, this option is ignored if
-      the charm is deployed using juju-core.
-    type: string
-    default: sample
   juju-gui-console-enabled:
     description: |
       Whether or not the console should be enabled for the browser.
@@ -132,11 +108,9 @@ options:
     type: string
   sandbox:
     description: |
-      Run using an in-memory sandbox rather than a real (or even improv) Juju
-      backend.  Sandbox is a client side construct running entirely in the
-      client. Sandbox does not currently support imported environment
-      simulation and is exclusive to the staging: true configuration. If
-      staging is true it will be used in preference to sandbox at this time.
+      Run using an in-memory sandbox rather than a real Juju backend. Sandbox
+      is a client side construct running entirely in the client. Sandbox does
+      not currently support imported environment simulation.
     type: boolean
     default: false
   charmworld-url:

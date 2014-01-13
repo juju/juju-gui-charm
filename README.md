@@ -125,14 +125,7 @@ with the following command (using the unit the GUI is deployed on):
 
     `juju resolved --retry juju-gui/0`
 
-These steps are sufficient for Juju Core.  If you are using PyJuju, you need to
-do another set of steps in addition.
-
-1. Use bzr to branch lp:~hazmat/juju/rapi-rollup locally ("bzr branch
-lp:~hazmat/juju/rapi-rollup") and copy the branch to the gui service machine.
-
-2. Use "juju set juju-gui juju-api-branch=PATH_TO_LOCAL_BZR_BRANCH" (where the
-path is *not* a file:// URI).
+These steps are sufficient for Juju Core.
 
 3. Retry as described in the step 3 above (`juju resolved --retry juju-gui/0`).
 

@@ -28,7 +28,6 @@ __all__ = [
     'cmd_log',
     'compute_build_dir',
     'download_release',
-    'fetch_api',
     'fetch_gui_from_branch',
     'fetch_gui_release',
     'find_missing_packages',
@@ -39,7 +38,6 @@ __all__ = [
     'get_release_file_path',
     'get_zookeeper_address',
     'install_missing_packages',
-    'legacy_juju',
     'log_hook',
     'parse_source',
     'prime_npm_cache',
@@ -53,11 +51,9 @@ __all__ = [
     'start_agent',
     'start_builtin_server',
     'start_haproxy_apache',
-    'start_improv',
     'stop_agent',
     'stop_builtin_server',
     'stop_haproxy_apache',
-    'stop_improv',
     'write_gui_config',
 ]
 
@@ -104,7 +100,6 @@ AGENT = 'juju-api-agent'
 APACHE = 'apache2'
 BUILTIN_SERVER = 'guiserver'
 HAPROXY = 'haproxy'
-IMPROV = 'juju-api-improv'
 
 API_PORT = 8080
 WEB_PORT = 8000
@@ -126,7 +121,6 @@ SYS_INIT_DIR = os.path.join(os.path.sep, 'etc', 'init')
 AGENT_INIT_PATH = os.path.join(SYS_INIT_DIR, 'juju-api-agent.conf')
 GUISERVER_INIT_PATH = os.path.join(SYS_INIT_DIR, 'guiserver.conf')
 HAPROXY_INIT_PATH = os.path.join(SYS_INIT_DIR, 'haproxy.conf')
-IMPROV_INIT_PATH = os.path.join(SYS_INIT_DIR, 'juju-api-improv.conf')
 
 JUJU_PEM = 'juju.includes-private-key.pem'
 DEB_BUILD_DEPENDENCIES = (
@@ -138,11 +132,6 @@ DEB_BUILD_DEPENDENCIES = (
 config_json = Serializer(os.path.join(os.path.sep, 'tmp', 'config.json'))
 # Bazaar checkout command.
 bzr_checkout = command('bzr', 'co', '--lightweight')
-# Whether or not the charm is deployed using juju-core.
-# If juju-core has been used to deploy the charm, an agent.conf file must
-# be present in the charm parent directory.
-legacy_juju = lambda: not os.path.exists(
-    os.path.join(CURRENT_DIR, '..', 'agent.conf'))
 
 bzr_url_expression = re.compile(r"""
     ^  # Beginning of line.
@@ -346,30 +335,6 @@ def cmd_log(results):
     results_log.info('\n' + results)
 
 
-def start_improv(staging_env, ssl_cert_path):
-    """Start a simulated juju environment using ``improv.py``."""
-    log('Setting up the staging Upstart script.')
-    context = {
-        'juju_dir': JUJU_AGENT_DIR,
-        'keys': ssl_cert_path,
-        'port': API_PORT,
-        'staging_env': staging_env,
-    }
-    render_to_file('juju-api-improv.conf.template', context, IMPROV_INIT_PATH)
-    log('Starting the staging backend.')
-    with su('root'):
-        service_control(IMPROV, START)
-
-
-def stop_improv():
-    """Stop a simulated Juju environment."""
-    log('Stopping the staging backend.')
-    with su('root'):
-        service_control(IMPROV, STOP)
-    log('Removing the staging Upstart script.')
-    cmd_log(run('rm', '-f', IMPROV_INIT_PATH))
-
-
 def start_agent(ssl_cert_path, read_only=False):
     """Start the Juju agent and connect to the current environment."""
     # Retrieve the Zookeeper address from the start up script.
@@ -416,19 +381,18 @@ def compute_build_dir(juju_gui_debug, serve_tests):
 
 
 def write_gui_config(
-        console_enabled, login_help, readonly, in_staging, charmworld_url,
+        console_enabled, login_help, readonly, charmworld_url,
         build_dir, secure=True, sandbox=False,
         show_get_juju_button=False, config_js_path=None, ga_key='',
         password=None):
     """Generate the GUI configuration file."""
     log('Generating the Juju GUI configuration file.')
-    is_legacy_juju = legacy_juju()
-    user = 'admin' if is_legacy_juju else 'user-admin'
+    user = 'user-admin'
     # Normalize empty string passwords to None.
     password = password if password else None
-    if password is None and ((is_legacy_juju and in_staging) or sandbox):
+    if password is None and sandbox:
         password = 'admin'
-    api_backend = 'python' if (is_legacy_juju and not sandbox) else 'go'
+    api_backend = 'python' if not sandbox else 'go'
     if secure:
         protocol = 'wss'
     else:
@@ -461,17 +425,11 @@ def setup_haproxy_config(ssl_cert_path, secure=True):
     config_path = os.path.join(CONFIG_DIR, 'haproxy.conf')
     shutil.copy(config_path, SYS_INIT_DIR)
     log('Generating haproxy configuration file.')
-    is_legacy_juju = legacy_juju()
-    if is_legacy_juju:
-        # The PyJuju API agent is listening on localhost.
-        api_address = '127.0.0.1:{}'.format(API_PORT)
-    else:
-        # Retrieve the juju-core API server address.
-        api_address = get_api_address()
+    # Retrieve the juju-core API server address.
+    api_address = get_api_address()
     context = {
         'api_address': api_address,
         'api_pem': JUJU_PEM,
-        'legacy_juju': is_legacy_juju,
         'ssl_cert_path': ssl_cert_path,
         # In PyJuju environments, use the same certificate for both HTTPS and
         # WebSocket connections. In juju-core the system already has the proper
@@ -577,14 +535,10 @@ def write_builtin_server_startup(
         'charmworld_url': charmworld_url,
     }
     if not sandbox:
-        is_legacy_juju = legacy_juju()
-        if is_legacy_juju:
-            api_url = 'wss://127.0.0.1:{}/ws'.format(API_PORT)
-        else:
-            api_url = 'wss://{}'.format(get_api_address())
+        api_url = 'wss://{}'.format(get_api_address())
         context.update({
             'api_url': api_url,
-            'api_version': 'python' if is_legacy_juju else 'go',
+            'api_version': 'go',
         })
     if serve_tests:
         context['tests_root'] = os.path.join(JUJU_GUI_DIR, 'test', '')
@@ -735,14 +689,6 @@ def fetch_gui_release(origin, version):
     project = launchpad.projects['juju-gui']
     url, filename = get_launchpad_release(project, origin, version)
     return download_release(url, filename)
-
-
-def fetch_api(juju_api_branch):
-    """Retrieve the Juju branch, removing it first if already there."""
-    # Retrieve Juju API source checkout.
-    log('Retrieving Juju API source checkout.')
-    cmd_log(run('rm', '-rf', JUJU_AGENT_DIR))
-    cmd_log(bzr_checkout(juju_api_branch, JUJU_AGENT_DIR))
 
 
 def setup_gui(release_tarball):

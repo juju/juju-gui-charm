@@ -48,7 +48,6 @@ from utils import (
     get_zookeeper_address,
     install_builtin_server,
     install_missing_packages,
-    legacy_juju,
     log_hook,
     parse_source,
     remove_apache_setup,
@@ -60,11 +59,9 @@ from utils import (
     start_agent,
     start_builtin_server,
     start_haproxy_apache,
-    start_improv,
     stop_agent,
     stop_builtin_server,
     stop_haproxy_apache,
-    stop_improv,
     write_builtin_server_startup,
     write_gui_config,
 )
@@ -408,30 +405,6 @@ class TestGetReleaseFilePath(unittest.TestCase):
         with self.mock_releases_dir():
             path = get_release_file_path('1.42.47')
         self.assertIsNone(path)
-
-
-class TestLegacyJuju(unittest.TestCase):
-
-    def setUp(self):
-        self.base_dir = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, self.base_dir)
-        # Monkey patch utils.CURRENT_DIR.
-        self.original_current_dir = utils.CURRENT_DIR
-        utils.CURRENT_DIR = tempfile.mkdtemp(dir=self.base_dir)
-
-    def tearDown(self):
-        # Restore the original utils.CURRENT_DIR.
-        utils.CURRENT_DIR = self.original_current_dir
-
-    def test_jujucore(self):
-        # If the agent file is found this is a juju-core environment.
-        agent_path = os.path.join(self.base_dir, 'agent.conf')
-        open(agent_path, 'w').close()
-        self.assertFalse(legacy_juju())
-
-    def test_pyjuju(self):
-        # If the agent file does not exist this is a PyJuju environment.
-        self.assertTrue(legacy_juju())
 
 
 def make_collection(attr, values):
@@ -891,23 +864,6 @@ class TestStartImprovAgentGui(unittest.TestCase):
             setattr(utils, fn, fcns[0])
         shutil.copy = self.shutil_copy
 
-    def test_start_improv(self):
-        staging_env = 'large'
-        start_improv(staging_env, self.ssl_cert_path,)
-        conf = self.files['juju-api-improv.conf']
-        self.assertTrue('--port %s' % API_PORT in conf)
-        self.assertTrue(staging_env + '.json' in conf)
-        self.assertTrue(self.ssl_cert_path in conf)
-        self.assertEqual(self.svc_ctl_call_count, 1)
-        self.assertEqual(self.service_names, ['juju-api-improv'])
-        self.assertEqual(self.actions, [charmhelpers.START])
-
-    def test_stop_improv(self):
-        stop_improv()
-        self.assertEqual(self.svc_ctl_call_count, 1)
-        self.assertEqual(self.service_names, ['juju-api-improv'])
-        self.assertEqual(self.actions, [charmhelpers.STOP])
-
     def test_start_agent(self):
         start_agent(self.ssl_cert_path, 'config')
         conf = self.files['juju-api-agent.conf']
@@ -1052,32 +1008,16 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertIn("socket_url: 'ws://", js_conf)
         self.assertIn('socket_protocol: "ws"', js_conf)
 
-    @mock.patch('utils.legacy_juju')
-    def test_write_gui_config_default_python_password(self, mock_legacy_juju):
-        mock_legacy_juju.return_value = True
-        write_gui_config(
-            False, 'This is login help.', True, True, self.charmworld_url,
-            self.build_dir, config_js_path='config',
-            password='kumquat')
-        js_conf = self.files['config']
-        self.assertIn('user: "admin"', js_conf)
-        self.assertIn('password: "kumquat"', js_conf)
-
-    @mock.patch('utils.legacy_juju')
-    def test_write_gui_config_default_sandbox_backend(self, mock_legacy_juju):
-        mock_legacy_juju.return_value = True
+    def test_write_gui_config_default_sandbox_backend(self):
         write_gui_config(
             False, 'This is login help.', True, True, self.charmworld_url,
             self.build_dir, config_js_path='config',
             password='kumquat', sandbox=True)
         js_conf = self.files['config']
-        # Because this is sandbox, the apiBackend is always go, even though it
-        # is legacy_juju.
+        # Because this is sandbox, the apiBackend is always go.
         self.assertIn('apiBackend: "go"', js_conf)
 
-    @mock.patch('utils.legacy_juju')
-    def test_write_gui_config_default_go_password(self, mock_legacy_juju):
-        mock_legacy_juju.return_value = False
+    def test_write_gui_config_default_go_password(self):
         write_gui_config(
             False, 'This is login help.', True, True, self.charmworld_url,
             self.build_dir, config_js_path='config',
