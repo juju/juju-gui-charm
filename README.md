@@ -72,9 +72,9 @@ web address.  Accessing the GUI via HTTP will redirect to using HTTPS.
 By default, the deployment uses self-signed certificates. The browser will ask
 you to accept a security exception once.
 
-You will see a login form with the username fixed to "user-admin" (for juju-
-core) or "admin" (for pyjuju). The password is the same as your Juju
-environment's `admin-secret`, found in `~/.juju/environments.yaml`.
+You will see a login form with the username fixed to "user-admin". The
+password is the same as your Juju environment's `admin-secret`, found in
+`~/.juju/environments.yaml`.
 
 ### Deploying behind a firewall ###
 
@@ -101,9 +101,6 @@ Launchpad:
 If, for any reason, you need to use the legacy server, it is still possible to
 deploy behind a firewall configuring the charm to pull the GUI release from a
 location you specify.
-
-For both Juju Core and PyJuju, you must simply do the following steps.  Note
-that PyJuju must do these steps, plus another set described further below.
 
 The config variable `juju-gui-source` allows a `url:` prefix which understands
 both `http://` and `file://` protocols.  We will use this to load a local copy
@@ -158,18 +155,6 @@ Replace "juju deploy cs:precise/juju-gui" from the previous
 instructions with this:
 
     juju deploy --force-machine 0 cs:precise/juju-gui
-
-#### pyjuju ####
-
-Colocation support is not included by default in the pyjuju implementation; to
-activate it, you will need to install Jitsu:
-
-    sudo apt-get install juju-jitsu
-
-and then replace "juju deploy cs:precise/juju-gui" from the previous
-instructions with this:
-
-    jitsu deploy-to 0 cs:precise/juju-gui
 
 ## Contacting the Developers ##
 

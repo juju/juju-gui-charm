@@ -84,7 +84,8 @@ from shelltoolbox import (
     install_extra_repositories,
     run,
     script_name,
-    Serializer, su,
+    Serializer,
+    su,
 )
 
 
@@ -316,10 +317,13 @@ def write_gui_config(
     """Generate the GUI configuration file."""
     log('Generating the Juju GUI configuration file.')
     user = 'user-admin'
-    # Normalize empty string passwords to None.
-    password = password if password else None
-    if password is None and sandbox:
-        password = 'admin'
+    # Normalize empty string passwords to None. If sandbox is enabled then set
+    # the password to admin and it will auto login.
+    if not password:
+        if sandbox:
+            password = 'admin'
+        else:
+            password = None
     api_backend = 'go'
     if secure:
         protocol = 'wss'
@@ -359,9 +363,6 @@ def setup_haproxy_config(ssl_cert_path, secure=True):
         'api_address': api_address,
         'api_pem': JUJU_PEM,
         'ssl_cert_path': ssl_cert_path,
-        # In PyJuju environments, use the same certificate for both HTTPS and
-        # WebSocket connections. In juju-core the system already has the proper
-        # certificate installed.
         'web_pem': JUJU_PEM,
         'web_port': WEB_PORT,
         'secure': secure

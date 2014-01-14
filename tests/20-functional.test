@@ -35,15 +35,12 @@ from deploy import juju_deploy
 from helpers import (
     get_admin_secret,
     juju_destroy_service,
-    juju_version,
     make_service_name,
     WebSocketClient,
 )
 import example
 
 JUJU_GUI_TEST_BRANCH = 'lp:~juju-gui/juju-gui/charm-tests-branch'
-STAGING_SERVICES = ('haproxy', 'mediawiki', 'memcached', 'mysql', 'wordpress')
-juju_version().major == 0
 try:
     admin_secret = get_admin_secret()
 except ValueError as err:
@@ -66,14 +63,6 @@ def juju_deploy_gui(options=None):
     unit_info = juju_deploy(
         'juju-gui', service_name=service_name, options=options,
         force_machine=force_machine)
-    # XXX 2012-11-29 frankban bug=872264:
-        # Just invoking ``juju destroy-service juju-gui`` in tearDown
-        # should execute the ``stop`` hook, stopping all the services
-        # started by the charm in the machine. Right now this does not
-        # work in pyJuju, so the desired effect is achieved by keeping
-        # track of started services and manually stopping them here.
-    # Once pyJuju works correctly or we drop support for it altogether, we
-    # can remove this shim.
     cleanup_services = []
     if options is None:
         options = {}
@@ -82,7 +71,6 @@ def juju_deploy_gui(options=None):
         cleanup_services.append('guiserver')
     else:
         cleanup_services.extend(['haproxy', 'apache2'])
-    cleanup_services.append('juju-api-agent')
     return service_name, unit_info, cleanup_services
 
 
@@ -171,16 +159,6 @@ class DeployTestMixin(object):
         services = self.wait_for(services_found, 'Services not displayed.')
         return set([element.text for element in services])
 
-    def deploy_gui(self, options=None):
-        """Shim in our additional cleanup for pyJuju."""
-        # Once pyJuju works correctly or we drop support for it altogether, we
-        # can remove this shim.
-        self.service_name, unit_info, cleanup_services = juju_deploy_gui(
-            options=options)
-        # XXX 2013-11-27 frankban bug=872264:
-        # See juju_deploy_gui above.
-        return unit_info
-
     def get_builtin_server_info(self, hostname):
         """Return a dictionary of info as exposed by the builtin server."""
         url = 'https://{}/gui-server-info'.format(hostname)
@@ -196,7 +174,8 @@ class TestDeployOptions(DeployTestMixin, unittest.TestCase):
 
     def test_stable_release(self):
         # Ensure the stable Juju GUI release is correctly set up.
-        unit_info = self.deploy_gui(options={'juju-gui-source': 'stable'})
+        self.service_name, unit_info, _ = juju_deploy_gui(
+            options={'juju-gui-source': 'stable'})
         hostname = unit_info['public-address']
         self.navigate_to(hostname)
         self.handle_browser_warning()
@@ -204,7 +183,8 @@ class TestDeployOptions(DeployTestMixin, unittest.TestCase):
 
     def test_sandbox(self):
         # The GUI is correctly deployed and set up in sandbox mode.
-        unit_info = self.deploy_gui(options={'sandbox': 'true'})
+        self.service_name, unit_info,  = juju_deploy_gui(
+            options={'sandbox': 'true'})
         hostname = unit_info['public-address']
         self.navigate_to(hostname)
         self.handle_browser_warning()
@@ -216,7 +196,7 @@ class TestDeployOptions(DeployTestMixin, unittest.TestCase):
     def test_branch_source(self):
         # Ensure the Juju GUI is correctly deployed from a Bazaar branch.
         options = {'juju-gui-source': JUJU_GUI_TEST_BRANCH}
-        unit_info = self.deploy_gui(options=options)
+        self.service_name, unit_info, _ = juju_deploy_gui(options=options)
         hostname = unit_info['public-address']
         self.navigate_to(hostname)
         self.handle_browser_warning()
@@ -225,7 +205,8 @@ class TestDeployOptions(DeployTestMixin, unittest.TestCase):
     def test_legacy_server(self):
         # The legacy apache + haproxy server configuration works correctly.
         # Also make sure the correct cache headers are sent.
-        unit_info = self.deploy_gui(options={'builtin-server': 'false'})
+        self.service_name, unit_info, _ = juju_deploy_gui(
+            options={'builtin-server': 'false'})
         hostname = unit_info['public-address']
         self.navigate_to(hostname)
         self.handle_browser_warning()
@@ -259,8 +240,6 @@ class TestBuiltinServerLocalRelease(DeployTestMixin, unittest.TestCase):
         # Destroy the GUI service, and perform additional clean up in the case
         # we are in a pyJuju environment.
         juju_destroy_service(cls.service_name)
-        # XXX 2013-11-27 frankban bug=872264:
-        # See juju_deploy_gui above.
 
     def make_websocket_client(self, authenticated=True):
         """Create and return a WebSocket client connected to the Juju backend.
