@@ -28,10 +28,8 @@ import charmhelpers
 import mock
 from shelltoolbox import environ
 import tempita
-import yaml
 
 from utils import (
-    API_PORT,
     JUJU_GUI_DIR,
     JUJU_PEM,
     WEB_PORT,
