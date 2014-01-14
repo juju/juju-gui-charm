@@ -45,7 +45,6 @@ from utils import (
     get_launchpad_release,
     get_npm_cache_archive_url,
     get_release_file_path,
-    get_zookeeper_address,
     install_builtin_server,
     install_missing_packages,
     log_hook,
@@ -56,10 +55,8 @@ from utils import (
     save_or_create_certificates,
     setup_apache_config,
     setup_haproxy_config,
-    start_agent,
     start_builtin_server,
     start_haproxy_apache,
-    stop_agent,
     stop_builtin_server,
     stop_haproxy_apache,
     write_builtin_server_startup,
@@ -233,27 +230,6 @@ class TestFirstPathInDir(unittest.TestCase):
 class TestGetApiAddress(unittest.TestCase):
 
     env_address = 'env.example.com:17070'
-    agent_address = 'agent.example.com:17070'
-
-    @contextmanager
-    def agent_file(self, addresses=None):
-        """Set up a directory structure similar to the one created by juju.
-
-        If addresses are provided, also create a machiner directory and an
-        agent file containing the addresses.
-        Remove the directory structure when exiting from the context manager.
-        """
-        base_dir = tempfile.mkdtemp()
-        unit_dir = tempfile.mkdtemp(dir=base_dir)
-        machine_dir = os.path.join(base_dir, 'machine-1')
-        if addresses is not None:
-            os.mkdir(machine_dir)
-            with open(os.path.join(machine_dir, 'agent.conf'), 'w') as conf:
-                yaml.dump({'apiinfo': {'addrs': addresses}}, conf)
-        try:
-            yield unit_dir, machine_dir
-        finally:
-            shutil.rmtree(base_dir)
 
     def test_retrieving_address_from_env(self):
         # The API address is correctly retrieved from the environment.
@@ -266,36 +242,6 @@ class TestGetApiAddress(unittest.TestCase):
         addresses = '{} foo.example.com:42'.format(self.env_address)
         with environ(JUJU_API_ADDRESSES=addresses):
             self.assertEqual(self.env_address, get_api_address())
-
-    def test_both_env_and_agent_file(self):
-        # If the API address is included in both the environment and the
-        # agent.conf file, the environment variable takes precedence.
-        with environ(JUJU_API_ADDRESSES=self.env_address):
-            with self.agent_file([self.agent_address]) as (unit_dir, _):
-                self.assertEqual(self.env_address, get_api_address(unit_dir))
-
-    def test_retrieving_address_from_agent_file(self):
-        # The API address is correctly retrieved from the machiner agent file.
-        with self.agent_file([self.agent_address]) as (unit_dir, _):
-            self.assertEqual(self.agent_address, get_api_address(unit_dir))
-
-    def test_multiple_addresses_in_agent_file(self):
-        # If multiple API addresses are listed in the agent file, the first
-        # one is returned.
-        addresses = [self.agent_address, 'foo.example.com:42']
-        with self.agent_file(addresses) as (unit_dir, _):
-            self.assertEqual(self.agent_address, get_api_address(unit_dir))
-
-    def test_missing_env_and_agent_file(self):
-        # An IOError is raised if the agent configuration file is not found.
-        with self.agent_file() as (unit_dir, machine_dir):
-            os.mkdir(machine_dir)
-            self.assertRaises(IOError, get_api_address, unit_dir)
-
-    def test_missing_env_and_agent_directory(self):
-        # An IOError is raised if the machine directory is not found.
-        with self.agent_file() as (unit_dir, _):
-            self.assertRaises(IOError, get_api_address, unit_dir)
 
 
 class TestGetReleaseFilePath(unittest.TestCase):
@@ -605,22 +551,6 @@ class TestGetLaunchpadRelease(unittest.TestCase):
         self.assertEqual('0.1.0.xz', name)
 
 
-class TestGetZookeeperAddress(unittest.TestCase):
-
-    def setUp(self):
-        self.zookeeper_address = 'example.com:2000'
-        contents = 'env JUJU_ZOOKEEPER="{}"\n'.format(self.zookeeper_address)
-        with tempfile.NamedTemporaryFile(delete=False) as agent_file:
-            agent_file.write(contents)
-            self.agent_file_path = agent_file.name
-        self.addCleanup(os.remove, self.agent_file_path)
-
-    def test_get_zookeeper_address(self):
-        # Ensure the Zookeeper address is correctly retreived.
-        address = get_zookeeper_address(self.agent_file_path)
-        self.assertEqual(self.zookeeper_address, address)
-
-
 class TestLogHook(unittest.TestCase):
 
     def setUp(self):
@@ -826,9 +756,6 @@ class TestStartImprovAgentGui(unittest.TestCase):
         def su(user):
             yield None
 
-        def get_zookeeper_address_mock(fp):
-            return self.fake_zk_address
-
         self.files = {}
         orig_rtf = utils.render_to_file
 
@@ -845,8 +772,6 @@ class TestStartImprovAgentGui(unittest.TestCase):
             run=(utils.run, run),
             unit_get=(utils.unit_get, noop),
             render_to_file=(utils.render_to_file, render_to_file),
-            get_zookeeper_address=(
-                utils.get_zookeeper_address, get_zookeeper_address_mock),
             get_api_address=(utils.get_api_address, noop),
             APACHE_PORTS=(utils.APACHE_PORTS, 'PORTS_NOT_THERE'),
             APACHE_SITE=(utils.APACHE_SITE, 'SITE_NOT_THERE'),
@@ -863,22 +788,6 @@ class TestStartImprovAgentGui(unittest.TestCase):
         for fn, fcns in self.utils_names.items():
             setattr(utils, fn, fcns[0])
         shutil.copy = self.shutil_copy
-
-    def test_start_agent(self):
-        start_agent(self.ssl_cert_path, 'config')
-        conf = self.files['juju-api-agent.conf']
-        self.assertTrue('--port %s' % API_PORT in conf)
-        self.assertTrue('JUJU_ZOOKEEPER=%s' % self.fake_zk_address in conf)
-        self.assertTrue(self.ssl_cert_path in conf)
-        self.assertEqual(self.svc_ctl_call_count, 1)
-        self.assertEqual(self.service_names, ['juju-api-agent'])
-        self.assertEqual(self.actions, [charmhelpers.START])
-
-    def test_stop_agent(self):
-        stop_agent()
-        self.assertEqual(self.svc_ctl_call_count, 1)
-        self.assertEqual(self.service_names, ['juju-api-agent'])
-        self.assertEqual(self.actions, [charmhelpers.STOP])
 
     def test_compute_build_dir(self):
         for (juju_gui_debug, serve_tests, result) in (
@@ -990,9 +899,7 @@ class TestStartImprovAgentGui(unittest.TestCase):
         js_conf = self.files['config']
         self.assertIn('consoleEnabled: false', js_conf)
         self.assertIn('user: "user-admin"', js_conf)
-        # ????? Not sure on how to fix this one. Based on the change in
-        # utils.py I think I updated it right, but the password is 'null'.
-        # self.assertIn('password: "admin"', js_conf)
+        self.assertIn('password: null', js_conf)
         self.assertIn('login_help: "This is login help."', js_conf)
         self.assertIn('readOnly: true', js_conf)
         self.assertIn("socket_url: 'wss://", js_conf)

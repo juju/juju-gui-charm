@@ -21,7 +21,6 @@ __all__ = [
     'APACHE_PORTS',
     'API_PORT',
     'CURRENT_DIR',
-    'JUJU_AGENT_DIR',
     'JUJU_GUI_DIR',
     'JUJU_PEM',
     'WEB_PORT',
@@ -36,7 +35,6 @@ __all__ = [
     'get_launchpad_release',
     'get_npm_cache_archive_url',
     'get_release_file_path',
-    'get_zookeeper_address',
     'install_missing_packages',
     'log_hook',
     'parse_source',
@@ -48,10 +46,8 @@ __all__ = [
     'setup_apache_config',
     'setup_gui',
     'setup_haproxy_config',
-    'start_agent',
     'start_builtin_server',
     'start_haproxy_apache',
-    'stop_agent',
     'stop_builtin_server',
     'stop_haproxy_apache',
     'write_gui_config',
@@ -72,14 +68,12 @@ import urlparse
 import apt
 from launchpadlib.launchpad import Launchpad
 import tempita
-import yaml
 
 from charmhelpers import (
     get_config,
     log,
     RESTART,
     service_control,
-    START,
     STOP,
     unit_get,
 )
@@ -90,13 +84,10 @@ from shelltoolbox import (
     install_extra_repositories,
     run,
     script_name,
-    search_file,
-    Serializer,
-    su,
+    Serializer, su,
 )
 
 
-AGENT = 'juju-api-agent'
 APACHE = 'apache2'
 BUILTIN_SERVER = 'guiserver'
 HAPROXY = 'haproxy'
@@ -107,7 +98,6 @@ WEB_PORT = 8000
 BASE_DIR = '/var/lib/juju-gui'
 CURRENT_DIR = os.getcwd()
 CONFIG_DIR = os.path.join(CURRENT_DIR, 'config')
-JUJU_AGENT_DIR = os.path.join(BASE_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(BASE_DIR, 'juju-gui')
 RELEASES_DIR = os.path.join(CURRENT_DIR, 'releases')
 SERVER_DIR = os.path.join(CURRENT_DIR, 'server')
@@ -118,7 +108,6 @@ APACHE_SITE = os.path.join(APACHE_CFG_DIR, 'sites-available', 'juju-gui')
 HAPROXY_CFG_PATH = os.path.join(os.path.sep, 'etc', 'haproxy', 'haproxy.cfg')
 
 SYS_INIT_DIR = os.path.join(os.path.sep, 'etc', 'init')
-AGENT_INIT_PATH = os.path.join(SYS_INIT_DIR, 'juju-api-agent.conf')
 GUISERVER_INIT_PATH = os.path.join(SYS_INIT_DIR, 'guiserver.conf')
 HAPROXY_INIT_PATH = os.path.join(SYS_INIT_DIR, 'haproxy.conf')
 
@@ -151,31 +140,12 @@ release_expression = re.compile(r"""
 results_log = None
 
 
-def get_api_address(unit_dir=None):
+def get_api_address():
     """Return the Juju API address.
 
-    If not present in the hook context as an environment variable, try to
-    retrieve the address parsing the machiner agent.conf file.
     """
     api_addresses = os.getenv('JUJU_API_ADDRESSES')
-    if api_addresses is not None:
-        return api_addresses.split()[0]
-    # The JUJU_API_ADDRESSES environment variable is not included in the hooks
-    # context in older releases of juju-core.  Retrieve it from the machiner
-    # agent file instead.
-    if unit_dir is None:
-        base_dir = os.path.join(CURRENT_DIR, '..', '..')
-    else:
-        base_dir = os.path.join(unit_dir, '..')
-    base_dir = os.path.abspath(base_dir)
-    for dirname in os.listdir(base_dir):
-        if dirname.startswith('machine-'):
-            agent_conf = os.path.join(base_dir, dirname, 'agent.conf')
-            break
-    else:
-        raise IOError('Juju agent configuration file not found.')
-    contents = yaml.load(open(agent_conf))
-    return contents['apiinfo']['addrs'][0]
+    return api_addresses.split()[0]
 
 
 def first_path_in_dir(directory):
@@ -222,18 +192,6 @@ def get_launchpad_release(project, series_name, release_version):
                 filename = os.path.split(urlparse.urlsplit(file_url).path)[1]
                 return file_.file_link, filename
     raise ValueError('%r: file not found' % release_version)
-
-
-def get_zookeeper_address(agent_file_path):
-    """Retrieve the Zookeeper address contained in the given *agent_file_path*.
-
-    The *agent_file_path* is a path to a file containing a line similar to the
-    following::
-
-        env JUJU_ZOOKEEPER="address"
-    """
-    line = search_file('JUJU_ZOOKEEPER', agent_file_path).strip()
-    return line.split('=')[1].strip('"')
 
 
 @contextmanager
@@ -335,36 +293,6 @@ def cmd_log(results):
     results_log.info('\n' + results)
 
 
-def start_agent(ssl_cert_path, read_only=False):
-    """Start the Juju agent and connect to the current environment."""
-    # Retrieve the Zookeeper address from the start up script.
-    unit_name = os.path.basename(
-        os.path.realpath(os.path.join(CURRENT_DIR, '..')))
-    agent_file = os.path.join(SYS_INIT_DIR, 'juju-{}.conf'.format(unit_name))
-    zookeeper = get_zookeeper_address(agent_file)
-    log('Setting up the API agent Upstart script.')
-    context = {
-        'juju_dir': JUJU_AGENT_DIR,
-        'keys': ssl_cert_path,
-        'port': API_PORT,
-        'zookeeper': zookeeper,
-        'read_only': read_only
-    }
-    render_to_file('juju-api-agent.conf.template', context, AGENT_INIT_PATH)
-    log('Starting the API agent.')
-    with su('root'):
-        service_control(AGENT, START)
-
-
-def stop_agent():
-    """Stop the Juju agent."""
-    log('Stopping the API agent.')
-    with su('root'):
-        service_control(AGENT, STOP)
-    log('Removing the API agent Upstart script.')
-    cmd_log(run('rm', '-f', AGENT_INIT_PATH))
-
-
 def compute_build_dir(juju_gui_debug, serve_tests):
     """Compute the build directory."""
     with su('root'):
@@ -392,7 +320,7 @@ def write_gui_config(
     password = password if password else None
     if password is None and sandbox:
         password = 'admin'
-    api_backend = 'python' if not sandbox else 'go'
+    api_backend = 'go'
     if secure:
         protocol = 'wss'
     else:

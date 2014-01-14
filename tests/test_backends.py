@@ -119,7 +119,6 @@ class TestBackendCommands(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.playground)
         self.base_dir = os.path.join(self.playground, 'juju-gui')
         self.command_log_file = os.path.join(self.playground, 'logs')
-        self.juju_agent_dir = os.path.join(self.playground, 'juju-agent-dir')
         self.ssl_cert_path = os.path.join(self.playground, 'ssl-cert-path')
         # Set up default values.
         self.juju_gui_source = 'stable'
@@ -165,8 +164,6 @@ class TestBackendCommands(unittest.TestCase):
                 'backend.utils.install_builtin_server'),
             'install_missing_packages': mock.patch(
                 'backend.utils.install_missing_packages'),
-            'juju_agent_dir': mock.patch(
-                'backend.utils.JUJU_AGENT_DIR', self.juju_agent_dir),
             'log': mock.patch('backend.log'),
             'open_port': mock.patch('backend.open_port'),
             'parse_source': mock.patch(
@@ -174,12 +171,10 @@ class TestBackendCommands(unittest.TestCase):
             'save_or_create_certificates': mock.patch(
                 'backend.utils.save_or_create_certificates'),
             'setup_gui': mock.patch('backend.utils.setup_gui'),
-            'start_agent': mock.patch('backend.utils.start_agent'),
             'start_builtin_server': mock.patch(
                 'backend.utils.start_builtin_server'),
             'start_haproxy_apache': mock.patch(
                 'backend.utils.start_haproxy_apache'),
-            'stop_agent': mock.patch('backend.utils.stop_agent'),
             'stop_builtin_server': mock.patch(
                 'backend.utils.stop_builtin_server'),
             'stop_haproxy_apache': mock.patch(
@@ -277,7 +272,6 @@ class TestBackendCommands(unittest.TestCase):
         test_backend = backend.Backend(config=config)
         with self.mock_all() as mocks:
             test_backend.start()
-        self.assertFalse(mocks.start_agent.called)
         mocks.compute_build_dir.assert_called_with(
             config['juju-gui-debug'], config['serve-tests'])
         self.assert_write_gui_config_called(mocks, config)
@@ -293,7 +287,6 @@ class TestBackendCommands(unittest.TestCase):
         test_backend = backend.Backend(config=config)
         with self.mock_all() as mocks:
             test_backend.start()
-        self.assertFalse(mocks.start_agent.called)
         mocks.compute_build_dir.assert_called_with(
             config['juju-gui-debug'], config['serve-tests'])
         self.assert_write_gui_config_called(mocks, config)
@@ -311,7 +304,6 @@ class TestBackendCommands(unittest.TestCase):
         test_backend = backend.Backend(config=config)
         with self.mock_all() as mocks:
             test_backend.stop()
-        self.assertFalse(mocks.stop_agent.called)
         mocks.stop_haproxy_apache.assert_called_once_with()
         self.assertFalse(mocks.stop_builtin_server.called)
 
@@ -321,7 +313,6 @@ class TestBackendCommands(unittest.TestCase):
         test_backend = backend.Backend(config=config)
         with self.mock_all() as mocks:
             test_backend.stop()
-        self.assertFalse(mocks.stop_agent.called)
         mocks.stop_builtin_server.assert_called_once_with()
         self.assertFalse(mocks.stop_haproxy_apache.called)
 
