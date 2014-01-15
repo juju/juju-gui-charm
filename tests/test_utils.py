@@ -23,15 +23,14 @@ import shutil
 from subprocess import CalledProcessError
 import tempfile
 import unittest
+import yaml
 
 import charmhelpers
 import mock
 from shelltoolbox import environ
 import tempita
-import yaml
 
 from utils import (
-    API_PORT,
     JUJU_GUI_DIR,
     JUJU_PEM,
     WEB_PORT,
@@ -45,10 +44,8 @@ from utils import (
     get_launchpad_release,
     get_npm_cache_archive_url,
     get_release_file_path,
-    get_zookeeper_address,
     install_builtin_server,
     install_missing_packages,
-    legacy_juju,
     log_hook,
     parse_source,
     remove_apache_setup,
@@ -57,14 +54,10 @@ from utils import (
     save_or_create_certificates,
     setup_apache_config,
     setup_haproxy_config,
-    start_agent,
     start_builtin_server,
     start_haproxy_apache,
-    start_improv,
-    stop_agent,
     stop_builtin_server,
     stop_haproxy_apache,
-    stop_improv,
     write_builtin_server_startup,
     write_gui_config,
 )
@@ -410,30 +403,6 @@ class TestGetReleaseFilePath(unittest.TestCase):
         self.assertIsNone(path)
 
 
-class TestLegacyJuju(unittest.TestCase):
-
-    def setUp(self):
-        self.base_dir = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, self.base_dir)
-        # Monkey patch utils.CURRENT_DIR.
-        self.original_current_dir = utils.CURRENT_DIR
-        utils.CURRENT_DIR = tempfile.mkdtemp(dir=self.base_dir)
-
-    def tearDown(self):
-        # Restore the original utils.CURRENT_DIR.
-        utils.CURRENT_DIR = self.original_current_dir
-
-    def test_jujucore(self):
-        # If the agent file is found this is a juju-core environment.
-        agent_path = os.path.join(self.base_dir, 'agent.conf')
-        open(agent_path, 'w').close()
-        self.assertFalse(legacy_juju())
-
-    def test_pyjuju(self):
-        # If the agent file does not exist this is a PyJuju environment.
-        self.assertTrue(legacy_juju())
-
-
 def make_collection(attr, values):
     """Create a collection of objects having an attribute named *attr*.
 
@@ -616,22 +585,6 @@ class TestGetLaunchpadRelease(unittest.TestCase):
         url, name = get_launchpad_release(project, 'stable', None)
         self.assertEqual('http://example.com/0.1.0.xz', url)
         self.assertEqual('0.1.0.xz', name)
-
-
-class TestGetZookeeperAddress(unittest.TestCase):
-
-    def setUp(self):
-        self.zookeeper_address = 'example.com:2000'
-        contents = 'env JUJU_ZOOKEEPER="{}"\n'.format(self.zookeeper_address)
-        with tempfile.NamedTemporaryFile(delete=False) as agent_file:
-            agent_file.write(contents)
-            self.agent_file_path = agent_file.name
-        self.addCleanup(os.remove, self.agent_file_path)
-
-    def test_get_zookeeper_address(self):
-        # Ensure the Zookeeper address is correctly retreived.
-        address = get_zookeeper_address(self.agent_file_path)
-        self.assertEqual(self.zookeeper_address, address)
 
 
 class TestLogHook(unittest.TestCase):
@@ -831,9 +784,6 @@ class TestStartImprovAgentGui(unittest.TestCase):
         def su(user):
             yield None
 
-        def get_zookeeper_address_mock(fp):
-            return self.fake_zk_address
-
         self.files = {}
         orig_rtf = utils.render_to_file
 
@@ -850,8 +800,6 @@ class TestStartImprovAgentGui(unittest.TestCase):
             run=(utils.run, run),
             unit_get=(utils.unit_get, noop),
             render_to_file=(utils.render_to_file, render_to_file),
-            get_zookeeper_address=(
-                utils.get_zookeeper_address, get_zookeeper_address_mock),
             get_api_address=(utils.get_api_address, noop),
             APACHE_PORTS=(utils.APACHE_PORTS, 'PORTS_NOT_THERE'),
             APACHE_SITE=(utils.APACHE_SITE, 'SITE_NOT_THERE'),
@@ -868,39 +816,6 @@ class TestStartImprovAgentGui(unittest.TestCase):
         for fn, fcns in self.utils_names.items():
             setattr(utils, fn, fcns[0])
         shutil.copy = self.shutil_copy
-
-    def test_start_improv(self):
-        staging_env = 'large'
-        start_improv(staging_env, self.ssl_cert_path,)
-        conf = self.files['juju-api-improv.conf']
-        self.assertTrue('--port %s' % API_PORT in conf)
-        self.assertTrue(staging_env + '.json' in conf)
-        self.assertTrue(self.ssl_cert_path in conf)
-        self.assertEqual(self.svc_ctl_call_count, 1)
-        self.assertEqual(self.service_names, ['juju-api-improv'])
-        self.assertEqual(self.actions, [charmhelpers.START])
-
-    def test_stop_improv(self):
-        stop_improv()
-        self.assertEqual(self.svc_ctl_call_count, 1)
-        self.assertEqual(self.service_names, ['juju-api-improv'])
-        self.assertEqual(self.actions, [charmhelpers.STOP])
-
-    def test_start_agent(self):
-        start_agent(self.ssl_cert_path, 'config')
-        conf = self.files['juju-api-agent.conf']
-        self.assertTrue('--port %s' % API_PORT in conf)
-        self.assertTrue('JUJU_ZOOKEEPER=%s' % self.fake_zk_address in conf)
-        self.assertTrue(self.ssl_cert_path in conf)
-        self.assertEqual(self.svc_ctl_call_count, 1)
-        self.assertEqual(self.service_names, ['juju-api-agent'])
-        self.assertEqual(self.actions, [charmhelpers.START])
-
-    def test_stop_agent(self):
-        stop_agent()
-        self.assertEqual(self.svc_ctl_call_count, 1)
-        self.assertEqual(self.service_names, ['juju-api-agent'])
-        self.assertEqual(self.actions, [charmhelpers.STOP])
 
     def test_compute_build_dir(self):
         for (juju_gui_debug, serve_tests, result) in (
@@ -919,9 +834,7 @@ class TestStartImprovAgentGui(unittest.TestCase):
         haproxy_conf = self.files['haproxy.cfg']
         self.assertIn('ca-base {}'.format(self.ssl_cert_path), haproxy_conf)
         self.assertIn('crt-base {}'.format(self.ssl_cert_path), haproxy_conf)
-        self.assertIn('ws1 127.0.0.1:{}'.format(API_PORT), haproxy_conf)
         self.assertIn('web1 127.0.0.1:{}'.format(WEB_PORT), haproxy_conf)
-        self.assertIn('ca-file {}'.format(JUJU_PEM), haproxy_conf)
         self.assertIn('crt {}'.format(JUJU_PEM), haproxy_conf)
         self.assertIn('redirect scheme https', haproxy_conf)
 
@@ -966,8 +879,9 @@ class TestStartImprovAgentGui(unittest.TestCase):
         guiserver_conf = self.files['guiserver.conf']
         self.assertIn('description "GUIServer"', guiserver_conf)
         self.assertIn('--logging="info"', guiserver_conf)
-        self.assertIn('--apiurl="wss://127.0.0.1:8080/ws"', guiserver_conf)
-        self.assertIn('--apiversion="python"', guiserver_conf)
+        # The get_api_address is noop'd in these tests so the addr is None.
+        self.assertIn('--apiurl="wss://None"', guiserver_conf)
+        self.assertIn('--apiversion="go"', guiserver_conf)
         self.assertIn(
             '--testsroot="{}/test/"'.format(JUJU_GUI_DIR), guiserver_conf)
         self.assertIn('--insecure', guiserver_conf)
@@ -1007,13 +921,13 @@ class TestStartImprovAgentGui(unittest.TestCase):
 
     def test_write_gui_config(self):
         write_gui_config(
-            False, 'This is login help.', True, True, self.charmworld_url,
+            False, 'This is login help.', True, self.charmworld_url,
             self.build_dir, config_js_path='config',
             ga_key='UA-123456')
         js_conf = self.files['config']
         self.assertIn('consoleEnabled: false', js_conf)
-        self.assertIn('user: "admin"', js_conf)
-        self.assertIn('password: "admin"', js_conf)
+        self.assertIn('user: "user-admin"', js_conf)
+        self.assertIn('password: null', js_conf)
         self.assertIn('login_help: "This is login help."', js_conf)
         self.assertIn('readOnly: true', js_conf)
         self.assertIn("socket_url: 'wss://", js_conf)
@@ -1024,38 +938,22 @@ class TestStartImprovAgentGui(unittest.TestCase):
 
     def test_write_gui_config_insecure(self):
         write_gui_config(
-            False, 'This is login help.', True, True, self.charmworld_url,
+            False, 'This is login help.', True, self.charmworld_url,
             self.build_dir, secure=False, config_js_path='config')
         js_conf = self.files['config']
         self.assertIn("socket_url: 'ws://", js_conf)
         self.assertIn('socket_protocol: "ws"', js_conf)
 
-    @mock.patch('utils.legacy_juju')
-    def test_write_gui_config_default_python_password(self, mock_legacy_juju):
-        mock_legacy_juju.return_value = True
+    def test_write_gui_config_default_sandbox_backend(self):
         write_gui_config(
-            False, 'This is login help.', True, True, self.charmworld_url,
-            self.build_dir, config_js_path='config',
-            password='kumquat')
-        js_conf = self.files['config']
-        self.assertIn('user: "admin"', js_conf)
-        self.assertIn('password: "kumquat"', js_conf)
-
-    @mock.patch('utils.legacy_juju')
-    def test_write_gui_config_default_sandbox_backend(self, mock_legacy_juju):
-        mock_legacy_juju.return_value = True
-        write_gui_config(
-            False, 'This is login help.', True, True, self.charmworld_url,
+            False, 'This is login help.', True, self.charmworld_url,
             self.build_dir, config_js_path='config',
             password='kumquat', sandbox=True)
         js_conf = self.files['config']
-        # Because this is sandbox, the apiBackend is always go, even though it
-        # is legacy_juju.
+        # Because this is sandbox, the apiBackend is always go.
         self.assertIn('apiBackend: "go"', js_conf)
 
-    @mock.patch('utils.legacy_juju')
-    def test_write_gui_config_default_go_password(self, mock_legacy_juju):
-        mock_legacy_juju.return_value = False
+    def test_write_gui_config_default_go_password(self):
         write_gui_config(
             False, 'This is login help.', True, True, self.charmworld_url,
             self.build_dir, config_js_path='config',
@@ -1075,15 +973,8 @@ class TestStartImprovAgentGui(unittest.TestCase):
             self.build_dir, sandbox=True, config_js_path='config')
         js_conf = self.files['config']
         self.assertIn('sandbox: true', js_conf)
-        self.assertIn('user: "admin"', js_conf)
+        self.assertIn('user: "user-admin"', js_conf)
         self.assertIn('password: "admin"', js_conf)
-
-    def test_write_gui_config_fullscreen(self):
-        write_gui_config(
-            False, 'This is login help.', False, False, self.charmworld_url,
-            self.build_dir, sandbox=True, default_viewmode='fullscreen',
-            config_js_path='config')
-        self.assertIn('defaultViewmode: "fullscreen"', self.files['config'])
 
     def test_write_gui_config_with_button(self):
         write_gui_config(

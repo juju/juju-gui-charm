@@ -43,7 +43,7 @@ flake8==2.0
 mock==1.0.1
 
 # Charm tests.
-selenium==2.34.0
+selenium==2.39.0
 xvfbwrapper==0.2.2
 
 

@@ -109,11 +109,9 @@ options:
     type: string
   sandbox:
     description: |
-      Run using an in-memory sandbox rather than a real (or even improv) Juju
-      backend.  Sandbox is a client side construct running entirely in the
-      client. Sandbox does not currently support imported environment
-      simulation and is exclusive to the staging: true configuration. If
-      staging is true it will be used in preference to sandbox at this time.
+      Run using an in-memory sandbox rather than a real Juju backend. Sandbox
+      is a client side construct running entirely in the client. Sandbox does
+      not currently support imported environment simulation.
     type: boolean
     default: false
   charmworld-url:

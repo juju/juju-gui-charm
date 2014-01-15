@@ -22,13 +22,9 @@ defaults
 backend juju
     # The Juju WebSocket backend.
     # Re-encrypt outgoing connections.
-    {{if legacy_juju}}
-        server ws1 {{api_address}} ssl ca-file {{api_pem}} verify required check-ssl inter 500ms
-    {{else}}
-        # Replace "/ws/" with "/" in any request path.
-        reqrep ^([^\ ]*)\ /ws/    \1\ /
-        server ws1 {{api_address}} ssl check-ssl inter 500ms
-    {{endif}}
+    # Replace "/ws/" with "/" in any request path.
+    reqrep ^([^\ ]*)\ /ws/    \1\ /
+    server ws1 {{api_address}} ssl check-ssl inter 500ms
 
 backend web
     # Web traffic.

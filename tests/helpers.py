@@ -21,7 +21,6 @@ from functools import wraps
 import json
 import os
 import random
-import re
 import string
 import subprocess
 import time
@@ -170,36 +169,6 @@ def juju_status():
     """Return the Juju status as a dictionary."""
     status = juju('status', '--format', 'json')
     return json.loads(status)
-
-
-_juju_version_expression = re.compile(r"""
-    ^  # Beginning of line.
-    (?:juju\s+)?  # Optional juju prefix.
-    (\d+)\.(\d+)  # Major and minor versions.
-    (?:\.(\d+))?  # Optional patch version.
-    .*  # Optional suffix.
-    $  # End of line.
-""", re.VERBOSE)
-
-
-def juju_version():
-    """Return the currently used Juju version.
-
-    The version is returned as a named tuple (major, minor, patch).
-    If the patch number is missing, it is set to zero.
-    """
-    try:
-        # In pyJuju, version info is printed to stderr.
-        output = subprocess.check_output(
-            ['juju', '--version'], stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError:
-        # Current juju-core exposes a version subcommand.
-        output = subprocess.check_output(['juju', 'version'])
-    match = _juju_version_expression.match(output)
-    if match is None:
-        raise ValueError('invalid juju version: {!r}'.format(output))
-    to_int = lambda num: 0 if num is None else int(num)
-    return Version._make(map(to_int, match.groups()))
 
 
 def make_service_name(prefix='service-'):
