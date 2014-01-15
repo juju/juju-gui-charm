@@ -58,7 +58,7 @@ def juju_deploy_gui(options=None):
     of services that are started in the Juju GUI unit and that must be
     manually stopped by tests. In juju-core, the services list is always empty.
     """
-    force_machine = None
+    force_machine = 0
     service_name = make_service_name(prefix='juju-gui-')
     unit_info = juju_deploy(
         'juju-gui', service_name=service_name, options=options,
