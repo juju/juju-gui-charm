@@ -589,7 +589,7 @@ def fetch_gui_from_branch(branch_url, revision, logpath):
         else:
             cmd_log(run(
                 'git', '--git-dir', git_dir, '--work-tree',
-                juju_gui_source_dir,'fetch', 'origin'))
+                juju_gui_source_dir, 'fetch', 'origin'))
             cmd_log(run(
                 'git', '--git-dir', git_dir, '--work-tree',
                 juju_gui_source_dir, 'checkout', '-b', revision,
