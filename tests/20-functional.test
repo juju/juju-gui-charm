@@ -35,16 +35,12 @@ from deploy import juju_deploy
 from helpers import (
     get_admin_secret,
     juju_destroy_service,
-    juju_version,
     make_service_name,
-    stop_services,
     WebSocketClient,
 )
 import example
 
 JUJU_GUI_TEST_BRANCH = 'lp:~juju-gui/juju-gui/charm-tests-branch'
-STAGING_SERVICES = ('haproxy', 'mediawiki', 'memcached', 'mysql', 'wordpress')
-is_legacy_juju = juju_version().major == 0
 try:
     admin_secret = get_admin_secret()
 except ValueError as err:
@@ -62,33 +58,18 @@ def juju_deploy_gui(options=None):
     of services that are started in the Juju GUI unit and that must be
     manually stopped by tests. In juju-core, the services list is always empty.
     """
-    force_machine = None if is_legacy_juju else 0
     service_name = make_service_name(prefix='juju-gui-')
     unit_info = juju_deploy(
         'juju-gui', service_name=service_name, options=options,
-        force_machine=force_machine)
-    # XXX 2012-11-29 frankban bug=872264:
-        # Just invoking ``juju destroy-service juju-gui`` in tearDown
-        # should execute the ``stop`` hook, stopping all the services
-        # started by the charm in the machine. Right now this does not
-        # work in pyJuju, so the desired effect is achieved by keeping
-        # track of started services and manually stopping them here.
-    # Once pyJuju works correctly or we drop support for it altogether, we
-    # can remove this shim.
+        force_machine=0)
     cleanup_services = []
-    if is_legacy_juju:
-        if options is None:
-            options = {}
-        # Either stop the builtin server or the old apache2/haproxy setup.
-        if options.get('builtin-server') == 'true':
-            cleanup_services.append('guiserver')
-        else:
-            cleanup_services.extend(['haproxy', 'apache2'])
-        # Staging uses improv, otherwise the API agent is used.
-        if options.get('staging') == 'true':
-            cleanup_services.append('juju-api-improv')
-        else:
-            cleanup_services.append('juju-api-agent')
+    if options is None:
+        options = {}
+    # Either stop the builtin server or the old apache2/haproxy setup.
+    if options.get('builtin-server') == 'true':
+        cleanup_services.append('guiserver')
+    else:
+        cleanup_services.extend(['haproxy', 'apache2'])
     return service_name, unit_info, cleanup_services
 
 
@@ -177,19 +158,6 @@ class DeployTestMixin(object):
         services = self.wait_for(services_found, 'Services not displayed.')
         return set([element.text for element in services])
 
-    def deploy_gui(self, options=None):
-        """Shim in our additional cleanup for pyJuju."""
-        # Once pyJuju works correctly or we drop support for it altogether, we
-        # can remove this shim.
-        self.service_name, unit_info, cleanup_services = juju_deploy_gui(
-            options=options)
-        # XXX 2013-11-27 frankban bug=872264:
-            # See juju_deploy_gui above.
-        if is_legacy_juju:
-            hostname = unit_info['public-address']
-            self.addCleanup(stop_services, hostname, cleanup_services)
-        return unit_info
-
     def get_builtin_server_info(self, hostname):
         """Return a dictionary of info as exposed by the builtin server."""
         url = 'https://{}/gui-server-info'.format(hostname)
@@ -205,26 +173,17 @@ class TestDeployOptions(DeployTestMixin, unittest.TestCase):
 
     def test_stable_release(self):
         # Ensure the stable Juju GUI release is correctly set up.
-        unit_info = self.deploy_gui(options={'juju-gui-source': 'stable'})
+        self.service_name, unit_info, _ = juju_deploy_gui(
+            options={'juju-gui-source': 'stable'})
         hostname = unit_info['public-address']
         self.navigate_to(hostname)
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()
-
-    @unittest.skipUnless(is_legacy_juju, 'staging only works in pyJuju')
-    def test_staging(self):
-        # Ensure the Juju GUI and staging services are correctly set up.
-        unit_info = self.deploy_gui(options={'staging': 'true'})
-        hostname = unit_info['public-address']
-        self.navigate_to(hostname)
-        self.handle_browser_warning()
-        self.assertEnvironmentIsConnected()
-        # The staging environment contains five deployed services.
-        self.assertSetEqual(set(STAGING_SERVICES), self.get_service_names())
 
     def test_sandbox(self):
         # The GUI is correctly deployed and set up in sandbox mode.
-        unit_info = self.deploy_gui(options={'sandbox': 'true'})
+        self.service_name, unit_info, _ = juju_deploy_gui(
+            options={'sandbox': 'true'})
         hostname = unit_info['public-address']
         self.navigate_to(hostname)
         self.handle_browser_warning()
@@ -236,7 +195,7 @@ class TestDeployOptions(DeployTestMixin, unittest.TestCase):
     def test_branch_source(self):
         # Ensure the Juju GUI is correctly deployed from a Bazaar branch.
         options = {'juju-gui-source': JUJU_GUI_TEST_BRANCH}
-        unit_info = self.deploy_gui(options=options)
+        self.service_name, unit_info, _ = juju_deploy_gui(options=options)
         hostname = unit_info['public-address']
         self.navigate_to(hostname)
         self.handle_browser_warning()
@@ -245,7 +204,8 @@ class TestDeployOptions(DeployTestMixin, unittest.TestCase):
     def test_legacy_server(self):
         # The legacy apache + haproxy server configuration works correctly.
         # Also make sure the correct cache headers are sent.
-        unit_info = self.deploy_gui(options={'builtin-server': 'false'})
+        self.service_name, unit_info, _ = juju_deploy_gui(
+            options={'builtin-server': 'false'})
         hostname = unit_info['public-address']
         self.navigate_to(hostname)
         self.handle_browser_warning()
@@ -279,10 +239,6 @@ class TestBuiltinServerLocalRelease(DeployTestMixin, unittest.TestCase):
         # Destroy the GUI service, and perform additional clean up in the case
         # we are in a pyJuju environment.
         juju_destroy_service(cls.service_name)
-        # XXX 2013-11-27 frankban bug=872264:
-            # See juju_deploy_gui above.
-        if is_legacy_juju:
-            stop_services(cls.hostname, cls.cleanup_services)
 
     def make_websocket_client(self, authenticated=True):
         """Create and return a WebSocket client connected to the Juju backend.
@@ -320,8 +276,6 @@ class TestBuiltinServerLocalRelease(DeployTestMixin, unittest.TestCase):
         server_header = dict(headers)['server']
         self.assertIn('TornadoServer', server_header)
 
-    @unittest.skipIf(
-        is_legacy_juju, 'bundle deployments are only supported in juju-core')
     def test_deployer_not_authenticated(self):
         # An error is returned trying to start a bundle deployment without
         # being authenticated.
@@ -337,8 +291,6 @@ class TestBuiltinServerLocalRelease(DeployTestMixin, unittest.TestCase):
             'unauthorized access: no user logged in', response['Error'])
 
     @unittest.skipUnless(admin_secret, 'admin secret was not found')
-    @unittest.skipIf(
-        is_legacy_juju, 'bundle deployments are only supported in juju-core')
     def test_deployer_invalid_bundle_name(self):
         # An error is returned trying to deploy a bundle with an invalid name.
         client = self.make_websocket_client()
@@ -353,8 +305,6 @@ class TestBuiltinServerLocalRelease(DeployTestMixin, unittest.TestCase):
             'invalid request: bundle no-such not found', response['Error'])
 
     @unittest.skipUnless(admin_secret, 'admin secret was not found')
-    @unittest.skipIf(
-        is_legacy_juju, 'bundle deployments are only supported in juju-core')
     def test_deployer_invalid_bundle_yaml(self):
         # An error is returned trying to deploy an invalid bundle YAML.
         client = self.make_websocket_client()
@@ -369,8 +319,6 @@ class TestBuiltinServerLocalRelease(DeployTestMixin, unittest.TestCase):
             'invalid request: invalid YAML contents', response['Error'])
 
     @unittest.skipUnless(admin_secret, 'admin secret was not found')
-    @unittest.skipIf(
-        is_legacy_juju, 'bundle deployments are only supported in juju-core')
     def test_deployer_watch_unknown_deployment(self):
         # An error is returned trying to watch an unknown deployment.
         client = self.make_websocket_client()
@@ -385,8 +333,6 @@ class TestBuiltinServerLocalRelease(DeployTestMixin, unittest.TestCase):
             'invalid request: deployment not found', response['Error'])
 
     @unittest.skipUnless(admin_secret, 'admin secret was not found')
-    @unittest.skipIf(
-        is_legacy_juju, 'bundle deployments are only supported in juju-core')
     def test_deployer(self):
         # The builtin server supports deploying bundles using juju-deployer.
         client = self.make_websocket_client()

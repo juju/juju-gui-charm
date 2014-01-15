@@ -67,41 +67,8 @@ class SetUpMixin(object):
         shutil.rmtree(utils.BASE_DIR)
 
 
-class PythonInstallMixinBase(object):
-    """Provide a common "install" method to ImprovMixin and PythonMixin."""
-
-    def install(self, backend):
-        if (not os.path.exists(utils.JUJU_AGENT_DIR) or
-                backend.different('staging', 'juju-api-branch')):
-            utils.fetch_api(backend.config['juju-api-branch'])
-
-
-class ImprovMixin(PythonInstallMixinBase):
-    """Manage the improv backend when on staging."""
-
-    debs = ('zookeeper',)
-
-    def start(self, backend):
-        config = backend.config
-        utils.start_improv(
-            config['staging-environment'], config['ssl-cert-path'])
-
-    def stop(self, backend):
-        utils.stop_improv()
-
-
 class SandboxMixin(object):
     pass
-
-
-class PythonMixin(PythonInstallMixinBase):
-    """Manage the real PyJuju backend."""
-
-    def start(self, backend):
-        utils.start_agent(backend.config['ssl-cert-path'])
-
-    def stop(self, backend):
-        utils.stop_agent()
 
 
 class GoMixin(object):
@@ -149,7 +116,7 @@ class GuiMixin(object):
             config['juju-gui-debug'], config['serve-tests'])
         utils.write_gui_config(
             config['juju-gui-console-enabled'], config['login-help'],
-            config['read-only'], config['staging'], config['charmworld-url'],
+            config['read-only'], config['charmworld-url'],
             build_dir, secure=config['secure'], sandbox=config['sandbox'],
             ga_key=config['ga-key'],
             show_get_juju_button=config['show-get-juju-button'],
@@ -255,16 +222,10 @@ class Backend(object):
         self.prev_config = prev_config
         self.mixins = [SetUpMixin()]
 
-        is_legacy_juju = utils.legacy_juju()
-
-        if config['staging']:
-            if not is_legacy_juju:
-                raise ValueError('Unable to use staging with go backend')
-            self.mixins.append(ImprovMixin())
-        elif config['sandbox']:
+        if config['sandbox']:
             self.mixins.append(SandboxMixin())
         else:
-            mixin = PythonMixin() if is_legacy_juju else GoMixin()
+            mixin = GoMixin()
             self.mixins.append(mixin)
 
         # We always install and start the GUI.

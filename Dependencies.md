@@ -14,8 +14,7 @@ in the Ubuntu repositories and other packages that are collected together into
 a single PPA that the Juju GUI charm developers maintain.
 
 The packages in our devel PPA provide a superset of all software the charm may
-need for different deployment strategies, such as using the sandbox
-vs. improv, or Python Juju vs. Go Juju.
+need for different deployment strategies, such as using the sandbox or Go Juju.
 
 # Stable and Devel #
 

@@ -72,9 +72,9 @@ web address.  Accessing the GUI via HTTP will redirect to using HTTPS.
 By default, the deployment uses self-signed certificates. The browser will ask
 you to accept a security exception once.
 
-You will see a login form with the username fixed to "user-admin" (for juju-
-core) or "admin" (for pyjuju). The password is the same as your Juju
-environment's `admin-secret`, found in `~/.juju/environments.yaml`.
+You will see a login form with the username fixed to "user-admin". The
+password is the same as your Juju environment's `admin-secret`, found in
+`~/.juju/environments.yaml`.
 
 ### Deploying behind a firewall ###
 
@@ -102,9 +102,6 @@ If, for any reason, you need to use the legacy server, it is still possible to
 deploy behind a firewall configuring the charm to pull the GUI release from a
 location you specify.
 
-For both Juju Core and PyJuju, you must simply do the following steps.  Note
-that PyJuju must do these steps, plus another set described further below.
-
 The config variable `juju-gui-source` allows a `url:` prefix which understands
 both `http://` and `file://` protocols.  We will use this to load a local copy
 of the GUI source.
@@ -125,14 +122,7 @@ with the following command (using the unit the GUI is deployed on):
 
     `juju resolved --retry juju-gui/0`
 
-These steps are sufficient for Juju Core.  If you are using PyJuju, you need to
-do another set of steps in addition.
-
-1. Use bzr to branch lp:~hazmat/juju/rapi-rollup locally ("bzr branch
-lp:~hazmat/juju/rapi-rollup") and copy the branch to the gui service machine.
-
-2. Use "juju set juju-gui juju-api-branch=PATH_TO_LOCAL_BZR_BRANCH" (where the
-path is *not* a file:// URI).
+These steps are sufficient for Juju Core.
 
 3. Retry as described in the step 3 above (`juju resolved --retry juju-gui/0`).
 
@@ -165,18 +155,6 @@ Replace "juju deploy cs:precise/juju-gui" from the previous
 instructions with this:
 
     juju deploy --force-machine 0 cs:precise/juju-gui
-
-#### pyjuju ####
-
-Colocation support is not included by default in the pyjuju implementation; to
-activate it, you will need to install Jitsu:
-
-    sudo apt-get install juju-jitsu
-
-and then replace "juju deploy cs:precise/juju-gui" from the previous
-instructions with this:
-
-    jitsu deploy-to 0 cs:precise/juju-gui
 
 ## Contacting the Developers ##
 
