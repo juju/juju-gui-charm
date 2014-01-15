@@ -96,7 +96,7 @@ class GuiMixin(object):
                 if origin == 'develop':
                     version_or_branch = (
                         'https://github.com/juju/juju-gui.git',
-                        'develop'
+                        None
                     )
 
                 logpath = backend.config['command-log-file']
@@ -109,6 +109,7 @@ class GuiMixin(object):
                     repository=backend.config['repository-location'])
 
                 branch_url, revision = version_or_branch
+                log('Using source {}: {}'.format(branch_url, revision))
 
                 release_tarball_path = utils.fetch_gui_from_branch(
                     branch_url, revision, logpath)

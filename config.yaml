@@ -40,7 +40,7 @@ options:
           building the release.
       - a URL: The release found at the given URL (ex: http://...) will be deployed.
     type: string
-    default: local
+    default: develop
   juju-gui-debug:
     description: |
       Run Juju GUI in debug mode, serving the uncompressed GUI source files.

@@ -574,13 +574,26 @@ def fetch_gui_from_branch(branch_url, revision, logpath):
 
     # If there's a revision attempt to checkout that revision.
     if revision:
+        git_dir = juju_gui_source_dir + "/.git"
         if revision.startswith('@'):
             revision = revision[1:]
-            cmd_log(run('git', 'checkout', revision))
+            # We have to unshallow the checkout in order to be able to 'see'
+            # older commit hashes to check them out.
+            cmd_log(run(
+                'git', '--git-dir', git_dir, '--work-tree',
+                juju_gui_source_dir, 'fetch', '--depth', '20000'))
+
+            cmd_log(run(
+                'git', '--git-dir', git_dir, '--work-tree',
+                juju_gui_source_dir, 'checkout', revision))
         else:
-            cmd_log(run('git', 'fetch', 'origin'))
-            cmd_log(run('git', 'checkout', '-b', revision,
-                        'origin/' + revision))
+            cmd_log(run(
+                'git', '--git-dir', git_dir, '--work-tree',
+                juju_gui_source_dir,'fetch', 'origin'))
+            cmd_log(run(
+                'git', '--git-dir', git_dir, '--work-tree',
+                juju_gui_source_dir, 'checkout', '-b', revision,
+                'origin/' + revision))
 
     log('Preparing a Juju GUI release.')
     logdir = os.path.dirname(logpath)
@@ -588,7 +601,7 @@ def fetch_gui_from_branch(branch_url, revision, logpath):
     fd, name = tempfile.mkstemp(prefix='make-distfile-', dir=logdir)
     log('Output from "make distfile" sent to %s' % name)
 
-    run('make', '-C', juju_gui_source_dir, 'distfile',
+    run('make', '-C', juju_gui_source_dir, 'distfile', 'BRANCH_IS_GOOD=true',
         stdout=fd, stderr=fd)
 
     return first_path_in_dir(
