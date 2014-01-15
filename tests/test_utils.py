@@ -23,6 +23,7 @@ import shutil
 from subprocess import CalledProcessError
 import tempfile
 import unittest
+import yaml
 
 import charmhelpers
 import mock
@@ -228,6 +229,27 @@ class TestFirstPathInDir(unittest.TestCase):
 class TestGetApiAddress(unittest.TestCase):
 
     env_address = 'env.example.com:17070'
+    agent_address = 'agent.example.com:17070'
+
+    @contextmanager
+    def agent_file(self, addresses=None):
+        """Set up a directory structure similar to the one created by juju.
+
+        If addresses are provided, also create a machiner directory and an
+        agent file containing the addresses.
+        Remove the directory structure when exiting from the context manager.
+        """
+        base_dir = tempfile.mkdtemp()
+        unit_dir = tempfile.mkdtemp(dir=base_dir)
+        machine_dir = os.path.join(base_dir, 'machine-1')
+        if addresses is not None:
+            os.mkdir(machine_dir)
+            with open(os.path.join(machine_dir, 'agent.conf'), 'w') as conf:
+                yaml.dump({'apiinfo': {'addrs': addresses}}, conf)
+        try:
+            yield unit_dir, machine_dir
+        finally:
+            shutil.rmtree(base_dir)
 
     def test_retrieving_address_from_env(self):
         # The API address is correctly retrieved from the environment.
@@ -240,6 +262,36 @@ class TestGetApiAddress(unittest.TestCase):
         addresses = '{} foo.example.com:42'.format(self.env_address)
         with environ(JUJU_API_ADDRESSES=addresses):
             self.assertEqual(self.env_address, get_api_address())
+
+    def test_both_env_and_agent_file(self):
+        # If the API address is included in both the environment and the
+        # agent.conf file, the environment variable takes precedence.
+        with environ(JUJU_API_ADDRESSES=self.env_address):
+            with self.agent_file([self.agent_address]) as (unit_dir, _):
+                self.assertEqual(self.env_address, get_api_address(unit_dir))
+
+    def test_retrieving_address_from_agent_file(self):
+        # The API address is correctly retrieved from the machiner agent file.
+        with self.agent_file([self.agent_address]) as (unit_dir, _):
+            self.assertEqual(self.agent_address, get_api_address(unit_dir))
+
+    def test_multiple_addresses_in_agent_file(self):
+        # If multiple API addresses are listed in the agent file, the first
+        # one is returned.
+        addresses = [self.agent_address, 'foo.example.com:42']
+        with self.agent_file(addresses) as (unit_dir, _):
+            self.assertEqual(self.agent_address, get_api_address(unit_dir))
+
+    def test_missing_env_and_agent_file(self):
+        # An IOError is raised if the agent configuration file is not found.
+        with self.agent_file() as (unit_dir, machine_dir):
+            os.mkdir(machine_dir)
+            self.assertRaises(IOError, get_api_address, unit_dir)
+
+    def test_missing_env_and_agent_directory(self):
+        # An IOError is raised if the machine directory is not found.
+        with self.agent_file() as (unit_dir, _):
+            self.assertRaises(IOError, get_api_address, unit_dir)
 
 
 class TestGetReleaseFilePath(unittest.TestCase):

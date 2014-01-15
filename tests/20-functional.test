@@ -183,7 +183,7 @@ class TestDeployOptions(DeployTestMixin, unittest.TestCase):
 
     def test_sandbox(self):
         # The GUI is correctly deployed and set up in sandbox mode.
-        self.service_name, unit_info,  = juju_deploy_gui(
+        self.service_name, unit_info, _ = juju_deploy_gui(
             options={'sandbox': 'true'})
         hostname = unit_info['public-address']
         self.navigate_to(hostname)
