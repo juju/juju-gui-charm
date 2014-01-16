@@ -264,11 +264,6 @@ def parse_source(source):
             return False
 
     if is_url(source):
-        # Support file paths, including relative paths.
-        if urlparse.urlparse(source).scheme == '':
-            if not source.startswith('/'):
-                source = os.path.join(os.path.abspath(CURRENT_DIR), source)
-            source = "file://%s" % source
         return 'url', source
 
     if source in ('local', 'stable', 'develop'):

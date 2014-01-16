@@ -32,15 +32,13 @@ options:
         release will be created and deployed from the specified Git
         repository. You can include a branch name or a specific commit SHA
         after the url to the Git repository to deploy that specific commit
-        point.
-
-        - Specify a commit SHA: (e.g.
-          'https://github.com/mitechie/juju-gui.git @de5e61bf9fa') will clone
-          the git repository and then check out the specified commit before
-          building the release.
+        point. You may instead specify a commit SHA: (e.g.
+        'https://github.com/mitechie/juju-gui.git @de5e61bf9fa') which will
+        clone the git repository and then check out the specified commit
+        before building the release.
       - a URL: The release found at the given URL (ex: http://...) will be deployed.
     type: string
-    default: develop
+    default: local
   juju-gui-debug:
     description: |
       Run Juju GUI in debug mode, serving the uncompressed GUI source files.

@@ -651,6 +651,11 @@ class TestParseSource(unittest.TestCase):
         expected = ('stable', None)
         self.assertTupleEqual(expected, parse_source('stable'))
 
+    def test_latest_develop_release(self):
+        # Ensure the latest develop branch release is correctly parsed.
+        expected = ('develop', None)
+        self.assertTupleEqual(expected, parse_source('develop'))
+
     @mock.patch('utils.log')
     def test_stable_release(self, mock_log):
         # Ensure a specific stable release is correctly parsed.
@@ -659,13 +664,9 @@ class TestParseSource(unittest.TestCase):
 
     def test_git_branch(self):
         # Ensure a Git branch is correctly parsed.
-        sources = (
-            'https://github.com/juju/juju-gui.git',
-            'https://github.com/juju/juju-gui.git'
-        )
-        for source in sources:
-            expected = ('branch', (source, None))
-            self.assertEqual(expected, parse_source(source))
+        source = 'https://github.com/juju/juju-gui.git'
+        expected = ('branch', (source, None))
+        self.assertEqual(expected, parse_source(source))
 
     def test_git_branch_and_revision(self):
         # A Bazaar branch is correctly parsed when including revision.
