@@ -33,7 +33,10 @@ from helpers import (
 )
 
 
-rsync = command('rsync', '-a', '--exclude', '.bzr', '--exclude', '/tests')
+rsync = command('rsync', '-a',
+                '--exclude', '.git',
+                '--exclude', '.bzr',
+                '--exclude', '/tests')
 
 
 def setup_repository(name, source, series='precise'):
