@@ -40,7 +40,7 @@ from helpers import (
 )
 import example
 
-JUJU_GUI_TEST_BRANCH = 'https://github.com/juju/juju-gui.git master'
+JUJU_GUI_TEST_BRANCH = 'https://github.com/juju/juju-gui.git'
 try:
     admin_secret = get_admin_secret()
 except ValueError as err:
