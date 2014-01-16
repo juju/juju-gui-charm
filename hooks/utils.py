@@ -1,6 +1,6 @@
 # This file is part of the Juju GUI, which lets users view and manage Juju
 # environments within a graphical interface (https://launchpad.net/juju-gui).
-# Copyright (C) 2012-2013 Canonical Ltd.
+# Copyright (C) 2012-2014 Canonical Ltd.
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU Affero General Public License version 3, as published by
@@ -120,7 +120,9 @@ DEB_BUILD_DEPENDENCIES = (
 
 # Store the configuration from on invocation to the next.
 config_json = Serializer(os.path.join(os.path.sep, 'tmp', 'config.json'))
-# Bazaar checkout command.
+# Git checkout command.
+# This is the equivalent shallow clone. Note, to do a revision checkout we
+# 'undo' this later on.
 git_checkout = command('git', 'clone', '--depth', '1')
 
 release_expression = re.compile(r"""

@@ -51,10 +51,6 @@ class TestSetupRepository(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.source)
         # Create a file in the source dir.
         _, self.root_file = tempfile.mkstemp(dir=self.source)
-        # Create a Bazaar repository directory with a file in it.
-        bzr_dir = os.path.join(self.source, '.bzr')
-        os.mkdir(bzr_dir)
-        tempfile.mkstemp(dir=bzr_dir)
         # Create a tests directory including a .venv directory and a file.
         self.tests_dir = os.path.join(self.source, 'tests')
         venv_dir = os.path.join(self.tests_dir, '.venv')

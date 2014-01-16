@@ -1,6 +1,6 @@
 # This file is part of the Juju GUI, which lets users view and manage Juju
 # environments within a graphical interface (https://launchpad.net/juju-gui).
-# Copyright (C) 2012-2013 Canonical Ltd.
+# Copyright (C) 2012-2014 Canonical Ltd.
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU Affero General Public License version 3, as published by
@@ -368,7 +368,7 @@ class TestGetReleaseFilePath(unittest.TestCase):
         self.add('juju-gui-1.2.3.4.tgz')  # Wrong version.
         self.add('juju-gui-1.2.3.build.42.tgz')  # Missing "+" separator.
         self.add('juju-gui-1.2.3+built.42.tgz')  # Typo.
-        self.add('juju-gui-1.2.3+build.42.47.tgz')  # Invalid bzr revno.
+        self.add('juju-gui-1.2.3+build.42.47.tgz')  # Invalid revno.
         self.add('juju-gui-1.2.3+build.42.bz2')  # Wrong file extension again.
         with self.mock_releases_dir():
             with self.assert_error():
@@ -657,7 +657,7 @@ class TestParseSource(unittest.TestCase):
         self.assertTupleEqual(expected, parse_source('develop'))
 
     @mock.patch('utils.log')
-    def test_stable_release(self, mock_log):
+    def test_stable_release(self, *args):
         # Ensure a specific stable release is correctly parsed.
         expected = ('stable', '0.1.0')
         self.assertTupleEqual(expected, parse_source('0.1.0'))
@@ -669,7 +669,7 @@ class TestParseSource(unittest.TestCase):
         self.assertEqual(expected, parse_source(source))
 
     def test_git_branch_and_revision(self):
-        # A Bazaar branch is correctly parsed when including revision.
+        # A Git branch is correctly parsed when including revision.
         sources = (
             'https://github.com/juju/juju-gui.git test_feature',
             'https://github.com/juju/juju-gui.git @de5e6',
