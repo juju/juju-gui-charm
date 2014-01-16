@@ -40,7 +40,7 @@ from helpers import (
 )
 import example
 
-JUJU_GUI_TEST_BRANCH = 'lp:~juju-gui/juju-gui/charm-tests-branch'
+JUJU_GUI_TEST_BRANCH = 'https://github.com/juju/juju-gui.git master'
 try:
     admin_secret = get_admin_secret()
 except ValueError as err:
@@ -193,7 +193,7 @@ class TestDeployOptions(DeployTestMixin, unittest.TestCase):
         self.assertTrue(server_info['sandbox'])
 
     def test_branch_source(self):
-        # Ensure the Juju GUI is correctly deployed from a Bazaar branch.
+        # Ensure the Juju GUI is correctly deployed from a Git branch.
         options = {'juju-gui-source': JUJU_GUI_TEST_BRANCH}
         self.service_name, unit_info, _ = juju_deploy_gui(options=options)
         hostname = unit_info['public-address']
