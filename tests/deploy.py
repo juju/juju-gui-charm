@@ -33,14 +33,17 @@ from helpers import (
 )
 
 
-rsync = command('rsync', '-a', '--exclude', '.bzr', '--exclude', '/tests')
+rsync = command('rsync', '-a',
+                '--exclude', '.git',
+                '--exclude', '.bzr',
+                '--exclude', '/tests')
 
 
 def setup_repository(name, source, series='precise'):
     """Create a temporary Juju repository to use for charm deployment.
 
     Copy the charm files in source in the precise repository section, using the
-    provided charm name and excluding the virtualenv and Bazaar directories.
+    provided charm name and excluding the virtualenv and Git directories.
 
     Return the repository path.
     """

@@ -1,6 +1,6 @@
 # This file is part of the Juju GUI, which lets users view and manage Juju
 # environments within a graphical interface (https://launchpad.net/juju-gui).
-# Copyright (C) 2012-2013 Canonical Ltd.
+# Copyright (C) 2012-2014 Canonical Ltd.
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU Affero General Public License version 3, as published by
@@ -21,23 +21,22 @@ options:
       - 'local' (default): The latest local release will be deployed. Releases
         are stored in the releases directory of this charm.
       - 'stable': The latest release from the "stable" series will be deployed.
-      - 'trunk': The latest release from the "trunk" series will be deployed.
-        Please note that this is not a build of the current Juju GUI trunk.
-        For that functionality, use "lp:juju-gui", as described below.
-      - a stable version (e.g '0.1.0'): The specified stable version will be
-        deployed. A suitable release is looked up in the local releases
-        repository (see the "local" choice above). If not found locally, the
-        release will be downloaded from Launchpad.
-      - a trunk version (e.g '0.1.0+build.1'): The specified trunk version
-        will be deployed. A suitable release is looked up in the local releases
-        repository (see the "local" choice above). If not found locally, the
-        release will be downloaded from Launchpad.
-      - a Bazaar branch (e.g. 'lp:juju-gui'): A release will be created and
-        deployed from the specified Bazaar branch. "http://"" prefixed branches
-        work as well. It is also possible to include the specific branch
-        revision, e.g. "lp:juju-gui:42" will checkout revno 42.
-      - a "url:" prefixed url: The release found at the given URL
-        (ex: url:http://... or url:file://...) will be deployed.
+      - 'develop': The latest, in development, version from the Git repository.
+      - a specific release version (e.g '0.1.0' or '0.1.0+build.1'): The
+        specified stable version will be deployed. A suitable release is
+        looked up in the local releases repository (see the "local" choice
+        above). If not found locally, the release will be downloaded from
+        Launchpad.
+      - a Git branch (e.g. 'https://github.com/juju/juju-gui.git' or
+        'https://github.com/mitechie/juju-gui.git updated-test-runner'): A
+        release will be created and deployed from the specified Git
+        repository. You can include a branch name or a specific commit SHA
+        after the url to the Git repository to deploy that specific commit
+        point. You may instead specify a commit SHA: (e.g.
+        'https://github.com/mitechie/juju-gui.git @de5e61bf9fa') which will
+        clone the git repository and then check out the specified commit
+        before building the release.
+      - a URL: The release found at the given URL (ex: http://...) will be deployed.
     type: string
     default: local
   juju-gui-debug:
