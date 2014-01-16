@@ -85,16 +85,11 @@ the charm can be deployed behind a firewall in the usual way:
     juju deploy juju-gui
 
 There are situations and customizations in which the charm needs to connect to
-Launchpad:
+the Internet:
 
-- juju-gui-source is set to "stable" or "trunk": in this cases the charm pulls
-  the latest stable or development release from Launchpad;
-- juju-gui-source is set to a branch (e.g. "lp:juju-gui"): in this case the
-  charm retrieves a checkout of the specified branch from Launchpad, and adds
-  an external Launchpad PPA to install build dependencies;
-- juju-gui-source is set to a specific version number not available in the
-  local store (i.e. in the releases directory of the deployed charm): in this
-  case the release is downloaded from Launchpad;
+- juju-gui-source is set to a configuration that requires accessing an
+  external source in order to fetch a release tarball or a Git checkout in order
+  to build the source used by the charm.
 - builtin-server is set to false: in this case the charm adds an external
   Launchpad PPA to install the legacy server dependencies.
 
@@ -121,10 +116,6 @@ to not being able to retrieve the source, you may also need to retry the unit
 with the following command (using the unit the GUI is deployed on):
 
     `juju resolved --retry juju-gui/0`
-
-These steps are sufficient for Juju Core.
-
-3. Retry as described in the step 3 above (`juju resolved --retry juju-gui/0`).
 
 ### Upgrading the charm behind a firewall ###
 
