@@ -3,10 +3,12 @@
 
 	DocumentRoot {{server_root}}
 	<Directory />
+		FileETag MTime Size
 		Options FollowSymLinks
 		AllowOverride None
 	</Directory>
 	<Directory {{server_root}}>
+		FileETag MTime Size
 		Options Indexes FollowSymLinks MultiViews
 		AllowOverride None
 		Order allow,deny
