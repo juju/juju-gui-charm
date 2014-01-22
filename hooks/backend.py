@@ -118,6 +118,8 @@ class GuiMixin(object):
                     origin, version_or_branch)
             # Install the tarball.
             utils.setup_gui(release_tarball_path)
+        else:
+            log('No change to juju-gui-source. Skipping step.')
 
     def start(self, backend):
         log('Starting Juju GUI.')
