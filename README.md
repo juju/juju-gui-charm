@@ -72,9 +72,9 @@ web address.  Accessing the GUI via HTTP will redirect to using HTTPS.
 By default, the deployment uses self-signed certificates. The browser will ask
 you to accept a security exception once.
 
-You will see a login form with the username fixed to "user-admin" (for juju-
-core) or "admin" (for pyjuju). The password is the same as your Juju
-environment's `admin-secret`, found in `~/.juju/environments.yaml`.
+You will see a login form with the username fixed to "user-admin". The
+password is the same as your Juju environment's `admin-secret`, found in
+`~/.juju/environments.yaml`.
 
 ### Deploying behind a firewall ###
 
@@ -85,25 +85,17 @@ the charm can be deployed behind a firewall in the usual way:
     juju deploy juju-gui
 
 There are situations and customizations in which the charm needs to connect to
-Launchpad:
+the Internet:
 
-- juju-gui-source is set to "stable" or "trunk": in this cases the charm pulls
-  the latest stable or development release from Launchpad;
-- juju-gui-source is set to a branch (e.g. "lp:juju-gui"): in this case the
-  charm retrieves a checkout of the specified branch from Launchpad, and adds
-  an external Launchpad PPA to install build dependencies;
-- juju-gui-source is set to a specific version number not available in the
-  local store (i.e. in the releases directory of the deployed charm): in this
-  case the release is downloaded from Launchpad;
+- juju-gui-source is set to a configuration that requires accessing an
+  external source in order to fetch a release tarball or a Git checkout in order
+  to build the source used by the charm.
 - builtin-server is set to false: in this case the charm adds an external
   Launchpad PPA to install the legacy server dependencies.
 
 If, for any reason, you need to use the legacy server, it is still possible to
 deploy behind a firewall configuring the charm to pull the GUI release from a
 location you specify.
-
-For both Juju Core and PyJuju, you must simply do the following steps.  Note
-that PyJuju must do these steps, plus another set described further below.
 
 The config variable `juju-gui-source` allows a `url:` prefix which understands
 both `http://` and `file://` protocols.  We will use this to load a local copy
@@ -124,17 +116,6 @@ to not being able to retrieve the source, you may also need to retry the unit
 with the following command (using the unit the GUI is deployed on):
 
     `juju resolved --retry juju-gui/0`
-
-These steps are sufficient for Juju Core.  If you are using PyJuju, you need to
-do another set of steps in addition.
-
-1. Use bzr to branch lp:~hazmat/juju/rapi-rollup locally ("bzr branch
-lp:~hazmat/juju/rapi-rollup") and copy the branch to the gui service machine.
-
-2. Use "juju set juju-gui juju-api-branch=PATH_TO_LOCAL_BZR_BRANCH" (where the
-path is *not* a file:// URI).
-
-3. Retry as described in the step 3 above (`juju resolved --retry juju-gui/0`).
 
 ### Upgrading the charm behind a firewall ###
 
@@ -165,18 +146,6 @@ Replace "juju deploy cs:precise/juju-gui" from the previous
 instructions with this:
 
     juju deploy --force-machine 0 cs:precise/juju-gui
-
-#### pyjuju ####
-
-Colocation support is not included by default in the pyjuju implementation; to
-activate it, you will need to install Jitsu:
-
-    sudo apt-get install juju-jitsu
-
-and then replace "juju deploy cs:precise/juju-gui" from the previous
-instructions with this:
-
-    jitsu deploy-to 0 cs:precise/juju-gui
 
 ## Contacting the Developers ##
 

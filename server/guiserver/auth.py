@@ -20,7 +20,7 @@ This module includes the pieces required to process user authentication.
 
     - User: this is a simple data structure representing a logged in or
       anonymous user.
-    - Authentication backends (GoBackend and PythonBackend): the primary
+    - Authentication backends (GoBackend): the primary
       purpose of auth backends is to provide the logic to parse requests' data
       based on the API implementation currently in use. They can also be used
       to create authentication requests.  They must implement the following
@@ -212,69 +212,9 @@ class GoBackend(object):
             Params=dict(AuthTag=username, Password=password))
 
 
-class PythonBackend(object):
-    """Authentication backend for the Juju Python implementation.
-
-    A login request looks like the following:
-
-        {
-            'request_id': 42,
-            'op': 'login',
-            'user': 'admin',
-            'password': 'ADMIN-SECRET',
-        }
-
-    A successful login response includes these fields:
-
-        {
-            'request_id': 42,
-            'op': 'login',
-            'user': 'admin',
-            'password': 'ADMIN-SECRET',
-            'result': True,
-        }
-
-    A login failure response is like the following:
-
-        {
-            'request_id': 42,
-            'op': 'login',
-            'user': 'admin',
-            'password': 'ADMIN-SECRET',
-            'err': True,
-        }
-    """
-
-    def get_request_id(self, data):
-        """Return the request identifier associated with the provided data."""
-        return data.get('request_id')
-
-    def request_is_login(self, data):
-        """Return True if data represents a login request, False otherwise."""
-        op = data.get('op')
-        return (op == 'login') and ('user' in data) and ('password' in data)
-
-    def get_credentials(self, data):
-        """Parse the provided login data and return username and password."""
-        return data['user'], data['password']
-
-    def login_succeeded(self, data):
-        """Return True if data represents a successful login, False otherwise.
-        """
-        return data.get('result') and not data.get('err')
-
-    def make_request(self, request_id, username, password):
-        """Create and return an authentication request."""
-        return dict(
-            request_id=request_id,
-            op='login',
-            user=username,
-            password=password)
-
-
 def get_backend(apiversion):
     """Return the auth backend instance to use for the given API version."""
-    backend_class = {'go': GoBackend, 'python': PythonBackend}[apiversion]
+    backend_class = {'go': GoBackend}[apiversion]
     return backend_class()
 
 

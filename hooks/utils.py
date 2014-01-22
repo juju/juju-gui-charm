@@ -1,6 +1,6 @@
 # This file is part of the Juju GUI, which lets users view and manage Juju
 # environments within a graphical interface (https://launchpad.net/juju-gui).
-# Copyright (C) 2012-2013 Canonical Ltd.
+# Copyright (C) 2012-2014 Canonical Ltd.
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU Affero General Public License version 3, as published by
@@ -21,14 +21,12 @@ __all__ = [
     'APACHE_PORTS',
     'API_PORT',
     'CURRENT_DIR',
-    'JUJU_AGENT_DIR',
     'JUJU_GUI_DIR',
     'JUJU_PEM',
     'WEB_PORT',
     'cmd_log',
     'compute_build_dir',
     'download_release',
-    'fetch_api',
     'fetch_gui_from_branch',
     'fetch_gui_release',
     'find_missing_packages',
@@ -37,9 +35,7 @@ __all__ = [
     'get_launchpad_release',
     'get_npm_cache_archive_url',
     'get_release_file_path',
-    'get_zookeeper_address',
     'install_missing_packages',
-    'legacy_juju',
     'log_hook',
     'parse_source',
     'prime_npm_cache',
@@ -50,14 +46,10 @@ __all__ = [
     'setup_apache_config',
     'setup_gui',
     'setup_haproxy_config',
-    'start_agent',
     'start_builtin_server',
     'start_haproxy_apache',
-    'start_improv',
-    'stop_agent',
     'stop_builtin_server',
     'stop_haproxy_apache',
-    'stop_improv',
     'write_gui_config',
 ]
 
@@ -72,39 +64,34 @@ import shutil
 from subprocess import CalledProcessError
 import tempfile
 import urlparse
+import yaml
 
 import apt
 from launchpadlib.launchpad import Launchpad
 import tempita
-import yaml
 
 from charmhelpers import (
     get_config,
     log,
     RESTART,
     service_control,
-    START,
     STOP,
     unit_get,
 )
 from shelltoolbox import (
     apt_get_install,
     command,
-    environ,
     install_extra_repositories,
     run,
     script_name,
-    search_file,
     Serializer,
     su,
 )
 
 
-AGENT = 'juju-api-agent'
 APACHE = 'apache2'
 BUILTIN_SERVER = 'guiserver'
 HAPROXY = 'haproxy'
-IMPROV = 'juju-api-improv'
 
 API_PORT = 8080
 WEB_PORT = 8000
@@ -112,7 +99,6 @@ WEB_PORT = 8000
 BASE_DIR = '/var/lib/juju-gui'
 CURRENT_DIR = os.getcwd()
 CONFIG_DIR = os.path.join(CURRENT_DIR, 'config')
-JUJU_AGENT_DIR = os.path.join(BASE_DIR, 'juju')
 JUJU_GUI_DIR = os.path.join(BASE_DIR, 'juju-gui')
 RELEASES_DIR = os.path.join(CURRENT_DIR, 'releases')
 SERVER_DIR = os.path.join(CURRENT_DIR, 'server')
@@ -123,33 +109,22 @@ APACHE_SITE = os.path.join(APACHE_CFG_DIR, 'sites-available', 'juju-gui')
 HAPROXY_CFG_PATH = os.path.join(os.path.sep, 'etc', 'haproxy', 'haproxy.cfg')
 
 SYS_INIT_DIR = os.path.join(os.path.sep, 'etc', 'init')
-AGENT_INIT_PATH = os.path.join(SYS_INIT_DIR, 'juju-api-agent.conf')
 GUISERVER_INIT_PATH = os.path.join(SYS_INIT_DIR, 'guiserver.conf')
 HAPROXY_INIT_PATH = os.path.join(SYS_INIT_DIR, 'haproxy.conf')
-IMPROV_INIT_PATH = os.path.join(SYS_INIT_DIR, 'juju-api-improv.conf')
 
 JUJU_PEM = 'juju.includes-private-key.pem'
 DEB_BUILD_DEPENDENCIES = (
-    'bzr', 'g++', 'imagemagick', 'make',  'nodejs', 'npm',
+    'bzr', 'g++', 'git', 'imagemagick', 'make',  'nodejs', 'npm',
 )
 
 
 # Store the configuration from on invocation to the next.
 config_json = Serializer(os.path.join(os.path.sep, 'tmp', 'config.json'))
-# Bazaar checkout command.
-bzr_checkout = command('bzr', 'co', '--lightweight')
-# Whether or not the charm is deployed using juju-core.
-# If juju-core has been used to deploy the charm, an agent.conf file must
-# be present in the charm parent directory.
-legacy_juju = lambda: not os.path.exists(
-    os.path.join(CURRENT_DIR, '..', 'agent.conf'))
+# Git checkout command.
+# This is the equivalent shallow clone. Note, to do a revision checkout we
+# 'undo' this later on.
+git_checkout = command('git', 'clone', '--depth', '1')
 
-bzr_url_expression = re.compile(r"""
-    ^  # Beginning of line.
-    ((?:lp:|http:\/\/)[^:]+)  # Branch URL (scheme + domain/path).
-    (?::(\d+))?  # Optional branch revision.
-    $  # End of line.
-""", re.VERBOSE)
 release_expression = re.compile(r"""
     juju-gui-  # Juju GUI prefix.
     (
@@ -165,8 +140,6 @@ results_log = None
 def get_api_address(unit_dir=None):
     """Return the Juju API address.
 
-    If not present in the hook context as an environment variable, try to
-    retrieve the address parsing the machiner agent.conf file.
     """
     api_addresses = os.getenv('JUJU_API_ADDRESSES')
     if api_addresses is not None:
@@ -187,6 +160,7 @@ def get_api_address(unit_dir=None):
         raise IOError('Juju agent configuration file not found.')
     contents = yaml.load(open(agent_conf))
     return contents['apiinfo']['addrs'][0]
+    return api_addresses.split()[0]
 
 
 def first_path_in_dir(directory):
@@ -235,18 +209,6 @@ def get_launchpad_release(project, series_name, release_version):
     raise ValueError('%r: file not found' % release_version)
 
 
-def get_zookeeper_address(agent_file_path):
-    """Retrieve the Zookeeper address contained in the given *agent_file_path*.
-
-    The *agent_file_path* is a path to a file containing a line similar to the
-    following::
-
-        env JUJU_ZOOKEEPER="address"
-    """
-    line = search_file('JUJU_ZOOKEEPER', agent_file_path).strip()
-    return line.split('=')[1].strip('"')
-
-
 @contextmanager
 def log_hook():
     """Log when a hook starts and stops its execution.
@@ -273,29 +235,47 @@ def parse_source(source):
     Examples:
        - ('local', None): latest local release;
        - ('stable', None): latest stable release;
-       - ('stable', '0.1.0'): stable release v0.1.0;
-       - ('trunk', None): latest trunk release;
-       - ('trunk', '0.1.0+build.1'): trunk release v0.1.0 bzr revision 1;
-       - ('branch', ('lp:juju-gui', 42): release is made from a branch -
-         in this case the second element includes the branch URL and revision;
-       - ('branch', ('lp:juju-gui', None): no revision is specified;
-       - ('url', 'http://example.com/gui'): release from a downloaded file.
+       - ('develop', None): latest build from git trunk;
+       - ('release', '0.1.0'): release v0.1.0;
+       - ('branch', ('https://github.com/juju/juju-gui.git', 'add-feature'):
+         release is made from a branch -
+         in this case the second element includes the branch or SHA;
+       - ('branch', ('https://github.com/juju/juju-gui.git', None): no
+         revision is specified;
+       - ('url', 'http://example.com/gui.tar.gz'): release from a downloaded
+         file.
     """
-    if source.startswith('url:'):
-        source = source[4:]
-        # Support file paths, including relative paths.
-        if urlparse.urlparse(source).scheme == '':
-            if not source.startswith('/'):
-                source = os.path.join(os.path.abspath(CURRENT_DIR), source)
-            source = "file://%s" % source
+
+    def is_url(url_check):
+        if ' ' in url_check:
+            url_check, _ = url_check.split(' ')
+
+        if url_check.startswith('http') and not url_check.endswith('.git'):
+            return True
+        else:
+            return False
+
+    def is_branch(check_branch):
+        target = None
+        if ' ' in check_branch:
+            check_branch, target = check_branch.split(' ')
+
+        if check_branch.startswith('http') and check_branch.endswith('.git'):
+            return (check_branch, target)
+        else:
+            return False
+
+    if is_url(source):
         return 'url', source
-    if source in ('local', 'stable', 'trunk'):
+
+    if source in ('local', 'stable', 'develop'):
         return source, None
-    match = bzr_url_expression.match(source)
-    if match is not None:
-        return 'branch', match.groups()
-    if 'build' in source:
-        return 'trunk', source
+
+    check_branch = is_branch(source)
+    if (check_branch):
+        return ('branch', check_branch)
+
+    log('Source is defaulting to stable release.')
     return 'stable', source
 
 
@@ -319,6 +299,14 @@ def _setupLogging():
     global results_log
     if results_log is not None:
         return
+
+    # Make sure that the root logger isn't configured already. If it does,
+    # this basicConfig will be a noop and not setup the expected file handler
+    # on the logger.
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+
     config = get_config()
     logging.basicConfig(
         filename=config['command-log-file'],
@@ -338,60 +326,6 @@ def cmd_log(results):
     results_log.info('\n' + results)
 
 
-def start_improv(staging_env, ssl_cert_path):
-    """Start a simulated juju environment using ``improv.py``."""
-    log('Setting up the staging Upstart script.')
-    context = {
-        'juju_dir': JUJU_AGENT_DIR,
-        'keys': ssl_cert_path,
-        'port': API_PORT,
-        'staging_env': staging_env,
-    }
-    render_to_file('juju-api-improv.conf.template', context, IMPROV_INIT_PATH)
-    log('Starting the staging backend.')
-    with su('root'):
-        service_control(IMPROV, START)
-
-
-def stop_improv():
-    """Stop a simulated Juju environment."""
-    log('Stopping the staging backend.')
-    with su('root'):
-        service_control(IMPROV, STOP)
-    log('Removing the staging Upstart script.')
-    cmd_log(run('rm', '-f', IMPROV_INIT_PATH))
-
-
-def start_agent(ssl_cert_path, read_only=False):
-    """Start the Juju agent and connect to the current environment."""
-    # Retrieve the Zookeeper address from the start up script.
-    unit_name = os.path.basename(
-        os.path.realpath(os.path.join(CURRENT_DIR, '..')))
-    agent_file = os.path.join(SYS_INIT_DIR, 'juju-{}.conf'.format(unit_name))
-    zookeeper = get_zookeeper_address(agent_file)
-    log('Setting up the API agent Upstart script.')
-    context = {
-        'juju_dir': JUJU_AGENT_DIR,
-        'keys': ssl_cert_path,
-        'port': API_PORT,
-        'zookeeper': zookeeper,
-        'read_only': read_only
-    }
-    render_to_file('juju-api-agent.conf.template', context, AGENT_INIT_PATH)
-    log('Starting the API agent.')
-    with su('root'):
-        service_control(AGENT, START)
-
-
-def stop_agent():
-    """Stop the Juju agent."""
-    log('Stopping the API agent.')
-    with su('root'):
-        service_control(AGENT, STOP)
-    log('Removing the API agent Upstart script.')
-    cmd_log(run('rm', '-f', AGENT_INIT_PATH))
-
-
 def compute_build_dir(juju_gui_debug, serve_tests):
     """Compute the build directory."""
     with su('root'):
@@ -408,19 +342,21 @@ def compute_build_dir(juju_gui_debug, serve_tests):
 
 
 def write_gui_config(
-        console_enabled, login_help, readonly, in_staging, charmworld_url,
+        console_enabled, login_help, readonly, charmworld_url,
         build_dir, secure=True, sandbox=False,
-        default_viewmode='sidebar', show_get_juju_button=False,
-        config_js_path=None, ga_key='', password=None):
+        show_get_juju_button=False, config_js_path=None, ga_key='',
+        password=None):
     """Generate the GUI configuration file."""
     log('Generating the Juju GUI configuration file.')
-    is_legacy_juju = legacy_juju()
-    user = 'admin' if is_legacy_juju else 'user-admin'
-    # Normalize empty string passwords to None.
-    password = password if password else None
-    if password is None and ((is_legacy_juju and in_staging) or sandbox):
-        password = 'admin'
-    api_backend = 'python' if (is_legacy_juju and not sandbox) else 'go'
+    user = 'user-admin'
+    # Normalize empty string passwords to None. If sandbox is enabled then set
+    # the password to admin and it will auto login.
+    if not password:
+        if sandbox:
+            password = 'admin'
+        else:
+            password = None
+    api_backend = 'go'
     if secure:
         protocol = 'wss'
     else:
@@ -439,7 +375,6 @@ def write_gui_config(
         'sandbox': json.dumps(sandbox),
         'charmworld_url': json.dumps(charmworld_url),
         'ga_key': json.dumps(ga_key),
-        'default_viewmode': json.dumps(default_viewmode),
         'show_get_juju_button': json.dumps(show_get_juju_button),
     }
     if config_js_path is None:
@@ -454,21 +389,12 @@ def setup_haproxy_config(ssl_cert_path, secure=True):
     config_path = os.path.join(CONFIG_DIR, 'haproxy.conf')
     shutil.copy(config_path, SYS_INIT_DIR)
     log('Generating haproxy configuration file.')
-    is_legacy_juju = legacy_juju()
-    if is_legacy_juju:
-        # The PyJuju API agent is listening on localhost.
-        api_address = '127.0.0.1:{}'.format(API_PORT)
-    else:
-        # Retrieve the juju-core API server address.
-        api_address = get_api_address()
+    # Retrieve the juju-core API server address.
+    api_address = get_api_address()
     context = {
         'api_address': api_address,
         'api_pem': JUJU_PEM,
-        'legacy_juju': is_legacy_juju,
         'ssl_cert_path': ssl_cert_path,
-        # In PyJuju environments, use the same certificate for both HTTPS and
-        # WebSocket connections. In juju-core the system already has the proper
-        # certificate installed.
         'web_pem': JUJU_PEM,
         'web_port': WEB_PORT,
         'secure': secure
@@ -570,14 +496,10 @@ def write_builtin_server_startup(
         'charmworld_url': charmworld_url,
     }
     if not sandbox:
-        is_legacy_juju = legacy_juju()
-        if is_legacy_juju:
-            api_url = 'wss://127.0.0.1:{}/ws'.format(API_PORT)
-        else:
-            api_url = 'wss://{}'.format(get_api_address())
+        api_url = 'wss://{}'.format(get_api_address())
         context.update({
             'api_url': api_url,
-            'api_version': 'python' if is_legacy_juju else 'go',
+            'api_version': 'go',
         })
     if serve_tests:
         context['tests_root'] = os.path.join(JUJU_GUI_DIR, 'test', '')
@@ -636,22 +558,49 @@ def fetch_gui_from_branch(branch_url, revision, logpath):
     """Retrieve the Juju GUI from a branch and build a release archive."""
     # Inject NPM packages into the cache for faster building.
     prime_npm_cache(get_npm_cache_archive_url())
+
     # Create a release starting from a branch.
     juju_gui_source_dir = os.path.join(CURRENT_DIR, 'juju-gui-source')
-    checkout_args, revno = ([], 'latest revno') if revision is None else (
-        ['--revision', revision], 'revno {}'.format(revision))
+
     log('Retrieving Juju GUI source checkout from {} ({}).'.format(
-        branch_url, revno))
+        branch_url, revision))
+
     cmd_log(run('rm', '-rf', juju_gui_source_dir))
-    checkout_args.extend([branch_url, juju_gui_source_dir])
-    cmd_log(bzr_checkout(*checkout_args))
+    checkout_args = [branch_url, juju_gui_source_dir]
+    cmd_log(git_checkout(*checkout_args))
+
+    # If there's a revision attempt to checkout that revision.
+    if revision:
+        git_dir = juju_gui_source_dir + "/.git"
+        if revision.startswith('@'):
+            revision = revision[1:]
+            # We have to unshallow the checkout in order to be able to 'see'
+            # older commit hashes to check them out.
+            cmd_log(run(
+                'git', '--git-dir', git_dir, '--work-tree',
+                juju_gui_source_dir, 'fetch', '--depth', '20000'))
+
+            cmd_log(run(
+                'git', '--git-dir', git_dir, '--work-tree',
+                juju_gui_source_dir, 'checkout', revision))
+        else:
+            cmd_log(run(
+                'git', '--git-dir', git_dir, '--work-tree',
+                juju_gui_source_dir, 'fetch', 'origin'))
+            cmd_log(run(
+                'git', '--git-dir', git_dir, '--work-tree',
+                juju_gui_source_dir, 'checkout', '-b', revision,
+                'origin/' + revision))
+
     log('Preparing a Juju GUI release.')
     logdir = os.path.dirname(logpath)
+
     fd, name = tempfile.mkstemp(prefix='make-distfile-', dir=logdir)
     log('Output from "make distfile" sent to %s' % name)
-    with environ(NO_BZR='1'):
-        run('make', '-C', juju_gui_source_dir, 'distfile',
-            stdout=fd, stderr=fd)
+
+    run('make', '-C', juju_gui_source_dir, 'distfile', 'BRANCH_IS_GOOD=true',
+        stdout=fd, stderr=fd)
+
     return first_path_in_dir(
         os.path.join(juju_gui_source_dir, 'releases'))
 
@@ -714,7 +663,7 @@ def fetch_gui_release(origin, version):
         path = get_release_file_path()
         log('Using a local release: {}'.format(path))
         return path
-    # Handle "stable" and "trunk" origins.
+    # Handle "stable"
     if version is not None:
         # If the user specified a version, before attempting to download the
         # requested release from Launchpad, check if that version is already
@@ -728,14 +677,6 @@ def fetch_gui_release(origin, version):
     project = launchpad.projects['juju-gui']
     url, filename = get_launchpad_release(project, origin, version)
     return download_release(url, filename)
-
-
-def fetch_api(juju_api_branch):
-    """Retrieve the Juju branch, removing it first if already there."""
-    # Retrieve Juju API source checkout.
-    log('Retrieving Juju API source checkout.')
-    cmd_log(run('rm', '-rf', JUJU_AGENT_DIR))
-    cmd_log(bzr_checkout(juju_api_branch, JUJU_AGENT_DIR))
 
 
 def setup_gui(release_tarball):
