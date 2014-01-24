@@ -24,6 +24,7 @@ import time
 from tornado import (
     escape,
     gen,
+    httpclient,
     web,
     websocket,
 )
@@ -217,6 +218,62 @@ class IndexHandler(web.StaticFileHandler):
     def get_absolute_path(cls, root, path):
         """See tornado.web.StaticFileHandler.get_absolute_path."""
         return os.path.join(root, 'index.html')
+
+
+class ProxyHandler(web.RequestHandler):
+    """An HTTP(S) proxy from the server to the given target URL."""
+
+    headers = ('Date', 'Cache-Control', 'Server', 'Content-Type', 'Location')
+
+    def initialize(self, target_url):
+        """Initialize the proxy.
+
+        Receive the target URL where to redirect to.
+        """
+        self.target_url = target_url
+
+    def send_request(self, url):
+        """Prepare the HTTP(S) request to be sent to the target host."""
+        request = self.request
+        remote_request = httpclient.HTTPRequest(
+            url, allow_nonstandard_methods=True, body=request.body,
+            method=request.method, validate_cert=False)
+        client = httpclient.AsyncHTTPClient()
+        return client.fetch(remote_request)
+
+    def send_response(self, response):
+        """Prepare and send the response to the client."""
+        self.set_status(response.code)
+        get_headers = response.headers.get
+        set_header = self.set_header
+        for key in self.headers:
+            value = get_headers(key)
+            if value is not None:
+                set_header(key, value)
+        body = response.body
+        if body:
+            self.write(body)
+
+    @gen.coroutine
+    def get(self, uri):
+        """Handle GET requests.
+
+        Receive an URI that will be used as part of the resulting URL used to
+        retrieve the response.
+        The response will then be sent back to the client.
+        """
+        url = self.target_url + uri
+        try:
+            response = yield self.send_request(url)
+        except Exception as err:
+            logging.error(
+                'error fetching data from {}'.format(url.encode('utf-8')))
+            logging.exception(err)
+        else:
+            self.send_response(response)
+
+    # Handle POST request the same way GET ones are handled.
+    post = get
 
 
 class InfoHandler(web.RequestHandler):

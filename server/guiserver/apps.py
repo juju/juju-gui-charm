@@ -25,6 +25,7 @@ from tornado.options import options
 from guiserver import (
     auth,
     handlers,
+    utils,
 )
 from guiserver.bundles.base import Deployer
 
@@ -76,6 +77,9 @@ def server():
         # Handle static files.
         (r'^/juju-ui/(.*)', web.StaticFileHandler, {'path': static_path}),
         (r'^/(favicon\.ico)$', web.StaticFileHandler, {'path': guiroot}),
+        # Handle connections to the juju-core HTTPS server.
+        (r'^/juju-core/(.*)', handlers.ProxyHandler,
+         {'target_url': utils.ws_to_http(options.apiurl)}),
         # Handle GUI server info.
         (r'^/gui-server-info', handlers.InfoHandler, info_handler_options),
         # Any other path is served by index.html.
