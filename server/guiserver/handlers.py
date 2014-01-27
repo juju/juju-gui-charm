@@ -223,20 +223,29 @@ class IndexHandler(web.StaticFileHandler):
 class ProxyHandler(web.RequestHandler):
     """An HTTP(S) proxy from the server to the given target URL."""
 
-    headers = ('Date', 'Cache-Control', 'Server', 'Content-Type', 'Location')
+    # Define a sequence of headers copied from the response sent by the target
+    # URL to the response sent by the guiserver to the original client.
+    headers = (
+        'Cache-Control', 'Content-Type', 'Date', 'Location', 'Server',
+        'WWW-Authenticate')
 
     def initialize(self, target_url):
         """Initialize the proxy.
 
         Receive the target URL where to redirect to.
         """
-        self.target_url = target_url
+        self.target_url = target_url.rstrip('/')
+
+    def create_url(self, path, query):
+        """Return the real target URL for the current request."""
+        querystring = '?{}'.format(query) if query else ''
+        return '{}/{}{}'.format(self.target_url, path, querystring)
 
     def send_request(self, url):
         """Prepare the HTTP(S) request to be sent to the target host."""
         request = self.request
         remote_request = httpclient.HTTPRequest(
-            url, allow_nonstandard_methods=True, body=request.body,
+            url, body=request.body, headers=request.headers,
             method=request.method, validate_cert=False)
         client = httpclient.AsyncHTTPClient()
         return client.fetch(remote_request)
@@ -254,23 +263,31 @@ class ProxyHandler(web.RequestHandler):
         if body:
             self.write(body)
 
+    def handle_error(self, url, exception):
+        """Return a 500 internal server error."""
+        msg = 'error fetching data from {}: {}'.format(
+            url.encode('utf-8'), exception)
+        logging.error(msg)
+        self.set_status(500)
+        self.write('Internal server error:\n{}'.format(msg))
+
     @gen.coroutine
-    def get(self, uri):
+    def get(self, path):
         """Handle GET requests.
 
         Receive an URI that will be used as part of the resulting URL used to
         retrieve the response.
         The response will then be sent back to the client.
         """
-        url = self.target_url + uri
+        url = self.create_url(path, self.request.query)
         try:
             response = yield self.send_request(url)
-        except Exception as err:
-            logging.error(
-                'error fetching data from {}'.format(url.encode('utf-8')))
-            logging.exception(err)
-        else:
-            self.send_response(response)
+        except httpclient.HTTPError as err:
+            response = getattr(err, 'response', None)
+            if not response:
+                self.handle_error(url, err)
+                return
+        self.send_response(response)
 
     # Handle POST request the same way GET ones are handled.
     post = get
