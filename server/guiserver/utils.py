@@ -22,7 +22,10 @@ import logging
 import urlparse
 import weakref
 
-from tornado import escape
+from tornado import (
+    escape,
+    httpclient,
+)
 
 
 def add_future(io_loop, future, callback, *args):
@@ -32,6 +35,17 @@ def add_future(io_loop, future, callback, *args):
     """
     partial_callback = functools.partial(callback, *args)
     io_loop.add_future(future, partial_callback)
+
+
+def clone_request(request, url):
+    """Create and return an httpclient.HTTPRequest from the given request.
+
+    The passed url is used for the new request. The given request object is
+    usually an instance of tornado.httpserver.HTTPRequest.
+    """
+    return httpclient.HTTPRequest(
+        url, body=request.body, headers=request.headers, method=request.method,
+        validate_cert=False)
 
 
 def get_headers(request, websocket_url):
@@ -45,6 +59,17 @@ def get_headers(request, websocket_url):
     if origin is None:
         origin = ws_to_http(websocket_url)
     return {'Origin': origin}
+
+
+def join_url(base_url, path, query):
+    """Create and return an URL string joining the given parts.
+
+    The base_url argument is any URL, and can include the path part but not the
+    query string. The path argument is any path to be added to the URL, or an
+    empty string. The query argument is the URL query string, e.g. "arg=value".
+    """
+    query = '?{}'.format(query) if query else ''
+    return '{}/{}{}'.format(base_url.rstrip('/'), path.lstrip('/'), query)
 
 
 def json_decode_dict(message):

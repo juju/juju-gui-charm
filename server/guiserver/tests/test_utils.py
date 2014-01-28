@@ -23,6 +23,8 @@ import mock
 from tornado import (
     concurrent,
     gen,
+    httpclient,
+    httpserver,
 )
 from tornado.testing import (
     AsyncTestCase,
@@ -71,6 +73,29 @@ class TestAddFuture(AsyncTestCase):
         yield self.assert_done([1, 2, 3])
 
 
+class TestCloneRequest(unittest.TestCase):
+
+    def setUp(self):
+        # Set up a server request object.
+        self.request = httpserver.HTTPRequest(
+            'POST', '/test/', headers={'Content-Type': 'application/json'},
+            body='hello')
+
+    def test_request_attributes(self):
+        # The resulting request includes the expected attributes.
+        request = utils.clone_request(self.request, 'http://example.com/test')
+        self.assertEqual('http://example.com/test', request.url)
+        self.assertEqual('hello', request.body)
+        self.assertEqual({'Content-Type': 'application/json'}, request.headers)
+        self.assertEqual('POST', request.method)
+        self.assertFalse(request.validate_cert)
+
+    def test_request_type(self):
+        # The resulting request is a tornado.httpclient.HTTPRequest instance.
+        request = utils.clone_request(self.request, 'http://example.com')
+        self.assertIsInstance(request, httpclient.HTTPRequest)
+
+
 class TestGetHeaders(unittest.TestCase):
 
     def test_propagation(self):
@@ -85,6 +110,41 @@ class TestGetHeaders(unittest.TestCase):
         request = mock.Mock(headers={})
         headers = utils.get_headers(request, 'wss://server.example.com')
         self.assertEqual({'Origin': 'https://server.example.com'}, headers)
+
+
+class TestJoinUrl(unittest.TestCase):
+
+    def test_url_parts(self):
+        # The URL includes the base part, the path and the given query.
+        url = utils.join_url(
+            'https://example.com:8888/path1', 'path2', 'arg1=value1')
+        self.assertEqual(
+            'https://example.com:8888/path1/path2?arg1=value1', url)
+
+    def test_no_path(self):
+        # The function can be used to just join the base URL and the query.
+        url = utils.join_url('https://example.com:8888', '', 'arg1=value1')
+        self.assertEqual('https://example.com:8888/?arg1=value1', url)
+
+    def test_no_query(self):
+        # The query part can be an empty string.
+        url = utils.join_url('https://example.com:8888', 'path2', '')
+        self.assertEqual('https://example.com:8888/path2', url)
+
+    def test_strip_slashes(self):
+        # Path slashes are properly stripped.
+        pairs = [
+            ('http://www.example.com', 'path1/path2'),
+            ('http://www.example.com/', 'path1/path2'),
+            ('http://www.example.com', '/path1/path2'),
+            ('http://www.example.com/', '/path1/path2'),
+        ]
+        expected_url = 'http://www.example.com/path1/path2'
+        for base_url, path in pairs:
+            url = utils.join_url(base_url, path, '')
+            self.assertEqual(
+                expected_url, url,
+                '{} + {} -> {}'.format(base_url, path, url))
 
 
 class TestJsonDecodeDict(unittest.TestCase):
