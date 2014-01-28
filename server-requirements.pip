@@ -18,8 +18,10 @@
 
 # Note: the order of the following dependencies is important! The last ones
 # depends on the previous.
-# The python-bzrlib and python-yaml dependencies are installed using apt in
-# the charm hooks.
+# The libcurl3, python-bzrlib, python-pycurl and python-yaml dependencies are
+# installed using apt in the charm hooks.
+# The curl packages are required by Tornado's curl_httpclient. YAML support is
+# required to parse bundles. The Bazaar library is used by the deployer.
 
 futures==2.1.4
 tornado==3.1.1

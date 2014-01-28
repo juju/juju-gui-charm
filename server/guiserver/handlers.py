@@ -109,7 +109,7 @@ class WebSocketHandler(websocket.WebSocketHandler):
             logging.error(self._summary + 'unable to connect to the Juju API')
             logging.exception(err)
             self.connected = False
-            raise gen.Return()
+            return
         # At this point the Juju API is successfully connected.
         self.juju_connected = True
         logging.info(self._summary + 'Juju API connected')
@@ -250,7 +250,7 @@ class ProxyHandler(web.RequestHandler):
         request = clone_request(self.request, url)
         client = httpclient.AsyncHTTPClient()
         try:
-            response = client.fetch(request)
+            response = yield client.fetch(request)
         except httpclient.HTTPError as err:
             response = getattr(err, 'response', None)
             if not response:

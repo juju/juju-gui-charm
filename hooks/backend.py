@@ -179,9 +179,13 @@ class HaproxyApacheMixin(ServerInstallMixinBase):
 class BuiltinServerMixin(ServerInstallMixinBase):
     """Manage the builtin server via Upstart."""
 
+    # The package openssl enables SSL support in Tornado.
     # The package python-bzrlib is required by juju-deployer.
     # The package python-pip is is used to install the GUI server dependencies.
-    debs = ('openssl', 'python-bzrlib', 'python-pip')
+    # The libcurl3 and python-pycurl packages are required so that the GUI
+    # server can use Tornado's curl_httpclient.
+    debs = (
+        'libcurl3', 'openssl', 'python-bzrlib', 'python-pip', 'python-pycurl')
 
     def install(self, backend):
         utils.install_builtin_server()
