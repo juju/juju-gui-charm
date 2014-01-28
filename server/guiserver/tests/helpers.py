@@ -21,13 +21,25 @@ import json
 import multiprocessing
 import os
 import signal
+import StringIO as io
 import unittest
 
 import mock
-from tornado import websocket
+from tornado import (
+    httpclient,
+    websocket,
+)
 
 from guiserver import auth
 from guiserver.bundles import base
+
+
+def make_response(code, body='', headers=None, request=None):
+    """Create and return an HTTP response to be used in tests."""
+    if request is None:
+        request = httpclient.HTTPRequest('https://example.com')
+    return httpclient.HTTPResponse(
+        request, code, headers=headers, buffer=io.StringIO(body))
 
 
 class EchoWebSocketHandler(websocket.WebSocketHandler):
