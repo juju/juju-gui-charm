@@ -258,7 +258,7 @@ class ProxyHandler(web.RequestHandler):
                 return
         self._send_response(response)
 
-    # Handle POST request the same way GET ones are handled.
+    # Handle POST requests the same way GET ones are handled.
     post = get
 
     def _send_response(self, response):
