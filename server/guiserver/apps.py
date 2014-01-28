@@ -78,6 +78,7 @@ def server():
         (r'^/juju-ui/(.*)', web.StaticFileHandler, {'path': static_path}),
         (r'^/(favicon\.ico)$', web.StaticFileHandler, {'path': guiroot}),
         # Handle connections to the juju-core HTTPS server.
+        # The juju-core HTTPS and WebSocket servers share the same URL.
         (r'^/juju-core/(.*)', handlers.ProxyHandler,
          {'target_url': utils.ws_to_http(options.apiurl)}),
         # Handle GUI server info.
