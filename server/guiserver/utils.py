@@ -37,7 +37,7 @@ def add_future(io_loop, future, callback, *args):
     io_loop.add_future(future, partial_callback)
 
 
-def clone_request(request, url):
+def clone_request(request, url, validate_cert=True):
     """Create and return an httpclient.HTTPRequest from the given request.
 
     The passed url is used for the new request. The given request object is
@@ -45,7 +45,7 @@ def clone_request(request, url):
     """
     return httpclient.HTTPRequest(
         url, body=request.body, headers=request.headers, method=request.method,
-        validate_cert=False)
+        validate_cert=validate_cert)
 
 
 def get_headers(request, websocket_url):

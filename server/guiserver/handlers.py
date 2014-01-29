@@ -225,12 +225,6 @@ class IndexHandler(web.StaticFileHandler):
 class ProxyHandler(web.RequestHandler):
     """An HTTP(S) proxy from the server to the given target URL."""
 
-    # Define a sequence of headers to be copied from the response sent by the
-    # target URL to the response sent by the GUI server to the original client.
-    headers = (
-        'Cache-Control', 'Content-Type', 'Date', 'Location', 'Server',
-        'WWW-Authenticate')
-
     def initialize(self, target_url):
         """Initialize the proxy.
 
@@ -247,7 +241,12 @@ class ProxyHandler(web.RequestHandler):
         The response will then be sent back to the client.
         """
         url = join_url(self.target_url, path, self.request.query)
-        request = clone_request(self.request, url)
+        # Server certificates are not validated: we use this function to
+        # connect to juju-core, and we would need to obtain ca-certificates
+        # from it. Unfortunately we don't have that information, and for this
+        # reason we skip validation for both WebSocket and HTTPS connections.
+        # This is not ideal but currently is our best option.
+        request = clone_request(self.request, url, validate_cert=False)
         client = httpclient.AsyncHTTPClient()
         try:
             response = yield client.fetch(request)
@@ -264,12 +263,9 @@ class ProxyHandler(web.RequestHandler):
     def _send_response(self, response):
         """Prepare and send the response to the client."""
         self.set_status(response.code)
-        get_headers = response.headers.get
         set_header = self.set_header
-        for key in self.headers:
-            value = get_headers(key)
-            if value is not None:
-                set_header(key, value)
+        for key, value in response.headers.items():
+            set_header(key, value)
         body = response.body
         if body:
             self.write(body)
