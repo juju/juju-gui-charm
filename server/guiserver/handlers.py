@@ -24,6 +24,7 @@ import time
 from tornado import (
     escape,
     gen,
+    httpclient,
     web,
     websocket,
 )
@@ -37,7 +38,9 @@ from guiserver.auth import (
 from guiserver.bundles.base import DeployMiddleware
 from guiserver.clients import websocket_connect
 from guiserver.utils import (
+    clone_request,
     get_headers,
+    join_url,
     json_decode_dict,
     request_summary,
     wrap_write_message,
@@ -106,7 +109,7 @@ class WebSocketHandler(websocket.WebSocketHandler):
             logging.error(self._summary + 'unable to connect to the Juju API')
             logging.exception(err)
             self.connected = False
-            raise gen.Return()
+            return
         # At this point the Juju API is successfully connected.
         self.juju_connected = True
         logging.info(self._summary + 'Juju API connected')
@@ -217,6 +220,63 @@ class IndexHandler(web.StaticFileHandler):
     def get_absolute_path(cls, root, path):
         """See tornado.web.StaticFileHandler.get_absolute_path."""
         return os.path.join(root, 'index.html')
+
+
+class ProxyHandler(web.RequestHandler):
+    """An HTTP(S) proxy from the server to the given target URL."""
+
+    def initialize(self, target_url):
+        """Initialize the proxy.
+
+        Receive the target URL where to redirect to.
+        """
+        self.target_url = target_url
+
+    @gen.coroutine
+    def get(self, path):
+        """Handle GET requests.
+
+        Receive a path that will be used as part of the resulting URL used to
+        retrieve the response.
+        The response will then be sent back to the client.
+        """
+        url = join_url(self.target_url, path, self.request.query)
+        # Server certificates are not validated: we use this function to
+        # connect to juju-core, and we would need to obtain ca-certificates
+        # from it. Unfortunately we don't have that information, and for this
+        # reason we skip validation for both WebSocket and HTTPS connections.
+        # This is not ideal but currently is our best option.
+        request = clone_request(self.request, url, validate_cert=False)
+        client = httpclient.AsyncHTTPClient()
+        try:
+            response = yield client.fetch(request)
+        except httpclient.HTTPError as err:
+            response = getattr(err, 'response', None)
+            if not response:
+                self._send_error(url, err)
+                return
+        self._send_response(response)
+
+    # Handle POST requests the same way GET ones are handled.
+    post = get
+
+    def _send_response(self, response):
+        """Prepare and send the response to the client."""
+        self.set_status(response.code)
+        set_header = self.set_header
+        for key, value in response.headers.items():
+            set_header(key, value)
+        body = response.body
+        if body:
+            self.write(body)
+
+    def _send_error(self, url, exception):
+        """Send a 500 internal server error to the client."""
+        msg = 'error fetching data from {}: {}'.format(
+            url.encode('utf-8'), exception)
+        logging.error(msg)
+        self.set_status(500)
+        self.write('Internal server error:\n{}'.format(msg))
 
 
 class InfoHandler(web.RequestHandler):

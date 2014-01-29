@@ -35,8 +35,11 @@ import utils
 EXPECTED_PYTHON_LEGACY_DEBS = ('apache2', 'curl', 'haproxy', 'openssl')
 EXPECTED_GO_LEGACY_DEBS = ('apache2', 'curl', 'haproxy', 'openssl')
 EXPECTED_PYTHON_BUILTIN_DEBS = (
-    'curl', 'openssl', 'python-bzrlib', 'python-pip')
-EXPECTED_GO_BUILTIN_DEBS = ('curl', 'openssl', 'python-bzrlib', 'python-pip')
+    'curl', 'libcurl3', 'openssl', 'python-bzrlib', 'python-pip',
+    'python-pycurl')
+EXPECTED_GO_BUILTIN_DEBS = (
+    'curl', 'libcurl3', 'openssl', 'python-bzrlib', 'python-pip',
+    'python-pycurl')
 
 
 class TestBackendProperties(unittest.TestCase):
