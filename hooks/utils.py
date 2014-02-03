@@ -362,6 +362,35 @@ def write_gui_config(
     else:
         log('Running in insecure mode! Port 80 will serve unencrypted.')
         protocol = 'ws'
+    # Set up the help message displayed by the GUI login view.
+    if login_help is None:
+        env_name = os.getenv('JUJU_ENV_NAME')
+        if env_name:
+            login_help = (
+                'The password is the admin-secret from the Juju environment. '
+                'This can be found by looking in ~/.juju/environments/{}.jenv '
+                'and searching for the password field. Note that using '
+                'juju-quickstart (https://launchpad.net/juju-quickstart) can '
+                'automate logging in, as well as other parts of installing '
+                'and starting Juju.'.format(env_name))
+        else:
+            # The Juju environment name is included in the hooks context
+            # starting from juju-core v1.18.
+            login_help = (
+                'The password for newer Juju clients can be found by locating '
+                'the Juju environment file placed in ~/.juju/environments/ '
+                'with the same name as the current environment. For example, '
+                'if you have an environment named "production", then the file '
+                'is named ~/.juju/environments/production.jenv. Look for the '
+                '"password" field in the file, or if that is empty, for the '
+                '"admin-secret". Remove the quotes from the value, and use '
+                'this to log in. The password for older Juju clients (< 1.16) '
+                'is in ~/.juju/environments.yaml, and listed as the '
+                'admin-secret for the environment you are using. Note that '
+                'using juju-quickstart '
+                '(https://launchpad.net/juju-quickstart) can automate logging '
+                'in, as well as other parts of installing and starting Juju.')
+
     context = {
         'raw_protocol': protocol,
         'address': unit_get('public-address'),
