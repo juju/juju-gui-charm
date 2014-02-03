@@ -74,11 +74,9 @@ options:
     type: string
   login-help:
     description: |
-      The help text shown to the user on the login screen.
+      The help text shown to the user on the login screen. If not provided, a
+      default message is used, suggesting how to find the login credentials.
     type: string
-    default: |
-      The password is the admin-secret from the Juju environment.  This can
-      often be found by looking in ~/.juju/environments.yaml.
   read-only:
     description: |
       Whether or not the GUI is in read-only mode. Note that read-only mode is

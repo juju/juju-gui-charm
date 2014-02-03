@@ -127,7 +127,7 @@ class GuiMixin(object):
         build_dir = utils.compute_build_dir(
             config['juju-gui-debug'], config['serve-tests'])
         utils.write_gui_config(
-            config['juju-gui-console-enabled'], config['login-help'],
+            config['juju-gui-console-enabled'], config.get('login-help'),
             config['read-only'], config['charmworld-url'],
             build_dir, secure=config['secure'], sandbox=config['sandbox'],
             ga_key=config['ga-key'],

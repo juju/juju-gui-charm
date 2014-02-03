@@ -362,6 +362,22 @@ def write_gui_config(
     else:
         log('Running in insecure mode! Port 80 will serve unencrypted.')
         protocol = 'ws'
+    # Set up the help message displayed by the GUI login view.
+    if login_help is None:
+        env_name = os.getenv('JUJU_ENV_NAME')
+        if env_name:
+            login_help = (
+                'The password is the admin-secret from the Juju environment. '
+                'This can be found by looking in ~/.juju/environments/{}.jenv '
+                'and searching for the admin-secret field.'.format(env_name))
+        else:
+            # The Juju environment name is included in the hooks context
+            # starting from juju-core v1.18.
+            login_help = (
+                'The password is the admin-secret from the Juju environment. '
+                'This can be found by locating the Juju environment file '
+                'placed in ~/.juju/environments/ corresponding to the current '
+                'environment, and searching for the admin-secret field.')
     context = {
         'raw_protocol': protocol,
         'address': unit_get('public-address'),

@@ -961,6 +961,34 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertIn('user: "user-admin"', js_conf)
         self.assertIn('password: "kumquat"', js_conf)
 
+    def test_write_gui_config_help_with_env_name(self):
+        # The login help message refers to the specific jenv file is the Juju
+        # environment name is available.
+        with mock.patch('os.environ', {'JUJU_ENV_NAME': 'my-env'}):
+            write_gui_config(
+                False, None, True, True, self.charmworld_url, self.build_dir,
+                config_js_path='config',)
+        js_conf = self.files['config']
+        expected_help = (
+            'login_help: "The password is the admin-secret from the Juju '
+            'environment. This can be found by looking in '
+            '~/.juju/environments/my-env.jenv and searching for the '
+            'admin-secret field."')
+        self.assertIn(expected_help, js_conf)
+
+    def test_write_gui_config_help_without_env_name(self):
+        # The login help points to the path where to find the jenv files.
+        write_gui_config(
+            False, None, True, True, self.charmworld_url, self.build_dir,
+            config_js_path='config',)
+        js_conf = self.files['config']
+        expected_help = (
+            'login_help: "The password is the admin-secret from the Juju '
+            'environment. This can be found by locating the Juju environment '
+            'file placed in ~/.juju/environments/ corresponding to the '
+            'current environment, and searching for the admin-secret field."')
+        self.assertIn(expected_help, js_conf)
+
     def test_setup_haproxy_config_insecure(self):
         setup_haproxy_config(self.ssl_cert_path, secure=False)
         # The insecure approach eliminates the https redirect.
