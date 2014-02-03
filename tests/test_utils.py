@@ -345,6 +345,17 @@ class TestGetReleaseFilePath(unittest.TestCase):
             path = get_release_file_path()
         self.assert_path('juju-gui-2.0.1.xz', path)
 
+    def test_xz_git_dev(self):
+        # The last release is correctly retrieved.
+        self.add('juju-gui-0.12.1.tgz')
+        self.add('juju-gui-1.2.3.tgz')
+        self.add('juju-gui-2.0.0+build.42.tgz')
+        self.add('juju-gui-2.0.1.tgz')
+        self.add('juju-gui-2.1.0+build.42a.xz')
+        with self.mock_releases_dir():
+            path = get_release_file_path()
+        self.assert_path('juju-gui-2.1.0+build.42a.xz', path)
+
     def test_ordering(self):
         # Release versions are correctly ordered.
         self.add('juju-gui-0.12.1.tgz')
@@ -393,6 +404,16 @@ class TestGetReleaseFilePath(unittest.TestCase):
         with self.mock_releases_dir():
             path = get_release_file_path('2.42.47+build.4247')
         self.assert_path('juju-gui-2.42.47+build.4247.tgz', path)
+
+    def test_xz_git_development_version(self):
+        # A specific development version is correctly retrieved.
+        self.add('juju-gui-1.2.3+build.4247.tgz')
+        self.add('juju-gui-2.42.47+build.42b7.xz')
+        self.add('juju-gui-2.42.47.tgz')
+        self.add('juju-gui-3.42.47+build.4247.tgz')
+        with self.mock_releases_dir():
+            path = get_release_file_path('2.42.47+build.42b7')
+        self.assert_path('juju-gui-2.42.47+build.42b7.xz', path)
 
     def test_version_not_found(self):
         # None is returned if the requested version is not found.
