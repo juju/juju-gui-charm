@@ -973,7 +973,7 @@ class TestStartImprovAgentGui(unittest.TestCase):
             'login_help: "The password is the admin-secret from the Juju '
             'environment. This can be found by looking in '
             '~/.juju/environments/my-env.jenv and searching for the '
-            'admin-secret field."')
+            'password field.')
         self.assertIn(expected_help, js_conf)
 
     def test_write_gui_config_help_without_env_name(self):
@@ -983,10 +983,10 @@ class TestStartImprovAgentGui(unittest.TestCase):
             config_js_path='config',)
         js_conf = self.files['config']
         expected_help = (
-            'login_help: "The password is the admin-secret from the Juju '
-            'environment. This can be found by locating the Juju environment '
-            'file placed in ~/.juju/environments/ corresponding to the '
-            'current environment, and searching for the admin-secret field."')
+            'login_help: "The password for newer Juju clients can be found by '
+            'locating the Juju environment file placed in '
+            '~/.juju/environments/ with the same name as the current '
+            'environment.')
         self.assertIn(expected_help, js_conf)
 
     def test_setup_haproxy_config_insecure(self):
