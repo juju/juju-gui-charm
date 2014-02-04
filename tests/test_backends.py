@@ -133,6 +133,7 @@ class TestBackendCommands(unittest.TestCase):
         config = {
             'builtin-server': True,
             'builtin-server-logging': 'info',
+            'cached-fonts': False,
             'charmworld-url': 'http://charmworld.example.com/',
             'command-log-file': self.command_log_file,
             'ga-key': 'my-key',
@@ -197,7 +198,8 @@ class TestBackendCommands(unittest.TestCase):
             config['juju-gui-console-enabled'], config['login-help'],
             config['read-only'], config['charmworld-url'],
             mocks.compute_build_dir(), secure=config['secure'],
-            sandbox=config['sandbox'], ga_key=config['ga-key'],
+            sandbox=config['sandbox'], cached_fonts=config['cached-fonts'],
+            ga_key=config['ga-key'],
             show_get_juju_button=config['show-get-juju-button'], password=None)
 
     def test_base_dir_created(self):

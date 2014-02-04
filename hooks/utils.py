@@ -343,7 +343,7 @@ def compute_build_dir(juju_gui_debug, serve_tests):
 
 def write_gui_config(
         console_enabled, login_help, readonly, charmworld_url,
-        build_dir, secure=True, sandbox=False,
+        build_dir, secure=True, sandbox=False, cached_fonts=False,
         show_get_juju_button=False, config_js_path=None, ga_key='',
         password=None):
     """Generate the GUI configuration file."""
@@ -392,6 +392,7 @@ def write_gui_config(
                 'in, as well as other parts of installing and starting Juju.')
 
     context = {
+        'cached_fonts': json.dumps(cached_fonts),
         'raw_protocol': protocol,
         'address': unit_get('public-address'),
         'console_enabled': json.dumps(console_enabled),
