@@ -169,3 +169,12 @@ options:
       this allows you to differentiate between them.
     type: string
     default: "juju"
+  cached-fonts:
+    description: |
+      Configure the GUI to use locally cached fonts, rather than the Google CDN
+      as supplied by the Google fonts API.  The CDN is faster in almost every
+      circumstance except local (LXC) environments, and so it is the default;
+      but if a browser is running the GUI on a closed network, using cached
+      fonts will let the GUI load much faster and render properly.
+    type: boolean
+    default: false

@@ -945,6 +945,7 @@ class TestStartImprovAgentGui(unittest.TestCase):
             self.build_dir, config_js_path='config',
             ga_key='UA-123456')
         js_conf = self.files['config']
+        self.assertIn('cachedFonts: false', js_conf)
         self.assertIn('consoleEnabled: false', js_conf)
         self.assertIn('user: "user-admin"', js_conf)
         self.assertIn('password: null', js_conf)
@@ -1030,6 +1031,13 @@ class TestStartImprovAgentGui(unittest.TestCase):
             self.build_dir, sandbox=True, show_get_juju_button=True,
             config_js_path='config')
         self.assertIn('showGetJujuButton: true', self.files['config'])
+
+    def test_write_gui_config_cached_fonts(self):
+        write_gui_config(
+            False, 'This is login help.', False, False, self.charmworld_url,
+            self.build_dir, cached_fonts=True, config_js_path='config')
+        js_conf = self.files['config']
+        self.assertIn('cachedFonts: true', js_conf)
 
 
 @mock.patch('utils.run')
