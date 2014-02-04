@@ -129,7 +129,7 @@ release_expression = re.compile(r"""
     juju-gui-  # Juju GUI prefix.
     (
         \d+\.\d+\.\d+  # Major, minor, and patch version numbers.
-        (?:\+build\.\d+)?  # Optional bzr revno for development releases.
+        (?:\+build\.\w+)?  # Optional git hash for development releases.
     )
     \.(?:tgz|xz)  # File extension.
 """, re.VERBOSE)
