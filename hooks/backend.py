@@ -130,7 +130,7 @@ class GuiMixin(object):
             config['juju-gui-console-enabled'], config.get('login-help'),
             config['read-only'], config['charmworld-url'],
             build_dir, secure=config['secure'], sandbox=config['sandbox'],
-            ga_key=config['ga-key'],
+            cached_fonts=config['cached-fonts'], ga_key=config['ga-key'],
             show_get_juju_button=config['show-get-juju-button'],
             password=config.get('password'))
         # Expose the service.
