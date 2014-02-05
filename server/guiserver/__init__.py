@@ -28,9 +28,16 @@ It also acts as a proxy between the browser and the Juju API server that
 performs the actual orchestration work. Both browser-server and server-Juju
 connections are bidirectional, using the WebSocket protocol on the same port as
 the HTTPS connection, allowing changes in the Juju environment to be propagated
-and shown immediately by the browser. """
+and shown immediately by the browser.
 
-VERSION = (0, 2, 2)
+In addition to the WebSocket API, juju-core also exposes an HTTPS API. This
+functionality is used, e.g., for uploading local charm as zip archives. The GUI
+server exposes a "/juju-core/" namespace that can be used to send GET or POST
+requests to the juju-core HTTPS server. Responses are propagated to the client
+which originally made the request.
+"""
+
+VERSION = (0, 3, 0)
 
 
 def get_version():

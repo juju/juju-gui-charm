@@ -345,6 +345,17 @@ class TestGetReleaseFilePath(unittest.TestCase):
             path = get_release_file_path()
         self.assert_path('juju-gui-2.0.1.xz', path)
 
+    def test_xz_git_dev(self):
+        # The last release is correctly retrieved.
+        self.add('juju-gui-0.12.1.tgz')
+        self.add('juju-gui-1.2.3.tgz')
+        self.add('juju-gui-2.0.0+build.42.tgz')
+        self.add('juju-gui-2.0.1.tgz')
+        self.add('juju-gui-2.1.0+build.42a.xz')
+        with self.mock_releases_dir():
+            path = get_release_file_path()
+        self.assert_path('juju-gui-2.1.0+build.42a.xz', path)
+
     def test_ordering(self):
         # Release versions are correctly ordered.
         self.add('juju-gui-0.12.1.tgz')
@@ -393,6 +404,16 @@ class TestGetReleaseFilePath(unittest.TestCase):
         with self.mock_releases_dir():
             path = get_release_file_path('2.42.47+build.4247')
         self.assert_path('juju-gui-2.42.47+build.4247.tgz', path)
+
+    def test_xz_git_development_version(self):
+        # A specific development version is correctly retrieved.
+        self.add('juju-gui-1.2.3+build.4247.tgz')
+        self.add('juju-gui-2.42.47+build.42b7.xz')
+        self.add('juju-gui-2.42.47.tgz')
+        self.add('juju-gui-3.42.47+build.4247.tgz')
+        with self.mock_releases_dir():
+            path = get_release_file_path('2.42.47+build.42b7')
+        self.assert_path('juju-gui-2.42.47+build.42b7.xz', path)
 
     def test_version_not_found(self):
         # None is returned if the requested version is not found.
@@ -924,6 +945,7 @@ class TestStartImprovAgentGui(unittest.TestCase):
             self.build_dir, config_js_path='config',
             ga_key='UA-123456')
         js_conf = self.files['config']
+        self.assertIn('cachedFonts: false', js_conf)
         self.assertIn('consoleEnabled: false', js_conf)
         self.assertIn('user: "user-admin"', js_conf)
         self.assertIn('password: null', js_conf)
@@ -961,6 +983,34 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertIn('user: "user-admin"', js_conf)
         self.assertIn('password: "kumquat"', js_conf)
 
+    def test_write_gui_config_help_with_env_name(self):
+        # The login help message refers to the specific jenv file is the Juju
+        # environment name is available.
+        with mock.patch('os.environ', {'JUJU_ENV_NAME': 'my-env'}):
+            write_gui_config(
+                False, None, True, True, self.charmworld_url, self.build_dir,
+                config_js_path='config',)
+        js_conf = self.files['config']
+        expected_help = (
+            'login_help: "The password is the admin-secret from the Juju '
+            'environment. This can be found by looking in '
+            '~/.juju/environments/my-env.jenv and searching for the '
+            'password field.')
+        self.assertIn(expected_help, js_conf)
+
+    def test_write_gui_config_help_without_env_name(self):
+        # The login help points to the path where to find the jenv files.
+        write_gui_config(
+            False, None, True, True, self.charmworld_url, self.build_dir,
+            config_js_path='config',)
+        js_conf = self.files['config']
+        expected_help = (
+            'login_help: "The password for newer Juju clients can be found by '
+            'locating the Juju environment file placed in '
+            '~/.juju/environments/ with the same name as the current '
+            'environment.')
+        self.assertIn(expected_help, js_conf)
+
     def test_setup_haproxy_config_insecure(self):
         setup_haproxy_config(self.ssl_cert_path, secure=False)
         # The insecure approach eliminates the https redirect.
@@ -981,6 +1031,13 @@ class TestStartImprovAgentGui(unittest.TestCase):
             self.build_dir, sandbox=True, show_get_juju_button=True,
             config_js_path='config')
         self.assertIn('showGetJujuButton: true', self.files['config'])
+
+    def test_write_gui_config_cached_fonts(self):
+        write_gui_config(
+            False, 'This is login help.', False, False, self.charmworld_url,
+            self.build_dir, cached_fonts=True, config_js_path='config')
+        js_conf = self.files['config']
+        self.assertIn('cachedFonts: true', js_conf)
 
 
 @mock.patch('utils.run')

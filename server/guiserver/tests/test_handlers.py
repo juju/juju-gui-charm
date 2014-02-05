@@ -22,11 +22,13 @@ import os
 import shutil
 import tempfile
 
+from concurrent import futures
 import mock
 from tornado import (
     concurrent,
     escape,
     gen,
+    httpclient,
     web,
 )
 from tornado.testing import (
@@ -498,6 +500,136 @@ class TestIndexHandler(LogTrapTestCase, AsyncHTTPTestCase):
     def test_page_with_flags_and_queries(self):
         # Requests including flags and queries are served by the index file.
         self.ensure_index('/:flag:/activated/?my=query')
+
+
+class TestProxyHandler(LogTrapTestCase, AsyncHTTPTestCase):
+
+    target_url = 'https://api.example.com:17070'
+    request_headers = {
+        'Accept-Encoding': 'gzip',
+        'Authorization': 'Basic auth',
+    }
+    response_headers = {
+        'Cache-Control': 'no-cache',
+        'Content-Type': 'text/html',
+        'Date': 'Tue, 15 Nov 1994 08:12:31 GMT',
+        'Location': 'http://example.com/location',
+        'Server': 'Apache/2.4.1 (Unix)',
+        'WWW-Authenticate': 'Basic',
+    }
+
+    def get_app(self):
+        # Set up an application exposing the proxy handler.
+        options = {'target_url': self.target_url}
+        return web.Application([
+            (r'^/base/(.*)', handlers.ProxyHandler, options)])
+
+    def assert_include_headers(self, expected, headers):
+        """Ensure the expected headers are included in the given ones."""
+        for key, value in expected.items():
+            self.assertIn(key, headers)
+            self.assertEqual(value, headers[key])
+
+    def patch_http_client(self, response):
+        """Patch the asynchronous HTTP client used to fetch remote resources.
+
+        The patched client returns a future whose result is the given response
+        object. If the response is an HTTPError exception, the future will
+        raise the given exception.
+        """
+        future = futures.Future()
+        if isinstance(response, httpclient.HTTPError):
+            future.set_exception(response)
+        else:
+            future.set_result(response)
+        mock_client = mock.Mock()
+        mock_client().fetch.return_value = future
+        mock_client.reset_mock()
+        return mock.patch('tornado.httpclient.AsyncHTTPClient', mock_client)
+
+    def test_get_request(self):
+        # GET requests are properly sent to the target URL. Responses are
+        # propagated back to the client.
+        remote_response = helpers.make_response(
+            200, body='ok', headers=self.response_headers)
+        with self.patch_http_client(remote_response) as mock_client:
+            response = self.fetch(
+                '/base/remote-path/', headers=self.request_headers)
+        # The remote response is propagated to the original client.
+        self.assertEqual(200, response.code)
+        self.assertEqual('ok', response.body)
+        self.assert_include_headers(self.response_headers, response.headers)
+        # An asynchronous HTTP client has been correctly created.
+        mock_client.assert_called_once_with()
+        # The client's fetch method has been used to fetch the remote resource.
+        mock_fetch = mock_client().fetch
+        self.assertEqual(1, mock_fetch.call_count)
+        # The request to the target URL is a clone of the original request.
+        remote_request = mock_fetch.call_args[0][0]
+        self.assertEqual('GET', remote_request.method)
+        self.assertEqual(self.target_url + '/remote-path/', remote_request.url)
+        self.assert_include_headers(
+            self.request_headers, remote_request.headers)
+        # Certificates are automatically accepted.
+        self.assertFalse(remote_request.validate_cert)
+
+    def test_post_request(self):
+        # POST requests are properly sent to the target URL.
+        remote_response = helpers.make_response(
+            200, body='ok', headers=self.response_headers)
+        with self.patch_http_client(remote_response) as mock_client:
+            response = self.fetch(
+                '/base/remote-path/', method='POST',
+                headers=self.request_headers, body='original body')
+        self.assertEqual(200, response.code)
+        self.assertEqual('ok', response.body)
+        self.assert_include_headers(self.response_headers, response.headers)
+        # The client's fetch method has been used to fetch the remote resource.
+        mock_fetch = mock_client().fetch
+        self.assertEqual(1, mock_fetch.call_count)
+        # The request to the target URL is a clone of the original request.
+        remote_request = mock_fetch.call_args[0][0]
+        self.assertEqual('POST', remote_request.method)
+        self.assert_include_headers(
+            self.request_headers, remote_request.headers)
+        # Also the body is propagated.
+        self.assertEqual('original body', remote_request.body)
+
+    def test_remote_path(self):
+        # The corresponding path on the remote server is properly generated.
+        remote_response = helpers.make_response(200)
+        with self.patch_http_client(remote_response) as mock_client:
+            self.fetch('/base/path1/path2?arg1=valu1&arg2=value2')
+        mock_fetch = mock_client().fetch
+        remote_request = mock_fetch.call_args[0][0]
+        # The remote path reflects the requested one: the /base/ namespace is
+        # correctly removed.
+        self.assertEqual(
+            self.target_url + '/path1/path2?arg1=valu1&arg2=value2',
+            remote_request.url)
+
+    def test_error_response(self):
+        # Error responses are returned to the original client.
+        remote_response = helpers.make_response(400, body='try harder')
+        with self.patch_http_client(remote_response):
+            response = self.fetch('/base/remote-path/')
+        self.assertEqual(400, response.code)
+        self.assertEqual('try harder', response.body)
+        self.assertEqual('Bad Request', response.reason)
+
+    def test_internal_server_error(self):
+        # A 500 error is returned if an HTTP error occurs during the remote
+        # request/response process.
+        error = httpclient.HTTPError(500, message='bad wolf')
+        with self.patch_http_client(error):
+            response = self.fetch('/base/remote-path/')
+        self.assertEqual(500, response.code)
+        self.assertEqual(
+            'Internal server error:\n'
+            'error fetching data from '
+            'https://api.example.com:17070/remote-path/: '
+            'HTTP 500: bad wolf', response.body)
+        self.assertEqual('Internal Server Error', response.reason)
 
 
 class TestInfoHandler(LogTrapTestCase, AsyncHTTPTestCase):

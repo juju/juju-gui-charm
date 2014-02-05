@@ -77,6 +77,7 @@ class TestServer(AppsTestMixin, unittest.TestCase):
         Use the options provided in kwargs.
         """
         options_dict = {
+            'apiurl': 'wss://example.com:17070',
             'apiversion': 'go',
             'guiroot': '/my/guiroot/',
             'sandbox': False,
@@ -109,10 +110,16 @@ class TestServer(AppsTestMixin, unittest.TestCase):
         tokens = self.assert_in_spec(spec, 'tokens')
         self.assertIsInstance(tokens, auth.AuthenticationTokenHandler)
 
-    def test_sandbox(self):
+    def test_websocket_excluded_in_sandbox_mode(self):
         # The WebSocket handler is excluded if sandbox mode is enabled.
         app = self.get_app(sandbox=True)
         spec = self.get_url_spec(app, r'^/ws$')
+        self.assertIsNone(spec)
+
+    def test_proxy_excluded_in_sandbox_mode(self):
+        # The juju-core HTTPS proxy is excluded if sandbox mode is enabled.
+        app = self.get_app(sandbox=True)
+        spec = self.get_url_spec(app, r'^/juju-core/(.*)$')
         self.assertIsNone(spec)
 
     def test_static_files(self):
@@ -120,6 +127,13 @@ class TestServer(AppsTestMixin, unittest.TestCase):
         app = self.get_app()
         spec = self.get_url_spec(app, r'^/juju-ui/(.*)$')
         self.assert_in_spec(spec, 'path', value='/my/guiroot/juju-ui')
+
+    def test_core_http_proxy(self):
+        # The juju-core HTTPS proxy handler is properly set up.
+        app = self.get_app()
+        spec = self.get_url_spec(app, r'^/juju-core/(.*)$')
+        self.assert_in_spec(
+            spec, 'target_url', value='https://example.com:17070')
 
     def test_serving_gui_tests(self):
         # The server can be configured to serve GUI unit tests.

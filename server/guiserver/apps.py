@@ -25,6 +25,7 @@ from tornado.options import options
 from guiserver import (
     auth,
     handlers,
+    utils,
 )
 from guiserver.bundles.base import Deployer
 
@@ -55,10 +56,14 @@ def server():
             # The tokens collection for authentication token requests.
             'tokens': tokens,
         }
-        server_handlers.append(
+        server_handlers.extend([
             # Handle WebSocket connections.
             (r'^/ws$', handlers.WebSocketHandler, websocket_handler_options),
-        )
+            # Handle connections to the juju-core HTTPS server.
+            # The juju-core HTTPS and WebSocket servers share the same URL.
+            (r'^/juju-core/(.*)', handlers.ProxyHandler,
+             {'target_url': utils.ws_to_http(options.apiurl)}),
+        ])
     if options.testsroot:
         params = {'path': options.testsroot, 'default_filename': 'index.html'}
         server_handlers.append(

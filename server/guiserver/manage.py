@@ -20,6 +20,7 @@ import logging
 import os
 import sys
 
+from tornado.httpclient import AsyncHTTPClient
 from tornado.ioloop import IOLoop
 from tornado.options import (
     define,
@@ -85,7 +86,7 @@ def _get_ssl_options():
 
 
 def setup():
-    """Set up options and logger."""
+    """Set up options and logger. Configure the asynchronous HTTP client."""
     define(
         'guiroot', type=str,
         help='The Juju GUI static files path, e.g.: '
@@ -125,6 +126,9 @@ def setup():
     _validate_required('guiroot')
     _validate_choices('apiversion', ('go', 'python'))
     _add_debug(logging.getLogger())
+    # Configure the asynchronous HTTP client used by proxy handlers.
+    AsyncHTTPClient.configure(
+        'tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=20)
 
 
 def run():
