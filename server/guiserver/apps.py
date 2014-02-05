@@ -56,10 +56,14 @@ def server():
             # The tokens collection for authentication token requests.
             'tokens': tokens,
         }
-        server_handlers.append(
+        server_handlers.extend([
             # Handle WebSocket connections.
             (r'^/ws$', handlers.WebSocketHandler, websocket_handler_options),
-        )
+            # Handle connections to the juju-core HTTPS server.
+            # The juju-core HTTPS and WebSocket servers share the same URL.
+            (r'^/juju-core/(.*)', handlers.ProxyHandler,
+             {'target_url': utils.ws_to_http(options.apiurl)}),
+        ])
     if options.testsroot:
         params = {'path': options.testsroot, 'default_filename': 'index.html'}
         server_handlers.append(
@@ -77,10 +81,6 @@ def server():
         # Handle static files.
         (r'^/juju-ui/(.*)', web.StaticFileHandler, {'path': static_path}),
         (r'^/(favicon\.ico)$', web.StaticFileHandler, {'path': guiroot}),
-        # Handle connections to the juju-core HTTPS server.
-        # The juju-core HTTPS and WebSocket servers share the same URL.
-        (r'^/juju-core/(.*)', handlers.ProxyHandler,
-         {'target_url': utils.ws_to_http(options.apiurl)}),
         # Handle GUI server info.
         (r'^/gui-server-info', handlers.InfoHandler, info_handler_options),
         # Any other path is served by index.html.

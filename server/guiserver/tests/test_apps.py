@@ -110,10 +110,16 @@ class TestServer(AppsTestMixin, unittest.TestCase):
         tokens = self.assert_in_spec(spec, 'tokens')
         self.assertIsInstance(tokens, auth.AuthenticationTokenHandler)
 
-    def test_sandbox(self):
+    def test_websocket_excluded_in_sandbox_mode(self):
         # The WebSocket handler is excluded if sandbox mode is enabled.
         app = self.get_app(sandbox=True)
         spec = self.get_url_spec(app, r'^/ws$')
+        self.assertIsNone(spec)
+
+    def test_proxy_excluded_in_sandbox_mode(self):
+        # The juju-core HTTPS proxy is excluded if sandbox mode is enabled.
+        app = self.get_app(sandbox=True)
+        spec = self.get_url_spec(app, r'^/juju-core/(.*)$')
         self.assertIsNone(spec)
 
     def test_static_files(self):
