@@ -46,7 +46,10 @@ ALLOWED_CONSTRAINTS = (
     'cpu-power',
     'mem',
     'root-disk',
-    # tags are supported by MaaS only so they are not currently supported.
+    # XXX: BradCrittenden 2014-02-12:
+    # tags are supported by MaaS only so they are not currently implemented.
+    # It is unclear whether the GUI should support them or not so they are
+    # being left out for now.
     # 'tags',
 )
 
