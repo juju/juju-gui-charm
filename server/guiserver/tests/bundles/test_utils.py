@@ -278,6 +278,8 @@ class TestPrepareConstraints(unittest.TestCase):
             'cpu-cores': 4,
             'cpu-power': 2,
             'mem': 2000,
+            'root-disk': '1G',
+            'container': 'lxc',
         }
         self.assertEqual(constraints, utils._prepare_constraints(constraints))
 

@@ -39,7 +39,16 @@ CANCELLED = 'cancelled'
 COMPLETED = 'completed'
 # Define a sequence of allowed constraints to be used in the process of
 # preparing the bundle object. See the _prepare_constraints function below.
-ALLOWED_CONSTRAINTS = ('arch', 'cpu-cores', 'cpu-power', 'mem')
+ALLOWED_CONSTRAINTS = (
+    'arch',
+    'container',
+    'cpu-cores',
+    'cpu-power',
+    'mem',
+    'root-disk',
+    # tags are supported by MaaS only so they are not currently supported.
+    # 'tags',
+)
 
 
 def create_change(deployment_id, status, queue=None, error=None):
