@@ -50,6 +50,8 @@ ALLOWED_CONSTRAINTS = (
     # tags are supported by MaaS only so they are not currently implemented.
     # It is unclear whether the GUI should support them or not so they are
     # being left out for now.
+    # Also, tags are a comma-separated, which would clash with the currently
+    # broken constraint parsing in the GUI.
     # 'tags',
 )
 
