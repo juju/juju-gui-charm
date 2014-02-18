@@ -30,7 +30,6 @@ from concurrent.futures import (
     ProcessPoolExecutor,
 )
 from deployer import guiserver as blocking
-import deployer.cli
 from tornado import gen
 from tornado.ioloop import IOLoop
 from tornado.util import ObjectDict
