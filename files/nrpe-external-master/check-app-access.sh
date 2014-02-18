@@ -8,9 +8,11 @@ if [[ ! -f $SITE_CONF ]]; then
     exit 2
 fi
 
-match=$(curl -k $ADDRESS | grep "$LIFE_SIGN")
+match=$(curl -s -k $ADDRESS | grep "$LIFE_SIGN")
 
 if [[ -z $match ]]; then
     echo juju-gui did not return content indicating it was loading.
     exit 2
 fi
+
+echo "All Good"
