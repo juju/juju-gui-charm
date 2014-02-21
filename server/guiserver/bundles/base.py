@@ -30,7 +30,6 @@ from concurrent.futures import (
     ProcessPoolExecutor,
 )
 from deployer import guiserver as blocking
-import deployer.cli
 from tornado import gen
 from tornado.ioloop import IOLoop
 from tornado.util import ObjectDict
@@ -50,8 +49,6 @@ process.EXTRA_QUEUED_CALLS = 0
 # Juju API versions supported by the GUI server Deployer.
 # Tests use the first API version in this list.
 SUPPORTED_API_VERSIONS = ['go']
-# Options used by the juju-deployer.  The defaults work for us.
-IMPORTER_OPTIONS = deployer.cli.setup_parser().parse_args([])
 
 
 class Deployer(object):
@@ -95,6 +92,9 @@ class Deployer(object):
         self._queue = []
         # The futures attribute maps deployment identifiers to Futures.
         self._futures = {}
+
+        # Options used by the juju-deployer.
+        self.importer_options = blocking.get_default_guiserver_options()
 
     @gen.coroutine
     def validate(self, user, name, bundle):
@@ -149,7 +149,7 @@ class Deployer(object):
         # to be called when the import process completes.
         future = self._run_executor.submit(
             blocking.import_bundle,
-            self._apiurl, user.password, name, bundle, IMPORTER_OPTIONS)
+            self._apiurl, user.password, name, bundle, self.importer_options)
         add_future(self._io_loop, future, self._import_callback,
                    deployment_id, bundle_id)
         self._futures[deployment_id] = future
