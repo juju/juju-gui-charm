@@ -138,15 +138,16 @@ class TestDeployer(helpers.BundlesTestMixin, LogTrapTestCase, AsyncTestCase):
         self.wait()
         mock_import_bundle.assert_called_once_with(
             self.apiurl, self.user.password, 'bundle', self.bundle,
-            base.IMPORTER_OPTIONS)
+            deployer.importer_options)
         mock_import_bundle.assert_called_in_a_separate_process()
 
     def test_options_are_fully_populated(self):
         # The options passed to the deployer match what it expects and are not
         # missing any entries.
+        deployer = self.make_deployer()
         default_options = deployer_cli.setup_parser().parse_args([]).__dict__
-        expected_options = sorted(default_options.keys())
-        passed_options = sorted(base.IMPORTER_OPTIONS.__dict__.keys())
+        expected_options = set(default_options.keys())
+        passed_options = set(deployer.importer_options.__dict__.keys())
         self.assertEqual(expected_options, passed_options)
 
     def test_watch(self):
