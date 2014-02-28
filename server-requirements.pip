@@ -30,4 +30,4 @@ jujuclient==0.15
 juju-deployer==0.3.2
 # The branch for this forked version can be found at:
 # lp:~bac/charmworldlib/check-constraints
-charmworldlib==0.2.4-2-bac
+charmworldlib==0.2.5-1-bac
