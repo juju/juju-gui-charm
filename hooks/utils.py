@@ -114,7 +114,7 @@ HAPROXY_INIT_PATH = os.path.join(SYS_INIT_DIR, 'haproxy.conf')
 
 JUJU_PEM = 'juju.includes-private-key.pem'
 DEB_BUILD_DEPENDENCIES = (
-    'bzr', 'g++', 'git', 'imagemagick', 'make',  'nodejs', 'npm',
+    'bzr', 'g++', 'git', 'imagemagick', 'make',  'nodejs',
 )
 
 
@@ -628,8 +628,9 @@ def fetch_gui_from_branch(branch_url, revision, logpath):
     fd, name = tempfile.mkstemp(prefix='make-distfile-', dir=logdir)
     log('Output from "make distfile" sent to %s' % name)
 
+    # Passing HOME is required by node during npm packages installation.
     run('make', '-C', juju_gui_source_dir, 'distfile', 'BRANCH_IS_GOOD=true',
-        stdout=fd, stderr=fd)
+        'HOME={}'.format(os.path.expanduser('~')), stdout=fd, stderr=fd)
 
     return first_path_in_dir(
         os.path.join(juju_gui_source_dir, 'releases'))
