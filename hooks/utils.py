@@ -629,7 +629,7 @@ def fetch_gui_from_branch(branch_url, revision, logpath):
     log('Output from "make distfile" sent to %s' % name)
 
     run('make', '-C', juju_gui_source_dir, 'distfile', 'BRANCH_IS_GOOD=true',
-        stdout=fd, stderr=fd)
+        'HOME={}'.format(os.path.expanduser('~')), stdout=fd, stderr=fd)
 
     return first_path_in_dir(
         os.path.join(juju_gui_source_dir, 'releases'))
