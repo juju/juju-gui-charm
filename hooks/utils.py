@@ -628,6 +628,7 @@ def fetch_gui_from_branch(branch_url, revision, logpath):
     fd, name = tempfile.mkstemp(prefix='make-distfile-', dir=logdir)
     log('Output from "make distfile" sent to %s' % name)
 
+    # Passing HOME is required by node during npm packages installation.
     run('make', '-C', juju_gui_source_dir, 'distfile', 'BRANCH_IS_GOOD=true',
         'HOME={}'.format(os.path.expanduser('~')), stdout=fd, stderr=fd)
 
