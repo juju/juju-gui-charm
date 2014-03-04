@@ -28,6 +28,4 @@ tornado==3.1.1
 websocket-client==0.12.0
 jujuclient==0.15
 juju-deployer==0.3.2
-# The branch for this forked version can be found at:
-# lp:~bac/charmworldlib/check-constraints
-charmworldlib==0.2.5-1-bac
+charmworldlib==0.3.0
