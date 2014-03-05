@@ -29,9 +29,9 @@ from tornado import (
 )
 from tornado.httpclient import AsyncHTTPClient
 
+from charmworldlib.utils import parse_constraints
 from guiserver.watchers import AsyncWatcher
 from jujuclient import EnvError
-from charmworldlib.utils import parse_constraints
 
 # Change statuses.
 SCHEDULED = 'scheduled'
@@ -157,7 +157,7 @@ def prepare_bundle(bundle):
     Raise a ValueError if:
         - the bundle is not well structured;
         - the bundle does not include services;
-        - the bundle includes unsupported constraints.
+        - the bundle includes unsupported or invalid constraints.
     """
     # XXX frankban 2013-11-07: is the GUI Server in charge of validating the
     # bundles? For now, the weak checks below should be enough.
