@@ -69,6 +69,10 @@ In the command above, "myenv" is the juju environment, as it is specified in
 your `~/.juju/environments.yaml`, that will be bootstrapped before running the
 tests and destroyed at the end of the test run.
 
+Note that the functional tests will not work using an LXC environment.  The
+test co-locates the juju-gui on the bootstrap node, which is not possible in
+LXC.
+
 Please read further for additional details.
 
 ### Unit Tests ###

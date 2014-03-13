@@ -29,6 +29,7 @@ from tornado import (
 )
 from tornado.httpclient import AsyncHTTPClient
 
+from charmworldlib.utils import parse_constraints
 from guiserver.watchers import AsyncWatcher
 from jujuclient import EnvError
 
@@ -37,23 +38,6 @@ SCHEDULED = 'scheduled'
 STARTED = 'started'
 CANCELLED = 'cancelled'
 COMPLETED = 'completed'
-# Define a sequence of allowed constraints to be used in the process of
-# preparing the bundle object. See the _prepare_constraints function below.
-ALLOWED_CONSTRAINTS = (
-    'arch',
-    'container',
-    'cpu-cores',
-    'cpu-power',
-    'mem',
-    'root-disk',
-    # XXX: BradCrittenden 2014-02-12:
-    # tags are supported by MaaS only so they are not currently implemented.
-    # It is unclear whether the GUI should support them or not so they are
-    # being left out for now.
-    # Also, tags are a comma-separated, which would clash with the currently
-    # broken constraint parsing in the GUI.
-    # 'tags',
-)
 
 
 def create_change(deployment_id, status, queue=None, error=None):
@@ -162,28 +146,6 @@ class Observer(object):
         logging.info('deployment {} completed'.format(deployment_id))
 
 
-def _prepare_constraints(constraints):
-    """Validate and prepare the given service constraints.
-
-    If constraints are passed as a string, convert them to be a dict.
-
-    Return the validated constraints dict.
-    Raise a ValueError if unsupported constraints are present.
-    """
-    if not isinstance(constraints, collections.Mapping):
-        try:
-            constraints = dict(i.split('=') for i in constraints.split(','))
-        except ValueError:
-            # A ValueError is raised if constraints are invalid, e.g. "cpu=,".
-            raise ValueError('invalid constraints: {}'.format(constraints))
-    unsupported = set(constraints).difference(ALLOWED_CONSTRAINTS)
-    if unsupported:
-        msg = 'unsupported constraints: {}'.format(
-            ', '.join(sorted(unsupported)))
-        raise ValueError(msg)
-    return constraints
-
-
 def prepare_bundle(bundle):
     """Validate and prepare the bundle.
 
@@ -195,7 +157,7 @@ def prepare_bundle(bundle):
     Raise a ValueError if:
         - the bundle is not well structured;
         - the bundle does not include services;
-        - the bundle includes unsupported constraints.
+        - the bundle includes unsupported or invalid constraints.
     """
     # XXX frankban 2013-11-07: is the GUI Server in charge of validating the
     # bundles? For now, the weak checks below should be enough.
@@ -213,7 +175,7 @@ def prepare_bundle(bundle):
                 del service_data['constraints']
             else:
                 # Otherwise sanitize the value.
-                service_data['constraints'] = _prepare_constraints(constraints)
+                service_data['constraints'] = parse_constraints(constraints)
 
 
 def require_authenticated_user(view):
