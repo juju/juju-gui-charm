@@ -5,12 +5,17 @@
 # Authors:
 #  Matthew Wedgwood <matthew.wedgwood@canonical.com>
 
+# XXX This file has been modified to add the ability to remove NRPE checks.
+# The original project that created this code has been abandoned so there is
+# no upstream to which the modifications can be sent.
+
 import subprocess
 import pwd
 import grp
 import os
 import re
 import shlex
+import errno
 
 from hookenv import config, local_unit
 
@@ -105,6 +110,11 @@ define service {{
         subprocess.call(['juju-log', 'Check command not found: {}'.format(command[0])])
         return ''
 
+    def service_file_name(self, hostname):
+        return '{}/service__{}_check_{}.cfg'.format(
+            NRPE.nagios_exportdir, hostname, self.shortname)
+
+
     def write(self, nagios_context, hostname):
         for f in os.listdir(NRPE.nagios_exportdir):
             if re.search('.*check_{}.cfg'.format(self.shortname), f):
@@ -117,8 +127,7 @@ define service {{
             'shortname': self.shortname,
         }
         nrpe_service_text = Check.service_template.format(**templ_vars)
-        nrpe_service_file = '{}/service__{}_check_{}.cfg'.format(
-            NRPE.nagios_exportdir, hostname, self.shortname)
+        nrpe_service_file = self.service_file_name(hostname)
         with open(nrpe_service_file, 'w') as nrpe_service_config:
             nrpe_service_config.write(str(nrpe_service_text))
 
@@ -128,8 +137,20 @@ define service {{
             nrpe_check_config.write("command[check_{}]={}\n".format(
                 self.shortname, self.check_cmd))
 
+    def remove(self, hostname):
+        """Remove the configuration file for this check."""
+        try:
+            os.unlink(self.service_file_name(hostname))
+        except OSError, e:
+            if e.errno == errno.ENOENT:
+                # Ignore the fact that the file didn't exist.
+                pass
+            else:
+                raise
+
     def run(self):
         subprocess.call(self.check_cmd)
+
 
 class NRPE(object):
     nagios_logdir = '/var/log/nagios'
@@ -167,3 +188,7 @@ class NRPE(object):
 
         if os.path.isfile('/etc/init.d/nagios-nrpe-server'):
             subprocess.call(['service', 'nagios-nrpe-server', 'reload'])
+
+    def remove_checks(self):
+        for check in self.checks:
+            check.remove(self.hostname)
