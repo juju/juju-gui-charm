@@ -110,7 +110,7 @@ define service {{
         subprocess.call(['juju-log', 'Check command not found: {}'.format(command[0])])
         return ''
 
-    def service_file_name(self, nagios_context, hostname):
+    def service_file_name(self, hostname):
         return '{}/service__{}_check_{}.cfg'.format(
             NRPE.nagios_exportdir, hostname, self.shortname)
 
@@ -127,9 +127,7 @@ define service {{
             'shortname': self.shortname,
         }
         nrpe_service_text = Check.service_template.format(**templ_vars)
-        nrpe_service_file = '{}/service__{}_check_{}.cfg'.format(
-            NRPE.nagios_exportdir, hostname, self.shortname)
-        nrpe_service_file = self.service_file_name(nagios_context, hostname)
+        nrpe_service_file = self.service_file_name(hostname)
         with open(nrpe_service_file, 'w') as nrpe_service_config:
             nrpe_service_config.write(str(nrpe_service_text))
 
@@ -139,10 +137,10 @@ define service {{
             nrpe_check_config.write("command[check_{}]={}\n".format(
                 self.shortname, self.check_cmd))
 
-    def remove(self, nagios_context, hostname):
+    def remove(self, hostname):
         """Remove the configuration file for this check."""
         try:
-            os.unlink(self.service_file_name(nagios_context, hostname))
+            os.unlink(self.service_file_name(hostname))
         except OSError, e:
             if e.errno == errno.ENOENT:
                 # Ignore the fact that the file didn't exist.
@@ -193,4 +191,4 @@ class NRPE(object):
 
     def remove_checks(self):
         for check in self.checks:
-            check.remove(self.nagios_context, self.hostname)
+            check.remove(self.hostname)

@@ -22,7 +22,6 @@ def remove_nrpe_check():
 
 if __name__ == '__main__':
     hook_name = sys.argv[0]
-    remove_nrpe_check()
     if 'departed' in hook_name or 'broken' in hook_name:
         remove_nrpe_check()
     else:
