@@ -20,6 +20,7 @@ from collections import deque
 import logging
 import os
 import time
+import urlparse
 
 from tornado import (
     escape,
@@ -45,6 +46,10 @@ from guiserver.utils import (
     request_summary,
     wrap_write_message,
 )
+
+
+# Define the path to the fallback charm icon hosted by charmworld.
+DEFAULT_CHARM_ICON_PATH = '/static/img/charm_160.svg'
 
 
 class WebSocketHandler(websocket.WebSocketHandler):
@@ -225,12 +230,14 @@ class IndexHandler(web.StaticFileHandler):
 class ProxyHandler(web.RequestHandler):
     """An HTTP(S) proxy from the server to the given target URL."""
 
-    def initialize(self, target_url):
+    def initialize(self, target_url, validate_cert=True):
         """Initialize the proxy.
 
-        Receive the target URL where to redirect to.
+        Receive the target URL where to redirect to, and a flag indicating
+        whether to validate remote server certificates.
         """
         self.target_url = target_url
+        self.validate_cert = validate_cert
 
     @gen.coroutine
     def get(self, path):
@@ -241,12 +248,23 @@ class ProxyHandler(web.RequestHandler):
         The response will then be sent back to the client.
         """
         url = join_url(self.target_url, path, self.request.query)
-        # Server certificates are not validated: we use this function to
-        # connect to juju-core, and we would need to obtain ca-certificates
-        # from it. Unfortunately we don't have that information, and for this
-        # reason we skip validation for both WebSocket and HTTPS connections.
-        # This is not ideal but currently is our best option.
-        request = clone_request(self.request, url, validate_cert=False)
+        response = yield self.send_request(url)
+        if response is not None:
+            self.send_response(response)
+
+    # Handle POST requests the same way GET requests are handled.
+    post = get
+
+    @gen.coroutine
+    def send_request(self, url):
+        """Send an asynchronous request to the given URL.
+
+        Return the server response.
+        If an error occurs in the communication, return None and call
+        self._send_error with the given error.
+        """
+        request = clone_request(
+            self.request, url, validate_cert=self.validate_cert)
         client = httpclient.AsyncHTTPClient()
         try:
             response = yield client.fetch(request)
@@ -254,13 +272,9 @@ class ProxyHandler(web.RequestHandler):
             response = getattr(err, 'response', None)
             if not response:
                 self._send_error(url, err)
-                return
-        self._send_response(response)
+        raise gen.Return(response)
 
-    # Handle POST requests the same way GET ones are handled.
-    post = get
-
-    def _send_response(self, response):
+    def send_response(self, response):
         """Prepare and send the response to the client."""
         self.set_status(response.code)
         set_header = self.set_header
@@ -277,6 +291,55 @@ class ProxyHandler(web.RequestHandler):
         logging.error(msg)
         self.set_status(500)
         self.write('Internal server error:\n{}'.format(msg))
+
+
+class JujuProxyHandler(ProxyHandler):
+    """A specialized proxy handler used for the juju-core HTTP API."""
+
+    def initialize(self, target_url, charmworld_url):
+        """Initialize the proxy.
+
+        Receive the target URL where to redirect to, and the charmworld URL
+        used to retrieve the default charm icon.
+        """
+        # Server certificates are not validated: we use this handler to connect
+        # to juju-core, and we would need to obtain ca-certificates from it.
+        # Unfortunately we don't have that information, and for this reason we
+        # skip validation for both WebSocket and HTTPS connections. This is not
+        # ideal but currently is our best option.
+        super(JujuProxyHandler, self).initialize(
+            target_url, validate_cert=False)
+        self.default_charm_icon_url = urlparse.urljoin(
+            charmworld_url, DEFAULT_CHARM_ICON_PATH)
+
+    @gen.coroutine
+    def get(self, path):
+        """Handle GET requests.
+        See the ProxyHandler.get method.
+
+        Override to handle the case when a charm icon is not found.
+        """
+        url = join_url(self.target_url, path, self.request.query)
+        response = yield self.send_request(url)
+        if response is not None:
+            if response.code == 404 and self._charm_icon_requested(path):
+                # This is a request for a charm icon file, and the icon is not
+                # found: redirect to the fallback icon hosted on charmworld.
+                self.redirect(self.default_charm_icon_url)
+            else:
+                # Return the response to the client as usual.
+                self.send_response(response)
+
+    def _charm_icon_requested(self, path):
+        """Return True if the current request is for a charm icon."""
+        return (
+            # The request is for a local charm.
+            path == 'charms' and
+            # The charm URL is specified.
+            self.get_argument('url', None) and
+            # The icon file is requested.
+            self.get_argument('file', None) == 'icon.svg'
+        )
 
 
 class InfoHandler(web.RequestHandler):

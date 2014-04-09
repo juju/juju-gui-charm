@@ -56,13 +56,17 @@ def server():
             # The tokens collection for authentication token requests.
             'tokens': tokens,
         }
+        juju_proxy_handler_options = {
+            'target_url': utils.ws_to_http(options.apiurl),
+            'charmworld_url': options.charmworldurl,
+        }
         server_handlers.extend([
             # Handle WebSocket connections.
             (r'^/ws$', handlers.WebSocketHandler, websocket_handler_options),
             # Handle connections to the juju-core HTTPS server.
             # The juju-core HTTPS and WebSocket servers share the same URL.
-            (r'^/juju-core/(.*)', handlers.ProxyHandler,
-             {'target_url': utils.ws_to_http(options.apiurl)}),
+            (r'^/juju-core/(.*)', handlers.JujuProxyHandler,
+             juju_proxy_handler_options),
         ])
     if options.testsroot:
         params = {'path': options.testsroot, 'default_filename': 'index.html'}
