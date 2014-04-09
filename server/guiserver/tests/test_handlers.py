@@ -517,6 +517,7 @@ class TestProxyHandler(LogTrapTestCase, AsyncHTTPTestCase):
         'Server': 'Apache/2.4.1 (Unix)',
         'WWW-Authenticate': 'Basic',
     }
+    expected_validate_cert = True
 
     def get_app(self):
         # Set up an application exposing the proxy handler.
@@ -570,8 +571,6 @@ class TestProxyHandler(LogTrapTestCase, AsyncHTTPTestCase):
         self.assertEqual(self.target_url + '/remote-path/', remote_request.url)
         self.assert_include_headers(
             self.request_headers, remote_request.headers)
-        # Certificates are automatically accepted.
-        self.assertFalse(remote_request.validate_cert)
 
     def test_post_request(self):
         # POST requests are properly sent to the target URL.
@@ -595,6 +594,20 @@ class TestProxyHandler(LogTrapTestCase, AsyncHTTPTestCase):
         # Also the body is propagated.
         self.assertEqual('original body', remote_request.body)
 
+    def test_validate_certificates(self):
+        # Certificates are validated.
+        remote_response = helpers.make_response(200)
+        with self.patch_http_client(remote_response) as mock_client:
+            self.fetch('/base/remote-path/', headers=self.request_headers)
+        mock_fetch = mock_client().fetch
+        # The client's fetch method has been used to fetch the remote resource.
+        mock_fetch = mock_client().fetch
+        self.assertEqual(1, mock_fetch.call_count)
+        remote_request = mock_fetch.call_args[0][0]
+        # Certificates are properly validated.
+        self.assertEqual(
+            self.expected_validate_cert, remote_request.validate_cert)
+
     def test_remote_path(self):
         # The corresponding path on the remote server is properly generated.
         remote_response = helpers.make_response(200)
@@ -617,6 +630,15 @@ class TestProxyHandler(LogTrapTestCase, AsyncHTTPTestCase):
         self.assertEqual('try harder', response.body)
         self.assertEqual('Bad Request', response.reason)
 
+    def test_not_found_response(self):
+        # 404 responses are returned to the original client.
+        remote_response = helpers.make_response(404, body='try later')
+        with self.patch_http_client(remote_response):
+            response = self.fetch('/base/remote-path/')
+        self.assertEqual(404, response.code)
+        self.assertEqual('try later', response.body)
+        self.assertEqual('Not Found', response.reason)
+
     def test_internal_server_error(self):
         # A 500 error is returned if an HTTP error occurs during the remote
         # request/response process.
@@ -630,6 +652,43 @@ class TestProxyHandler(LogTrapTestCase, AsyncHTTPTestCase):
             'https://api.example.com:17070/remote-path/: '
             'HTTP 500: bad wolf', response.body)
         self.assertEqual('Internal Server Error', response.reason)
+
+
+class TestJujuProxyHandler(TestProxyHandler):
+
+    charmworld_url = 'https://charmworld.example.com'
+    expected_validate_cert = False
+
+    def get_app(self):
+        # Set up an application exposing the proxy handler.
+        options = {
+            'target_url': self.target_url,
+            'charmworld_url': self.charmworld_url,
+        }
+        return web.Application([
+            (r'^/base/(.*)', handlers.JujuProxyHandler, options)])
+
+    def test_default_charm_icon(self):
+        # A a charm icon is not found, a GET request redirects to the fallback
+        # icon available on charmworld.
+        remote_response = helpers.make_response(404)
+        path = '/base/charms?url=local:trusty/django=42&file=icon.svg'
+        with self.patch_http_client(remote_response):
+            response = self.fetch(path, follow_redirects=False)
+        self.assertEqual(302, response.code)
+        self.assertEqual(
+            self.charmworld_url + handlers.DEFAULT_CHARM_ICON_PATH,
+            response.headers['location'])
+
+    def test_charm_file_not_found(self):
+        # If a charm file is not found and it is not the icon, a 404 is
+        # correctly returned.
+        remote_response = helpers.make_response(404)
+        path = '/base/charms?url=local:trusty/django=42&file=readme.rst'
+        with self.patch_http_client(remote_response):
+            response = self.fetch(path)
+        self.assertEqual(404, response.code)
+        self.assertEqual('Not Found', response.reason)
 
 
 class TestInfoHandler(LogTrapTestCase, AsyncHTTPTestCase):
