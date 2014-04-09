@@ -252,7 +252,7 @@ class ProxyHandler(web.RequestHandler):
         if response is not None:
             self.send_response(response)
 
-    # Handle POST requests the same way GET ones are handled.
+    # Handle POST requests the same way GET requests are handled.
     post = get
 
     @gen.coroutine
@@ -317,7 +317,7 @@ class JujuProxyHandler(ProxyHandler):
         """Handle GET requests.
         See the ProxyHandler.get method.
 
-        Override to handle the case a when a charm icon is not found.
+        Override to handle the case when a charm icon is not found.
         """
         url = join_url(self.target_url, path, self.request.query)
         response = yield self.send_request(url)
