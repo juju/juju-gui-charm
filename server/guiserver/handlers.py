@@ -48,6 +48,7 @@ from guiserver.utils import (
 )
 
 
+# Define the path to the fallback charm icon hosted by charmworld.
 DEFAULT_CHARM_ICON_PATH = '/static/img/charm_160.svg'
 
 
@@ -316,7 +317,7 @@ class JujuProxyHandler(ProxyHandler):
         """Handle GET requests.
         See the ProxyHandler.get method.
 
-        Override to handle the case a charm icon is not found.
+        Override to handle the case a when a charm icon is not found.
         """
         url = join_url(self.target_url, path, self.request.query)
         response = yield self.send_request(url)
@@ -334,7 +335,7 @@ class JujuProxyHandler(ProxyHandler):
         return (
             # The request is for a local charm.
             path == 'charms' and
-            # The charm url is specified.
+            # The charm URL is specified.
             self.get_argument('url', None) and
             # The icon file is requested.
             self.get_argument('file', None) == 'icon.svg'

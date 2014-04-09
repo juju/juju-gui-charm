@@ -595,7 +595,7 @@ class TestProxyHandler(LogTrapTestCase, AsyncHTTPTestCase):
         self.assertEqual('original body', remote_request.body)
 
     def test_validate_certificates(self):
-        # Certificates are validated.
+        # Server certificates are properly handled.
         remote_response = helpers.make_response(200)
         with self.patch_http_client(remote_response) as mock_client:
             self.fetch('/base/remote-path/', headers=self.request_headers)
@@ -604,7 +604,6 @@ class TestProxyHandler(LogTrapTestCase, AsyncHTTPTestCase):
         mock_fetch = mock_client().fetch
         self.assertEqual(1, mock_fetch.call_count)
         remote_request = mock_fetch.call_args[0][0]
-        # Certificates are properly validated.
         self.assertEqual(
             self.expected_validate_cert, remote_request.validate_cert)
 
@@ -669,7 +668,7 @@ class TestJujuProxyHandler(TestProxyHandler):
             (r'^/base/(.*)', handlers.JujuProxyHandler, options)])
 
     def test_default_charm_icon(self):
-        # A a charm icon is not found, a GET request redirects to the fallback
+        # If a charm icon is not found, a GET request redirects to the fallback
         # icon available on charmworld.
         remote_response = helpers.make_response(404)
         path = '/base/charms?url=local:trusty/django=42&file=icon.svg'
@@ -682,7 +681,7 @@ class TestJujuProxyHandler(TestProxyHandler):
 
     def test_charm_file_not_found(self):
         # If a charm file is not found and it is not the icon, a 404 is
-        # correctly returned.
+        # correctly returned to the original client.
         remote_response = helpers.make_response(404)
         path = '/base/charms?url=local:trusty/django=42&file=readme.rst'
         with self.patch_http_client(remote_response):
