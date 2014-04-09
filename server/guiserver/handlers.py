@@ -293,7 +293,7 @@ class ProxyHandler(web.RequestHandler):
 
 
 class JujuProxyHandler(ProxyHandler):
-    """The proxy used for communicating with the juju-core HTTP API."""
+    """A specialized proxy handler used for the juju-core HTTP API."""
 
     def initialize(self, target_url, charmworld_url):
         """Initialize the proxy.
@@ -314,6 +314,7 @@ class JujuProxyHandler(ProxyHandler):
     @gen.coroutine
     def get(self, path):
         """Handle GET requests.
+        See the ProxyHandler.get method.
 
         Override to handle the case a charm icon is not found.
         """
@@ -321,9 +322,8 @@ class JujuProxyHandler(ProxyHandler):
         response = yield self.send_request(url)
         if response is not None:
             if response.code == 404 and self._charm_icon_requested(path):
-                # If this is a request for a charm icon file, and the icon
-                # is not found, redirect to the fallback icon hosted on
-                # charmworld.
+                # This is a request for a charm icon file, and the icon is not
+                # found: redirect to the fallback icon hosted on charmworld.
                 self.redirect(self.default_charm_icon_url)
             else:
                 # Return the response to the client as usual.
