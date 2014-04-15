@@ -20,8 +20,8 @@ join [the GUI developers mailing list](https://lists.ubuntu.com/mailman/listinfo
 
 First, you need a configured Juju environment: see the Juju docs about
 [getting started](https://juju.ubuntu.com/docs/getting-started.html). If you
-do not yet have an environment defined, the Jitsu command "setup-environment"
-is an easy way to get started.
+do not yet have an environment defined, the Juju Quickstart plugin is an easy
+way to get started. See https://pypi.python.org/pypi/juju-quickstart.
 
 You'll also need some system dependencies and developer basics.
 
@@ -35,17 +35,12 @@ Next, you need the bzr branch.  We work from
 You could start hacking now, but there's a bit more to do to prepare for
 running and writing tests.
 
-We use the juju-test test command to run our functional and unit tests.  At the
-time of this writing it is not yet released.  To run it you must first install
-it locally, e.g.:
+We use the juju-test test command to run our functional and unit tests. It is
+available as part of the charm tools package:
 
-    bzr checkout --lightweight lp:juju-plugins
-    ln -s juju-plugins/plugins/juju_test.py juju-test
-    export PATH="$PATH":`pwd`
-
-Alternatively you may check out lp:juju-plugins and link
-"juju-plugins/plugins/juju_test.py" as "juju-test" somewhere in your PATH, so
-that it is possible to execute "juju-test".
+    sudo add-apt-repository ppa:juju/stable
+    sudo apt-get update
+    sudo apt-get install charm-tools
 
 Before being able to run the suite, test requirements need to be installed
 running the command:
@@ -56,12 +51,19 @@ The command above will create a ".venv" directory inside "juju-gui/tests/",
 ignored by DVCSes, containing the development virtual environment with all the
 testing dependencies.  Run "make help" to see all the available make targets.
 
-Now you are ready to run the functional and unit tests (see the next section).
-
 ## Testing ##
 
 There are two types of tests for the charm: unit tests and functional tests.
-Long story short, to run all the tests:
+
+Functional tests make use of a real Juju environment, and thus they need the
+`~/.juju/environments.yaml` file to be properly configured, including the
+`default-series` option. Since functional tests deploy the charm in the
+bootstrap node, setting the default series also means selecting to what OS
+version the charm will be deployed by functional tests. For instance, to test
+Juju GUI charm on trusty, set `default-series: trusty` in your
+`~/.juju/environments.yaml` file. Possible values are `precise` and `trusty`.
+
+Long story short, to run both unit and functional the tests:
 
     make test JUJU_ENV="myenv"
 
@@ -69,9 +71,9 @@ In the command above, "myenv" is the juju environment, as it is specified in
 your `~/.juju/environments.yaml`, that will be bootstrapped before running the
 tests and destroyed at the end of the test run.
 
-Note that the functional tests will not work using an LXC environment.  The
-test co-locates the juju-gui on the bootstrap node, which is not possible in
-LXC.
+Note that the **functional tests will not work using an LXC environment**.
+As mentioned, the test co-locates the juju-gui on the bootstrap node, which is
+not possible in LXC.
 
 Please read further for additional details.
 
@@ -98,15 +100,6 @@ As seen before, "myenv" is the juju environment, as it is specified in your
 `~/.juju/environments.yaml`, that will be bootstrapped before running the
 tests and destroyed at the end of the test run.
 
-#### LXC ####
-
-Unfortunately, we have not found LXC-based Juju environments to be reliable
-for these tests.  At this time, we recommend using other environments, such as
-OpenStack; but we will periodically check the tests in LXC environments
-because it would be great to be able to use it.  If you do want to use LXC,
-you will need to install the `apt-cacher-ng` and `lxc` packages.  Also note
-that at this time juju-core does not support the local provider.
-
 ## Running the Charm From Development ##
 
 If you have set up your environment to run your local development charm,
@@ -131,6 +124,12 @@ the ".venv" directory), deploys the Juju GUI charm from that repository and
 exposes the juju-gui service.  Also note that "make deploy" does not require
 you to manually set up a local Juju environment, and preserves, if already
 created, the testing virtualenv.
+
+The `make deploy` command also support specifying to what OS version the local
+charm must be deployed. By default a precise machine is created, but you can
+run the following to deploy the charm on trusty:
+
+    make deploy SERIES=trusty
 
 Now you are working with a test run, as described in
 <https://juju.ubuntu.com/docs/write-charm.html#test-run>.  The

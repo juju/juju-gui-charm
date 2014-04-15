@@ -150,13 +150,16 @@ options:
     description: |
       Enable the built-in server, disabling both haproxy and Apache.
       This is a temporary option: the built-in server will be
-      the only server in the future.
+      the only server in the future. Note that legacy server is no longer
+      supported/tested staring from trusty. Switch this option to false only if
+      the charm is deployed on a precise machine.
     type: boolean
     default: true
   builtin-server-logging:
     description: |
       Set the GUI server log level. Possible values are debug, info, warning
       and error. The log file is placed in /var/log/upstart/guiserver.log.
+      This option is ignored if builtin-server is set to false.
     type: string
     default: info
   nagios_context:
