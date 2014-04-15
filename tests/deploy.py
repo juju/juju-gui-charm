@@ -57,7 +57,7 @@ def setup_repository(name, source, series='precise'):
 
 def juju_deploy(
         charm_name, service_name=None, options=None, force_machine=None,
-        charm_source=None, series='precise'):
+        charm_source=None, series=None):
     """Deploy and expose the charm. Return the first unit's public address.
 
     Also wait until the service is exposed and the first unit started.
@@ -66,12 +66,16 @@ def juju_deploy(
     If options are provided, they will be used when deploying the charm.
     If force_machine is not None, create the unit in the specified machine.
     If charm_source is None, dynamically retrieve the charm source directory.
+    If series is None, the series specified in the SERIES environment variable
+    is used if found, defaulting to "precise".
     """
     # Note: this function is used by both the functional tests and
     # "make deploy": see the "if main" section below.
     if charm_source is None:
         # Dynamically retrieve the charm source based on the path of this file.
         charm_source = os.path.join(os.path.dirname(__file__), '..')
+    if series is None:
+        series = os.getenv('SERIES', '').strip() or 'precise'
     logging.debug('setting up the charms repository')
     repo = setup_repository(charm_name, charm_source, series=series)
     args = ['deploy', '--repository', repo]

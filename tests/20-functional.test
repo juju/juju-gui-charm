@@ -35,6 +35,7 @@ from deploy import juju_deploy
 from helpers import (
     get_admin_secret,
     juju_destroy_service,
+    juju_status,
     make_service_name,
     WebSocketClient,
 )
@@ -47,31 +48,22 @@ try:
 except ValueError as err:
     admin_secret = None
     print(err)
+bootstrap_node_series = juju_status()['machines']['0']['series']
 
 
 def juju_deploy_gui(options=None):
     """Deploy the Juju GUI charm with the given options.
 
-    Deploy the charm in the bootstrap node if possible in the current Juju
-    implementation. Use a random service name.
+    Deploy the charm in the bootstrap node, using the bootstrap node series
+    and giving to the resulting service a random name.
 
-    Return a tuple containing the deployed service name, unit info and a list
-    of services that are started in the Juju GUI unit and that must be
-    manually stopped by tests. In juju-core, the services list is always empty.
+    Return a tuple containing the deployed service name and unit info.
     """
     service_name = make_service_name(prefix='juju-gui-')
     unit_info = juju_deploy(
         'juju-gui', service_name=service_name, options=options,
-        force_machine=0)
-    cleanup_services = []
-    if options is None:
-        options = {}
-    # Either stop the builtin server or the old apache2/haproxy setup.
-    if options.get('builtin-server') == 'true':
-        cleanup_services.append('guiserver')
-    else:
-        cleanup_services.extend(['haproxy', 'apache2'])
-    return service_name, unit_info, cleanup_services
+        force_machine=0, series=bootstrap_node_series)
+    return service_name, unit_info
 
 
 class DeployTestMixin(object):
@@ -176,7 +168,7 @@ class TestDeployOptions(DeployTestMixin, unittest.TestCase):
 
     def test_stable_release(self):
         # Ensure the stable Juju GUI release is correctly set up.
-        self.service_name, unit_info, _ = juju_deploy_gui(
+        self.service_name, unit_info = juju_deploy_gui(
             options={'juju-gui-source': 'stable'})
         hostname = unit_info['public-address']
         self.navigate_to(hostname)
@@ -185,7 +177,7 @@ class TestDeployOptions(DeployTestMixin, unittest.TestCase):
 
     def test_sandbox(self):
         # The GUI is correctly deployed and set up in sandbox mode.
-        self.service_name, unit_info, _ = juju_deploy_gui(
+        self.service_name, unit_info = juju_deploy_gui(
             options={'sandbox': 'true'})
         hostname = unit_info['public-address']
         self.navigate_to(hostname)
@@ -198,16 +190,19 @@ class TestDeployOptions(DeployTestMixin, unittest.TestCase):
     def test_branch_source(self):
         # Ensure the Juju GUI is correctly deployed from a Git branch.
         options = {'juju-gui-source': JUJU_GUI_TEST_BRANCH}
-        self.service_name, unit_info, _ = juju_deploy_gui(options=options)
+        self.service_name, unit_info = juju_deploy_gui(options=options)
         hostname = unit_info['public-address']
         self.navigate_to(hostname)
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()
 
+    @unittest.skipUnless(
+        bootstrap_node_series == 'precise',
+        'the legacy server is only supported on precise')
     def test_legacy_server(self):
         # The legacy apache + haproxy server configuration works correctly.
         # Also make sure the correct cache headers are sent.
-        self.service_name, unit_info, _ = juju_deploy_gui(
+        self.service_name, unit_info = juju_deploy_gui(
             options={'builtin-server': 'false'})
         hostname = unit_info['public-address']
         self.navigate_to(hostname)
@@ -232,7 +227,7 @@ class TestBuiltinServerLocalRelease(DeployTestMixin, unittest.TestCase):
     def setUpClass(cls):
         # Deploy the charm. The resulting service is used by all the tests
         # in this test case.
-        cls.service_name, unit_info, cls.cleanup_services = juju_deploy_gui()
+        cls.service_name, unit_info = juju_deploy_gui()
         cls.hostname = unit_info['public-address']
         # The counter is used to produce API request identifiers.
         cls.counter = itertools.count()

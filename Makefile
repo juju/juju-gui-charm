@@ -80,10 +80,11 @@ help:
 	@echo -e '  JUJU_ENV is the Juju environment that will be bootstrapped.\n'
 	@echo -e 'make lint - Run linter and pep8.\n'
 	@echo -e 'make clean - Remove bytecode files and virtualenvs.\n'
-	@echo 'make deploy [JUJU_ENV="my-juju-env]" - Deploy and expose the Juju'
-	@echo '  GUI charm setting up a temporary Juju repository. Wait for the'
-	@echo '  service to be started.  If JUJU_ENV is not passed, the charm will'
-	@echo '  be deployed in the default Juju environment.'
+	@echo 'make deploy [JUJU_ENV="my-juju-env"] [SERIES="trusty"] - Deploy and'
+	@echo '  expose the Juju GUI charm setting up a temporary Juju repository.'
+	@echo '  Wait for the service to be started. If JUJU_ENV is not passed,'
+	@echo '  the charm will be deployed in the default Juju environment.'
+	@echo '  If SERIES is not passed, "precise" is used.'
 
-.PHONY: all clean deploy ensure-juju-test ensure-juju-env ftest help \
-    jujutest lint setup test unittest
+.PHONY: all clean deploy ensure-juju-env ensure-juju-test ftest help \
+    jujutest lint setup sysdeps test unittest
