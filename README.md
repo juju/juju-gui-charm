@@ -13,8 +13,8 @@ This charm makes it easy to deploy a Juju GUI into an existing environment.
 
 ## Supported Browsers ##
 
-The Juju GUI supports recent releases of the Chrome, Chromium and Firefox web
-browsers.
+The Juju GUI supports recent releases of the Chrome, Chromium, Firefox, Safari
+and Internet Explorer web browsers.
 
 ## Demo and Staging Servers ##
 
@@ -25,9 +25,35 @@ try the GUI, and build an example environment to export for use elsewhere.
 A [staging server](http://comingsoon.jujucharms.com/) is also available,
 running the latest and greatest version.
 
-## Deploying the Juju GUI ##
+## Deploying the Juju GUI using Juju Quickstart ##
 
-Deploying the Juju GUI is accomplished using Juju itself.
+[Juju Quickstart](https://pypi.python.org/pypi/juju-quickstart) is an
+opinionated command-line tool that quickly starts Juju and the GUI, whether
+you've never installed Juju or you have an existing Juju environment running.
+
+For installation on precise and saucy, you'll need to enable the Juju PPA by
+first executing:
+
+    sudo add-apt-repository ppa:juju/stable
+    sudo apt-get update
+    sudo apt-get install juju-quickstart
+
+For trusty the PPA is not required and you simply need to install it with:
+
+    sudo apt-get install juju-quickstart
+
+At this point, just running `juju-quickstart` will deploy the Juju GUI. When
+possible, Quickstart conserves resources by installing the GUI on the bootstrap
+node. This colocation is not possible when using a local (LXC) environment.
+
+Quickstart ends by opening the browser and automatically logging the user into
+the GUI, to observe and manage the environment visually.
+By default, the deployment uses self-signed certificates. The browser will ask
+you to accept a security exception once.
+
+## Deploying the Juju GUI the traditional way ##
+
+Deploying the Juju GUI can be accomplished using Juju itself.
 
 You need a configured and bootstrapped Juju environment: see the Juju docs
 about [getting started](https://juju.ubuntu.com/docs/getting-started.html),
@@ -35,11 +61,16 @@ and then run the usual bootstrap command.
 
     juju bootstrap
 
-Next, you simply need to deploy the charm and expose it.  (See also "Deploying
-with Jitsu" below, for another option.)
+Next, you simply need to deploy the charm and expose it.
 
     juju deploy juju-gui
     juju expose juju-gui
+
+The instructions above cause you to use a separate machine to work with the
+GUI.  If you'd like to reduce your machine footprint (and perhaps your costs),
+you can colocate the GUI with the Juju bootstrap node, e.g.:
+
+    juju deploy juju-gui --to 0
 
 Finally, you need to identify the GUI's URL. It can take a few minutes for the
 GUI to be built and to start; this command will let you see when it is ready
@@ -73,8 +104,8 @@ By default, the deployment uses self-signed certificates. The browser will ask
 you to accept a security exception once.
 
 You will see a login form with the username fixed to "user-admin". The
-password is the same as your Juju environment's `admin-secret`, found in
-`~/.juju/environments.yaml`.
+password is the same as your Juju environment's `admin-secret`. The login
+screen includes hints about where to find the environment's password.
 
 ### Deploying behind a firewall ###
 
@@ -129,23 +160,53 @@ Juju GUI release by running the following:
 In this case the new version will be found in the local repository and
 therefore the charm will not attempt to connect to Launchpad.
 
-### Deploying to a chosen machine ###
+## The Juju GUI server ##
 
-The instructions above cause you to use a separate machine to work with the
-GUI.  If you'd like to reduce your machine footprint (and perhaps your costs),
-you can colocate the GUI with the Juju bootstrap node.
+While the Juju GUI itself is a client-side JavaScript application, the charm
+installation also involves configuring and starting a GUI server, which is
+required to serve the application files and to enable some advanced features,
+so that using the GUI results in a seamless and powerful experience.
 
-This approach might change in the future (possibly with the Juju shipped with
-Ubuntu 13.10), so be warned.
+### Builtin server ###
 
-The instructions differ depending on the Juju implementation.
+By default, a builtin server is installed and started by the charm.
+The builtin server is already included in the charm. For this reason, it does
+not require any external dependencies.
+The builtin server provides the following functionalities:
 
-#### juju-core ####
+1. It serves the Juju GUI static files, including support for ETags and basic
+   server side URL routing.
+2. It supports running the GUI over TLS (HTTPS) or in insecure mode (HTTP).
+3. It redirects secure WebSocket connections established by the browser to
+   the real Juju API endpoint. This way the GUI can connect the WebSocket to
+   the host and port where it is currently running, so that the already
+   accepted self signed certificate is reused and the connection succeeds.
+4. It supports running the Juju GUI browser tests if the charm is configured
+   accordingly.
+5. It exposes an API for bundles deployment. This way bundles can be deployed
+   very easily using the GUI, by selecting a bundle from the GUI browser or
+   just dragging and dropping a bundle YAML file to the GUI canvas.
+6. It allows for logging in into the GUI via a timed token. This is used, for
+   instance, by Juju Quickstart to allow automatic user's authentication.
+7. It supports deploying local charms by proxying browser HTTPS connections to
+   the Juju HTTPS API backend. This also includes retrieving and listing local
+   charms' files.
 
-Replace "juju deploy cs:precise/juju-gui" from the previous
-instructions with this:
+### Legacy server ###
 
-    juju deploy --force-machine 0 cs:precise/juju-gui
+By switching the charm option `builtin-server` to `false`, the charm configures
+and start the legacy server in place of the builtin one. This configuration
+requires retrieving HAProxy from an external PPA and uses HAProxy and Apache to
+serve the Juju GUI.
+
+Using the builtin server is the encouraged configuration, but if you decide to
+stick with the legacy server, be warned about the following limitations:
+
+* The legacy server is no longer supported/tested starting from trusty.
+  Use it only if the charm is deployed on a precise machine.
+* The legacy server only provides features 1-4 from the list above. This means
+  bundle deployments, timed authentication tokens and local charms are not
+  available when using the legacy configuration.
 
 ## Contacting the Developers ##
 
