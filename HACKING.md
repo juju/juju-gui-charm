@@ -48,8 +48,9 @@ running the command:
     make
 
 The command above will create a ".venv" directory inside "juju-gui/tests/",
-ignored by DVCSes, containing the development virtual environment with all the
-testing dependencies.  Run "make help" to see all the available make targets.
+ignored by version control, containing the development virtual environment with
+all the testing dependencies.
+Run "make help" to see all the available make targets.
 
 ## Testing ##
 
@@ -58,12 +59,12 @@ There are two types of tests for the charm: unit tests and functional tests.
 Functional tests make use of a real Juju environment, and thus they need the
 `~/.juju/environments.yaml` file to be properly configured, including the
 `default-series` option. Since functional tests deploy the charm in the
-bootstrap node, setting the default series also means selecting to what OS
-version the charm will be deployed by functional tests. For instance, to test
-Juju GUI charm on trusty, set `default-series: trusty` in your
+bootstrap node, setting the default series also selects which series version
+the charm will be deployed by functional tests. For instance, to test the Juju
+GUI charm on trusty, set `default-series: trusty` in your
 `~/.juju/environments.yaml` file. Possible values are `precise` and `trusty`.
 
-Long story short, to run both unit and functional the tests:
+Long story short, to run both unit and functional tests:
 
     make test JUJU_ENV="myenv"
 
@@ -125,9 +126,9 @@ exposes the juju-gui service.  Also note that "make deploy" does not require
 you to manually set up a local Juju environment, and preserves, if already
 created, the testing virtualenv.
 
-The `make deploy` command also support specifying the OS version used to deploy
-the local charm. By default a precise machine is created, but you can run the
-following to deploy the charm on trusty:
+The `make deploy` command also supports specifying the OS version used to
+deploy the local charm. By default a precise machine is created, but you can
+run the following to deploy the charm on trusty:
 
     make deploy SERIES=trusty
 

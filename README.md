@@ -43,8 +43,8 @@ For trusty the PPA is not required and you simply need to install it with:
     sudo apt-get install juju-quickstart
 
 At this point, just running `juju-quickstart` will deploy the Juju GUI. When
-possible (i.e. when a non-local environment is used) the process does not
-add additional machines (i.e. the GUI is installed in the bootstrap node).
+possible, Quickstart conserves resources by installing the GUI on the bootstrap
+node. This colocation is not possible when using a local (LXC) environment.
 
 Quickstart ends by opening the browser and automatically logging the user into
 the GUI, to observe and manage the environment visually.
@@ -162,8 +162,8 @@ therefore the charm will not attempt to connect to Launchpad.
 
 ## The Juju GUI server ##
 
-While the Juju GUI itself is a client side JavaScript application, the charm
-installation also involves configuring a starting a GUI server, which is
+While the Juju GUI itself is a client-side JavaScript application, the charm
+installation also involves configuring and starting a GUI server, which is
 required to serve the application files and to enable some advanced features,
 so that using the GUI results in a seamless and powerful experience.
 
@@ -202,7 +202,7 @@ serve the Juju GUI.
 Using the builtin server is the encouraged configuration, but if you decide to
 stick with the legacy server, be warned about the following limitations:
 
-* The legacy server is no longer supported/tested staring from trusty.
+* The legacy server is no longer supported/tested starting from trusty.
   Use it only if the charm is deployed on a precise machine.
 * The legacy server only provides features 1-4 from the list above. This means
   bundle deployments, timed authentication tokens and local charms are not

@@ -151,8 +151,8 @@ options:
       Enable the built-in server, disabling both haproxy and Apache.
       This is a temporary option: the built-in server will be
       the only server in the future. Note that legacy server is no longer
-      supported/tested staring from trusty. Switch this option to false only if
-      the charm is deployed on a precise machine.
+      supported/tested starting from trusty. Switch this option to false only
+      if the charm is deployed on a precise machine.
     type: boolean
     default: true
   builtin-server-logging:
