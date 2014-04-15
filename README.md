@@ -44,7 +44,7 @@ For trusty the PPA is not required and you simply need to install it with:
 
 At this point, just running `juju-quickstart` will deploy the Juju GUI. When
 possible (i.e. when a non-local environment is used) the process does not
-add additional machines (the GUI is installed in the bootstrap node).
+add additional machines (i.e. the GUI is installed in the bootstrap node).
 
 Quickstart ends by opening the browser and automatically logging the user into
 the GUI, to observe and manage the environment visually.
@@ -162,7 +162,7 @@ therefore the charm will not attempt to connect to Launchpad.
 
 ## The Juju GUI server ##
 
-While the Juju GUI itself is a client side JavaScrip application, the charm
+While the Juju GUI itself is a client side JavaScript application, the charm
 installation also involves configuring a starting a GUI server, which is
 required to serve the application files and to enable some advanced features,
 so that using the GUI results in a seamless and powerful experience.
@@ -174,8 +174,8 @@ The builtin server is already included in the charm. For this reason, it does
 not require any external dependencies.
 The builtin server provides the following functionalities:
 
-1. It serves the Juju GUI static files, including ETag support and basic server
-   side URL routing.
+1. It serves the Juju GUI static files, including support for ETags and basic
+   server side URL routing.
 2. It supports running the GUI over TLS (HTTPS) or in insecure mode (HTTP).
 3. It redirects secure WebSocket connections established by the browser to
    the real Juju API endpoint. This way the GUI can connect the WebSocket to
@@ -188,7 +188,7 @@ The builtin server provides the following functionalities:
    just dragging and dropping a bundle YAML file to the GUI canvas.
 6. It allows for logging in into the GUI via a timed token. This is used, for
    instance, by Juju Quickstart to allow automatic user's authentication.
-7. It allows deploying local charms by proxying browser HTTPS connections to
+7. It supports deploying local charms by proxying browser HTTPS connections to
    the Juju HTTPS API backend. This also includes retrieving and listing local
    charms' files.
 
@@ -196,12 +196,11 @@ The builtin server provides the following functionalities:
 
 By switching the charm option `builtin-server` to `false`, the charm configures
 and start the legacy server in place of the builtin one. This configuration
-requires retrieving haproxy from an external PPA and uses haproxy and apache to
+requires retrieving HAProxy from an external PPA and uses HAProxy and Apache to
 serve the Juju GUI.
 
 Using the builtin server is the encouraged configuration, but if you decide to
-stick with the legacy server, you must be warned about the following
-limitations:
+stick with the legacy server, be warned about the following limitations:
 
 * The legacy server is no longer supported/tested staring from trusty.
   Use it only if the charm is deployed on a precise machine.
