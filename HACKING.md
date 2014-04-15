@@ -125,9 +125,9 @@ exposes the juju-gui service.  Also note that "make deploy" does not require
 you to manually set up a local Juju environment, and preserves, if already
 created, the testing virtualenv.
 
-The `make deploy` command also support specifying to what OS version the local
-charm must be deployed. By default a precise machine is created, but you can
-run the following to deploy the charm on trusty:
+The `make deploy` command also support specifying the OS version used to deploy
+the local charm. By default a precise machine is created, but you can run the
+following to deploy the charm on trusty:
 
     make deploy SERIES=trusty
 
