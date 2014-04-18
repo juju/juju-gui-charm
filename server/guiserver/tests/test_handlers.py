@@ -501,6 +501,21 @@ class TestIndexHandler(LogTrapTestCase, AsyncHTTPTestCase):
         # Requests including flags and queries are served by the index file.
         self.ensure_index('/:flag:/activated/?my=query')
 
+    def test_headers(self):
+        # The expected Content-Type, ETag and clickjacking protection headers
+        # are correctly sent by the server.
+        response = self.fetch('/')
+        headers = response.headers
+        # Check response content type.
+        self.assertIn('Content-Type', headers)
+        self.assertEqual('text/html', headers['Content-Type'])
+        # Check cache headers.
+        self.assertIn('ETag', headers)
+        self.assertIn('Last-Modified', headers)
+        # Check X-Frame headers.
+        self.assertIn('X-Frame-Options', headers)
+        self.assertEqual('SAMEORIGIN', headers['X-Frame-Options'])
+
 
 class TestProxyHandler(LogTrapTestCase, AsyncHTTPTestCase):
 
