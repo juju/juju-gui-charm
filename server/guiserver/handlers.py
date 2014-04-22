@@ -226,6 +226,11 @@ class IndexHandler(web.StaticFileHandler):
         """See tornado.web.StaticFileHandler.get_absolute_path."""
         return os.path.join(root, 'index.html')
 
+    def set_default_headers(self):
+        """Set custom HTTP headers at the beginning of the request."""
+        # Avoid user-interface redressing (e.g. clickjacking).
+        self.set_header('X-Frame-Options', 'SAMEORIGIN')
+
 
 class ProxyHandler(web.RequestHandler):
     """An HTTP(S) proxy from the server to the given target URL."""

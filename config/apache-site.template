@@ -31,5 +31,7 @@
 
     Header unset Cache-Control
     Header set Cache-Control "max-age=0, public, must-revalidate"
+    # Avoid user-interface redressing (e.g. clickjacking).
+    Header always append X-Frame-Options SAMEORIGIN
 
 </VirtualHost>

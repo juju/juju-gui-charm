@@ -30,7 +30,7 @@ You'll also need some system dependencies and developer basics.
 The command above will run as root and install the required deb packages.
 
 Next, you need the bzr branch.  We work from
-[lp:~juju-gui/charms/precise/juju-gui/trunk](https://code.launchpad.net/~juju-gui/charms/precise/juju-gui/trunk).
+[lp:~juju-gui/charms/trusty/juju-gui/trunk](https://code.launchpad.net/~juju-gui/charms/trusty/juju-gui/trunk).
 
 You could start hacking now, but there's a bit more to do to prepare for
 running and writing tests.
@@ -112,7 +112,7 @@ The first one is running "make clean" before deploying the charm:
 
     make clean
     juju bootstrap
-    juju deploy --repository=/path/to/charm/repo local:precise/juju-gui
+    juju deploy --repository=/path/to/charm/repo local:trusty/juju-gui
     juju expose juju-gui
 
 The second one is just running "make deploy":
@@ -127,10 +127,10 @@ you to manually set up a local Juju environment, and preserves, if already
 created, the testing virtualenv.
 
 The `make deploy` command also supports specifying the OS version used to
-deploy the local charm. By default a precise machine is created, but you can
-run the following to deploy the charm on trusty:
+deploy the local charm. By default a trusty machine is created, but you can
+run the following to deploy the charm on precise:
 
-    make deploy SERIES=trusty
+    make deploy SERIES=precise
 
 Now you are working with a test run, as described in
 <https://juju.ubuntu.com/docs/write-charm.html#test-run>.  The
@@ -165,6 +165,17 @@ to see what hook you are supposed to run.
 
 All of this is described in more detail on the Juju site: this is an
 introduction to the process.
+
+## Making charm releases ##
+
+The same code base is used for both precise and trusty releases.
+Releasing the charm is done by pushing changes from the development branch to
+the precise and trusty release branches.
+The branches live in the following locations:
+
+- development branch: `lp:~juju-gui/charms/trusty/juju-gui/trunk`
+- precise release: `lp:charms/juju-gui`
+- trusty release: `lp:charms/trusty/juju-gui`
 
 ## Upgrading the local releases repository ##
 
