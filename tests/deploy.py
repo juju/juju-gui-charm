@@ -39,11 +39,12 @@ rsync = command('rsync', '-a',
                 '--exclude', '/tests')
 
 
-def setup_repository(name, source, series='precise'):
+def setup_repository(name, source, series='trusty'):
     """Create a temporary Juju repository to use for charm deployment.
 
-    Copy the charm files in source in the precise repository section, using the
-    provided charm name and excluding the virtualenv and Git directories.
+    Copy the charm files in source in the repository section corresponding to
+    the given series, using the provided charm name and excluding the
+    virtualenv and Git directories.
 
     Return the repository path.
     """
@@ -67,7 +68,7 @@ def juju_deploy(
     If force_machine is not None, create the unit in the specified machine.
     If charm_source is None, dynamically retrieve the charm source directory.
     If series is None, the series specified in the SERIES environment variable
-    is used if found, defaulting to "precise".
+    is used if found, defaulting to "trusty".
     """
     # Note: this function is used by both the functional tests and
     # "make deploy": see the "if main" section below.
@@ -75,7 +76,7 @@ def juju_deploy(
         # Dynamically retrieve the charm source based on the path of this file.
         charm_source = os.path.join(os.path.dirname(__file__), '..')
     if series is None:
-        series = os.getenv('SERIES', '').strip() or 'precise'
+        series = os.getenv('SERIES', '').strip() or 'trusty'
     logging.debug('setting up the charms repository')
     repo = setup_repository(charm_name, charm_source, series=series)
     args = ['deploy', '--repository', repo]

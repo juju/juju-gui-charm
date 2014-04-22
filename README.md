@@ -83,7 +83,7 @@ this:
 
     services:
       juju-gui:
-        charm: cs:precise/juju-gui-7
+        charm: cs:trusty/juju-gui-42
         exposed: true
         relations: {}
         units:

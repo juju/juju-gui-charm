@@ -90,7 +90,7 @@ class TestSetupRepository(unittest.TestCase):
     def test_repository(self):
         # The charm repository is correctly created with the default series.
         repo = setup_repository(self.name, self.source)
-        self.check_repository(repo, 'precise')
+        self.check_repository(repo, 'trusty')
 
     def test_series(self):
         # The charm repository is created with the given series.
@@ -101,7 +101,7 @@ class TestSetupRepository(unittest.TestCase):
         # The charm files are correctly copied inside the repository, excluding
         # unwanted directories.
         repo = setup_repository(self.name, self.source)
-        charm_dir = os.path.join(repo, 'precise', self.name)
+        charm_dir = os.path.join(repo, 'trusty', self.name)
         expected = set([
             os.path.basename(self.root_file)
         ])
@@ -116,14 +116,14 @@ class TestJujuDeploy(unittest.TestCase):
 
     unit_info = {'public-address': 'unit.example.com'}
     charm = 'test-charm'
-    local_charm = 'local:precise/{}'.format(charm)
+    local_charm = 'local:trusty/{}'.format(charm)
 
     @mock.patch('deploy.juju')
     @mock.patch('deploy.wait_for_unit')
     def call_deploy(
             self, mock_wait_for_unit, mock_juju,
             service_name=None, options=None, force_machine=None,
-            charm_source=None, series='precise'):
+            charm_source=None, series='trusty'):
         mock_wait_for_unit.return_value = self.unit_info
         if charm_source is None:
             expected_source = os.path.join(os.path.dirname(__file__), '..')
