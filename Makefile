@@ -84,7 +84,8 @@ help:
 	@echo '  expose the Juju GUI charm setting up a temporary Juju repository.'
 	@echo '  Wait for the service to be started. If JUJU_ENV is not passed,'
 	@echo '  the charm will be deployed in the default Juju environment.'
-	@echo '  If SERIES is not passed, "precise" is used.'
+	@echo '  If SERIES is not passed, "trusty" is used. Possible values are'
+	@echo '  "precise" and "trusty".'
 
 .PHONY: all clean deploy ensure-juju-env ensure-juju-test ftest help \
     jujutest lint setup sysdeps test unittest

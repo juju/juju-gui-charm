@@ -19,12 +19,11 @@
 
 BUNDLE1 = """
 bundle1:
-  series: precise
+  series: trusty
   services:
     wordpress:
       charm: "cs:precise/wordpress-15"
-      num_units: 1
-      to: '0'
+      num_units: 2
       options:
         debug: "no"
         engine: nginx
@@ -35,8 +34,9 @@ bundle1:
         "gui-x": 313
         "gui-y": 51
     mysql:
-      charm: "cs:precise/mysql-26"
-      num_units: 2
+      charm: "cs:trusty/mysql-0"
+      num_units: 1
+      to: '0'
       options:
         "binlog-format": MIXED
         "block-size": "5"
@@ -63,7 +63,6 @@ bundle1:
 
 BUNDLE2 = """
 bundle2:
-  series: precise
   services:
     mediawiki:
       charm: "cs:precise/mediawiki-9"
