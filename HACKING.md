@@ -166,6 +166,17 @@ to see what hook you are supposed to run.
 All of this is described in more detail on the Juju site: this is an
 introduction to the process.
 
+## Making charm releases ##
+
+The same code base is used for both precise and trusty releases.
+Releasing the charm is done by pushing changes from the development branch to
+the precise and trusty release branches.
+The branches live in the following locations:
+
+- development branch: `lp:~juju-gui/charms/trusty/juju-gui/trunk`
+- precise release: `lp:charms/juju-gui`
+- trusty release: `lp:charms/trusty/juju-gui`
+
 ## Upgrading the local releases repository ##
 
 The charm, in the default juju-gui-source configuration ("local"), deploys the
