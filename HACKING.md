@@ -42,6 +42,8 @@ available as part of the charm tools package:
     sudo apt-get update
     sudo apt-get install charm-tools
 
+Note that **ppa:juju/devel does NOT subsume ppa:juju/stable. You must add ppa:juju/stable**.
+
 Before being able to run the suite, test requirements need to be installed
 running the command:
 
@@ -257,3 +259,27 @@ Sometimes, while debugging, it is convenient to restart the builtin server
 following in the Juju GUI machine:
 
     service guiserver restart
+
+## Proposing Branches ##
+
+We use [lbox](http://launchpad.net/lbox) to propose branches for review
+and submit them to the trunk. Gustavo Niemeyer has
+[a helpful blogpost](http://blog.labix.org/2011/11/17/launchpad-rietveld-happycodereviews)
+about this tool.
+
+To install lbox make sure you GOPATH is set and run go get launchpad.net/lbox.
+
+On first run lbox will attempt to launch sensible-browser or failing that
+$BROWSER to obtain oauth credentials to launchpad.  This is stored to
+$HOME/.lpad_oath .  You may want to chmod 0600 this file if your umask is more
+open by default.
+
+Next, to post to https://codereview.appspot.com, your google credentials are
+requested. This uses https://www.google.com/accounts/ClientLogin (You don't
+have to worry about plain text password over internet.) Cookies and oauth
+credentials get stored at $HOME/.goetveld_codereview.appspot.com . This time
+the file should default to mode 0600, but you can double check for your own
+security sanity.
+
+To post a review, bzr push to lp:~YOURNAME/charms/trusty/juju-gui/BRANCHNAME and
+run lbox propose. 
