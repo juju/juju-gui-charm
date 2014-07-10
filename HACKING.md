@@ -103,6 +103,19 @@ As seen before, "myenv" is the juju environment, as it is specified in your
 `~/.juju/environments.yaml`, that will be bootstrapped before running the
 tests and destroyed at the end of the test run.
 
+To run a test on a local environment, create an environment named "local"
+and type "local" like this:
+
+environments.yaml
+
+environments:
+  local:
+    type: local
+
+Then run:
+
+    make ftest JUJU_ENV="local"
+
 ## Running the Charm From Development ##
 
 If you have set up your environment to run your local development charm,
@@ -142,10 +155,10 @@ powerful tool to debug.
 When something goes wrong, on your local machine run
 `juju debug-hooks juju-gui/0` or similar.  This will initially put you on the
 unit that has the problem.  You can look at what is going on in
-`/var/lib/juju/units/[NAME OF UNIT]`.  There is a charm.log file to
-investigate, and a charm directory which contains the charm.  The charm
-directory contains the `juju-gui` and `juju` directories, so everything you
-need is there.
+`/var/lib/juju/agents/[NAME OF UNIT]` (or instead of agents use `containers`
+in the local environment. There is a charm.log file to investigate, and a 
+charm directory which contains the charm.  The charm directory contains the 
+`juju-gui` and `juju` directories, so everything you need is there.
 
 If juju recognized an error (for instance, the unit is in an "install-error"
 state) then you can do more.  In another terminal on your local machine, run
