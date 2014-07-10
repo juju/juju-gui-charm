@@ -23,6 +23,7 @@ import itertools
 import unittest
 import urllib2
 import urlparse
+import os
 
 from selenium.webdriver import Firefox
 from selenium.webdriver.support import ui
@@ -50,6 +51,10 @@ except ValueError as err:
     print(err)
 bootstrap_node_series = juju_status()['machines']['0']['series']
 
+forced_machine = 0
+env_par = os.getenv('JUJU_ENV')
+if env_par == "local":
+    forced_machine = None
 
 def juju_deploy_gui(options=None):
     """Deploy the Juju GUI charm with the given options.
@@ -62,7 +67,7 @@ def juju_deploy_gui(options=None):
     service_name = make_service_name(prefix='juju-gui-')
     unit_info = juju_deploy(
         'juju-gui', service_name=service_name, options=options,
-        force_machine=0, series=bootstrap_node_series)
+        force_machine=forced_machine, series=bootstrap_node_series)
     return service_name, unit_info
 
 
