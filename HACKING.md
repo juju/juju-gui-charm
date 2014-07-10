@@ -101,11 +101,18 @@ As seen before, "myenv" is the juju environment, as it is specified in your
 `~/.juju/environments.yaml`, that will be bootstrapped before running the
 tests and destroyed at the end of the test run.
 
-To run a test on a local environment, add a flag that tells the test not to 
-collocate the deployed charm on a machine-0:
+To run a test on a local environment, create an environment named "local"
+and type "local" like this:
 
-    make ftest JUJU_ENV="myenv" JUJU_ENV_TYPE="local"
+environments.yaml
 
+environments:
+  local:
+    type: local
+
+Then run:
+
+    make ftest JUJU_ENV="local"
 
 ## Running the Charm From Development ##
 

@@ -55,10 +55,10 @@ bootstrap_node_series = juju_status()['machines']['0']['series']
 If JUJU_ENV_TYPE is defined to local, then the --to is not
 used as it is not needed in the local env. Otherwise, the 
 default placing of the deployed GUI charm is on machine 0 
-with a --to 0 flag
+with a --to 0
 """
 forced_machine = 0
-env_par = os.getenv('JUJU_ENV_TYPE')
+env_par = os.getenv('JUJU_ENV')
 if env_par == "local":
     forced_machine = None
 
