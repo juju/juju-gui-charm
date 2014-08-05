@@ -17,8 +17,7 @@
 JUJUTEST = yes | juju-test --timeout=60m -v -e "$(JUJU_ENV)"
 VENV = tests/.venv
 SYSDEPS = build-essential bzr libapt-pkg-dev libpython-dev python-virtualenv \
-	rsync xvfb
-
+	rsync xvfb charm-tools
 
 all: setup
 

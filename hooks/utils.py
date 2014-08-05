@@ -747,7 +747,7 @@ def save_or_create_certificates(
             'openssl', 'req', '-new', '-newkey', 'rsa:4096',
             '-days', '365', '-nodes', '-x509', '-subj',
             # These are arbitrary test values for the certificate.
-            '/C=GB/ST=Juju/L=GUI/O=Ubuntu/CN=juju.ubuntu.com',
+            '/C=GB/ST=Juju/L=GUI/O=Ubuntu/CN=your-jujugui.local',
             '-keyout', key_path, '-out', crt_path))
     # Generate the pem file.
     pem_path = os.path.join(ssl_cert_path, JUJU_PEM)

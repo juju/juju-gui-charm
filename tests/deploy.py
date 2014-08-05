@@ -32,7 +32,6 @@ from helpers import (
     wait_for_unit,
 )
 
-
 rsync = command('rsync', '-a',
                 '--exclude', '.git',
                 '--exclude', '.bzr',

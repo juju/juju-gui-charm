@@ -42,6 +42,8 @@ available as part of the charm tools package:
     sudo apt-get update
     sudo apt-get install charm-tools
 
+Note that **ppa:juju/devel does NOT subsume ppa:juju/stable. You must add ppa:juju/stable**.
+
 Before being able to run the suite, test requirements need to be installed
 running the command:
 
@@ -101,6 +103,19 @@ As seen before, "myenv" is the juju environment, as it is specified in your
 `~/.juju/environments.yaml`, that will be bootstrapped before running the
 tests and destroyed at the end of the test run.
 
+To run a test on a local environment, create an environment named "local"
+and type "local" like this:
+
+environments.yaml
+
+environments:
+  local:
+    type: local
+
+Then run:
+
+    make ftest JUJU_ENV="local"
+
 ## Running the Charm From Development ##
 
 If you have set up your environment to run your local development charm,
@@ -140,10 +155,10 @@ powerful tool to debug.
 When something goes wrong, on your local machine run
 `juju debug-hooks juju-gui/0` or similar.  This will initially put you on the
 unit that has the problem.  You can look at what is going on in
-`/var/lib/juju/units/[NAME OF UNIT]`.  There is a charm.log file to
-investigate, and a charm directory which contains the charm.  The charm
-directory contains the `juju-gui` and `juju` directories, so everything you
-need is there.
+`/var/lib/juju/agents/[NAME OF UNIT]` (or instead of agents use `containers`
+in the local environment. There is a charm.log file to investigate, and a 
+charm directory which contains the charm.  The charm directory contains the 
+`juju-gui` and `juju` directories, so everything you need is there.
 
 If juju recognized an error (for instance, the unit is in an "install-error"
 state) then you can do more.  In another terminal on your local machine, run
@@ -257,3 +272,27 @@ Sometimes, while debugging, it is convenient to restart the builtin server
 following in the Juju GUI machine:
 
     service guiserver restart
+
+## Proposing Branches ##
+
+We use [lbox](http://launchpad.net/lbox) to propose branches for review
+and submit them to the trunk. Gustavo Niemeyer has
+[a helpful blogpost](http://blog.labix.org/2011/11/17/launchpad-rietveld-happycodereviews)
+about this tool.
+
+To install lbox make sure you GOPATH is set and run go get launchpad.net/lbox.
+
+On first run lbox will attempt to launch sensible-browser or failing that
+$BROWSER to obtain oauth credentials to launchpad.  This is stored to
+$HOME/.lpad_oath .  You may want to chmod 0600 this file if your umask is more
+open by default.
+
+Next, to post to https://codereview.appspot.com, your google credentials are
+requested. This uses https://www.google.com/accounts/ClientLogin (You don't
+have to worry about plain text password over internet.) Cookies and oauth
+credentials get stored at $HOME/.goetveld_codereview.appspot.com . This time
+the file should default to mode 0600, but you can double check for your own
+security sanity.
+
+To post a review, bzr push to lp:~YOURNAME/charms/trusty/juju-gui/BRANCHNAME and
+run lbox propose. 
