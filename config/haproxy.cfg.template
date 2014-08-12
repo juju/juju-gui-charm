@@ -23,7 +23,8 @@ backend juju
     # The Juju WebSocket backend.
     # Re-encrypt outgoing connections.
     # Replace "/ws/" with "/" in any request path.
-    reqrep ^([^\ ]*)\ /ws/    \1\ /
+    # E.g. GET        /ws HTTP/1.1
+    reqrep ^([^\ ]*)\ /ws(.*)      \1\ /\2
     server ws1 {{api_address}} ssl check-ssl inter 500ms
 
 backend web
