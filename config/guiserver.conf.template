@@ -8,11 +8,11 @@ stop on runlevel [!2345]
 env https_proxy "{{https_proxy}}"
 {{endif}}
 
-{if http_proxy}}
+{{if http_proxy}}
 env http_proxy "{{http_proxy}}"
 {{endif}}
 
-{if no_proxy}}
+{{if no_proxy}}
 env no_proxy "{{no_proxy}}"
 {{endif}}
 
