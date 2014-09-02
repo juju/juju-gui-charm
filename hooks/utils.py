@@ -524,6 +524,9 @@ def write_builtin_server_startup(
         'serve_tests': serve_tests,
         'ssl_cert_path': ssl_cert_path,
         'charmworld_url': charmworld_url,
+        'http_proxy': os.environ.get('http_proxy'),
+        'https_proxy': os.environ.get('https_proxy'),
+        'no_proxy': os.environ.get('no_proxy', os.environ.get('NO_PROXY'))
     }
     if not sandbox:
         api_url = 'wss://{}'.format(get_api_address())
