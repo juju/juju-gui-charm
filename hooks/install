@@ -27,7 +27,7 @@ from shelltoolbox import (
 
 
 PYTHON_DEPENDENCIES = (
-    'libapt-pkg-dev', 'python-apt', 'python-launchpadlib', 'python-tempita',
+    'python-apt', 'python-launchpadlib', 'python-tempita',
     'python-yaml'
 )
 
