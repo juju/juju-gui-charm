@@ -23,6 +23,7 @@ import os
 import random
 import string
 import subprocess
+import ssl
 import time
 
 import websocket
@@ -210,6 +211,12 @@ def wait_for_unit(sevice):
             return unit
 
 
+SSLOPT = {
+    'cert_reqs': ssl.CERT_NONE,
+    'ssl_version': ssl.PROTOCOL_TLSv1,
+}
+
+
 class WebSocketClient(object):
     """A simple blocking WebSocket client used in functional tests."""
 
@@ -219,7 +226,7 @@ class WebSocketClient(object):
 
     def connect(self):
         """Connect to the WebSocket server."""
-        self._conn = websocket.create_connection(self._url)
+        self._conn = websocket.create_connection(self._url, sslopt=SSLOPT)
 
     def send(self, request):
         """Send the given WebSocket request.
