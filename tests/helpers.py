@@ -23,6 +23,7 @@ import os
 import random
 import string
 import subprocess
+import ssl
 import time
 
 import websocket
@@ -106,10 +107,13 @@ def retry(exception, tries=10, delay=1):
     return decorator
 
 
-def get_admin_secret():
-    """Return the admin secret for the current environment.
+def get_env_attr(attr):
+    """Return the requested attribute for the current environment.
 
+    The attr argument is the key included in the current environment section
+    in ~/.juju/environments.yaml.
     The environment name must be present in the JUJU_ENV env variable.
+
     Raise a ValueError if the environment is not found in the context or the
     given environment name is not included in ~/.juju/environments.yaml.
     """
@@ -134,10 +138,10 @@ def get_admin_secret():
         raise ValueError('Invalid YAML contents: {}'.format(environments))
     if environment is None:
         raise ValueError('Environment {} not found'.format(env))
-    admin_secret = environment.get('admin-secret')
-    if admin_secret is None:
-        raise ValueError('Admin secret not found')
-    return admin_secret
+    value = environment.get(attr)
+    if value is None:
+        raise ValueError('Attribute {} not found'.format(attr))
+    return value
 
 
 @retry(ProcessError)
@@ -210,6 +214,12 @@ def wait_for_unit(sevice):
             return unit
 
 
+SSLOPT = {
+    'cert_reqs': ssl.CERT_NONE,
+    'ssl_version': ssl.PROTOCOL_TLSv1,
+}
+
+
 class WebSocketClient(object):
     """A simple blocking WebSocket client used in functional tests."""
 
@@ -219,7 +229,7 @@ class WebSocketClient(object):
 
     def connect(self):
         """Connect to the WebSocket server."""
-        self._conn = websocket.create_connection(self._url)
+        self._conn = websocket.create_connection(self._url, sslopt=SSLOPT)
 
     def send(self, request):
         """Send the given WebSocket request.
