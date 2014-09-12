@@ -28,7 +28,7 @@ import yaml
 
 from helpers import (
     command,
-    get_admin_secret,
+    get_env_attr,
     juju,
     juju_destroy_service,
     juju_env,
@@ -271,11 +271,11 @@ class TestRetry(unittest.TestCase):
         self.assertGreater(mock_callable.call_count, 1)
 
 
-class TestGetAdminSecret(unittest.TestCase):
+class TestGetEnvAttr(unittest.TestCase):
 
     def mock_environment_file(self, contents, juju_env=None):
         """Create a mock environment file containing the given contents."""
-        # Create a temporary home that will be used by get_admin_secret().
+        # Create a temporary home that will be used by get_env_attr().
         home = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, home)
         # Create a juju home.
@@ -309,7 +309,7 @@ class TestGetAdminSecret(unittest.TestCase):
         expected = 'Unable to retrieve the current environment name.'
         with self.mock_environment_file(''):
             with self.assert_error(expected):
-                get_admin_secret()
+                get_env_attr('attr-name')
 
     def test_no_file(self):
         # A ValueError is raised if the environments file is not found.
@@ -318,42 +318,42 @@ class TestGetAdminSecret(unittest.TestCase):
         expected = 'Unable to open environments file: [Errno 2] No such file'
         with mock.patch('os.environ', {'HOME': home, 'JUJU_ENV': 'ec2'}):
             with self.assert_error(expected):
-                get_admin_secret()
+                get_env_attr('attr-name')
 
     def test_invalid_yaml(self):
         # A ValueError is raised if the environments file is not well formed.
         with self.mock_environment_file(':', juju_env='ec2'):
             with self.assert_error('Unable to parse environments file:'):
-                get_admin_secret()
+                get_env_attr('attr-name')
 
     def test_invalid_yaml_contents(self):
         # A ValueError is raised if the environments file is not well formed.
         with self.mock_environment_file('a-string', juju_env='ec2'):
             with self.assert_error('Invalid YAML contents: a-string'):
-                get_admin_secret()
+                get_env_attr('attr-name')
 
     def test_no_env(self):
         # A ValueError is raised if the environment is not found in the YAML.
         contents = yaml.safe_dump({'environments': {'local': {}}})
         with self.mock_environment_file(contents, juju_env='ec2'):
             with self.assert_error('Environment ec2 not found'):
-                get_admin_secret()
+                get_env_attr('attr-name')
 
-    def test_no_admin_secret(self):
-        # A ValueError is raised if the admin secret is not included in the
-        # environment info.
+    def test_attribute_not_found(self):
+        # A ValueError is raised if the requested attribute is not included in
+        # the environment info.
         contents = yaml.safe_dump({'environments': {'ec2': {}}})
         with self.mock_environment_file(contents, juju_env='ec2'):
-            with self.assert_error('Admin secret not found'):
-                get_admin_secret()
+            with self.assert_error('Attribute attr-name not found'):
+                get_env_attr('attr-name')
 
     def test_ok(self):
-        # The environment admin secret is correctly returned.
+        # The environment attribute value is correctly returned.
         contents = yaml.safe_dump({
-            'environments': {'ec2': {'admin-secret': 'Secret!'}},
+            'environments': {'ec2': {'attr-name': 'Value!'}},
         })
         with self.mock_environment_file(contents, juju_env='ec2'):
-            self.assertEqual('Secret!', get_admin_secret())
+            self.assertEqual('Value!', get_env_attr('attr-name'))
 
 
 @mock.patch('helpers.ssh')

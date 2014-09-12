@@ -34,7 +34,7 @@ import yaml
 # DeployTestMixin.juju_deploy instead.  See comment in the method.
 from deploy import juju_deploy
 from helpers import (
-    get_admin_secret,
+    get_env_attr,
     juju_destroy_service,
     juju_status,
     make_service_name,
@@ -45,22 +45,26 @@ import example
 JUJU_GUI_TEST_BRANCH = 'https://github.com/juju/juju-gui.git master'
 
 try:
-    admin_secret = get_admin_secret()
+    admin_secret = get_env_attr('admin-secret')
 except ValueError as err:
     admin_secret = None
     print(err)
+
+# If the suite is using a local environment, then the charm cannot be
+# co-located to machine 0, and a new machine must be created for each charm
+# deployment.
+try:
+    env_type = get_env_attr('type')
+except ValueError as err:
+    # This should never happen, but if it does, defensively assume a new
+    # machine is always required.
+    force_machine = None
+    print(err)
+else:
+    force_machine = None if env_type == 'local' else 0
+
 bootstrap_node_series = juju_status()['machines']['0']['series']
 
-"""
-If JUJU_ENV is defined to local, then the --to is not
-used as it is not needed in the local env. Otherwise, the
-default placing of the deployed GUI charm is on machine 0
-with a --to 0
-"""
-forced_machine = 0
-env_par = os.getenv('JUJU_ENV')
-if env_par == "local":
-    forced_machine = None
 
 def juju_deploy_gui(options=None):
     """Deploy the Juju GUI charm with the given options.
@@ -73,7 +77,7 @@ def juju_deploy_gui(options=None):
     service_name = make_service_name(prefix='juju-gui-')
     unit_info = juju_deploy(
         'juju-gui', service_name=service_name, options=options,
-        force_machine=forced_machine, series=bootstrap_node_series)
+        force_machine=force_machine, series=bootstrap_node_series)
     return service_name, unit_info
 
 
