@@ -25,7 +25,9 @@
 
 futures==2.1.4
 tornado==3.1.1
-websocket-client==0.12.0
-jujuclient==0.17.5
-juju-deployer==0.3.9
+six==1.8.0
+backports.ssl_match_hostname==3.4.0.2
+websocket-client==0.18.0
+jujuclient==0.18.4
+juju-deployer==0.4.1
 charmworldlib==0.3.0
