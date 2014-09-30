@@ -1,11 +1,12 @@
 .emacs*
-tags
 exec.d/*
+juju-plugins
+juju-test
 npm-cache.tgz
+revision
 server/build
 server/dist
 server/MANIFEST
 tests/.venv
 tests/download-cache
-juju-plugins
-juju-test
+tags
