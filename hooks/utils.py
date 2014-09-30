@@ -720,7 +720,8 @@ def setup_gui(release_tarball):
     uncompress = command('tar', '-x', '-a', '-C', release_dir, '-f')
     cmd_log(uncompress(release_tarball))
     # Link the Juju GUI dir to the contents of the release tarball.
-    cmd_log(run('ln', '-sf', first_path_in_dir(release_dir), JUJU_GUI_DIR))
+    cmd_log(run('rm', '-rf', JUJU_GUI_DIR))
+    cmd_log(run('ln', '-s', first_path_in_dir(release_dir), JUJU_GUI_DIR))
 
 
 def save_or_create_certificates(
