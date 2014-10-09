@@ -1,0 +1,12 @@
+tests: "[0-9]*"
+reset: false
+packages:
+  - build-essential
+  - bzr
+  - charm-tools
+  - firefox
+  - libapt-pkg-dev
+  - libpython-dev
+  - python-virtualenv
+  - rsync
+  - xvfb
