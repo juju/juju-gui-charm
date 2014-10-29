@@ -1,0 +1,13 @@
+bootstrap: false
+reset: false
+tests: "none"
+packages:
+  - build-essential
+  - bzr
+  - libapt-pkg-dev
+  - libpython-dev
+  - python-virtualenv
+  - rsync
+  - xvfb
+  - charm-tools
+  - firefox
