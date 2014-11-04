@@ -202,6 +202,9 @@ class TestDeployOptions(DeployTestMixin, unittest.TestCase):
         server_info = self.get_builtin_server_info(hostname)
         self.assertTrue(server_info['sandbox'])
 
+    @unittest.skipIf(
+        bootstrap_node_series == 'precise',
+        'deploying from git branches is not supported on precise')
     def test_branch_source(self):
         # Ensure the Juju GUI is correctly deployed from a Git branch.
         options = {'juju-gui-source': JUJU_GUI_TEST_BRANCH}
