@@ -18,7 +18,7 @@ name: juju-gui
 summary: User interface for Juju (development)
 maintainer: Juju GUI Team <juju-gui@lists.launchpad.net>
 description: Web GUI for Juju
-categories: ["applications"]
+tags: ["ops"]
 provides:
   web:
     interface: http
