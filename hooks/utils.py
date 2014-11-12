@@ -37,6 +37,7 @@ __all__ = [
     'get_release_file_path',
     'install_missing_packages',
     'log_hook',
+    'modify_open_ports',
     'parse_source',
     'prime_npm_cache',
     'remove_apache_setup',
@@ -71,8 +72,10 @@ from launchpadlib.launchpad import Launchpad
 import tempita
 
 from charmhelpers import (
+    close_port,
     get_config,
     log,
+    open_port,
     RESTART,
     service_control,
     STOP,
@@ -411,6 +414,26 @@ def write_gui_config(
         config_js_path = os.path.join(
             build_dir, 'juju-ui', 'assets', 'config.js')
     render_to_file('config.js.template', context, config_js_path)
+
+
+def modify_open_ports(config, prev_config):
+    """Open or close ports based on the supplied port config value."""
+    # If a custom port was previously defined we want to make sure we close it.
+    if 'port' in prev_config:
+        log('Closing previous port')
+        close_port(prev_config['port'])
+    if 'port' in config:
+        log('Using user provided port instead of defaults')
+        # Make sure that the default ports are closed when setting the custom
+        # port.
+        close_port(80)
+        close_port(443)
+        # Open the custom defined port.
+        open_port(config['port'])
+    else:
+        log('Using default ports');
+        open_port(80)
+        open_port(443)
 
 
 def setup_haproxy_config(ssl_cert_path, secure=True):

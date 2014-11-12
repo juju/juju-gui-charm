@@ -133,9 +133,7 @@ class GuiMixin(object):
             cached_fonts=config['cached-fonts'], ga_key=config['ga-key'],
             show_get_juju_button=config['show-get-juju-button'],
             password=config.get('password'))
-        # Expose the service.
-        open_port(80)
-        open_port(443)
+        utils.modify_open_ports(backend.config, backend.prev_config)
 
 
 class ServerInstallMixinBase(object):
