@@ -21,6 +21,9 @@ exec /usr/bin/python /usr/local/bin/runserver.py \
     --guiroot="{{gui_root}}" \
     --sslpath="{{ssl_cert_path}}" \
     --charmworldurl="{{charmworld_url}}" \
+    {{if port}}
+        --port="{{port}}" \
+    {{endif}}
     {{if sandbox}}
         --sandbox \
     {{else}}

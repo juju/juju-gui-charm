@@ -536,7 +536,8 @@ def install_builtin_server():
 
 def write_builtin_server_startup(
         gui_root, ssl_cert_path, serve_tests=False, sandbox=False,
-        builtin_server_logging='info', insecure=False, charmworld_url=''):
+        builtin_server_logging='info', insecure=False, charmworld_url='',
+        port=None):
     """Generate the builtin server Upstart file."""
     log('Generating the builtin server Upstart file.')
     context = {
@@ -549,7 +550,8 @@ def write_builtin_server_startup(
         'charmworld_url': charmworld_url,
         'http_proxy': os.environ.get('http_proxy'),
         'https_proxy': os.environ.get('https_proxy'),
-        'no_proxy': os.environ.get('no_proxy', os.environ.get('NO_PROXY'))
+        'no_proxy': os.environ.get('no_proxy', os.environ.get('NO_PROXY')),
+        'port': port
     }
     if not sandbox:
         api_url = 'wss://{}'.format(get_api_address())
@@ -565,12 +567,12 @@ def write_builtin_server_startup(
 
 def start_builtin_server(
         build_dir, ssl_cert_path, serve_tests, sandbox, builtin_server_logging,
-        insecure, charmworld_url):
+        insecure, charmworld_url, port=None):
     """Start the builtin server."""
     write_builtin_server_startup(
         build_dir, ssl_cert_path, serve_tests=serve_tests, sandbox=sandbox,
         builtin_server_logging=builtin_server_logging, insecure=insecure,
-        charmworld_url=charmworld_url)
+        charmworld_url=charmworld_url, port=port)
     log('Starting the builtin server.')
     with su('root'):
         service_control(BUILTIN_SERVER, RESTART)

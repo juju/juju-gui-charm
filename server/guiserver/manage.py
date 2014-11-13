@@ -120,6 +120,7 @@ def setup():
     define(
         'charmworldurl', type=str,
         help='The URL to use for Charmworld.')
+    define('port', type=str, help='User defined port to run the server on')
 
     # In Tornado, parsing the options also sets up the default logger.
     parse_command_line()
@@ -133,13 +134,18 @@ def setup():
 
 def run():
     """Run the server"""
+    port = options.port
     if options.insecure:
         # Run the server over an insecure HTTP connection.
-        server().listen(80)
+        if not port:
+            port = 80
+        server().listen(port)
     else:
         # Default configuration: run the server over a secure HTTPS connection.
-        server().listen(443, ssl_options=_get_ssl_options())
-        redirector().listen(80)
+        if not port:
+            port = 443
+            redirector().listen(80)
+        server().listen(port, ssl_options=_get_ssl_options())
     version = guiserver.get_version()
     logging.info('starting Juju GUI server v{}'.format(version))
     IOLoop.instance().start()
