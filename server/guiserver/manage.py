@@ -120,7 +120,11 @@ def setup():
     define(
         'charmworldurl', type=str,
         help='The URL to use for Charmworld.')
-    define('port', type=str, help='User defined port to run the server on')
+    define(
+        'port', type=str,
+        help='User defined port to run the server on. If no port is defined '
+             'the server will be started on 80 and 443 as per the default '
+             'port options from the charm.')
 
     # In Tornado, parsing the options also sets up the default logger.
     parse_command_line()

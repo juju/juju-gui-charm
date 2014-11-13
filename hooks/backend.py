@@ -44,7 +44,6 @@ import shutil
 
 from charmhelpers import (
     log,
-    open_port,
 )
 
 import utils
@@ -191,9 +190,7 @@ class BuiltinServerMixin(ServerInstallMixinBase):
 
     def start(self, backend):
         config = backend.config
-        port = None
-        if 'port' in config:
-            port = config['port']
+        port = config.get('port')
         build_dir = utils.compute_build_dir(
             config['juju-gui-debug'], config['serve-tests'])
         utils.start_builtin_server(

@@ -420,10 +420,10 @@ def modify_open_ports(config, prev_config):
     """Open or close ports based on the supplied port config value."""
     # If a custom port was previously defined we want to make sure we close it.
     if 'port' in prev_config:
-        log('Closing previous port')
+        log('Closing previously opened user defined port.')
         close_port(prev_config['port'])
     if 'port' in config:
-        log('Using user provided port instead of defaults')
+        log('Using user provided port instead of defaults.')
         # Make sure that the default ports are closed when setting the custom
         # port.
         close_port(80)
@@ -431,7 +431,7 @@ def modify_open_ports(config, prev_config):
         # Open the custom defined port.
         open_port(config['port'])
     else:
-        log('Using default ports');
+        log('Using default ports')
         open_port(80)
         open_port(443)
 
@@ -551,7 +551,7 @@ def write_builtin_server_startup(
         'http_proxy': os.environ.get('http_proxy'),
         'https_proxy': os.environ.get('https_proxy'),
         'no_proxy': os.environ.get('no_proxy', os.environ.get('NO_PROXY')),
-        'port': port
+        'port': port,
     }
     if not sandbox:
         api_url = 'wss://{}'.format(get_api_address())
