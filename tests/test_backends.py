@@ -169,12 +169,12 @@ class TestBackendCommands(unittest.TestCase):
             'install_missing_packages': mock.patch(
                 'backend.utils.install_missing_packages'),
             'log': mock.patch('backend.log'),
-            'open_port': mock.patch('backend.open_port'),
             'parse_source': mock.patch(
                 'backend.utils.parse_source', mock_parse_source),
             'save_or_create_certificates': mock.patch(
                 'backend.utils.save_or_create_certificates'),
             'setup_gui': mock.patch('backend.utils.setup_gui'),
+            'setup_ports': mock.patch('backend.utils.setup_ports'),
             'start_builtin_server': mock.patch(
                 'backend.utils.start_builtin_server'),
             'start_haproxy_apache': mock.patch(
@@ -280,7 +280,7 @@ class TestBackendCommands(unittest.TestCase):
         mocks.compute_build_dir.assert_called_with(
             config['juju-gui-debug'], config['serve-tests'])
         self.assert_write_gui_config_called(mocks, config)
-        mocks.open_port.assert_has_calls([mock.call(80), mock.call(443)])
+        mocks.setup_ports.assert_called_once_with(None, None)
         mocks.start_haproxy_apache.assert_called_once_with(
             mocks.compute_build_dir(), config['serve-tests'],
             self.ssl_cert_path, config['secure'])
@@ -295,13 +295,26 @@ class TestBackendCommands(unittest.TestCase):
         mocks.compute_build_dir.assert_called_with(
             config['juju-gui-debug'], config['serve-tests'])
         self.assert_write_gui_config_called(mocks, config)
-        mocks.open_port.assert_has_calls([mock.call(80), mock.call(443)])
+        mocks.setup_ports.assert_called_once_with(None, None)
         mocks.start_builtin_server.assert_called_once_with(
             mocks.compute_build_dir(), self.ssl_cert_path,
             config['serve-tests'], config['sandbox'],
             config['builtin-server-logging'], not config['secure'],
-            config['charmworld-url'])
+            config['charmworld-url'], port=None)
         self.assertFalse(mocks.start_haproxy_apache.called)
+
+    def test_start_go_builtin_user_provided_port(self):
+        # Start a juju backend with builtin server and a user provided port.
+        config = self.make_config({'builtin-server': True, 'port': 8080})
+        test_backend = backend.Backend(config=config)
+        with self.mock_all() as mocks:
+            test_backend.start()
+        mocks.setup_ports.assert_called_once_with(None, 8080)
+        mocks.start_builtin_server.assert_called_once_with(
+            mocks.compute_build_dir(), self.ssl_cert_path,
+            config['serve-tests'], config['sandbox'],
+            config['builtin-server-logging'], not config['secure'],
+            config['charmworld-url'], port=8080)
 
     def test_stop_go_legacy(self):
         # Stop a juju-core backend with legacy server.
