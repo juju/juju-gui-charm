@@ -80,7 +80,7 @@ def _validate_range(option_name, min_value, max_value):
     Exit with an error if the value is not in the given range.
     """
     value = options[option_name]
-    if not (min_value <= value <= max_value):
+    if (value is not None) and not (min_value <= value <= max_value):
         sys.exit('error: the {} argument must be included between '
                  '{} and {}'.format(option_name, min_value, max_value))
 
