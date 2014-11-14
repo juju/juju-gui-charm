@@ -36,7 +36,8 @@ options:
         'https://github.com/mitechie/juju-gui.git @de5e61bf9fa') which will
         clone the git repository and then check out the specified commit
         before building the release.
-      - a URL: The release found at the given URL (ex: http://...) will be deployed.
+      - a URL: The release found at the given URL (ex: http://...) will be
+        deployed.
     type: string
     default: local
   juju-gui-debug:
@@ -49,6 +50,13 @@ options:
       Whether or not the console should be enabled for the browser.
     type: boolean
     default: false
+  port:
+    description: |
+      Supply a different port to host the GUI on besides the default 80 and
+      443. If the provided port is not a valid TCP port (ranging from 1 to
+      65535) the defaults are used.
+    type: int
+    default:
   command-log-file:
     description: |
       The log file where stdout and stderr should be sent for all commands

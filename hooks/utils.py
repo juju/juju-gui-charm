@@ -46,6 +46,7 @@ __all__ = [
     'setup_apache_config',
     'setup_gui',
     'setup_haproxy_config',
+    'setup_ports',
     'start_builtin_server',
     'start_haproxy_apache',
     'stop_builtin_server',
@@ -71,8 +72,10 @@ from launchpadlib.launchpad import Launchpad
 import tempita
 
 from charmhelpers import (
+    close_port,
     get_config,
     log,
+    open_port,
     RESTART,
     service_control,
     STOP,
@@ -413,6 +416,37 @@ def write_gui_config(
     render_to_file('config.js.template', context, config_js_path)
 
 
+# Simple checker function for port ranges.
+port_in_range = lambda port: 1 <= port <= 65535
+
+
+def setup_ports(previous_port, current_port):
+    """Open or close ports based on the supplied ports.
+
+    The given ports specify the previously provided and the current value.
+    They can be int numbers if the ports are specified, None otherwise, in
+    which case the default ones (80 and 443) are used.
+    """
+    # If a custom port was previously defined we want to make sure we close it.
+    if previous_port is not None and port_in_range(previous_port):
+        log('Closing user provided port {}.'.format(previous_port))
+        close_port(previous_port)
+    if current_port is not None:
+        if port_in_range(current_port):
+            # Ensure the default ports are closed when setting the custom one.
+            log('Closing default ports 80 and 443.')
+            close_port(80)
+            close_port(443)
+            # Open the custom defined port.
+            log('Opening user provided port {}.'.format(current_port))
+            open_port(current_port)
+            return
+        log('Ignoring provided port {}: not in range.'.format(current_port))
+    log('Opening default ports 80 and 443.')
+    open_port(80)
+    open_port(443)
+
+
 def setup_haproxy_config(ssl_cert_path, secure=True):
     """Generate the haproxy configuration file."""
     log('Setting up haproxy Upstart file.')
@@ -513,7 +547,8 @@ def install_builtin_server():
 
 def write_builtin_server_startup(
         gui_root, ssl_cert_path, serve_tests=False, sandbox=False,
-        builtin_server_logging='info', insecure=False, charmworld_url=''):
+        builtin_server_logging='info', insecure=False, charmworld_url='',
+        port=None):
     """Generate the builtin server Upstart file."""
     log('Generating the builtin server Upstart file.')
     context = {
@@ -526,7 +561,8 @@ def write_builtin_server_startup(
         'charmworld_url': charmworld_url,
         'http_proxy': os.environ.get('http_proxy'),
         'https_proxy': os.environ.get('https_proxy'),
-        'no_proxy': os.environ.get('no_proxy', os.environ.get('NO_PROXY'))
+        'no_proxy': os.environ.get('no_proxy', os.environ.get('NO_PROXY')),
+        'port': port,
     }
     if not sandbox:
         api_url = 'wss://{}'.format(get_api_address())
@@ -542,12 +578,15 @@ def write_builtin_server_startup(
 
 def start_builtin_server(
         build_dir, ssl_cert_path, serve_tests, sandbox, builtin_server_logging,
-        insecure, charmworld_url):
+        insecure, charmworld_url, port=None):
     """Start the builtin server."""
+    if (port is not None) and not port_in_range(port):
+        # Do not use the user provided port if it is not valid.
+        port = None
     write_builtin_server_startup(
         build_dir, ssl_cert_path, serve_tests=serve_tests, sandbox=sandbox,
         builtin_server_logging=builtin_server_logging, insecure=insecure,
-        charmworld_url=charmworld_url)
+        charmworld_url=charmworld_url, port=port)
     log('Starting the builtin server.')
     with su('root'):
         service_control(BUILTIN_SERVER, RESTART)

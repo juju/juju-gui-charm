@@ -48,12 +48,14 @@ from utils import (
     install_missing_packages,
     log_hook,
     parse_source,
+    port_in_range,
     remove_apache_setup,
     remove_haproxy_setup,
     render_to_file,
     save_or_create_certificates,
     setup_apache_config,
     setup_haproxy_config,
+    setup_ports,
     start_builtin_server,
     start_haproxy_apache,
     stop_builtin_server,
@@ -908,6 +910,16 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertNotIn('--sandbox', guiserver_conf)
         self.assertIn('--charmworldurl="http://charmworld.example.com/"',
                       guiserver_conf)
+        # By default the port is not provided to the GUI server.
+        self.assertNotIn('--port', guiserver_conf)
+
+    def test_write_builtin_server_startup_with_port(self):
+        # The builtin server Upstart file is properly generate when a
+        # customized port is provided.
+        write_builtin_server_startup(
+            JUJU_GUI_DIR, self.ssl_cert_path, port=8000)
+        guiserver_conf = self.files['guiserver.conf']
+        self.assertIn('--port=8000', guiserver_conf)
 
     def test_write_builtin_server_startup_sandbox_and_logging(self):
         # The upstart configuration file for the GUI server is correctly
@@ -927,7 +939,7 @@ class TestStartImprovAgentGui(unittest.TestCase):
         start_builtin_server(
             JUJU_GUI_DIR, self.ssl_cert_path, serve_tests=False, sandbox=False,
             builtin_server_logging='info', insecure=False,
-            charmworld_url='http://charmworld.example.com/')
+            charmworld_url='http://charmworld.example.com/', port=443)
         self.assertEqual(self.svc_ctl_call_count, 1)
         self.assertEqual(self.service_names, ['guiserver'])
         self.assertEqual(self.actions, [charmhelpers.RESTART])
@@ -1038,6 +1050,124 @@ class TestStartImprovAgentGui(unittest.TestCase):
             self.build_dir, cached_fonts=True, config_js_path='config')
         js_conf = self.files['config']
         self.assertIn('cachedFonts: true', js_conf)
+
+
+class TestPortInRange(unittest.TestCase):
+
+    def test_valid_port(self):
+        # True is returned if the port is in range.
+        for port in (1, 80, 443, 1234, 8080, 54321, 65535):
+            self.assertTrue(port_in_range(port), port)
+
+    def test_invalid_port(self):
+        # False is returned if the port is not in range.
+        for port in (-10, 0, 65536, 100000):
+            self.assertFalse(port_in_range(port), port)
+
+
+@mock.patch('utils.close_port')
+@mock.patch('utils.open_port')
+@mock.patch('utils.log')
+class TestSetupPorts(unittest.TestCase):
+
+    def test_default_ports(self, mock_log, mock_open_port, mock_close_port):
+        # The default ports are properly opened.
+        setup_ports(None, None)
+        mock_log.assert_called_once_with('Opening default ports 80 and 443.')
+        self.assertEqual(2, mock_open_port.call_count)
+        mock_open_port.assert_has_calls([mock.call(80), mock.call(443)])
+        self.assertFalse(mock_close_port.called)
+
+    def test_from_defaults_to_new_port(
+            self, mock_log, mock_open_port, mock_close_port):
+        # The user provides a customized port.
+        setup_ports(None, 8080)
+        self.assertEqual(2, mock_log.call_count)
+        mock_log.assert_has_calls([
+            mock.call('Closing default ports 80 and 443.'),
+            mock.call('Opening user provided port 8080.'),
+        ])
+        mock_open_port.assert_called_once_with(8080)
+        self.assertEqual(2, mock_close_port.call_count)
+        mock_close_port.assert_has_calls([mock.call(80), mock.call(443)])
+
+    def test_from_previous_port_to_new_port(
+            self, mock_log, mock_open_port, mock_close_port):
+        # The user switches from a previously provided port to a new one.
+        setup_ports(8080, 1234)
+        self.assertEqual(3, mock_log.call_count)
+        mock_log.assert_has_calls([
+            mock.call('Closing user provided port 8080.'),
+            # Always close the default ports in those cases.
+            mock.call('Closing default ports 80 and 443.'),
+            mock.call('Opening user provided port 1234.')
+        ])
+        mock_open_port.assert_called_once_with(1234)
+        self.assertEqual(3, mock_close_port.call_count)
+        mock_close_port.assert_has_calls([
+            mock.call(8080), mock.call(80), mock.call(443)])
+
+    def test_from_previous_port_to_defaults(
+            self, mock_log, mock_open_port, mock_close_port):
+        # The user provided a port and then switches back to defaults.
+        setup_ports(1234, None)
+        self.assertEqual(2, mock_log.call_count)
+        mock_log.assert_has_calls([
+            mock.call('Closing user provided port 1234.'),
+            mock.call('Opening default ports 80 and 443.'),
+        ])
+        self.assertEqual(2, mock_open_port.call_count)
+        mock_open_port.assert_has_calls([mock.call(80), mock.call(443)])
+        mock_close_port.assert_called_once_with(1234)
+
+    def test_from_previous_port_to_invalid(
+            self, mock_log, mock_open_port, mock_close_port):
+        # The user switches from a previously provided port to an invalid one.
+        setup_ports(8080, 0)
+        self.assertEqual(3, mock_log.call_count)
+        mock_log.assert_has_calls([
+            mock.call('Closing user provided port 8080.'),
+            mock.call('Ignoring provided port 0: not in range.'),
+            mock.call('Opening default ports 80 and 443.'),
+        ])
+        self.assertEqual(2, mock_open_port.call_count)
+        mock_open_port.assert_has_calls([mock.call(80), mock.call(443)])
+        mock_close_port.assert_called_once_with(8080)
+
+    def test_from_defaults_to_invalid(
+            self, mock_log, mock_open_port, mock_close_port):
+        # The user provides an invalid port.
+        setup_ports(None, 100000)
+        self.assertEqual(2, mock_log.call_count)
+        mock_log.assert_has_calls([
+            mock.call('Ignoring provided port 100000: not in range.'),
+            mock.call('Opening default ports 80 and 443.'),
+        ])
+        self.assertEqual(2, mock_open_port.call_count)
+        mock_open_port.assert_has_calls([mock.call(80), mock.call(443)])
+        self.assertFalse(mock_close_port.called)
+
+    def test_from_invalid_to_new_port(
+            self, mock_log, mock_open_port, mock_close_port):
+        # The user fixes a previously provided invalid port.
+        setup_ports(123456, 8000)
+        self.assertEqual(2, mock_log.call_count)
+        mock_log.assert_has_calls([
+            mock.call('Closing default ports 80 and 443.'),
+            mock.call('Opening user provided port 8000.')
+        ])
+        mock_open_port.assert_called_once_with(8000)
+        self.assertEqual(2, mock_close_port.call_count)
+        mock_close_port.assert_has_calls([mock.call(80), mock.call(443)])
+
+    def test_from_invalid_to_defaults(
+            self, mock_log, mock_open_port, mock_close_port):
+        # The user switches back to default after providing an invalid port.
+        setup_ports(0, None)
+        mock_log.assert_called_once_with('Opening default ports 80 and 443.')
+        self.assertEqual(2, mock_open_port.call_count)
+        mock_open_port.assert_has_calls([mock.call(80), mock.call(443)])
+        self.assertFalse(mock_close_port.called)
 
 
 @mock.patch('utils.run')
