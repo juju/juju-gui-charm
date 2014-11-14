@@ -910,6 +910,16 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertNotIn('--sandbox', guiserver_conf)
         self.assertIn('--charmworldurl="http://charmworld.example.com/"',
                       guiserver_conf)
+        # By default the port is not provided to the GUI server.
+        self.assertNotIn('--port', guiserver_conf)
+
+    def test_write_builtin_server_startup_with_port(self):
+        # The builtin server Upstart file is properly generate when a
+        # customized port is provided.
+        write_builtin_server_startup(
+            JUJU_GUI_DIR, self.ssl_cert_path, port=8000)
+        guiserver_conf = self.files['guiserver.conf']
+        self.assertIn('--port=8000', guiserver_conf)
 
     def test_write_builtin_server_startup_sandbox_and_logging(self):
         # The upstart configuration file for the GUI server is correctly
@@ -929,7 +939,7 @@ class TestStartImprovAgentGui(unittest.TestCase):
         start_builtin_server(
             JUJU_GUI_DIR, self.ssl_cert_path, serve_tests=False, sandbox=False,
             builtin_server_logging='info', insecure=False,
-            charmworld_url='http://charmworld.example.com/')
+            charmworld_url='http://charmworld.example.com/', port=443)
         self.assertEqual(self.svc_ctl_call_count, 1)
         self.assertEqual(self.service_names, ['guiserver'])
         self.assertEqual(self.actions, [charmhelpers.RESTART])

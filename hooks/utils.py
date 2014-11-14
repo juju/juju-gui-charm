@@ -421,7 +421,12 @@ port_in_range = lambda port: 1 <= port <= 65535
 
 
 def setup_ports(previous_port, current_port):
-    """Open or close ports based on the supplied ports."""
+    """Open or close ports based on the supplied ports.
+
+    The given ports specify the previously provided and the current value.
+    They can be int numbers if the ports are specified, None otherwise, in
+    which case the default ones (80 and 443) are used.
+    """
     # If a custom port was previously defined we want to make sure we close it.
     if previous_port is not None and port_in_range(previous_port):
         log('Closing user provided port {}.'.format(previous_port))
