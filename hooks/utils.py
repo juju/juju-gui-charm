@@ -416,15 +416,18 @@ def write_gui_config(
     render_to_file('config.js.template', context, config_js_path)
 
 
+# Simple checker function for port ranges.
+port_in_range = lambda port: 1 <= port <= 65535
+
+
 def setup_ports(previous_port, current_port):
     """Open or close ports based on the supplied port config value."""
-    in_range = lambda port: 1 <= port <= 65535
     # If a custom port was previously defined we want to make sure we close it.
-    if previous_port and in_range(previous_port):
-        log('Closing user provided port {}.'.fornat(previous_port))
+    if previous_port and port_in_range(previous_port):
+        log('Closing user provided port {}.'.format(previous_port))
         close_port(previous_port)
     if current_port:
-        if in_range(current_port):
+        if port_in_range(current_port):
             # Ensure the default ports are closed when setting the custom one.
             log('Closing default ports 80 and 443.')
             close_port(80)
@@ -572,6 +575,9 @@ def start_builtin_server(
         build_dir, ssl_cert_path, serve_tests, sandbox, builtin_server_logging,
         insecure, charmworld_url, port=None):
     """Start the builtin server."""
+    if (port is not None) and not port_in_range(port):
+        # Do not use the user provided port if it is not valid.
+        port = None
     write_builtin_server_startup(
         build_dir, ssl_cert_path, serve_tests=serve_tests, sandbox=sandbox,
         builtin_server_logging=builtin_server_logging, insecure=insecure,

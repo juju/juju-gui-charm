@@ -191,6 +191,9 @@ The builtin server provides the following functionalities:
 7. It supports deploying local charms by proxying browser HTTPS connections to
    the Juju HTTPS API backend. This also includes retrieving and listing local
    charms' files.
+8. By default, it listens on port 443 for HTTPS secure connections, and
+   redirects port 80 requests to port 443. The port where the server is
+   listening can be changed using the charm configuration "port" option.
 
 ### Legacy server ###
 
@@ -206,7 +209,8 @@ stick with the legacy server, be warned about the following limitations:
   Use it only if the charm is deployed on a precise machine.
 * The legacy server only provides features 1-4 from the list above. This means
   bundle deployments, timed authentication tokens and local charms are not
-  available when using the legacy configuration.
+  available when using the legacy configuration. Also changing the default port
+  where the server is listening is not supported on the legacy server.
 
 ## Contacting the Developers ##
 
