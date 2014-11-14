@@ -132,7 +132,10 @@ class GuiMixin(object):
             cached_fonts=config['cached-fonts'], ga_key=config['ga-key'],
             show_get_juju_button=config['show-get-juju-button'],
             password=config.get('password'))
-        utils.modify_open_ports(backend.config, backend.prev_config)
+        # Set up TCP ports.
+        previous_port = backend.prev_config.get('port')
+        current_port = backend.config.get('port')
+        utils.setup_ports(previous_port, current_port)
 
 
 class ServerInstallMixinBase(object):
@@ -190,13 +193,13 @@ class BuiltinServerMixin(ServerInstallMixinBase):
 
     def start(self, backend):
         config = backend.config
-        port = config.get('port')
         build_dir = utils.compute_build_dir(
             config['juju-gui-debug'], config['serve-tests'])
         utils.start_builtin_server(
             build_dir, config['ssl-cert-path'], config['serve-tests'],
             config['sandbox'], config['builtin-server-logging'],
-            not config['secure'], config['charmworld-url'], port=port)
+            not config['secure'], config['charmworld-url'],
+            port=config.get('port'))
 
     def stop(self, backend):
         utils.stop_builtin_server()

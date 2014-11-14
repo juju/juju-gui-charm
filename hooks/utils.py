@@ -37,7 +37,6 @@ __all__ = [
     'get_release_file_path',
     'install_missing_packages',
     'log_hook',
-    'modify_open_ports',
     'parse_source',
     'prime_npm_cache',
     'remove_apache_setup',
@@ -47,6 +46,7 @@ __all__ = [
     'setup_apache_config',
     'setup_gui',
     'setup_haproxy_config',
+    'setup_ports',
     'start_builtin_server',
     'start_haproxy_apache',
     'stop_builtin_server',
@@ -416,24 +416,27 @@ def write_gui_config(
     render_to_file('config.js.template', context, config_js_path)
 
 
-def modify_open_ports(config, prev_config):
+def setup_ports(previous_port, current_port):
     """Open or close ports based on the supplied port config value."""
+    in_range = lambda port: 1 <= port <= 65535
     # If a custom port was previously defined we want to make sure we close it.
-    if 'port' in prev_config:
-        log('Closing previously opened user defined port.')
-        close_port(prev_config['port'])
-    if 'port' in config:
-        log('Using user provided port instead of defaults.')
-        # Make sure that the default ports are closed when setting the custom
-        # port.
-        close_port(80)
-        close_port(443)
-        # Open the custom defined port.
-        open_port(config['port'])
-    else:
-        log('Using default ports')
-        open_port(80)
-        open_port(443)
+    if previous_port and in_range(previous_port):
+        log('Closing user provided port {}.'.fornat(previous_port))
+        close_port(previous_port)
+    if current_port:
+        if in_range(current_port):
+            # Ensure the default ports are closed when setting the custom one.
+            log('Closing default ports 80 and 443.')
+            close_port(80)
+            close_port(443)
+            # Open the custom defined port.
+            log('Opening user provided port {}.'.format(current_port))
+            open_port(current_port)
+            return
+        log('Ignoring provided port {}: not in range.'.format(current_port))
+    log('Opening default ports 80 and 443.')
+    open_port(80)
+    open_port(443)
 
 
 def setup_haproxy_config(ssl_cert_path, secure=True):
