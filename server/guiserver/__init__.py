@@ -37,7 +37,7 @@ requests to the juju-core HTTPS server. Responses are propagated to the client
 which originally made the request.
 """
 
-VERSION = (0, 4, 0)
+VERSION = (0, 4, 1)
 
 
 def get_version():

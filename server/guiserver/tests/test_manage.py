@@ -126,6 +126,31 @@ class TestValidateChoices(ValidatorTestMixin, unittest.TestCase):
                 manage._validate_choices('arg1', self.choices)
 
 
+class TestValidateRange(ValidatorTestMixin, unittest.TestCase):
+
+    value_range = (1, 10)
+    error = 'error: the {} argument must be included between {} and {}'
+
+    def test_success(self):
+        # The validation passes if the value is included in the range.
+        for value in range(1, 11):
+            with mock.patch('guiserver.manage.options', {'arg1': value}):
+                manage._validate_range('arg1', *self.value_range)
+
+    def test_failure_invalid_range(self):
+        # The validation fails if the value is not in range.
+        error = self.error.format('arg1', *self.value_range)
+        for value in (-50, 0, 11, 100):
+            with mock.patch('guiserver.manage.options', {'arg1': value}):
+                with self.assert_sysexit(error):
+                    manage._validate_range('arg1', *self.value_range)
+
+    def test_success_missing(self):
+        # The validation succeeds if the value is missing.
+        with mock.patch('guiserver.manage.options', {'arg1': None}):
+            manage._validate_range('arg1', *self.value_range)
+
+
 class TestGetSslOptions(unittest.TestCase):
 
     def test_options(self):
@@ -141,6 +166,11 @@ class TestGetSslOptions(unittest.TestCase):
 
 class TestRun(LogTrapTestCase, unittest.TestCase):
 
+    expected_ssl_options = {
+        'certfile': '/my/sslpath/juju.crt',
+        'keyfile': '/my/sslpath/juju.key',
+    }
+
     def mock_and_run(self, **kwargs):
         """Run the application after mocking the IO loop and the options/apps.
 
@@ -149,6 +179,7 @@ class TestRun(LogTrapTestCase, unittest.TestCase):
         options = {
             'apiversion': 'go',
             'guiroot': '/my/guiroot',
+            'port': None,
             'sslpath': '/my/sslpath',
         }
         options.update(kwargs)
@@ -163,19 +194,32 @@ class TestRun(LogTrapTestCase, unittest.TestCase):
     def test_secure_mode(self):
         # The application is correctly run in secure mode.
         _, redirector_listen, server_listen = self.mock_and_run(insecure=False)
-        expected_ssl_options = {
-            'certfile': '/my/sslpath/juju.crt',
-            'keyfile': '/my/sslpath/juju.key',
-        }
         redirector_listen.assert_called_once_with(80)
         server_listen.assert_called_once_with(
-            443, ssl_options=expected_ssl_options)
+            443, ssl_options=self.expected_ssl_options)
 
     def test_insecure_mode(self):
         # The application is correctly run in insecure mode.
         _, redirector_listen, server_listen = self.mock_and_run(insecure=True)
-        self.assertEqual(0, redirector_listen.call_count)
+        self.assertFalse(redirector_listen.called)
         server_listen.assert_called_once_with(80)
+
+    def test_customized_port_secure_mode(self):
+        # If the user provided a port, the server starts listening on that port
+        # and the redirector is not used.
+        _, redirector_listen, server_listen = self.mock_and_run(
+            insecure=False, port=8080)
+        self.assertFalse(redirector_listen.called)
+        server_listen.assert_called_once_with(
+            8080, ssl_options=self.expected_ssl_options)
+
+    def test_customized_port_insecure_mode(self):
+        # The application is correctly run in insecure mode with a user
+        # provided port.
+        _, redirector_listen, server_listen = self.mock_and_run(
+            insecure=True, port=12345)
+        self.assertFalse(redirector_listen.called)
+        server_listen.assert_called_once_with(12345)
 
     def test_ioloop_started(self):
         # The IO loop instance is started when the application is run.

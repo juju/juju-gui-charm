@@ -73,6 +73,18 @@ def _validate_choices(option_name, choices):
             option_name, ', '.join(choices)))
 
 
+def _validate_range(option_name, min_value, max_value):
+    """Ensure the numeric value passed for the given option is in range.
+
+    The range is defined by min_value and max_value.
+    Exit with an error if the value is not in the given range.
+    """
+    value = options[option_name]
+    if (value is not None) and not (min_value <= value <= max_value):
+        sys.exit('error: the {} argument must be included between '
+                 '{} and {}'.format(option_name, min_value, max_value))
+
+
 def _get_ssl_options():
     """Return a Tornado SSL options dict.
 
@@ -120,11 +132,17 @@ def setup():
     define(
         'charmworldurl', type=str,
         help='The URL to use for Charmworld.')
+    define(
+        'port', type=int,
+        help='User defined port to run the server on. If no port is defined '
+             'the server will be started on 80 and 443 as per the default '
+             'port options from the charm.')
 
     # In Tornado, parsing the options also sets up the default logger.
     parse_command_line()
     _validate_required('guiroot')
     _validate_choices('apiversion', ('go', 'python'))
+    _validate_range('port', 1, 65535)
     _add_debug(logging.getLogger())
     # Configure the asynchronous HTTP client used by proxy handlers.
     AsyncHTTPClient.configure(
@@ -133,13 +151,19 @@ def setup():
 
 def run():
     """Run the server"""
+    port = options.port
     if options.insecure:
         # Run the server over an insecure HTTP connection.
-        server().listen(80)
+        if port is None:
+            port = 80
+        server().listen(port)
     else:
         # Default configuration: run the server over a secure HTTPS connection.
-        server().listen(443, ssl_options=_get_ssl_options())
-        redirector().listen(80)
+        if port is None:
+            port = 443
+            redirector().listen(80)
+        server().listen(port, ssl_options=_get_ssl_options())
     version = guiserver.get_version()
     logging.info('starting Juju GUI server v{}'.format(version))
+    logging.info('listening on port {}'.format(port))
     IOLoop.instance().start()

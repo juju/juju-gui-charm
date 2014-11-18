@@ -83,8 +83,6 @@ def juju_deploy_gui(options=None):
 
 class DeployTestMixin(object):
 
-    port = '443'
-
     def setUp(self):
         # Perform all graphical operations in memory.
         vdisplay = Xvfb(width=1280, height=720)
@@ -115,14 +113,14 @@ class DeployTestMixin(object):
                 error='Browser warning dialog not found.')
             continue_button.click()
 
-    def navigate_to(self, hostname, path='/'):
+    def navigate_to(self, hostname, port=443, path='/'):
         """Load a page using the current Selenium driver.
 
         The page URL is calculated using the provided *hostname* and *path*.
         Retry loading the page until the page is found or a timeout exception
         is raised.
         """
-        base_url = 'https://{}:{}'.format(hostname, self.port)
+        base_url = 'https://{}:{}'.format(hostname, port)
         url = urlparse.urljoin(base_url, path)
 
         def page_ready(driver):
@@ -237,6 +235,15 @@ class TestDeployOptions(DeployTestMixin, unittest.TestCase):
         self.assertIn('max-age=0', cache_directives)
         self.assertIn('public', cache_directives)
         self.assertIn('must-revalidate', cache_directives)
+
+    def test_different_port(self):
+        # The port on which the server listens can be successfully changed.
+        options = {'port': 8080}
+        self.service_name, unit_info = juju_deploy_gui(options=options)
+        hostname = unit_info['public-address']
+        self.navigate_to(hostname, port=8080)
+        self.handle_browser_warning()
+        self.assertEnvironmentIsConnected()
 
 
 class TestBuiltinServerLocalRelease(DeployTestMixin, unittest.TestCase):
