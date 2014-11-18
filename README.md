@@ -18,9 +18,10 @@ and Internet Explorer web browsers.
 
 ## Demo and Staging Servers ##
 
-The Juju GUI runs the Juju Charm Store on
-[jujucharms.com](http://jujucharms.com).  From there,  you can browse charms,
-try the GUI, and build an example environment to export for use elsewhere.
+The Juju GUI runs a Demo environment on
+[demo.jujucharms.com](http://demo.jujucharms.com).  From there,  you can browse
+charms, try the GUI, and build an example environment to export for use
+elsewhere.
 
 A [staging server](http://comingsoon.jujucharms.com/) is also available,
 running the latest and greatest version.
@@ -31,7 +32,7 @@ running the latest and greatest version.
 opinionated command-line tool that quickly starts Juju and the GUI, whether
 you've never installed Juju or you have an existing Juju environment running.
 
-For installation on precise and saucy, you'll need to enable the Juju PPA by
+For installation on precise and utopic, you'll need to enable the Juju PPA by
 first executing:
 
     sudo add-apt-repository ppa:juju/stable
