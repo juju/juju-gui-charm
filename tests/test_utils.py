@@ -778,6 +778,9 @@ class TestCmdLog(unittest.TestCase):
 
 
 class TestStartImprovAgentGui(unittest.TestCase):
+    # XXX frankban 2014-12-10: change this test case so that functions being
+    # tested are better separated. Also avoid manually patching helper
+    # functions and use the mock library instead.
 
     def setUp(self):
         self.service_names = []
@@ -801,6 +804,7 @@ class TestStartImprovAgentGui(unittest.TestCase):
 
         def run(*args):
             self.run_call_count += 1
+            return ''
 
         @contextmanager
         def su(user):
@@ -1063,11 +1067,21 @@ class TestStartImprovAgentGui(unittest.TestCase):
     def test_write_gui_config_with_version_from_jujud(self):
         # If not provided as an option, the Juju version is dynamically
         # retrieved and included in the GUI config file.
-        with mock.patch('utils.run', return_value='1.42.47'):
+        with mock.patch('utils.run', return_value='1.42.47\n'):
             write_gui_config(
                 False, None, True, True, self.charmworld_url, self.build_dir,
-                config_js_path='config',)
+                config_js_path='config')
         self.assertIn('jujuCoreVersion: "1.42.47"', self.files['config'])
+
+    def test_write_gui_config_with_provided_empty_version(self):
+        # If the provided Juju version is empty, the Juju version is still
+        # dynamically retrieved and included in the GUI config file.
+        with mock.patch('utils.run', return_value='1.20.13-trusty-amd64\n'):
+            write_gui_config(
+                False, None, True, True, self.charmworld_url, self.build_dir,
+                config_js_path='config', juju_core_version='')
+        self.assertIn(
+            'jujuCoreVersion: "1.20.13-trusty-amd64"', self.files['config'])
 
 
 class TestPortInRange(unittest.TestCase):

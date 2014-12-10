@@ -393,9 +393,9 @@ def write_gui_config(
                 'using juju-quickstart '
                 '(https://launchpad.net/juju-quickstart) can automate logging '
                 'in, as well as other parts of installing and starting Juju.')
-    if juju_core_version is None:
+    if not juju_core_version:
         log('Retrieving Juju version.')
-        juju_core_version = run('jujud', '--version')
+        juju_core_version = run('jujud', '--version').strip()
 
     context = {
         'cached_fonts': json.dumps(cached_fonts),
