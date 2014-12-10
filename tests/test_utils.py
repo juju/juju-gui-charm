@@ -1051,19 +1051,23 @@ class TestStartImprovAgentGui(unittest.TestCase):
         js_conf = self.files['config']
         self.assertIn('cachedFonts: true', js_conf)
 
-    def test_write_gui_config_with_core_version(self):
+    def test_write_gui_config_with_provided_version(self):
+        # The Juju version is included in the GUI config file when provided as
+        # an option.
         write_gui_config(
             False, 'This is login help.', False, False, self.charmworld_url,
             self.build_dir, sandbox=True, juju_core_version='1.20',
             config_js_path='config')
         self.assertIn('jujuCoreVersion: "1.20"', self.files['config'])
 
-    def test_write_gui_config_help_with_env_name_from_jujud(self):
-        with mock.patch('shelltoolbox.run', return_value='1.39'):
+    def test_write_gui_config_with_version_from_jujud(self):
+        # If not provided as an option, the Juju version is dynamically
+        # retrieved and included in the GUI config file.
+        with mock.patch('utils.run', return_value='1.42.47'):
             write_gui_config(
                 False, None, True, True, self.charmworld_url, self.build_dir,
                 config_js_path='config',)
-        self.assertIn('jujuCoreVersion: "1.39"', self.files['config'])
+        self.assertIn('jujuCoreVersion: "1.42.47"', self.files['config'])
 
 
 class TestPortInRange(unittest.TestCase):

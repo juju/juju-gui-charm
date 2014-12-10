@@ -348,7 +348,7 @@ def write_gui_config(
         console_enabled, login_help, readonly, charmworld_url,
         build_dir, secure=True, sandbox=False, cached_fonts=False,
         show_get_juju_button=False, config_js_path=None, ga_key='',
-        password=None, juju_core_version=None):
+        juju_core_version=None, password=None):
     """Generate the GUI configuration file."""
     log('Generating the Juju GUI configuration file.')
     user = 'user-admin'
@@ -394,6 +394,7 @@ def write_gui_config(
                 '(https://launchpad.net/juju-quickstart) can automate logging '
                 'in, as well as other parts of installing and starting Juju.')
     if juju_core_version is None:
+        log('Retrieving Juju version.')
         juju_core_version = run('jujud', '--version')
 
     context = {
