@@ -147,6 +147,7 @@ class TestBackendCommands(unittest.TestCase):
             'secure': True,
             'serve-tests': False,
             'show-get-juju-button': False,
+            'juju-core-version': '1.21',
             'ssl-cert-path': self.ssl_cert_path,
         }
         if options is not None:
@@ -200,6 +201,7 @@ class TestBackendCommands(unittest.TestCase):
             mocks.compute_build_dir(), secure=config['secure'],
             sandbox=config['sandbox'], cached_fonts=config['cached-fonts'],
             ga_key=config['ga-key'],
+            juju_core_version=config['juju-core-version'],
             show_get_juju_button=config['show-get-juju-button'], password=None)
 
     def test_base_dir_created(self):

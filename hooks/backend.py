@@ -131,6 +131,7 @@ class GuiMixin(object):
             build_dir, secure=config['secure'], sandbox=config['sandbox'],
             cached_fonts=config['cached-fonts'], ga_key=config['ga-key'],
             show_get_juju_button=config['show-get-juju-button'],
+            juju_core_version=config['juju-core-version'],
             password=config.get('password'))
         # Set up TCP ports.
         previous_port = backend.prev_config.get('port')

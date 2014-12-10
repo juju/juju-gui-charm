@@ -25,5 +25,6 @@ var juju_config = {
   sandbox: {{sandbox}},
   GA_key: {{ga_key}},
   login_help: {{login_help}},
-  showGetJujuButton: {{show_get_juju_button}}
+  showGetJujuButton: {{show_get_juju_button}},
+  jujuCoreVersion: {{juju_core_version}}
 };
