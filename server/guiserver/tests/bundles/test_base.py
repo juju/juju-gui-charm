@@ -34,7 +34,7 @@ from guiserver.bundles import (
 from guiserver.tests import helpers
 
 
-def import_bundle_mock(apiurl, password, name, bundle, options):
+def import_bundle_mock(apiurl, username, password, name, bundle, options):
     """Used to test bundle deployment failures.
 
     This function is defined at module level so that it can be easily pickled
@@ -105,7 +105,7 @@ class TestDeployer(helpers.BundlesTestMixin, LogTrapTestCase, AsyncTestCase):
         with self.patch_validate() as mock_validate:
             yield deployer.validate(self.user, 'bundle', self.bundle)
         mock_validate.assert_called_once_with(
-            self.apiurl, self.user.password, self.bundle)
+            self.apiurl, self.user.username, self.user.password, self.bundle)
         mock_validate.assert_called_in_a_separate_process()
 
     @gen_test
@@ -137,8 +137,8 @@ class TestDeployer(helpers.BundlesTestMixin, LogTrapTestCase, AsyncTestCase):
         # Wait for the deployment to be completed.
         self.wait()
         mock_import_bundle.assert_called_once_with(
-            self.apiurl, self.user.password, 'bundle', self.bundle,
-            deployer.importer_options)
+            self.apiurl, self.user.username, self.user.password, 'bundle',
+            self.bundle, deployer.importer_options)
         mock_import_bundle.assert_called_in_a_separate_process()
 
     def test_options_are_fully_populated(self):
