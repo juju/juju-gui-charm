@@ -135,6 +135,7 @@ class TestBackendCommands(unittest.TestCase):
             'builtin-server-logging': 'info',
             'cached-fonts': False,
             'charmworld-url': 'http://charmworld.example.com/',
+            'charmstore-url': 'http://charmstore.example.com/',
             'command-log-file': self.command_log_file,
             'ga-key': 'my-key',
             'juju-gui-debug': False,
@@ -198,9 +199,9 @@ class TestBackendCommands(unittest.TestCase):
         mocks.write_gui_config.assert_called_once_with(
             config['juju-gui-console-enabled'], config['login-help'],
             config['read-only'], config['charmworld-url'],
-            mocks.compute_build_dir(), secure=config['secure'],
-            sandbox=config['sandbox'], cached_fonts=config['cached-fonts'],
-            ga_key=config['ga-key'],
+            config['charmstore-url'], mocks.compute_build_dir(),
+            secure=config['secure'], sandbox=config['sandbox'],
+            cached_fonts=config['cached-fonts'], ga_key=config['ga-key'],
             juju_core_version=config['juju-core-version'],
             show_get_juju_button=config['show-get-juju-button'], password=None)
 

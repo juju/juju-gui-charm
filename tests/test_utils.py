@@ -790,6 +790,7 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.fake_zk_address = '192.168.5.26'
         self.build_dir = 'juju-gui/build-'
         self.charmworld_url = 'http://charmworld.example.com/'
+        self.charmstore_url = 'http://charmstore.example.com/'
         self.ssl_cert_path = 'ssl/cert/path'
 
         # Monkey patches.
@@ -958,7 +959,7 @@ class TestStartImprovAgentGui(unittest.TestCase):
     def test_write_gui_config(self):
         write_gui_config(
             False, 'This is login help.', True, self.charmworld_url,
-            self.build_dir, config_js_path='config',
+            self.charmstore_url, self.build_dir, config_js_path='config',
             ga_key='UA-123456')
         js_conf = self.files['config']
         self.assertIn('cachedFonts: false', js_conf)
@@ -969,14 +970,17 @@ class TestStartImprovAgentGui(unittest.TestCase):
         self.assertIn('readOnly: true', js_conf)
         self.assertIn("socket_url: 'wss://", js_conf)
         self.assertIn('socket_protocol: "wss"', js_conf)
-        self.assertIn('charmworldURL: "http://charmworld.example.com/"',
-                      js_conf)
+        self.assertIn(
+            'charmworldURL: "http://charmworld.example.com/"', js_conf)
+        self.assertIn(
+            'charmstoreURL: "http://charmstore.example.com/"', js_conf)
         self.assertIn('GA_key: "UA-123456"', js_conf)
 
     def test_write_gui_config_insecure(self):
         write_gui_config(
             False, 'This is login help.', True, self.charmworld_url,
-            self.build_dir, secure=False, config_js_path='config')
+            self.charmstore_url, self.build_dir, secure=False,
+            config_js_path='config')
         js_conf = self.files['config']
         self.assertIn("socket_url: 'ws://", js_conf)
         self.assertIn('socket_protocol: "ws"', js_conf)
@@ -984,7 +988,7 @@ class TestStartImprovAgentGui(unittest.TestCase):
     def test_write_gui_config_default_sandbox_backend(self):
         write_gui_config(
             False, 'This is login help.', True, self.charmworld_url,
-            self.build_dir, config_js_path='config',
+            self.charmstore_url, self.build_dir, config_js_path='config',
             password='kumquat', sandbox=True)
         js_conf = self.files['config']
         # Because this is sandbox, the apiBackend is always go.
@@ -993,7 +997,7 @@ class TestStartImprovAgentGui(unittest.TestCase):
     def test_write_gui_config_default_go_password(self):
         write_gui_config(
             False, 'This is login help.', True, True, self.charmworld_url,
-            self.build_dir, config_js_path='config',
+            self.charmstore_url, self.build_dir, config_js_path='config',
             password='kumquat')
         js_conf = self.files['config']
         self.assertIn('user: "user-admin"', js_conf)
@@ -1004,8 +1008,8 @@ class TestStartImprovAgentGui(unittest.TestCase):
         # environment name is available.
         with mock.patch('os.environ', {'JUJU_ENV_NAME': 'my-env'}):
             write_gui_config(
-                False, None, True, True, self.charmworld_url, self.build_dir,
-                config_js_path='config',)
+                False, None, True, True, self.charmworld_url,
+                self.charmstore_url, self.build_dir, config_js_path='config')
         js_conf = self.files['config']
         expected_help = (
             'login_help: "The password is the admin-secret from the Juju '
@@ -1017,8 +1021,8 @@ class TestStartImprovAgentGui(unittest.TestCase):
     def test_write_gui_config_help_without_env_name(self):
         # The login help points to the path where to find the jenv files.
         write_gui_config(
-            False, None, True, True, self.charmworld_url, self.build_dir,
-            config_js_path='config',)
+            False, None, True, True, self.charmworld_url, self.charmstore_url,
+            self.build_dir, config_js_path='config',)
         js_conf = self.files['config']
         expected_help = (
             'login_help: "The password for newer Juju clients can be found by '
@@ -1035,7 +1039,8 @@ class TestStartImprovAgentGui(unittest.TestCase):
     def test_write_gui_config_sandbox(self):
         write_gui_config(
             False, 'This is login help.', False, False, self.charmworld_url,
-            self.build_dir, sandbox=True, config_js_path='config')
+            self.charmstore_url, self.build_dir, sandbox=True,
+            config_js_path='config')
         js_conf = self.files['config']
         self.assertIn('sandbox: true', js_conf)
         self.assertIn('user: "user-admin"', js_conf)
@@ -1044,14 +1049,15 @@ class TestStartImprovAgentGui(unittest.TestCase):
     def test_write_gui_config_with_button(self):
         write_gui_config(
             False, 'This is login help.', False, False, self.charmworld_url,
-            self.build_dir, sandbox=True, show_get_juju_button=True,
-            config_js_path='config')
+            self.charmstore_url, self.build_dir, sandbox=True,
+            show_get_juju_button=True, config_js_path='config')
         self.assertIn('showGetJujuButton: true', self.files['config'])
 
     def test_write_gui_config_cached_fonts(self):
         write_gui_config(
             False, 'This is login help.', False, False, self.charmworld_url,
-            self.build_dir, cached_fonts=True, config_js_path='config')
+            self.charmstore_url, self.build_dir, cached_fonts=True,
+            config_js_path='config')
         js_conf = self.files['config']
         self.assertIn('cachedFonts: true', js_conf)
 
@@ -1060,8 +1066,8 @@ class TestStartImprovAgentGui(unittest.TestCase):
         # an option.
         write_gui_config(
             False, 'This is login help.', False, False, self.charmworld_url,
-            self.build_dir, sandbox=True, juju_core_version='1.20',
-            config_js_path='config')
+            self.charmstore_url, self.build_dir, sandbox=True,
+            juju_core_version='1.20', config_js_path='config')
         self.assertIn('jujuCoreVersion: "1.20"', self.files['config'])
 
     def test_write_gui_config_with_version_from_jujud(self):
@@ -1069,8 +1075,8 @@ class TestStartImprovAgentGui(unittest.TestCase):
         # retrieved and included in the GUI config file.
         with mock.patch('utils.run', return_value='1.42.47\n'):
             write_gui_config(
-                False, None, True, True, self.charmworld_url, self.build_dir,
-                config_js_path='config')
+                False, None, True, True, self.charmworld_url,
+                self.charmstore_url, self.build_dir, config_js_path='config')
         self.assertIn('jujuCoreVersion: "1.42.47"', self.files['config'])
 
     def test_write_gui_config_with_provided_empty_version(self):
@@ -1078,8 +1084,9 @@ class TestStartImprovAgentGui(unittest.TestCase):
         # dynamically retrieved and included in the GUI config file.
         with mock.patch('utils.run', return_value='1.20.13-trusty-amd64\n'):
             write_gui_config(
-                False, None, True, True, self.charmworld_url, self.build_dir,
-                config_js_path='config', juju_core_version='')
+                False, None, True, True, self.charmworld_url,
+                self.charmstore_url, self.build_dir, config_js_path='config',
+                juju_core_version='')
         self.assertIn(
             'jujuCoreVersion: "1.20.13-trusty-amd64"', self.files['config'])
 

@@ -128,8 +128,9 @@ class GuiMixin(object):
         utils.write_gui_config(
             config['juju-gui-console-enabled'], config.get('login-help'),
             config['read-only'], config['charmworld-url'],
-            build_dir, secure=config['secure'], sandbox=config['sandbox'],
-            cached_fonts=config['cached-fonts'], ga_key=config['ga-key'],
+            config['charmstore-url'], build_dir, secure=config['secure'],
+            sandbox=config['sandbox'], cached_fonts=config['cached-fonts'],
+            ga_key=config['ga-key'],
             show_get_juju_button=config['show-get-juju-button'],
             juju_core_version=config.get('juju-core-version'),
             password=config.get('password'))
