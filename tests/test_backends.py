@@ -147,7 +147,7 @@ class TestBackendCommands(unittest.TestCase):
             'sandbox': False,
             'secure': True,
             'serve-tests': False,
-            'show-get-juju-button': False,
+            'hide-login-button': False,
             'juju-core-version': '1.21',
             'ssl-cert-path': self.ssl_cert_path,
         }
@@ -203,7 +203,7 @@ class TestBackendCommands(unittest.TestCase):
             secure=config['secure'], sandbox=config['sandbox'],
             cached_fonts=config['cached-fonts'], ga_key=config['ga-key'],
             juju_core_version=config['juju-core-version'],
-            show_get_juju_button=config['show-get-juju-button'], password=None)
+            hide_login_button=config['hide-login-button'], password=None)
 
     def test_base_dir_created(self):
         # The base Juju GUI directory is correctly created.

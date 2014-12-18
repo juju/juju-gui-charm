@@ -1050,8 +1050,8 @@ class TestStartImprovAgentGui(unittest.TestCase):
         write_gui_config(
             False, 'This is login help.', False, False, self.charmworld_url,
             self.charmstore_url, self.build_dir, sandbox=True,
-            show_get_juju_button=True, config_js_path='config')
-        self.assertIn('showGetJujuButton: true', self.files['config'])
+            hide_login_button=False, config_js_path='config')
+        self.assertIn('hideLoginButton: false', self.files['config'])
 
     def test_write_gui_config_cached_fonts(self):
         write_gui_config(

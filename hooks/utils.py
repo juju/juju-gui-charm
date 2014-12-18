@@ -347,7 +347,7 @@ def compute_build_dir(juju_gui_debug, serve_tests):
 def write_gui_config(
         console_enabled, login_help, readonly, charmworld_url, charmstore_url,
         build_dir, secure=True, sandbox=False, cached_fonts=False,
-        show_get_juju_button=False, config_js_path=None, ga_key='',
+        hide_login_button=False, config_js_path=None, ga_key='',
         juju_core_version=None, password=None):
     """Generate the GUI configuration file."""
     log('Generating the Juju GUI configuration file.')
@@ -412,7 +412,7 @@ def write_gui_config(
         'charmworld_url': json.dumps(charmworld_url),
         'charmstore_url': json.dumps(charmstore_url),
         'ga_key': json.dumps(ga_key),
-        'show_get_juju_button': json.dumps(show_get_juju_button),
+        'hide_login_button': json.dumps(hide_login_button),
         'juju_core_version': json.dumps(juju_core_version),
     }
     if config_js_path is None:

@@ -157,11 +157,11 @@ options:
       allow us to improve our tool based on your experience.
     type: string
     default: UA-41463568-2
-  show-get-juju-button:
+  hide-login-button:
     description: |
       There are deployment modes for Juju GUI which are not intended as regular
       use mode. In these cases, login/logout are disabled and instead there is
-      a link to juju.ubuntu.com
+      a link to jujucharms.com.
     type: boolean
     default: false
   builtin-server:
