@@ -92,6 +92,13 @@ class TestCloneRequest(unittest.TestCase):
         self.assertEqual('POST', request.method)
         self.assertTrue(request.validate_cert)
 
+    def test_request_body(self):
+        # An empty body is set to None.
+        original = httpserver.HTTPRequest('GET', '/test/', body='')
+        request = utils.clone_request(original, 'http://example.com/test')
+        self.assertEqual('http://example.com/test', request.url)
+        self.assertIsNone(request.body)
+
     def test_avoid_validating_certs(self):
         # It is possible to avoid TLS certificates validation.
         request = utils.clone_request(
