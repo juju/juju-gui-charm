@@ -44,8 +44,8 @@ def clone_request(request, url, validate_cert=True):
     usually an instance of tornado.httpserver.HTTPRequest.
     """
     return httpclient.HTTPRequest(
-        url, body=request.body, headers=request.headers, method=request.method,
-        validate_cert=validate_cert)
+        url, body=request.body or None, headers=request.headers,
+        method=request.method, validate_cert=validate_cert)
 
 
 def get_headers(request, websocket_url):
