@@ -17,7 +17,6 @@
 """Juju GUI server websocket clients."""
 
 from tornado import (
-    concurrent,
     httpclient,
     websocket,
 )
