@@ -4,10 +4,10 @@ tests: "none"
 packages:
   - build-essential
   - bzr
+  - charm-tools
+  - firefox
   - libapt-pkg-dev
   - libpython-dev
   - python-virtualenv
   - rsync
   - xvfb
-  - charm-tools
-  - firefox
