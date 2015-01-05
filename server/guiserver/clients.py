@@ -60,7 +60,6 @@ class WebSocketClientConnection(websocket.WebSocketClientConnection):
         """
         super(WebSocketClientConnection, self).__init__(io_loop, request)
         self._on_message_callback = on_message_callback
-        self.close_future = concurrent.Future()
 
     def on_message(self, message):
         """Hook called when a new message is received.
@@ -69,17 +68,3 @@ class WebSocketClientConnection(websocket.WebSocketClientConnection):
         """
         super(WebSocketClientConnection, self).on_message(message)
         self._on_message_callback(message)
-
-    def close(self):
-        """Close the client connection.
-
-        Return a Future that is fired when the connection is terminated.
-        """
-        self.stream.close()
-        return self.close_future
-
-    def _on_close(self):
-        """Fire the close_future and send a None message."""
-        super(WebSocketClientConnection, self)._on_close()
-        # Since this is just a notification the Future result is set to None.
-        self.close_future.set_result(None)

@@ -184,7 +184,7 @@ class TestWebSocketHandlerConnection(
     def test_connection_closed_by_client(self):
         # The proxy connection is terminated when the client disconnects.
         client = yield self.make_client()
-        yield client.close()
+        client.close()
         yield self.api_close_future
 
     @gen_test
