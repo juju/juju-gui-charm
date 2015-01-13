@@ -128,6 +128,12 @@ options:
       catalog data will be drawn.
     type: string
     default: https://manage.jujucharms.com/
+  charmstore-url:
+    description: |
+      The URL of the charm store API service. This option supersedes the
+      charmworld-url option above.
+    type: string
+    default: https://api.jujucharms.com/charmstore/
   repository-location:
     description: |
       The charm depends on several software packages that are not packaged in
@@ -151,11 +157,11 @@ options:
       allow us to improve our tool based on your experience.
     type: string
     default: UA-41463568-2
-  show-get-juju-button:
+  hide-login-button:
     description: |
       There are deployment modes for Juju GUI which are not intended as regular
       use mode. In these cases, login/logout are disabled and instead there is
-      a link to juju.ubuntu.com
+      a link to jujucharms.com.
     type: boolean
     default: false
   builtin-server:
@@ -193,3 +199,9 @@ options:
       fonts will let the GUI load much faster and render properly.
     type: boolean
     default: false
+  juju-core-version:
+    description: |
+      The version of Juju tools used for the charm deployment. If left empty,
+      the Juju version is dynamically retrieved.
+    type: string
+    default:

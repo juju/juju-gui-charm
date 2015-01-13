@@ -88,7 +88,7 @@ class TestWebSocketClientConnection(AsyncHTTPSTestCase, helpers.WSSTestMixin):
     def test_connection_close(self):
         # The client connection is correctly terminated.
         client = yield self.connect()
-        yield client.close()
+        client.close()
         message = yield client.read_message()
         self.assertIsNone(message)
         yield self.server_closed_future
