@@ -14,10 +14,11 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-JUJUTEST = yes | juju-test --timeout=60m -v -e "$(JUJU_ENV)"
+JUJUTEST = yes | juju-test --timeout=60m -v --upload-tools -e "$(JUJU_ENV)"
 VENV = tests/.venv
-SYSDEPS = build-essential bzr libapt-pkg-dev libpython-dev python-virtualenv \
-	rsync xvfb charm-tools
+# Keep SYSDEPS in sync with tests/tests.yaml.
+SYSDEPS = build-essential bzr charm-tools firefox libapt-pkg-dev \
+	libpython-dev python-virtualenv rsync xvfb
 
 all: setup
 

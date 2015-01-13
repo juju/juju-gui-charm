@@ -135,6 +135,7 @@ class TestBackendCommands(unittest.TestCase):
             'builtin-server-logging': 'info',
             'cached-fonts': False,
             'charmworld-url': 'http://charmworld.example.com/',
+            'charmstore-url': 'http://charmstore.example.com/',
             'command-log-file': self.command_log_file,
             'ga-key': 'my-key',
             'juju-gui-debug': False,
@@ -146,7 +147,8 @@ class TestBackendCommands(unittest.TestCase):
             'sandbox': False,
             'secure': True,
             'serve-tests': False,
-            'show-get-juju-button': False,
+            'hide-login-button': False,
+            'juju-core-version': '1.21',
             'ssl-cert-path': self.ssl_cert_path,
         }
         if options is not None:
@@ -197,10 +199,11 @@ class TestBackendCommands(unittest.TestCase):
         mocks.write_gui_config.assert_called_once_with(
             config['juju-gui-console-enabled'], config['login-help'],
             config['read-only'], config['charmworld-url'],
-            mocks.compute_build_dir(), secure=config['secure'],
-            sandbox=config['sandbox'], cached_fonts=config['cached-fonts'],
-            ga_key=config['ga-key'],
-            show_get_juju_button=config['show-get-juju-button'], password=None)
+            config['charmstore-url'], mocks.compute_build_dir(),
+            secure=config['secure'], sandbox=config['sandbox'],
+            cached_fonts=config['cached-fonts'], ga_key=config['ga-key'],
+            juju_core_version=config['juju-core-version'],
+            hide_login_button=config['hide-login-button'], password=None)
 
     def test_base_dir_created(self):
         # The base Juju GUI directory is correctly created.

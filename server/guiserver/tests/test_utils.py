@@ -51,7 +51,7 @@ class TestAddFuture(AsyncTestCase):
         Callbacks in this test case store their results in self.result.
         """
         self.assertTrue(self.future.done())
-        yield self.future
+        self.wait()
         self.assertEqual(result, self.result)
 
     @gen_test
@@ -59,6 +59,7 @@ class TestAddFuture(AsyncTestCase):
         # A callback without args is correctly called.
         def callback(future):
             self.result = 'future said: ' + future.result()
+            self.stop()
         utils.add_future(self.io_loop, self.future, callback)
         self.future.set_result('I am done')
         yield self.assert_done('future said: I am done')
@@ -68,6 +69,7 @@ class TestAddFuture(AsyncTestCase):
         # A callback with args is correctly called.
         def callback(arg1, arg2, future):
             self.result = [arg1, arg2, future.result()]
+            self.stop()
         utils.add_future(self.io_loop, self.future, callback, 1, 2)
         self.future.set_result(3)
         yield self.assert_done([1, 2, 3])
@@ -89,6 +91,13 @@ class TestCloneRequest(unittest.TestCase):
         self.assertEqual({'Content-Type': 'application/json'}, request.headers)
         self.assertEqual('POST', request.method)
         self.assertTrue(request.validate_cert)
+
+    def test_request_body(self):
+        # An empty body is set to None.
+        original = httpserver.HTTPRequest('GET', '/test/', body='')
+        request = utils.clone_request(original, 'http://example.com/test')
+        self.assertEqual('http://example.com/test', request.url)
+        self.assertIsNone(request.body)
 
     def test_avoid_validating_certs(self):
         # It is possible to avoid TLS certificates validation.

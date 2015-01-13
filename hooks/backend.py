@@ -128,9 +128,11 @@ class GuiMixin(object):
         utils.write_gui_config(
             config['juju-gui-console-enabled'], config.get('login-help'),
             config['read-only'], config['charmworld-url'],
-            build_dir, secure=config['secure'], sandbox=config['sandbox'],
-            cached_fonts=config['cached-fonts'], ga_key=config['ga-key'],
-            show_get_juju_button=config['show-get-juju-button'],
+            config['charmstore-url'], build_dir, secure=config['secure'],
+            sandbox=config['sandbox'], cached_fonts=config['cached-fonts'],
+            ga_key=config['ga-key'],
+            hide_login_button=config['hide-login-button'],
+            juju_core_version=config.get('juju-core-version'),
             password=config.get('password'))
         # Set up TCP ports.
         previous_port = backend.prev_config.get('port')

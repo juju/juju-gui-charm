@@ -345,10 +345,10 @@ def compute_build_dir(juju_gui_debug, serve_tests):
 
 
 def write_gui_config(
-        console_enabled, login_help, readonly, charmworld_url,
+        console_enabled, login_help, readonly, charmworld_url, charmstore_url,
         build_dir, secure=True, sandbox=False, cached_fonts=False,
-        show_get_juju_button=False, config_js_path=None, ga_key='',
-        password=None):
+        hide_login_button=False, config_js_path=None, ga_key='',
+        juju_core_version=None, password=None):
     """Generate the GUI configuration file."""
     log('Generating the Juju GUI configuration file.')
     user = 'user-admin'
@@ -393,6 +393,9 @@ def write_gui_config(
                 'using juju-quickstart '
                 '(https://launchpad.net/juju-quickstart) can automate logging '
                 'in, as well as other parts of installing and starting Juju.')
+    if not juju_core_version:
+        log('Retrieving Juju version.')
+        juju_core_version = run('jujud', '--version').strip()
 
     context = {
         'cached_fonts': json.dumps(cached_fonts),
@@ -407,8 +410,10 @@ def write_gui_config(
         'protocol': json.dumps(protocol),
         'sandbox': json.dumps(sandbox),
         'charmworld_url': json.dumps(charmworld_url),
+        'charmstore_url': json.dumps(charmstore_url),
         'ga_key': json.dumps(ga_key),
-        'show_get_juju_button': json.dumps(show_get_juju_button),
+        'hide_login_button': json.dumps(hide_login_button),
+        'juju_core_version': json.dumps(juju_core_version),
     }
     if config_js_path is None:
         config_js_path = os.path.join(

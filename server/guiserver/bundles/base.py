@@ -116,7 +116,8 @@ class Deployer(object):
             raise gen.Return('unsupported API version: {}'.format(apiversion))
         try:
             yield self._validate_executor.submit(
-                blocking.validate, self._apiurl, user.password, bundle)
+                blocking.validate, self._apiurl, user.username, user.password,
+                bundle)
         except Exception as err:
             raise gen.Return(str(err))
 
@@ -149,7 +150,8 @@ class Deployer(object):
         # to be called when the import process completes.
         future = self._run_executor.submit(
             blocking.import_bundle,
-            self._apiurl, user.password, name, bundle, self.importer_options)
+            self._apiurl, user.username, user.password, name, bundle,
+            self.importer_options)
         add_future(self._io_loop, future, self._import_callback,
                    deployment_id, bundle_id)
         self._futures[deployment_id] = future
