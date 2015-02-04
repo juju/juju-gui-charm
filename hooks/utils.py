@@ -348,7 +348,7 @@ def write_gui_config(
         console_enabled, login_help, readonly, charmworld_url, charmstore_url,
         build_dir, secure=True, sandbox=False, cached_fonts=False,
         hide_login_button=False, config_js_path=None, ga_key='',
-        juju_core_version=None, password=None):
+        juju_core_version=None, password=None, juju_env_uuid=None):
     """Generate the GUI configuration file."""
     log('Generating the Juju GUI configuration file.')
     user = 'user-admin'
@@ -414,6 +414,7 @@ def write_gui_config(
         'ga_key': json.dumps(ga_key),
         'hide_login_button': json.dumps(hide_login_button),
         'juju_core_version': json.dumps(juju_core_version),
+        'juju_env_uuid': json.dumps(juju_env_uuid)
     }
     if config_js_path is None:
         config_js_path = os.path.join(

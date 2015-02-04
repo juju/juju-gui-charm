@@ -133,7 +133,8 @@ class GuiMixin(object):
             ga_key=config['ga-key'],
             hide_login_button=config['hide-login-button'],
             juju_core_version=config.get('juju-core-version'),
-            password=config.get('password'))
+            password=config.get('password'),
+            juju_env_uuid=os.getenv('JUJU_ENV_UUID', None))
         # Set up TCP ports.
         previous_port = backend.prev_config.get('port')
         current_port = backend.config.get('port')
