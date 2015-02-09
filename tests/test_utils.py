@@ -976,6 +976,16 @@ class TestStartImprovAgentGui(unittest.TestCase):
             'charmstoreURL: "http://charmstore.example.com/"', js_conf)
         self.assertIn('GA_key: "UA-123456"', js_conf)
 
+    def test_write_gui_config_uuid(self):
+        # If the environment has the JUJU_ENV_UUID argument then it should
+        # populate the config with the value.
+        with mock.patch('os.environ', {'JUJU_ENV_UUID': 'long-uuid'}):
+            write_gui_config(
+                False, None, True, True, self.charmworld_url,
+                self.charmstore_url, self.build_dir, config_js_path='config',
+                juju_env_uuid=os.getenv('JUJU_ENV_UUID', None))
+        self.assertIn('jujuEnvUUID: "long-uuid"', self.files['config'])
+
     def test_write_gui_config_insecure(self):
         write_gui_config(
             False, 'This is login help.', True, self.charmworld_url,

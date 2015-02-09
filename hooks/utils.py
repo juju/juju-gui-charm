@@ -414,7 +414,7 @@ def write_gui_config(
         'ga_key': json.dumps(ga_key),
         'hide_login_button': json.dumps(hide_login_button),
         'juju_core_version': json.dumps(juju_core_version),
-        'juju_env_uuid': json.dumps(juju_env_uuid)
+        'juju_env_uuid': json.dumps(juju_env_uuid),
     }
     if config_js_path is None:
         config_js_path = os.path.join(
