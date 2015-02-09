@@ -86,7 +86,7 @@ class TestDeployer(helpers.BundlesTestMixin, LogTrapTestCase, AsyncTestCase):
         # None is returned if the validation succeeds.
         deployer = self.make_deployer()
         with self.patch_validate():
-            result = yield deployer.validate(self.user, 'bundle', self.bundle)
+            result = yield deployer.validate(self.user, self.bundle)
         self.assertIsNone(result)
 
     @gen_test
@@ -95,7 +95,7 @@ class TestDeployer(helpers.BundlesTestMixin, LogTrapTestCase, AsyncTestCase):
         deployer = self.make_deployer()
         error = ValueError('validation error')
         with self.patch_validate(side_effect=error):
-            result = yield deployer.validate(self.user, 'bundle', self.bundle)
+            result = yield deployer.validate(self.user, self.bundle)
         self.assertEqual(str(error), result)
 
     @gen_test
@@ -103,7 +103,7 @@ class TestDeployer(helpers.BundlesTestMixin, LogTrapTestCase, AsyncTestCase):
         # The validation is executed in a separate process.
         deployer = self.make_deployer()
         with self.patch_validate() as mock_validate:
-            yield deployer.validate(self.user, 'bundle', self.bundle)
+            yield deployer.validate(self.user, self.bundle)
         mock_validate.assert_called_once_with(
             self.apiurl, self.user.username, self.user.password, self.bundle)
         mock_validate.assert_called_in_a_separate_process()
@@ -112,7 +112,7 @@ class TestDeployer(helpers.BundlesTestMixin, LogTrapTestCase, AsyncTestCase):
     def test_unsupported_api_version(self):
         # An error message is returned the API version is not supported.
         deployer = self.make_deployer(apiversion='not-supported')
-        result = yield deployer.validate(self.user, 'bundle', self.bundle)
+        result = yield deployer.validate(self.user, self.bundle)
         self.assertEqual('unsupported API version: not-supported', result)
 
     def test_import_bundle_scheduling(self):

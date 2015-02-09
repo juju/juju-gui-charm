@@ -97,7 +97,7 @@ class Deployer(object):
         self.importer_options = blocking.get_default_guiserver_options()
 
     @gen.coroutine
-    def validate(self, user, name, bundle):
+    def validate(self, user, bundle):
         """Validate the deployment bundle.
 
         The validation is executed in a separate process using the
@@ -105,7 +105,6 @@ class Deployer(object):
 
         Three arguments are provided:
           - user: the current authenticated user;
-          - name: then name of the bundle to be imported;
           - bundle: a YAML decoded object representing the bundle contents.
 
         Return a Future whose result is a string representing an error or None
@@ -272,26 +271,46 @@ class DeployMiddleware(object):
         self._deployer = deployer
         self._write_response = write_response
         self.routes = {
-            'Import': views.import_bundle,
+            'Import': views.import_bundle_v3,
+            'Import_v4': views.import_bundle_v4,
             'Watch': views.watch,
             'Next': views.next,
             'Cancel': views.cancel,
             'Status': views.status,
         }
 
-    def requested(self, data):
-        """Return True if data is a deployment request, False otherwise."""
+    def requested_v3(self, data):
+        """Return True if data is a v3 deployment request, False otherwise."""
         return (
             'RequestId' in data and
             data.get('Type') == 'Deployer' and
             data.get('Request') in self.routes
         )
 
+    def requested_v4(self, data):
+        """Return True if data is a v4 deployment request, False otherwise."""
+        return (
+            'RequestId' in data and
+            data.get('Type') == 'DeployerV4' and
+            data.get('Request') in self.routes
+        )
+
     @gen.coroutine
-    def process_request(self, data):
-        """Process a deployment request."""
+    def process_request_v3(self, data):
+        """Process a v3 deployment request."""
         request_id = data['RequestId']
         view = self.routes[data['Request']]
+        request = ObjectDict(params=data.get('Params', {}), user=self._user)
+        response = yield view(request, self._deployer)
+        response['RequestId'] = request_id
+        self._write_response(response)
+
+    @gen.coroutine
+    def process_request_v4(self, data):
+        """Process a v4 deployment request."""
+        request_id = data['RequestId']
+        view = self.routes[data['Request'] if data['Request'] is not 'Import' \
+                           else 'Import_v4']
         request = ObjectDict(params=data.get('Params', {}), user=self._user)
         response = yield view(request, self._deployer)
         response['RequestId'] = request_id
