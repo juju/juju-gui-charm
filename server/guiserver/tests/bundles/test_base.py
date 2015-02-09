@@ -431,7 +431,7 @@ class TestDeployMiddleware(helpers.BundlesTestMixin, AsyncTestCase):
             self.make_deployment_request('Status'),
         )
         for request in requests:
-            requested = self.deployment.requested(request)
+            requested = self.deployment.requested_v3(request)
             self.assertTrue(requested, request)
 
     def test_deployment_not_requested(self):
@@ -471,7 +471,7 @@ class TestDeployMiddleware(helpers.BundlesTestMixin, AsyncTestCase):
             },
         )
         for request in requests:
-            requested = self.deployment.requested(request)
+            requested = self.deployment.requested_v3(request)
             self.assertFalse(requested, request)
 
     @gen_test
@@ -490,7 +490,7 @@ class TestDeployMiddleware(helpers.BundlesTestMixin, AsyncTestCase):
         # Patch the routes so that the customized view defined above is called
         # when an import request is processed.
         self.deployment.routes['Import'] = view
-        yield self.deployment.process_request(deployment_request)
+        yield self.deployment.process_request_v3(deployment_request)
         # Ensure the response has been correctly sent.
         self.assertEqual(1, len(self.responses))
         response = self.responses[0]

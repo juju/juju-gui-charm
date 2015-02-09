@@ -89,7 +89,7 @@ class TestImportBundle(
         AsyncTestCase):
 
     def get_view(self):
-        return views.import_bundle
+        return views.import_bundle_v3
 
     @gen_test
     def test_invalid_yaml(self):
@@ -189,7 +189,7 @@ class TestImportBundle(
         self.assertEqual(expected_response, response)
         # The Deployer validate method has been called.
         self.deployer.validate.assert_called_once_with(
-            request.user, 'mybundle', {'services': {}})
+            request.user, {'services': {}})
 
     @gen_test
     def test_success(self):
@@ -204,7 +204,7 @@ class TestImportBundle(
         expected_response = {'Response': {'DeploymentId': 42}}
         self.assertEqual(expected_response, response)
         # Ensure the Deployer methods have been correctly called.
-        args = (request.user, 'mybundle', {'services': {}})
+        args = (request.user, {'services': {}})
         self.deployer.validate.assert_called_once_with(*args)
         args = (request.user, 'mybundle', {'services': {}}, None)
         self.deployer.import_bundle.assert_called_once_with(*args)
@@ -227,14 +227,14 @@ class TestImportBundle(
         # The process succeeds if the bundle name is not provided but the
         # YAML contents include just one bundle.
         params = {'YAML': 'mybundle: {services: {}}'}
-        results = views._validate_import_params(params)
+        results = views._validate_import_params_v3(params)
         expected = ('mybundle', {'services': {}}, None)
         self.assertEqual(expected, results)
 
     def test_id_provided(self):
         params = {'YAML': 'mybundle: {services: {}}',
                   'BundleID': '~jorge/wiki/3/smallwiki'}
-        results = views._validate_import_params(params)
+        results = views._validate_import_params_v3(params)
         expected = ('mybundle', {'services': {}}, '~jorge/wiki/3/smallwiki')
         self.assertEqual(expected, results)
 
@@ -242,7 +242,7 @@ class TestImportBundle(
         params = {'YAML': 'mybundle: {services: {}}',
                   'Name': 'mybundle',
                   'BundleID': '~jorge/wiki/3/smallwiki'}
-        results = views._validate_import_params(params)
+        results = views._validate_import_params_v3(params)
         expected = ('mybundle', {'services': {}}, '~jorge/wiki/3/smallwiki')
         self.assertEqual(expected, results)
 
@@ -258,7 +258,7 @@ class TestImportBundle(
         # Execute the view.
         yield self.view(request, self.deployer)
         # Ensure the Deployer methods have been correctly called.
-        args = (request.user, 'mybundle', {'services': {}})
+        args = (request.user, {'services': {}})
         self.deployer.validate.assert_called_once_with(*args)
         args = (request.user, 'mybundle', {'services': {}},
                 '~jorge/wiki/3/smallwiki')
