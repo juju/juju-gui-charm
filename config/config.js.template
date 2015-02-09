@@ -28,5 +28,6 @@ var juju_config = {
   GA_key: {{ga_key}},
   login_help: {{login_help}},
   hideLoginButton: {{hide_login_button}},
-  jujuCoreVersion: {{juju_core_version}}
+  jujuCoreVersion: {{juju_core_version}},
+  jujuEnvUUID: {{juju_env_uuid}}
 };
