@@ -190,7 +190,7 @@ def import_bundle_v4(request, deployer):
     if err is not None:
         raise response(error='invalid request: {}'.format(err))
     # Add the bundle deployment to the Deployer queue.
-    logging.info('import_bundle: scheduling {!r} deployment'.format(name))
+    logging.info('import_bundle: scheduling {!r} deployment'.format(bundle_id))
     deployment_id = deployer.import_bundle(
         request.user, bundle_id, bundle, bundle_id)
     raise response({'DeploymentId': deployment_id})

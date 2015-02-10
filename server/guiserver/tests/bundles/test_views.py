@@ -84,7 +84,7 @@ class ViewsTestMixin(object):
         self.assertEqual(0, len(self.deployer.mock_calls))
 
 
-class TestImportBundle(
+class TestImportBundleV3(
         ViewsTestMixin, helpers.BundlesTestMixin, LogTrapTestCase,
         AsyncTestCase):
 
@@ -261,6 +261,139 @@ class TestImportBundle(
         args = (request.user, {'services': {}})
         self.deployer.validate.assert_called_once_with(*args)
         args = (request.user, 'mybundle', {'services': {}},
+                '~jorge/wiki/3/smallwiki')
+        self.deployer.import_bundle.assert_called_once_with(*args)
+
+
+class TestImportBundleV4(
+        ViewsTestMixin, helpers.BundlesTestMixin, LogTrapTestCase,
+        AsyncTestCase):
+
+    def get_view(self):
+        return views.import_bundle_v4
+
+    @gen_test
+    def test_invalid_yaml(self):
+        # An error response is returned if an invalid YAML encoded string is
+        # passed.
+        params = {'Name': 'bundle-name', 'YAML': 42}
+        request = self.make_view_request(params=params)
+        response = yield self.view(request, self.deployer)
+        expected_response = {
+            'Response': {},
+            'Error': 'invalid request: invalid YAML contents: '
+                     "'int' object has no attribute 'read'",
+        }
+        self.assertEqual(expected_response, response)
+        # The Deployer methods have not been called.
+        self.assertEqual(0, len(self.deployer.mock_calls))
+
+    @gen_test
+    def test_invalid_bundle(self):
+        # An error response is returned if the bundle is not well formed.
+        params = {'YAML': 'not valid', 'BundleID': 'foo'}
+        request = self.make_view_request(params=params)
+        response = yield self.view(request, self.deployer)
+        expected_response = {
+            'Response': {},
+            'Error': 'invalid request: invalid bundle foo: '
+                     'the bundle data is not well formed',
+        }
+        self.assertEqual(expected_response, response)
+        # The Deployer methods have not been called.
+        self.assertEqual(0, len(self.deployer.mock_calls))
+
+    @gen_test
+    def test_invalid_bundle_constraints(self):
+        # An error response is returned if the bundle includes services with
+        # unsupported constraints.
+        params = {
+            'YAML': 'services: {django: {constraints: invalid=1}}',
+            'BundleID': 'foo'
+        }
+        request = self.make_view_request(params=params)
+        response = yield self.view(request, self.deployer)
+        expected_response = {
+            'Response': {},
+            'Error': 'invalid request: invalid bundle foo: '
+                     'unsupported constraints: invalid',
+        }
+        self.assertEqual(expected_response, response)
+        # The Deployer methods have not been called.
+        self.assertEqual(0, len(self.deployer.mock_calls))
+
+    @gen_test
+    def test_undeployable_bundle(self):
+        # An error response is returned if the bundle cannot be imported in the
+        # current Juju environment.
+        params = {'YAML': 'services: {}'}
+        request = self.make_view_request(params=params)
+        # Simulate an error returned by the Deployer validate method.
+        self.deployer.validate.return_value = self.make_future('an error')
+        # Execute the view.
+        response = yield self.view(request, self.deployer)
+        expected_response = {
+            'Response': {},
+            'Error': 'invalid request: an error',
+        }
+        self.assertEqual(expected_response, response)
+        # The Deployer validate method has been called.
+        self.deployer.validate.assert_called_once_with(
+            request.user, {'services': {}})
+
+    @gen_test
+    def test_success(self):
+        # The response includes the deployment identifier.
+        params = {'BundleID': 'foo', 'YAML': 'services: {}'}
+        request = self.make_view_request(params=params)
+        # Set up the Deployer mock.
+        self.deployer.validate.return_value = self.make_future(None)
+        self.deployer.import_bundle.return_value = 42
+        # Execute the view.
+        response = yield self.view(request, self.deployer)
+        expected_response = {'Response': {'DeploymentId': 42}}
+        self.assertEqual(expected_response, response)
+        # Ensure the Deployer methods have been correctly called.
+        args = (request.user, {'services': {}})
+        self.deployer.validate.assert_called_once_with(*args)
+        args = (request.user, 'foo', {'services': {}}, 'foo')
+        self.deployer.import_bundle.assert_called_once_with(*args)
+
+    @gen_test
+    def test_logging(self):
+        # The beginning of the bundle import process is properly logged.
+        params = {'BundleID': 'foo', 'YAML': 'services: {}'}
+        request = self.make_view_request(params=params)
+        # Set up the Deployer mock.
+        self.deployer.validate.return_value = self.make_future(None)
+        self.deployer.import_bundle.return_value = 42
+        # Execute the view.
+        expected_log = "import_bundle: scheduling 'foo' deployment"
+        with ExpectLog('', expected_log, required=True):
+            yield self.view(request, self.deployer)
+
+    # The following tests exercise views._validate_import_params directly.
+    def test_id_provided(self):
+        params = {'YAML': 'services: {}',
+                  'BundleID': '~jorge/wiki/3/smallwiki'}
+        results = views._validate_import_params_v4(params)
+        expected = ({'services': {}}, '~jorge/wiki/3/smallwiki')
+        self.assertEqual(expected, results)
+
+    @gen_test
+    def test_id_passed_to_deployer(self):
+        params = {'YAML': 'services: {}',
+                  'BundleID': '~jorge/wiki/3/smallwiki'}
+        request = self.make_view_request(params=params)
+        # Set up the Deployer mock.
+        self.deployer.validate.return_value = self.make_future(None)
+        self.deployer.import_bundle.return_value = 42
+        # Execute the view.
+        yield self.view(request, self.deployer)
+        # Ensure the Deployer methods have been correctly called.
+        args = (request.user, {'services': {}})
+        self.deployer.validate.assert_called_once_with(*args)
+        args = (request.user, '~jorge/wiki/3/smallwiki', {'services': {}},
                 '~jorge/wiki/3/smallwiki')
         self.deployer.import_bundle.assert_called_once_with(*args)
 
