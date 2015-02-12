@@ -271,7 +271,9 @@ class DeployMiddleware(object):
         self._deployer = deployer
         self._write_response = write_response
         self.routes = {
+            # Default import route
             'Import': views.import_bundle_v3,
+            'Import_v3': views.import_bundle_v3,
             'Import_v4': views.import_bundle_v4,
             'Watch': views.watch,
             'Next': views.next,
@@ -279,39 +281,22 @@ class DeployMiddleware(object):
             'Status': views.status,
         }
 
-    def requested_v3(self, data):
-        """Return True if data is a v3 deployment request, False otherwise."""
+    def requested(self, data):
+        """Return True if data is a deployment request, False otherwise."""
         return (
             'RequestId' in data and
             data.get('Type') == 'Deployer' and
             data.get('Request') in self.routes
         )
 
-    def requested_v4(self, data):
-        """Return True if data is a v4 deployment request, False otherwise."""
-        return (
-            'RequestId' in data and
-            data.get('Type') == 'DeployerV4' and
-            data.get('Request') in self.routes
-        )
-
     @gen.coroutine
-    def process_request_v3(self, data):
-        """Process a v3 deployment request."""
+    def process_request(self, data):
+        """Process a deployment request."""
         request_id = data['RequestId']
-        view = self.routes[data['Request']]
-        request = ObjectDict(params=data.get('Params', {}), user=self._user)
-        response = yield view(request, self._deployer)
-        response['RequestId'] = request_id
-        self._write_response(response)
-
-    @gen.coroutine
-    def process_request_v4(self, data):
-        """Process a v4 deployment request."""
-        request_id = data['RequestId']
+        params = data.get('Params', {})
         view = self.routes[data['Request'] if data['Request'] is not 'Import' \
-                           else 'Import_v4']
-        request = ObjectDict(params=data.get('Params', {}), user=self._user)
+                           else 'Import_v{}'.format(params.get('Version', 3))]
+        request = ObjectDict(params=params, user=self._user)
         response = yield view(request, self._deployer)
         response['RequestId'] = request_id
         self._write_response(response)

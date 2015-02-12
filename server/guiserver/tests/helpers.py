@@ -151,10 +151,8 @@ class BundlesTestMixin(object):
         """
         if version is None:
             bundle = 'bundle: {services: {}}'
-            request_type = 'Deployer'
         else:
             bundle = 'services: {}'
-            request_type = 'DeployerV{}'.format(version)
         defaults = {
             'Import': {'Name': 'bundle', 'YAML': bundle},
             'Watch': {'DeploymentId': 0},
@@ -163,9 +161,11 @@ class BundlesTestMixin(object):
         }
         if params is None:
             params = defaults[request]
+        if version is not None:
+            params['Version'] = version
         data = {
             'RequestId': request_id,
-            'Type': request_type,
+            'Type': 'Deployer',
             'Request': request,
             'Params': params,
         }

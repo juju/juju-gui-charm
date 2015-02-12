@@ -150,10 +150,8 @@ class WebSocketHandler(websocket.WebSocketHandler):
         encoded = None
         if data is not None:
             # Handle deployment requests.
-            if self.deployment.requested_v3(data):
-                return self.deployment.process_request_v3(data)
-            if self.deployment.requested_v4(data):
-                return self.deployment.process_request_v4(data)
+            if self.deployment.requested(data):
+                return self.deployment.process_request(data)
             # Handle authentication requests.
             if not self.user.is_authenticated:
                 new_data = self.auth.process_request(data)

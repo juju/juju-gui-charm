@@ -431,7 +431,7 @@ class TestDeployMiddleware(helpers.BundlesTestMixin, AsyncTestCase):
             self.make_deployment_request('Status'),
         )
         for request in requests:
-            requested = self.deployment.requested_v3(request)
+            requested = self.deployment.requested(request)
             self.assertTrue(requested, request)
 
     def test_deployment_requested_v4(self):
@@ -443,7 +443,7 @@ class TestDeployMiddleware(helpers.BundlesTestMixin, AsyncTestCase):
             self.make_deployment_request('Status', version=4),
         )
         for request in requests:
-            requested = self.deployment.requested_v4(request)
+            requested = self.deployment.requested(request)
             self.assertTrue(requested, request)
 
     def test_deployment_not_requested_v3(self):
@@ -483,13 +483,13 @@ class TestDeployMiddleware(helpers.BundlesTestMixin, AsyncTestCase):
             },
         )
         for request in requests:
-            requested = self.deployment.requested_v3(request)
+            requested = self.deployment.requested(request)
             self.assertFalse(requested, request)
 
     def test_deployment_not_requested_v4(self):
         # False is returned if the incoming data is not a deployment request.
         # Params are not validated by DeployMiddleware.requested.
-        params = {'Name': 'mybundle', 'YAML': 'foo: bar'}
+        params = {'Name': 'mybundle', 'YAML': 'foo: bar', 'Version': 4}
         requests = (
             # Empty request.
             {},
@@ -503,27 +503,27 @@ class TestDeployMiddleware(helpers.BundlesTestMixin, AsyncTestCase):
             # Invalid request field.
             {
                 'RequestId': 2,
-                'Type': 'DeployerV4',
+                'Type': 'Deployer',
                 'Request': 'INVALID',
                 'Params': params,
             },
             # Missing request id field.
             {
                 'INVALID': 3,
-                'Type': 'DeployerV4',
+                'Type': 'Deployer',
                 'Request': 'Import',
                 'Params': params,
             },
             # Field names are case sensitive.
             {
                 'RequestId': 4,
-                'type': 'DeployerV4',
+                'type': 'Deployer',
                 'request': 'Import',
                 'Params': params,
             },
         )
         for request in requests:
-            requested = self.deployment.requested_v4(request)
+            requested = self.deployment.requested(request)
             self.assertFalse(requested, request)
 
     @gen_test
@@ -541,8 +541,8 @@ class TestDeployMiddleware(helpers.BundlesTestMixin, AsyncTestCase):
 
         # Patch the routes so that the customized view defined above is called
         # when an import request is processed.
-        self.deployment.routes['Import'] = view
-        yield self.deployment.process_request_v3(deployment_request)
+        self.deployment.routes['Import_v3'] = view
+        yield self.deployment.process_request(deployment_request)
         # Ensure the response has been correctly sent.
         self.assertEqual(1, len(self.responses))
         response = self.responses[0]
@@ -564,7 +564,7 @@ class TestDeployMiddleware(helpers.BundlesTestMixin, AsyncTestCase):
         # Patch the routes so that the customized view defined above is called
         # when an import request is processed.
         self.deployment.routes['Import_v4'] = view
-        yield self.deployment.process_request_v4(deployment_request)
+        yield self.deployment.process_request(deployment_request)
         # Ensure the response has been correctly sent.
         self.assertEqual(1, len(self.responses))
         response = self.responses[0]
