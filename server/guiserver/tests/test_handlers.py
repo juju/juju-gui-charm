@@ -93,11 +93,13 @@ class WebSocketHandlerTestMixin(object):
         callback = lambda message: None
         return clients.websocket_connect(self.io_loop, url, callback)
 
-    def make_handler(self, headers=None, mock_protocol=False):
+    def make_handler(self, headers=None, mock_protocol=False, path=None):
         """Create and return a WebSocketHandler instance."""
         if headers is None:
             headers = {}
-        request = mock.Mock(headers=headers)
+        if path is None:
+            path = ''
+        request = mock.Mock(headers=headers, path=path)
         handler = handlers.WebSocketHandler(self.get_app(), request)
         if mock_protocol:
             # Mock the underlying connection protocol.
@@ -106,12 +108,12 @@ class WebSocketHandlerTestMixin(object):
 
     @gen.coroutine
     def make_initialized_handler(
-            self, apiurl=None, headers=None, mock_protocol=False):
+            self, apiurl=None, headers=None, mock_protocol=False, path=None):
         """Create and return an initialized WebSocketHandler instance."""
         if apiurl is None:
             apiurl = self.apiurl
         handler = self.make_handler(
-            headers=headers, mock_protocol=mock_protocol)
+            headers=headers, mock_protocol=mock_protocol, path=path)
         yield handler.initialize(
             apiurl, self.auth_backend, self.deployer, self.tokens,
             self.io_loop)
@@ -141,6 +143,16 @@ class TestWebSocketHandlerConnection(
             handler.juju_connection, clients.WebSocketClientConnection)
         self.assertEqual(
             self.get_url('/echo'), handler.juju_connection.request.url)
+
+    @gen_test
+    def test_initialize_api_path(self):
+        # Make sure that it will initialize with a supplied path.
+        with self.mock_websocket_connect() as mock_websocket_connect:
+            yield self.make_initialized_handler(
+                path='/ws/environments/1234-1234-1234/api')
+        self.assertEqual(
+            mock_websocket_connect.call_args_list[0][0][1],
+            self.apiurl + '/environments/1234-1234-1234/api')
 
     @gen_test
     def test_juju_connection_failure(self):
@@ -204,6 +216,13 @@ class TestWebSocketHandlerConnection(
         handler = self.make_handler()
         subprotocol = handler.select_subprotocol(['foo', 'bar'])
         self.assertEqual('foo', subprotocol)
+
+    def test_get_api_path(self):
+        handler = self.make_handler()
+        path = handler.get_api_path('/ws')
+        self.assertEqual(None, path)
+        path = handler.get_api_path('/ws/environment/1234-1234-1234/api')
+        self.assertEqual('/environment/1234-1234-1234/api', path)
 
 
 class TestWebSocketHandlerProxy(

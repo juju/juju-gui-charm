@@ -91,7 +91,7 @@ class TestServer(AppsTestMixin, unittest.TestCase):
         # The authentication backend instance is correctly passed to the
         # WebSocket handler.
         app = self.get_app()
-        spec = self.get_url_spec(app, r'^/ws$')
+        spec = self.get_url_spec(app, r'^/ws(?:/.*)?$')
         auth_backend = self.assert_in_spec(spec, 'auth_backend')
         expected = auth.get_backend(manage.DEFAULT_API_VERSION)
         self.assertIsInstance(auth_backend, type(expected))
@@ -99,21 +99,21 @@ class TestServer(AppsTestMixin, unittest.TestCase):
     def test_deployer(self):
         # The deployer instance is correctly passed to the WebSocket handler.
         app = self.get_app()
-        spec = self.get_url_spec(app, r'^/ws$')
+        spec = self.get_url_spec(app, r'^/ws(?:/.*)?$')
         deployer = self.assert_in_spec(spec, 'deployer')
         self.assertIsInstance(deployer, base.Deployer)
 
     def test_tokens(self):
         # The tokens instance is correctly passed to the WebSocket handler.
         app = self.get_app()
-        spec = self.get_url_spec(app, r'^/ws$')
+        spec = self.get_url_spec(app, r'^/ws(?:/.*)?$')
         tokens = self.assert_in_spec(spec, 'tokens')
         self.assertIsInstance(tokens, auth.AuthenticationTokenHandler)
 
     def test_websocket_excluded_in_sandbox_mode(self):
         # The WebSocket handler is excluded if sandbox mode is enabled.
         app = self.get_app(sandbox=True)
-        spec = self.get_url_spec(app, r'^/ws$')
+        spec = self.get_url_spec(app, r'^/ws(?:/.*)?$')
         self.assertIsNone(spec)
 
     def test_proxy_excluded_in_sandbox_mode(self):

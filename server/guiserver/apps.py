@@ -62,7 +62,8 @@ def server():
         }
         server_handlers.extend([
             # Handle WebSocket connections.
-            (r'^/ws$', handlers.WebSocketHandler, websocket_handler_options),
+            (r'^/ws(?:/.*)?$', handlers.WebSocketHandler,
+                websocket_handler_options),
             # Handle connections to the juju-core HTTPS server.
             # The juju-core HTTPS and WebSocket servers share the same URL.
             (r'^/juju-core/(.*)', handlers.JujuProxyHandler,
