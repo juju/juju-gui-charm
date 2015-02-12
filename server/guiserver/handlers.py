@@ -19,7 +19,6 @@
 from collections import deque
 import logging
 import os
-import re
 import time
 import urlparse
 
@@ -102,8 +101,11 @@ class WebSocketHandler(websocket.WebSocketHandler):
             self.user, auth_backend, tokens, write_message)
         # Set up the bundle deployment infrastructure.
         self.deployment = DeployMiddleware(self.user, deployer, write_message)
-        # Did the client provided a path for the api call.
-        path = self.get_api_path(self.request.path)
+        # XXX The handler is no longer path agnostic, and this can be fixed by
+        # capturing the relevant path fragment on the regexp, and then
+        # overriding the handler's open method to store the path in the
+        # instance.
+        path = self.request.path[len('/ws'):]
         if path:
             # If they provided a path in their request then we need to use
             # that api endpoint.
@@ -144,19 +146,6 @@ class WebSocketHandler(websocket.WebSocketHandler):
         sub-protocol does not match the one sent by the client.
         """
         return subprotocols[0]
-
-    def get_api_path(self, uri):
-        """If the GUI makes a ws request with a path after the /ws endpoint we
-        need to make sure we proxy that request to that endpoint in the  Juju
-        environment. If no path is provided then we use the old juju api path.
-
-        This has no error handling because it's just acting as a dumb
-        forwarder. The logic is in the GUI.
-        """
-        path = re.search(r'/ws(\/.*)', uri)
-        if path:
-            return path.groups()[0]
-        return None
 
     def on_message(self, message):
         """Hook called when a new message is received from the browser.

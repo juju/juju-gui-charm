@@ -150,9 +150,10 @@ class TestWebSocketHandlerConnection(
         with self.mock_websocket_connect() as mock_websocket_connect:
             yield self.make_initialized_handler(
                 path='/ws/environments/1234-1234-1234/api')
+        self.assertEqual(1, mock_websocket_connect.call_count)
+        call_args = mock_websocket_connect.call_args[0]
         self.assertEqual(
-            mock_websocket_connect.call_args_list[0][0][1],
-            self.apiurl + '/environments/1234-1234-1234/api')
+            call_args[1], self.apiurl + '/environments/1234-1234-1234/api')
 
     @gen_test
     def test_juju_connection_failure(self):
@@ -216,13 +217,6 @@ class TestWebSocketHandlerConnection(
         handler = self.make_handler()
         subprotocol = handler.select_subprotocol(['foo', 'bar'])
         self.assertEqual('foo', subprotocol)
-
-    def test_get_api_path(self):
-        handler = self.make_handler()
-        path = handler.get_api_path('/ws')
-        self.assertEqual(None, path)
-        path = handler.get_api_path('/ws/environment/1234-1234-1234/api')
-        self.assertEqual('/environment/1234-1234-1234/api', path)
 
 
 class TestWebSocketHandlerProxy(
