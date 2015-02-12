@@ -101,6 +101,15 @@ class WebSocketHandler(websocket.WebSocketHandler):
             self.user, auth_backend, tokens, write_message)
         # Set up the bundle deployment infrastructure.
         self.deployment = DeployMiddleware(self.user, deployer, write_message)
+        # XXX The handler is no longer path agnostic, and this can be fixed by
+        # capturing the relevant path fragment on the regexp, and then
+        # overriding the handler's open method to store the path in the
+        # instance.
+        path = self.request.path[len('/ws'):]
+        if path:
+            # If they provided a path in their request then we need to use
+            # that api endpoint.
+            apiurl = '{}{}'.format(apiurl, path)
         # Juju requires the Origin header to be included in the WebSocket
         # client handshake request. Propagate the client origin if present;
         # use the Juju API server as origin otherwise.
