@@ -272,9 +272,7 @@ class DeployMiddleware(object):
         self._write_response = write_response
         self.routes = {
             # Default import route
-            'Import': views.import_bundle_v3,
-            'Import_v3': views.import_bundle_v3,
-            'Import_v4': views.import_bundle_v4,
+            'Import': views.import_bundle,
             'Watch': views.watch,
             'Next': views.next,
             'Cancel': views.cancel,
@@ -294,8 +292,7 @@ class DeployMiddleware(object):
         """Process a deployment request."""
         request_id = data['RequestId']
         params = data.get('Params', {})
-        view = self.routes[data['Request'] if data['Request'] is not 'Import' \
-                           else 'Import_v{}'.format(params.get('Version', 3))]
+        view = self.routes[data['Request']]
         request = ObjectDict(params=params, user=self._user)
         response = yield view(request, self._deployer)
         response['RequestId'] = request_id

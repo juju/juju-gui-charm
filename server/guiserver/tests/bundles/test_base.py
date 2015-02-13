@@ -541,7 +541,7 @@ class TestDeployMiddleware(helpers.BundlesTestMixin, AsyncTestCase):
 
         # Patch the routes so that the customized view defined above is called
         # when an import request is processed.
-        self.deployment.routes['Import_v3'] = view
+        self.deployment.routes['Import'] = view
         yield self.deployment.process_request(deployment_request)
         # Ensure the response has been correctly sent.
         self.assertEqual(1, len(self.responses))
@@ -563,7 +563,7 @@ class TestDeployMiddleware(helpers.BundlesTestMixin, AsyncTestCase):
 
         # Patch the routes so that the customized view defined above is called
         # when an import request is processed.
-        self.deployment.routes['Import_v4'] = view
+        self.deployment.routes['Import'] = view
         yield self.deployment.process_request(deployment_request)
         # Ensure the response has been correctly sent.
         self.assertEqual(1, len(self.responses))

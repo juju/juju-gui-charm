@@ -72,16 +72,19 @@ from guiserver.bundles.utils import (
 )
 
 
-def _validate_import_params_v3(params):
+def _validate_import_params(params):
     """Parse the request data and return a (name, bundle, bundle_id) tuple.
 
     In the tuple:
-      - name is the name of the bundle to be imported;
+      - name is the name of the bundle to be imported; this is required for old
+        style bundles, not for v4 bundles
       - bundle is the YAML decoded bundle object.
-      - bundle_id is the permanent id of the bundle of the form
+      - bundle_id is the permanent id of the bundle, in v3 of the form
         ~user/basketname/version/bundlename, e.g.
         ~jorge/mediawiki/3/mediawiki-simple.  The bundle_id is optional and
         will be None if not given.
+        In v4, the bundle ID is in the form ~user/bundlename, e.g.
+        ~jorge/mediawiki-simple and is required.
 
     Raise a ValueError if data represents an invalid request.
     """
@@ -92,6 +95,11 @@ def _validate_import_params_v3(params):
         bundles = yaml.safe_load(contents)
     except Exception as err:
         raise ValueError('invalid YAML contents: {}'.format(err))
+    if params.get('Version') == 4:
+        bundle_id = params.get('BundleID')
+        return bundle_id, bundles, bundle_id
+
+    # This is an old-style bundle.
     name = params.get('Name')
     if name is None:
         # The Name is optional if the YAML contents contain only one bundle.
@@ -107,43 +115,25 @@ def _validate_import_params_v3(params):
     return name, bundle, bundle_id
 
 
-def _validate_import_params_v4(params):
-    """Parse the request data and return a (name, bundle, bundle_id) tuple.
-
-    In the tuple:
-      - bundle is the YAML decoded bundle object.
-      - bundle_id is the permanent id of the bundle of the form
-        ~user/basketname/version/bundlename, e.g.
-        ~jorge/mediawiki/3/mediawiki-simple.  The bundle_id is optional and
-        will be None if not given.
-
-    Raise a ValueError if data represents an invalid request.
-    """
-    contents = params.get('YAML')
-    if contents is None:
-        raise ValueError('invalid data parameters')
-    try:
-        bundle = yaml.safe_load(contents)
-    except Exception as err:
-        raise ValueError('invalid YAML contents: {}'.format(err))
-    bundle_id = params.get('BundleID')
-    return bundle, bundle_id
-
-
 @gen.coroutine
 @require_authenticated_user
-def import_bundle_v3(request, deployer):
+def import_bundle(request, deployer):
     """Start or schedule a bundle deployment.
 
     If the request is valid, the response will contain the DeploymentId
     assigned to the bundle deployment.
 
     Request: 'Import'.
-    Parameters example: {'Name': 'bundle-name', 'YAML': 'bundles'}.
+    Parameters example: {
+        'Name': 'bundle-name',
+        'YAML': 'bundles',
+        'Version': 4,
+        'BundleID': '~user/bundle-name',
+    }.
     """
     # Validate the request parameters.
     try:
-        name, bundle, bundle_id = _validate_import_params_v3(request.params)
+        name, bundle, bundle_id = _validate_import_params(request.params)
     except ValueError as err:
         raise response(error='invalid request: {}'.format(err))
     # Validate and prepare the bundle.
@@ -160,39 +150,6 @@ def import_bundle_v3(request, deployer):
     logging.info('import_bundle: scheduling {!r} deployment'.format(name))
     deployment_id = deployer.import_bundle(
         request.user, name, bundle, bundle_id)
-    raise response({'DeploymentId': deployment_id})
-
-
-@gen.coroutine
-@require_authenticated_user
-def import_bundle_v4(request, deployer):
-    """Start or schedule a bundle deployment.
-
-    If the request is valid, the response will contain the DeploymentId
-    assigned to the bundle deployment.
-
-    Request: 'Import'.
-    Parameters example: {'Name': 'bundle-name', 'YAML': 'bundles'}.
-    """
-    # Validate the request parameters.
-    try:
-        bundle, bundle_id = _validate_import_params_v4(request.params)
-    except ValueError as err:
-        raise response(error='invalid request: {}'.format(err))
-    # Validate and prepare the bundle.
-    try:
-        prepare_bundle(bundle)
-    except ValueError as err:
-        error = 'invalid request: invalid bundle {}: {}'.format(bundle_id, err)
-        raise response(error=error)
-    # Validate the bundle against the current state of the Juju environment.
-    err = yield deployer.validate(request.user, bundle)
-    if err is not None:
-        raise response(error='invalid request: {}'.format(err))
-    # Add the bundle deployment to the Deployer queue.
-    logging.info('import_bundle: scheduling {!r} deployment'.format(bundle_id))
-    deployment_id = deployer.import_bundle(
-        request.user, bundle_id, bundle, bundle_id)
     raise response({'DeploymentId': deployment_id})
 
 

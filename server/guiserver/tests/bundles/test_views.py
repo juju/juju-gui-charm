@@ -89,7 +89,7 @@ class TestImportBundleV3(
         AsyncTestCase):
 
     def get_view(self):
-        return views.import_bundle_v3
+        return views.import_bundle
 
     @gen_test
     def test_invalid_yaml(self):
@@ -227,14 +227,14 @@ class TestImportBundleV3(
         # The process succeeds if the bundle name is not provided but the
         # YAML contents include just one bundle.
         params = {'YAML': 'mybundle: {services: {}}'}
-        results = views._validate_import_params_v3(params)
+        results = views._validate_import_params(params)
         expected = ('mybundle', {'services': {}}, None)
         self.assertEqual(expected, results)
 
     def test_id_provided(self):
         params = {'YAML': 'mybundle: {services: {}}',
                   'BundleID': '~jorge/wiki/3/smallwiki'}
-        results = views._validate_import_params_v3(params)
+        results = views._validate_import_params(params)
         expected = ('mybundle', {'services': {}}, '~jorge/wiki/3/smallwiki')
         self.assertEqual(expected, results)
 
@@ -242,7 +242,7 @@ class TestImportBundleV3(
         params = {'YAML': 'mybundle: {services: {}}',
                   'Name': 'mybundle',
                   'BundleID': '~jorge/wiki/3/smallwiki'}
-        results = views._validate_import_params_v3(params)
+        results = views._validate_import_params(params)
         expected = ('mybundle', {'services': {}}, '~jorge/wiki/3/smallwiki')
         self.assertEqual(expected, results)
 
@@ -270,13 +270,13 @@ class TestImportBundleV4(
         AsyncTestCase):
 
     def get_view(self):
-        return views.import_bundle_v4
+        return views.import_bundle
 
     @gen_test
     def test_invalid_yaml(self):
         # An error response is returned if an invalid YAML encoded string is
         # passed.
-        params = {'Name': 'bundle-name', 'YAML': 42}
+        params = {'Name': 'bundle-name', 'Version': 4, 'YAML': 42}
         request = self.make_view_request(params=params)
         response = yield self.view(request, self.deployer)
         expected_response = {
@@ -291,7 +291,7 @@ class TestImportBundleV4(
     @gen_test
     def test_invalid_bundle(self):
         # An error response is returned if the bundle is not well formed.
-        params = {'YAML': 'not valid', 'BundleID': 'foo'}
+        params = {'YAML': 'not valid', 'Version': 4, 'BundleID': 'foo'}
         request = self.make_view_request(params=params)
         response = yield self.view(request, self.deployer)
         expected_response = {
@@ -309,6 +309,7 @@ class TestImportBundleV4(
         # unsupported constraints.
         params = {
             'YAML': 'services: {django: {constraints: invalid=1}}',
+            'Version': 4,
             'BundleID': 'foo'
         }
         request = self.make_view_request(params=params)
@@ -326,7 +327,7 @@ class TestImportBundleV4(
     def test_undeployable_bundle(self):
         # An error response is returned if the bundle cannot be imported in the
         # current Juju environment.
-        params = {'YAML': 'services: {}'}
+        params = {'Version': 4, 'YAML': 'services: {}'}
         request = self.make_view_request(params=params)
         # Simulate an error returned by the Deployer validate method.
         self.deployer.validate.return_value = self.make_future('an error')
@@ -344,7 +345,7 @@ class TestImportBundleV4(
     @gen_test
     def test_success(self):
         # The response includes the deployment identifier.
-        params = {'BundleID': 'foo', 'YAML': 'services: {}'}
+        params = {'BundleID': 'foo', 'Version': 4, 'YAML': 'services: {}'}
         request = self.make_view_request(params=params)
         # Set up the Deployer mock.
         self.deployer.validate.return_value = self.make_future(None)
@@ -362,7 +363,7 @@ class TestImportBundleV4(
     @gen_test
     def test_logging(self):
         # The beginning of the bundle import process is properly logged.
-        params = {'BundleID': 'foo', 'YAML': 'services: {}'}
+        params = {'BundleID': 'foo', 'Version': 4, 'YAML': 'services: {}'}
         request = self.make_view_request(params=params)
         # Set up the Deployer mock.
         self.deployer.validate.return_value = self.make_future(None)
@@ -375,14 +376,16 @@ class TestImportBundleV4(
     # The following tests exercise views._validate_import_params directly.
     def test_id_provided(self):
         params = {'YAML': 'services: {}',
-                  'BundleID': '~jorge/wiki/3/smallwiki'}
-        results = views._validate_import_params_v4(params)
-        expected = ({'services': {}}, '~jorge/wiki/3/smallwiki')
+                  'Version': 4,
+                  'BundleID': '~jorge/wiki'}
+        results = views._validate_import_params(params)
+        expected = ('~jorge/wiki', {'services': {}}, '~jorge/wiki')
         self.assertEqual(expected, results)
 
     @gen_test
     def test_id_passed_to_deployer(self):
         params = {'YAML': 'services: {}',
+                  'Version': 4,
                   'BundleID': '~jorge/wiki/3/smallwiki'}
         request = self.make_view_request(params=params)
         # Set up the Deployer mock.
