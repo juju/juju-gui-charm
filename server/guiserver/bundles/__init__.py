@@ -30,7 +30,9 @@ base module:
       The following arguments are passed to the validate and import_bundle
       interface methods:
         - user: a guiserver.auth.User instance, representing a logged in user;
-        - name: a string representing the name of the bundle to be imported;
+        - name: a string representing the name of the bundle to be imported; in
+          the case of v3 bundles, this will be the name of the bundle within
+          the basket, in v4 bundles, this will be the bundle ID;
         - bundle: a YAML decoded object representing the bundle contents.
       The watch and next interface methods are used to retrieve information
       about the status of the currently started/scheduled deployments.
@@ -87,7 +89,7 @@ the context of the current Juju environment.
 Importing a bundle.
 -------------------
 
-A deployment request looks like the following:
+A v3 deployment request looks like the following:
 
     {
         'RequestId': 1,
@@ -100,12 +102,26 @@ A deployment request looks like the following:
         },
     }
 
+A v4 deployment request looks like the following:
+
+    {
+        'RequestId': 1,
+        'Type': 'Deployer',
+        'Request': 'Import',
+        'Params': {
+            'Version': 4,
+            'YAML': 'bundle',
+            'BundleID': 'id'
+        },
+    }
+
 In the request parameters above, the YAML field stores the YAML encoded
-contents representing one or more bundles, and the Name field is the name of
-the specific bundle (included in YAML) that must be deployed. The Name
-parameter is optional in the case YAML includes only one bundle.  The BundleID
-is optional and is used for incrementing the deployment counter in
-Charmworld.
+contents representing one (or more, in the case of v3 baskets) bundles, and the
+Name field is the name of the specific bundle (included in YAML) that must be
+deployed. The Name parameter is optional in the case YAML includes only one
+bundle, or in the case of v4 bundles.  The BundleID is optional for v3 bundles
+and required for v4 bundles, and is used for incrementing the deployment
+counter in Charmworld.
 
 After receiving a deployment request, the DeployMiddleware sends a response
 indicating whether or not the request has been accepted. This response is sent

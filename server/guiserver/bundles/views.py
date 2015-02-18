@@ -76,12 +76,15 @@ def _validate_import_params(params):
     """Parse the request data and return a (name, bundle, bundle_id) tuple.
 
     In the tuple:
-      - name is the name of the bundle to be imported;
+      - name is the name of the bundle to be imported; this is required for old
+        style bundles, not for v4 bundles
       - bundle is the YAML decoded bundle object.
-      - bundle_id is the permanent id of the bundle of the form
+      - bundle_id is the permanent id of the bundle, in v3 of the form
         ~user/basketname/version/bundlename, e.g.
         ~jorge/mediawiki/3/mediawiki-simple.  The bundle_id is optional and
         will be None if not given.
+        In v4, the bundle ID is in the form ~user/bundlename, e.g.
+        ~jorge/mediawiki-simple and is required.
 
     Raise a ValueError if data represents an invalid request.
     """
@@ -92,6 +95,11 @@ def _validate_import_params(params):
         bundles = yaml.safe_load(contents)
     except Exception as err:
         raise ValueError('invalid YAML contents: {}'.format(err))
+    if params.get('Version') == 4:
+        bundle_id = params.get('BundleID')
+        return bundle_id, bundles, bundle_id
+
+    # This is an old-style bundle.
     name = params.get('Name')
     if name is None:
         # The Name is optional if the YAML contents contain only one bundle.
@@ -116,7 +124,12 @@ def import_bundle(request, deployer):
     assigned to the bundle deployment.
 
     Request: 'Import'.
-    Parameters example: {'Name': 'bundle-name', 'YAML': 'bundles'}.
+    Parameters example: {
+        'Name': 'bundle-name',
+        'YAML': 'bundles',
+        'Version': 4,
+        'BundleID': '~user/bundle-name',
+    }.
     """
     # Validate the request parameters.
     try:
@@ -130,7 +143,7 @@ def import_bundle(request, deployer):
         error = 'invalid request: invalid bundle {}: {}'.format(name, err)
         raise response(error=error)
     # Validate the bundle against the current state of the Juju environment.
-    err = yield deployer.validate(request.user, name, bundle)
+    err = yield deployer.validate(request.user, bundle)
     if err is not None:
         raise response(error='invalid request: {}'.format(err))
     # Add the bundle deployment to the Deployer queue.

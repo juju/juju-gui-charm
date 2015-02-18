@@ -143,19 +143,26 @@ class BundlesTestMixin(object):
         return mock.Mock(params=params, user=user)
 
     def make_deployment_request(
-            self, request, request_id=42, params=None, encoded=False):
+            self, request, request_id=42, params=None, encoded=False,
+            version=None):
         """Create and return a deployment request message.
 
         If encoded is set to True, the returned message will be JSON encoded.
         """
+        if version is None:
+            bundle = 'bundle: {services: {}}'
+        else:
+            bundle = 'services: {}'
         defaults = {
-            'Import': {'Name': 'bundle', 'YAML': 'bundle: {services: {}}'},
+            'Import': {'Name': 'bundle', 'YAML': bundle},
             'Watch': {'DeploymentId': 0},
             'Next': {'WatcherId': 0},
             'Status': {},
         }
         if params is None:
             params = defaults[request]
+        if version is not None:
+            params['Version'] = version
         data = {
             'RequestId': request_id,
             'Type': 'Deployer',
