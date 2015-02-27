@@ -296,7 +296,7 @@ class TestImportBundleV4(
         response = yield self.view(request, self.deployer)
         expected_response = {
             'Response': {},
-            'Error': 'invalid request: invalid bundle foo: '
+            'Error': 'invalid request: invalid bundle bundle-v4: '
                      'the bundle data is not well formed',
         }
         self.assertEqual(expected_response, response)
@@ -310,13 +310,12 @@ class TestImportBundleV4(
         params = {
             'YAML': 'services: {django: {constraints: invalid=1}}',
             'Version': 4,
-            'BundleID': 'foo'
         }
         request = self.make_view_request(params=params)
         response = yield self.view(request, self.deployer)
         expected_response = {
             'Response': {},
-            'Error': 'invalid request: invalid bundle foo: '
+            'Error': 'invalid request: invalid bundle bundle-v4: '
                      'unsupported constraints: invalid',
         }
         self.assertEqual(expected_response, response)
@@ -357,7 +356,7 @@ class TestImportBundleV4(
         # Ensure the Deployer methods have been correctly called.
         args = (request.user, {'services': {}})
         self.deployer.validate.assert_called_once_with(*args)
-        args = (request.user, 'foo', {'services': {}}, 'foo')
+        args = (request.user, 'bundle-v4', {'services': {}}, 'foo')
         self.deployer.import_bundle.assert_called_once_with(*args)
 
     @gen_test
@@ -369,7 +368,7 @@ class TestImportBundleV4(
         self.deployer.validate.return_value = self.make_future(None)
         self.deployer.import_bundle.return_value = 42
         # Execute the view.
-        expected_log = "import_bundle: scheduling 'foo' deployment"
+        expected_log = "import_bundle: scheduling 'bundle-v4' deployment"
         with ExpectLog('', expected_log, required=True):
             yield self.view(request, self.deployer)
 
@@ -379,7 +378,7 @@ class TestImportBundleV4(
                   'Version': 4,
                   'BundleID': '~jorge/wiki'}
         results = views._validate_import_params(params)
-        expected = ('~jorge/wiki', {'services': {}}, '~jorge/wiki')
+        expected = ('bundle-v4', {'services': {}}, '~jorge/wiki')
         self.assertEqual(expected, results)
 
     @gen_test
@@ -396,7 +395,7 @@ class TestImportBundleV4(
         # Ensure the Deployer methods have been correctly called.
         args = (request.user, {'services': {}})
         self.deployer.validate.assert_called_once_with(*args)
-        args = (request.user, '~jorge/wiki/3/smallwiki', {'services': {}},
+        args = (request.user, 'bundle-v4', {'services': {}},
                 '~jorge/wiki/3/smallwiki')
         self.deployer.import_bundle.assert_called_once_with(*args)
 

@@ -88,6 +88,7 @@ def _validate_import_params(params):
 
     Raise a ValueError if data represents an invalid request.
     """
+    bundle_id = params.get('BundleID')
     contents = params.get('YAML')
     if contents is None:
         raise ValueError('invalid data parameters')
@@ -96,8 +97,7 @@ def _validate_import_params(params):
     except Exception as err:
         raise ValueError('invalid YAML contents: {}'.format(err))
     if params.get('Version') == 4:
-        bundle_id = params.get('BundleID')
-        return bundle_id, bundles, bundle_id
+        return 'bundle-v4', bundles, bundle_id
 
     # This is an old-style bundle.
     name = params.get('Name')
@@ -111,7 +111,6 @@ def _validate_import_params(params):
     bundle = bundles.get(name)
     if bundle is None:
         raise ValueError('bundle {} not found'.format(name))
-    bundle_id = params.get('BundleID')
     return name, bundle, bundle_id
 
 

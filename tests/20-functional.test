@@ -256,6 +256,7 @@ class TestBuiltinServerLocalRelease(DeployTestMixin, unittest.TestCase):
         cls.hostname = unit_info['public-address']
         # The counter is used to produce API request identifiers.
         cls.counter = itertools.count()
+        cls.bundle1, cls.bundle2 = example.get_bundles(bootstrap_node_series)
 
     @classmethod
     def tearDownClass(cls):
@@ -321,7 +322,7 @@ class TestBuiltinServerLocalRelease(DeployTestMixin, unittest.TestCase):
             'RequestId': self.counter.next(),
             'Type': 'Deployer',
             'Request': 'Import',
-            'Params': {'Name': 'no-such', 'YAML': example.BUNDLE1},
+            'Params': {'Name': 'no-such', 'YAML': self.bundle1},
         })
         self.assertIn('Error', response)
         self.assertEqual(
@@ -365,12 +366,12 @@ class TestBuiltinServerLocalRelease(DeployTestMixin, unittest.TestCase):
             'RequestId': self.counter.next(),
             'Type': 'Deployer',
             'Request': 'Import',
-            'Params': {'Name': 'bundle1', 'YAML': example.BUNDLE1},
+            'Params': {'Name': 'bundle1', 'YAML': self.bundle1},
         })
         self.assertNotIn('Error', response)
         self.assertIn('DeploymentId', response['Response'])
         # Schedule the removal of the services deployed processing the bundle.
-        bundle_data = yaml.safe_load(example.BUNDLE1)
+        bundle_data = yaml.safe_load(self.bundle1)
         services = bundle_data['bundle1']['services'].keys()
         for service in services:
             self.addCleanup(juju_destroy_service, service)
@@ -381,14 +382,14 @@ class TestBuiltinServerLocalRelease(DeployTestMixin, unittest.TestCase):
             'RequestId': self.counter.next(),
             'Type': 'Deployer',
             'Request': 'Import',
-            'Params': {'YAML': example.BUNDLE2},
+            'Params': {'YAML': self.bundle2},
         })
         self.assertNotIn('Error', response)
         self.assertIn('DeploymentId', response['Response'])
         # Store the deployment id to be used later.
         deployment_id = response['Response']['DeploymentId']
         # Schedule the removal of the services deployed processing the bundle.
-        bundle_data = yaml.safe_load(example.BUNDLE2)
+        bundle_data = yaml.safe_load(self.bundle2)
         services = bundle_data['bundle2']['services'].keys()
         for service in services:
             self.addCleanup(juju_destroy_service, service)
@@ -438,7 +439,7 @@ class TestBuiltinServerLocalRelease(DeployTestMixin, unittest.TestCase):
             'RequestId': self.counter.next(),
             'Type': 'Deployer',
             'Request': 'Import',
-            'Params': {'YAML': example.BUNDLE1},
+            'Params': {'YAML': example.self.bundle1},
         })
         self.assertIn('Error', response)
         self.assertEqual(

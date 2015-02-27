@@ -17,7 +17,28 @@
 """Example data used in tests."""
 
 
-BUNDLE1 = """
+def get_bundles(bootstrap_node_series):
+    """Return example bundles used in functional tests.
+
+    Since bundle units are co-located in order to speed up the test, the given
+    bootstrap node series is used to determine the series used by co-located
+    services.
+    """
+    mysql_charms = {
+        'precise': 'cs:precise/mysql-51',
+        'trusty': 'cs:trusty/mysql-20',
+    }
+    haproxy_charms = {
+        'precise': 'cs:precise/haproxy-35',
+        'trusty': 'cs:trusty/haproxy-4',
+    }
+    return (
+        _bundle1.format(mysql=mysql_charms[bootstrap_node_series]),
+        _bundle2.format(mediawiki=haproxy_charms[bootstrap_node_series]),
+    )
+
+
+_bundle1 = """
 bundle1:
   series: trusty
   services:
@@ -34,25 +55,13 @@ bundle1:
         "gui-x": 313
         "gui-y": 51
     mysql:
-      charm: "cs:trusty/mysql-0"
+      charm: "{mysql}"
       num_units: 1
       to: '0'
       options:
-        "binlog-format": MIXED
-        "block-size": "5"
-        "dataset-size": "80%"
-        flavor: distro
-        "ha-bindiface": eth0
-        "ha-mcastport": "5411"
-        "max-connections": "-1"
-        "preferred-storage-engine": InnoDB
-        "query-cache-size": "-1"
-        "query-cache-type": "OFF"
-        "rbd-name": mysql1
-        "tuning-level": safest
-        vip: ""
-        vip_cidr: "24"
-        vip_iface: eth0
+        "block-size": 7
+        "dataset-size": "42%"
+        flavor: percona
       annotations:
         "gui-x": 669.5
         "gui-y": -33.5
@@ -61,19 +70,15 @@ bundle1:
       - "mysql:db"
 """
 
-BUNDLE2 = """
-bundle2:
+_bundle2 = """
+b undle2:
   services:
     mediawiki:
-      charm: "cs:precise/mediawiki-9"
+      charm: "{mediawiki}"
       num_units: 1
       to: '0'
       options:
-        admins: ""
-        debug: false
-        logo: ""
-        name: Please set name of wiki
-        skin: vector
+        global_maxconn: 4242
       annotations:
         "gui-x": 432
         "gui-y": 120
