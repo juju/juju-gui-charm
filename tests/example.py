@@ -24,17 +24,17 @@ def get_bundles(bootstrap_node_series):
     bootstrap node series is used to determine the series used by co-located
     services.
     """
-    mysql_charms = {
+    bundle1_charms = {
         'precise': 'cs:precise/mysql-51',
         'trusty': 'cs:trusty/mysql-20',
     }
-    haproxy_charms = {
+    bundle2_charms = {
         'precise': 'cs:precise/haproxy-35',
         'trusty': 'cs:trusty/haproxy-4',
     }
     return (
-        _bundle1.format(mysql=mysql_charms[bootstrap_node_series]),
-        _bundle2.format(mediawiki=haproxy_charms[bootstrap_node_series]),
+        _bundle1.format(mysql=bundle1_charms[bootstrap_node_series]),
+        _bundle2.format(haproxy=bundle2_charms[bootstrap_node_series]),
     )
 
 
@@ -71,10 +71,10 @@ bundle1:
 """
 
 _bundle2 = """
-b undle2:
+bundle2:
   services:
-    mediawiki:
-      charm: "{mediawiki}"
+    haproxy:
+      charm: "{haproxy}"
       num_units: 1
       to: '0'
       options:
