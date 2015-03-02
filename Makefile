@@ -28,7 +28,7 @@ all: setup
 setup:
 	tests/00-setup
 	# Ensure the correct version of pip has been installed
-	tests/.venv/bin/pip --version | grep "pip 1.[4-9]" || exit 1
+	tests/.venv/bin/pip --version | grep -E '1\.[4-9]\.|6\.[0-9]\.[0-9]' || exit 1
 
 sysdeps:
 	sudo apt-get install --yes $(SYSDEPS)

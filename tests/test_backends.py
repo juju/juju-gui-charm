@@ -203,7 +203,8 @@ class TestBackendCommands(unittest.TestCase):
             secure=config['secure'], sandbox=config['sandbox'],
             cached_fonts=config['cached-fonts'], ga_key=config['ga-key'],
             juju_core_version=config['juju-core-version'],
-            hide_login_button=config['hide-login-button'], password=None)
+            hide_login_button=config['hide-login-button'],
+            juju_env_uuid=None, password=None)
 
     def test_base_dir_created(self):
         # The base Juju GUI directory is correctly created.

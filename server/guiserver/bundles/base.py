@@ -97,7 +97,7 @@ class Deployer(object):
         self.importer_options = blocking.get_default_guiserver_options()
 
     @gen.coroutine
-    def validate(self, user, name, bundle):
+    def validate(self, user, bundle):
         """Validate the deployment bundle.
 
         The validation is executed in a separate process using the
@@ -105,7 +105,6 @@ class Deployer(object):
 
         Three arguments are provided:
           - user: the current authenticated user;
-          - name: then name of the bundle to be imported;
           - bundle: a YAML decoded object representing the bundle contents.
 
         Return a Future whose result is a string representing an error or None
@@ -272,6 +271,7 @@ class DeployMiddleware(object):
         self._deployer = deployer
         self._write_response = write_response
         self.routes = {
+            # Default import route
             'Import': views.import_bundle,
             'Watch': views.watch,
             'Next': views.next,
@@ -291,8 +291,9 @@ class DeployMiddleware(object):
     def process_request(self, data):
         """Process a deployment request."""
         request_id = data['RequestId']
+        params = data.get('Params', {})
         view = self.routes[data['Request']]
-        request = ObjectDict(params=data.get('Params', {}), user=self._user)
+        request = ObjectDict(params=params, user=self._user)
         response = yield view(request, self._deployer)
         response['RequestId'] = request_id
         self._write_response(response)

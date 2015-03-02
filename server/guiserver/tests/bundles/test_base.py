@@ -86,7 +86,7 @@ class TestDeployer(helpers.BundlesTestMixin, LogTrapTestCase, AsyncTestCase):
         # None is returned if the validation succeeds.
         deployer = self.make_deployer()
         with self.patch_validate():
-            result = yield deployer.validate(self.user, 'bundle', self.bundle)
+            result = yield deployer.validate(self.user, self.bundle)
         self.assertIsNone(result)
 
     @gen_test
@@ -95,7 +95,7 @@ class TestDeployer(helpers.BundlesTestMixin, LogTrapTestCase, AsyncTestCase):
         deployer = self.make_deployer()
         error = ValueError('validation error')
         with self.patch_validate(side_effect=error):
-            result = yield deployer.validate(self.user, 'bundle', self.bundle)
+            result = yield deployer.validate(self.user, self.bundle)
         self.assertEqual(str(error), result)
 
     @gen_test
@@ -103,7 +103,7 @@ class TestDeployer(helpers.BundlesTestMixin, LogTrapTestCase, AsyncTestCase):
         # The validation is executed in a separate process.
         deployer = self.make_deployer()
         with self.patch_validate() as mock_validate:
-            yield deployer.validate(self.user, 'bundle', self.bundle)
+            yield deployer.validate(self.user, self.bundle)
         mock_validate.assert_called_once_with(
             self.apiurl, self.user.username, self.user.password, self.bundle)
         mock_validate.assert_called_in_a_separate_process()
@@ -112,7 +112,7 @@ class TestDeployer(helpers.BundlesTestMixin, LogTrapTestCase, AsyncTestCase):
     def test_unsupported_api_version(self):
         # An error message is returned the API version is not supported.
         deployer = self.make_deployer(apiversion='not-supported')
-        result = yield deployer.validate(self.user, 'bundle', self.bundle)
+        result = yield deployer.validate(self.user, self.bundle)
         self.assertEqual('unsupported API version: not-supported', result)
 
     def test_import_bundle_scheduling(self):
@@ -422,7 +422,7 @@ class TestDeployMiddleware(helpers.BundlesTestMixin, AsyncTestCase):
         self.deployment = base.DeployMiddleware(
             self.user, self.deployer, self.responses.append)
 
-    def test_deployment_requested(self):
+    def test_deployment_requested_v3(self):
         # True is returned if the incoming data is a deployment request.
         requests = (
             self.make_deployment_request('Import'),
@@ -434,7 +434,19 @@ class TestDeployMiddleware(helpers.BundlesTestMixin, AsyncTestCase):
             requested = self.deployment.requested(request)
             self.assertTrue(requested, request)
 
-    def test_deployment_not_requested(self):
+    def test_deployment_requested_v4(self):
+        # True is returned if the incoming data is a deployment request.
+        requests = (
+            self.make_deployment_request('Import', version=4),
+            self.make_deployment_request('Watch', version=4),
+            self.make_deployment_request('Next', version=4),
+            self.make_deployment_request('Status', version=4),
+        )
+        for request in requests:
+            requested = self.deployment.requested(request)
+            self.assertTrue(requested, request)
+
+    def test_deployment_not_requested_v3(self):
         # False is returned if the incoming data is not a deployment request.
         # Params are not validated by DeployMiddleware.requested.
         params = {'Name': 'mybundle', 'YAML': 'foo: bar'}
@@ -474,10 +486,72 @@ class TestDeployMiddleware(helpers.BundlesTestMixin, AsyncTestCase):
             requested = self.deployment.requested(request)
             self.assertFalse(requested, request)
 
+    def test_deployment_not_requested_v4(self):
+        # False is returned if the incoming data is not a deployment request.
+        # Params are not validated by DeployMiddleware.requested.
+        params = {'Name': 'mybundle', 'YAML': 'foo: bar', 'Version': 4}
+        requests = (
+            # Empty request.
+            {},
+            # Invalid type field.
+            {
+                'RequestId': 1,
+                'Type': 'INVALID',
+                'Request': 'Import',
+                'Params': params,
+            },
+            # Invalid request field.
+            {
+                'RequestId': 2,
+                'Type': 'Deployer',
+                'Request': 'INVALID',
+                'Params': params,
+            },
+            # Missing request id field.
+            {
+                'INVALID': 3,
+                'Type': 'Deployer',
+                'Request': 'Import',
+                'Params': params,
+            },
+            # Field names are case sensitive.
+            {
+                'RequestId': 4,
+                'type': 'Deployer',
+                'request': 'Import',
+                'Params': params,
+            },
+        )
+        for request in requests:
+            requested = self.deployment.requested(request)
+            self.assertFalse(requested, request)
+
     @gen_test
-    def test_process_request(self):
+    def test_process_request_v3(self):
         # A deployment request is correctly processed.
         deployment_request = self.make_deployment_request('Import')
+
+        @gen.coroutine
+        def view(request, deployer):
+            # Ensure the view is called with the expected arguments.
+            self.assertEqual(deployment_request['Params'], request.params)
+            self.assertIs(self.user, request.user)
+            self.assertIs(self.deployer, deployer)
+            return {'Response': 'ok'}
+
+        # Patch the routes so that the customized view defined above is called
+        # when an import request is processed.
+        self.deployment.routes['Import'] = view
+        yield self.deployment.process_request(deployment_request)
+        # Ensure the response has been correctly sent.
+        self.assertEqual(1, len(self.responses))
+        response = self.responses[0]
+        self.assertEqual({'RequestId': 42, 'Response': 'ok'}, response)
+
+    @gen_test
+    def test_process_request_v4(self):
+        # A deployment request is correctly processed.
+        deployment_request = self.make_deployment_request('Import', version=4)
 
         @gen.coroutine
         def view(request, deployer):
