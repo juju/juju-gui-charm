@@ -23,7 +23,6 @@ import itertools
 import unittest
 import urllib2
 import urlparse
-import os
 
 from selenium.webdriver import Firefox
 from selenium.webdriver.support import ui
@@ -439,7 +438,7 @@ class TestBuiltinServerLocalRelease(DeployTestMixin, unittest.TestCase):
             'RequestId': self.counter.next(),
             'Type': 'Deployer',
             'Request': 'Import',
-            'Params': {'YAML': example.self.bundle1},
+            'Params': {'YAML': self.bundle1},
         })
         self.assertIn('Error', response)
         self.assertEqual(
