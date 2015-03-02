@@ -119,9 +119,8 @@ In the request parameters above, the YAML field stores the YAML encoded
 contents representing one (or more, in the case of v3 baskets) bundles, and the
 Name field is the name of the specific bundle (included in YAML) that must be
 deployed. The Name parameter is optional in the case YAML includes only one
-bundle, or in the case of v4 bundles.  The BundleID is optional for v3 bundles
-and required for v4 bundles, and is used for incrementing the deployment
-counter in Charmworld.
+bundle, or in the case of v4 bundles.  The BundleID is optional and is used for
+incrementing the deployment counter in the charm store.
 
 After receiving a deployment request, the DeployMiddleware sends a response
 indicating whether or not the request has been accepted. This response is sent
