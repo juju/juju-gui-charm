@@ -164,15 +164,6 @@ options:
       a link to jujucharms.com.
     type: boolean
     default: false
-  builtin-server:
-    description: |
-      Enable the built-in server, disabling both haproxy and Apache.
-      This is a temporary option: the built-in server will be
-      the only server in the future. Note that legacy server is no longer
-      supported/tested starting from trusty. Switch this option to false only
-      if the charm is deployed on a precise machine.
-    type: boolean
-    default: true
   builtin-server-logging:
     description: |
       Set the GUI server log level. Possible values are debug, info, warning

@@ -120,8 +120,8 @@ There are situations and customizations in which the charm needs to connect to
 the Internet:
 
 - juju-gui-source is set to a configuration that requires accessing an
-  external source in order to fetch a release tarball or a Git checkout in order
-  to build the source used by the charm.
+  external source in order to fetch a release tarball or a Git checkout in
+  order to build the source used by the charm.
 - builtin-server is set to false: in this case the charm adds an external
   Launchpad PPA to install the legacy server dependencies.
 
@@ -140,8 +140,8 @@ location that will be accessible to the *unit* either via filesystem or HTTP.
 
     `juju set juju-gui juju-gui-source=url:...`
 
-    where the ellipsis after the `url:` is your `http://` or `file://` URI.  This
-    may also be done during the deploy step using `--config`.
+    where the ellipsis after the `url:` is your `http://` or `file://` URI.
+    This may also be done during the deploy step using `--config`.
 
 3. If you had already tried to deploy the GUI and received an install error due
 to not being able to retrieve the source, you may also need to retry the unit

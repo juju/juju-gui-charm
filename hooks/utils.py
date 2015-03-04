@@ -16,44 +16,6 @@
 
 """Juju GUI charm utilities."""
 
-__all__ = [
-    'APACHE_SITE',
-    'APACHE_PORTS',
-    'API_PORT',
-    'CURRENT_DIR',
-    'JUJU_GUI_DIR',
-    'JUJU_PEM',
-    'WEB_PORT',
-    'cmd_log',
-    'compute_build_dir',
-    'download_release',
-    'fetch_gui_from_branch',
-    'fetch_gui_release',
-    'find_missing_packages',
-    'first_path_in_dir',
-    'get_api_address',
-    'get_launchpad_release',
-    'get_npm_cache_archive_url',
-    'get_release_file_path',
-    'install_missing_packages',
-    'log_hook',
-    'parse_source',
-    'prime_npm_cache',
-    'remove_apache_setup',
-    'remove_haproxy_setup',
-    'render_to_file',
-    'save_or_create_certificates',
-    'setup_apache_config',
-    'setup_gui',
-    'setup_haproxy_config',
-    'setup_ports',
-    'start_builtin_server',
-    'start_haproxy_apache',
-    'stop_builtin_server',
-    'stop_haproxy_apache',
-    'write_gui_config',
-]
-
 from contextlib import contextmanager
 from distutils.version import LooseVersion
 import errno
@@ -92,12 +54,36 @@ from shelltoolbox import (
 )
 
 
-APACHE = 'apache2'
-BUILTIN_SERVER = 'guiserver'
-HAPROXY = 'haproxy'
+__all__ = [
+    'CURRENT_DIR',
+    'JUJU_GUI_DIR',
+    'JUJU_PEM',
+    'cmd_log',
+    'compute_build_dir',
+    'download_release',
+    'fetch_gui_from_branch',
+    'fetch_gui_release',
+    'find_missing_packages',
+    'first_path_in_dir',
+    'get_api_address',
+    'get_launchpad_release',
+    'get_npm_cache_archive_url',
+    'get_release_file_path',
+    'install_missing_packages',
+    'log_hook',
+    'parse_source',
+    'prime_npm_cache',
+    'render_to_file',
+    'save_or_create_certificates',
+    'setup_gui',
+    'setup_ports',
+    'start_builtin_server',
+    'stop_builtin_server',
+    'write_gui_config',
+]
 
-API_PORT = 8080
-WEB_PORT = 8000
+
+GUISERVER = 'guiserver'
 
 BASE_DIR = '/var/lib/juju-gui'
 CURRENT_DIR = os.getcwd()
@@ -106,14 +92,8 @@ JUJU_GUI_DIR = os.path.join(BASE_DIR, 'juju-gui')
 RELEASES_DIR = os.path.join(CURRENT_DIR, 'releases')
 SERVER_DIR = os.path.join(CURRENT_DIR, 'server')
 
-APACHE_CFG_DIR = os.path.join(os.path.sep, 'etc', 'apache2')
-APACHE_PORTS = os.path.join(APACHE_CFG_DIR, 'ports.conf')
-APACHE_SITE = os.path.join(APACHE_CFG_DIR, 'sites-available', 'juju-gui')
-HAPROXY_CFG_PATH = os.path.join(os.path.sep, 'etc', 'haproxy', 'haproxy.cfg')
-
 SYS_INIT_DIR = os.path.join(os.path.sep, 'etc', 'init')
 GUISERVER_INIT_PATH = os.path.join(SYS_INIT_DIR, 'guiserver.conf')
-HAPROXY_INIT_PATH = os.path.join(SYS_INIT_DIR, 'haproxy.conf')
 
 JUJU_PEM = 'juju.includes-private-key.pem'
 DEB_BUILD_DEPENDENCIES = (
@@ -453,86 +433,6 @@ def setup_ports(previous_port, current_port):
     open_port(443)
 
 
-def setup_haproxy_config(ssl_cert_path, secure=True):
-    """Generate the haproxy configuration file."""
-    log('Setting up haproxy Upstart file.')
-    config_path = os.path.join(CONFIG_DIR, 'haproxy.conf')
-    shutil.copy(config_path, SYS_INIT_DIR)
-    log('Generating haproxy configuration file.')
-    # Retrieve the juju-core API server address.
-    api_address = get_api_address()
-    context = {
-        'api_address': api_address,
-        'api_pem': JUJU_PEM,
-        'ssl_cert_path': ssl_cert_path,
-        'web_pem': JUJU_PEM,
-        'web_port': WEB_PORT,
-        'secure': secure
-    }
-    render_to_file('haproxy.cfg.template', context, HAPROXY_CFG_PATH)
-
-
-def remove_haproxy_setup():
-    """Remove haproxy setup."""
-    log('Removing haproxy setup.')
-    cmd_log(run('rm', '-f', HAPROXY_CFG_PATH))
-    cmd_log(run('rm', '-f', HAPROXY_INIT_PATH))
-
-
-def setup_apache_config(build_dir, serve_tests=False):
-    """Set up the Apache configuration."""
-    log('Generating the Apache site configuration files.')
-    tests_root = os.path.join(JUJU_GUI_DIR, 'test', '') if serve_tests else ''
-    context = {
-        'port': WEB_PORT,
-        'server_root': build_dir,
-        'tests_root': tests_root,
-    }
-    render_to_file('apache-ports.template', context, APACHE_PORTS)
-    cmd_log(run('chown', 'ubuntu:', APACHE_PORTS))
-    render_to_file('apache-site.template', context, APACHE_SITE)
-    cmd_log(run('chown', 'ubuntu:', APACHE_SITE))
-    with su('root'):
-        run('a2dissite', 'default')
-        run('a2ensite', 'juju-gui')
-        run('a2enmod', 'headers')
-
-
-def remove_apache_setup():
-    """Remove Apache setup."""
-    if os.path.exists(APACHE_SITE):
-        log('Removing Apache setup.')
-        cmd_log(run('rm', '-f', APACHE_SITE))
-        with su('root'):
-            run('a2dismod', 'headers')
-            run('a2dissite', 'juju-gui')
-            run('a2ensite', 'default')
-        if os.path.exists(APACHE_PORTS):
-            cmd_log(run('rm', '-f', APACHE_PORTS))
-
-
-def start_haproxy_apache(
-        build_dir, serve_tests, ssl_cert_path, secure):
-    """Set up and start the haproxy and Apache services."""
-    log('Setting up Apache and haproxy.')
-    setup_apache_config(build_dir, serve_tests)
-    setup_haproxy_config(ssl_cert_path, secure)
-    log('Starting the haproxy and Apache services.')
-    with su('root'):
-        service_control(APACHE, RESTART)
-        service_control(HAPROXY, RESTART)
-
-
-def stop_haproxy_apache():
-    """Stop the haproxy and Apache services."""
-    log('Stopping the haproxy and Apache services.')
-    with su('root'):
-        service_control(HAPROXY, STOP)
-        service_control(APACHE, STOP)
-    remove_haproxy_setup()
-    remove_apache_setup()
-
-
 def install_builtin_server():
     """Install the builtin server code."""
     log('Installing the builtin server dependencies.')
@@ -595,14 +495,14 @@ def start_builtin_server(
         charmworld_url=charmworld_url, port=port)
     log('Starting the builtin server.')
     with su('root'):
-        service_control(BUILTIN_SERVER, RESTART)
+        service_control(GUISERVER, RESTART)
 
 
 def stop_builtin_server():
     """Stop the builtin server."""
     log('Stopping the builtin server.')
     with su('root'):
-        service_control(BUILTIN_SERVER, STOP)
+        service_control(GUISERVER, STOP)
     cmd_log(run('rm', '-f', GUISERVER_INIT_PATH))
 
 

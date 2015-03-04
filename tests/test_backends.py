@@ -32,12 +32,7 @@ import backend
 import utils
 
 
-EXPECTED_PYTHON_LEGACY_DEBS = ('apache2', 'curl', 'haproxy', 'openssl')
-EXPECTED_GO_LEGACY_DEBS = ('apache2', 'curl', 'haproxy', 'openssl')
-EXPECTED_PYTHON_BUILTIN_DEBS = (
-    'curl', 'libcurl3', 'openssl', 'python-bzrlib', 'python-pip',
-    'python-pycurl')
-EXPECTED_GO_BUILTIN_DEBS = (
+EXPECTED_DEBS = (
     'curl', 'libcurl3', 'openssl', 'python-bzrlib', 'python-pip',
     'python-pycurl')
 
@@ -45,73 +40,17 @@ EXPECTED_GO_BUILTIN_DEBS = (
 class TestBackendProperties(unittest.TestCase):
     """Ensure the correct mixins and property values are collected."""
 
-    def assert_mixins(self, expected, backend):
-        """Ensure the given backend includes the expected mixins."""
-        obtained = tuple(mixin.__class__.__name__ for mixin in backend.mixins)
-        self.assertEqual(tuple(expected), obtained)
+    def test_mixins(self):
+        # Ensure the backend includes the expected mixins.
+        expected_mixins = ['SetUpMixin', 'GuiMixin', 'GuiServerMixin']
+        test_backend = backend.Backend(config={})
+        mixins = [mixin.__class__.__name__ for mixin in test_backend.mixins]
+        self.assertEqual(expected_mixins, mixins)
 
-    def assert_dependencies(self, expected_debs, expected_repository, backend):
-        """Ensure the given backend includes the expected dependencies."""
-        obtained_debs, obtained_repository = backend.get_dependencies()
-        self.assertEqual(set(expected_debs), obtained_debs)
-        self.assertEqual(expected_repository, obtained_repository)
-
-    def check_sandbox_mode(self):
-        """The backend includes the correct mixins when sandbox mode is active.
-        """
-        expected_mixins = (
-            'SetUpMixin', 'SandboxMixin', 'GuiMixin', 'HaproxyApacheMixin')
-        config = {
-            'builtin-server': False,
-            'repository-location': 'ppa:my/location',
-            'sandbox': True,
-        }
-        test_backend = backend.Backend(config=config)
-        self.assert_mixins(expected_mixins, test_backend)
-        self.assert_dependencies(
-            EXPECTED_PYTHON_LEGACY_DEBS, 'ppa:my/location', test_backend)
-
-    def test_go_sandbox_backend(self):
-        self.check_sandbox_mode()
-
-    def test_go_backend(self):
-        expected_mixins = (
-            'SetUpMixin', 'GoMixin', 'GuiMixin', 'HaproxyApacheMixin')
-        config = {
-            'builtin-server': False,
-            'repository-location': 'ppa:my/location',
-            'sandbox': False,
-        }
-        test_backend = backend.Backend(config=config)
-        self.assert_mixins(expected_mixins, test_backend)
-        self.assert_dependencies(
-            EXPECTED_GO_LEGACY_DEBS, 'ppa:my/location', test_backend)
-
-    def test_go_builtin_server(self):
-        config = {
-            'builtin-server': True,
-            'repository-location': 'ppa:my/location',
-            'sandbox': False,
-        }
-        expected_mixins = (
-            'SetUpMixin', 'GoMixin', 'GuiMixin', 'BuiltinServerMixin')
-        test_backend = backend.Backend(config)
-        self.assert_mixins(expected_mixins, test_backend)
-        self.assert_dependencies(
-            EXPECTED_GO_BUILTIN_DEBS, None, test_backend)
-
-    def test_sandbox_builtin_server(self):
-        config = {
-            'builtin-server': True,
-            'repository-location': 'ppa:my/location',
-            'sandbox': True,
-        }
-        expected_mixins = (
-            'SetUpMixin', 'SandboxMixin', 'GuiMixin', 'BuiltinServerMixin')
-        test_backend = backend.Backend(config)
-        self.assert_mixins(expected_mixins, test_backend)
-        self.assert_dependencies(
-            EXPECTED_PYTHON_BUILTIN_DEBS, None, test_backend)
+    def test_dependencies(self):
+        # Ensure the backend includes the expected dependencies.
+        test_backend = backend.Backend(config={})
+        self.assertEqual(set(EXPECTED_DEBS), test_backend.get_dependencies())
 
 
 class TestBackendCommands(unittest.TestCase):
@@ -131,7 +70,6 @@ class TestBackendCommands(unittest.TestCase):
     def make_config(self, options=None):
         """Create and return a backend configuration dict."""
         config = {
-            'builtin-server': True,
             'builtin-server-logging': 'info',
             'cached-fonts': False,
             'charmworld-url': 'http://charmworld.example.com/',
@@ -179,12 +117,8 @@ class TestBackendCommands(unittest.TestCase):
             'setup_ports': mock.patch('backend.utils.setup_ports'),
             'start_builtin_server': mock.patch(
                 'backend.utils.start_builtin_server'),
-            'start_haproxy_apache': mock.patch(
-                'backend.utils.start_haproxy_apache'),
             'stop_builtin_server': mock.patch(
                 'backend.utils.stop_builtin_server'),
-            'stop_haproxy_apache': mock.patch(
-                'backend.utils.stop_haproxy_apache'),
             'write_gui_config': mock.patch('backend.utils.write_gui_config'),
         }
         # Note: nested is deprecated for good reasons which do not apply here.
@@ -223,29 +157,13 @@ class TestBackendCommands(unittest.TestCase):
             test_backend.destroy()
         self.assertFalse(os.path.exists(utils.BASE_DIR), utils.BASE_DIR)
 
-    def test_install_go_legacy_stable(self):
-        # Install a juju-core backend with legacy server and stable release.
-        config = self.make_config({'builtin-server': False})
-        test_backend = backend.Backend(config=config)
+    def test_install_stable_release(self):
+        # Install a stable release.
+        test_backend = backend.Backend(config=self.make_config())
         with self.mock_all() as mocks:
             test_backend.install()
         mocks.install_missing_packages.assert_called_once_with(
-            set(EXPECTED_GO_LEGACY_DEBS), repository=self.repository_location)
-        mocks.parse_source.assert_called_once_with(self.juju_gui_source)
-        mocks.fetch_gui_release.assert_called_once_with(
-            *self.parse_source_return_value)
-        self.assertFalse(mocks.fetch_gui_from_branch.called)
-        mocks.setup_gui.assert_called_once_with(mocks.fetch_gui_release())
-        self.assertFalse(mocks.install_builtin_server.called)
-
-    def test_install_go_builtin_stable(self):
-        # Install a juju-core backend with builtin server and stable release.
-        config = self.make_config({'builtin-server': True})
-        test_backend = backend.Backend(config=config)
-        with self.mock_all() as mocks:
-            test_backend.install()
-        mocks.install_missing_packages.assert_called_once_with(
-            set(EXPECTED_GO_BUILTIN_DEBS), repository=None)
+            set(EXPECTED_DEBS))
         mocks.parse_source.assert_called_once_with(self.juju_gui_source)
         mocks.fetch_gui_release.assert_called_once_with(
             *self.parse_source_return_value)
@@ -253,18 +171,17 @@ class TestBackendCommands(unittest.TestCase):
         mocks.setup_gui.assert_called_once_with(mocks.fetch_gui_release())
         mocks.install_builtin_server.assert_called_once_with()
 
-    def test_install_go_builtin_branch(self):
-        # Install a juju-core backend with builtin server and branch release.
+    def test_install_branch_release(self):
+        # Install a branch release.
         self.parse_source_return_value = ('branch', ('lp:juju-gui', 42))
         expected_calls = [
-            mock.call(set(EXPECTED_GO_BUILTIN_DEBS), repository=None),
+            mock.call(set(EXPECTED_DEBS)),
             mock.call(
                 utils.DEB_BUILD_DEPENDENCIES,
                 repository=self.repository_location,
             ),
         ]
-        config = self.make_config({'builtin-server': True})
-        test_backend = backend.Backend(config=config)
+        test_backend = backend.Backend(config=self.make_config())
         with self.mock_all() as mocks:
             test_backend.install()
         mocks.install_missing_packages.assert_has_calls(expected_calls)
@@ -275,24 +192,9 @@ class TestBackendCommands(unittest.TestCase):
         mocks.setup_gui.assert_called_once_with(mocks.fetch_gui_from_branch())
         mocks.install_builtin_server.assert_called_once_with()
 
-    def test_start_go_legacy(self):
-        # Start a juju-core backend with legacy server.
-        config = self.make_config({'builtin-server': False})
-        test_backend = backend.Backend(config=config)
-        with self.mock_all() as mocks:
-            test_backend.start()
-        mocks.compute_build_dir.assert_called_with(
-            config['juju-gui-debug'], config['serve-tests'])
-        self.assert_write_gui_config_called(mocks, config)
-        mocks.setup_ports.assert_called_once_with(None, None)
-        mocks.start_haproxy_apache.assert_called_once_with(
-            mocks.compute_build_dir(), config['serve-tests'],
-            self.ssl_cert_path, config['secure'])
-        self.assertFalse(mocks.start_builtin_server.called)
-
-    def test_start_go_builtin(self):
-        # Start a juju-core backend with builtin server.
-        config = self.make_config({'builtin-server': True})
+    def test_start(self):
+        # Start the GUI server.
+        config = self.make_config()
         test_backend = backend.Backend(config=config)
         with self.mock_all() as mocks:
             test_backend.start()
@@ -305,11 +207,10 @@ class TestBackendCommands(unittest.TestCase):
             config['serve-tests'], config['sandbox'],
             config['builtin-server-logging'], not config['secure'],
             config['charmworld-url'], port=None)
-        self.assertFalse(mocks.start_haproxy_apache.called)
 
-    def test_start_go_builtin_user_provided_port(self):
-        # Start a juju backend with builtin server and a user provided port.
-        config = self.make_config({'builtin-server': True, 'port': 8080})
+    def test_start_user_provided_port(self):
+        # Start the GUI server with a user provided port.
+        config = self.make_config({'port': 8080})
         test_backend = backend.Backend(config=config)
         with self.mock_all() as mocks:
             test_backend.start()
@@ -320,46 +221,31 @@ class TestBackendCommands(unittest.TestCase):
             config['builtin-server-logging'], not config['secure'],
             config['charmworld-url'], port=8080)
 
-    def test_stop_go_legacy(self):
-        # Stop a juju-core backend with legacy server.
-        config = self.make_config({'builtin-server': False})
-        test_backend = backend.Backend(config=config)
-        with self.mock_all() as mocks:
-            test_backend.stop()
-        mocks.stop_haproxy_apache.assert_called_once_with()
-        self.assertFalse(mocks.stop_builtin_server.called)
-
-    def test_stop_go_builtin(self):
-        # Stop a juju-core backend with builtin server.
-        config = self.make_config({'builtin-server': True})
-        test_backend = backend.Backend(config=config)
+    def test_stop(self):
+        # Stop the GUI server.
+        test_backend = backend.Backend(config=self.make_config())
         with self.mock_all() as mocks:
             test_backend.stop()
         mocks.stop_builtin_server.assert_called_once_with()
-        self.assertFalse(mocks.stop_haproxy_apache.called)
 
 
 class TestBackendUtils(unittest.TestCase):
 
     def test_same_config(self):
         test_backend = backend.Backend(
-            config={
-                'sandbox': False, 'builtin-server': False},
-            prev_config={
-                'sandbox': False, 'builtin-server': False},
+            config={'sandbox': False, 'secure': False},
+            prev_config={'sandbox': False, 'secure': False},
         )
         self.assertFalse(test_backend.different('sandbox'))
-        self.assertFalse(test_backend.different('builtin-server'))
+        self.assertFalse(test_backend.different('secure'))
 
     def test_different_config(self):
         test_backend = backend.Backend(
-            config={
-                'sandbox': False, 'builtin-server': False},
-            prev_config={
-                'sandbox': True, 'builtin-server': False},
+            config={'sandbox': False, 'secure': False},
+            prev_config={'sandbox': True, 'secure': False},
         )
         self.assertTrue(test_backend.different('sandbox'))
-        self.assertFalse(test_backend.different('builtin-server'))
+        self.assertFalse(test_backend.different('secure'))
 
 
 class TestCallMethods(unittest.TestCase):
