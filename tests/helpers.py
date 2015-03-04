@@ -19,6 +19,7 @@
 from collections import namedtuple
 from functools import wraps
 import json
+import logging
 import os
 import random
 import string
@@ -229,6 +230,7 @@ class WebSocketClient(object):
 
     def connect(self):
         """Connect to the WebSocket server."""
+        logging.info('connecting to {}'.format(self._url))
         self._conn = websocket.create_connection(self._url, sslopt=SSLOPT)
 
     def send(self, request):
@@ -237,12 +239,15 @@ class WebSocketClient(object):
         Return the decoded WebSocket response returned by the server.
         Block until the server response is received.
         """
+        logging.info('sending message: {}'.format(request))
         self._conn.send(json.dumps(request))
         response = self._conn.recv()
+        logging.info('received message: {}'.format(response))
         return json.loads(response)
 
     def close(self):
         """Close the WebSocket connection."""
         if self._conn is not None:
+            logging.info('closing the connection')
             self._conn.close()
             self._conn = None
