@@ -168,7 +168,6 @@ options:
     description: |
       Set the GUI server log level. Possible values are debug, info, warning
       and error. The log file is placed in /var/log/upstart/guiserver.log.
-      This option is ignored if builtin-server is set to false.
     type: string
     default: info
   nagios_context:
