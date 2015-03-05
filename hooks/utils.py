@@ -533,13 +533,16 @@ def fetch_gui_from_branch(branch_url, revision, logpath):
 
     # Create a release starting from a branch.
     juju_gui_source_dir = os.path.join(CURRENT_DIR, 'juju-gui-source')
-
-    log('Retrieving Juju GUI source checkout from {} ({}).'.format(
-        branch_url, revision))
     cmd_log(run('rm', '-rf', juju_gui_source_dir))
     git_clone = command('git', 'clone')
 
-    if revision.startswith('@'):
+    if revision is None:
+        log('Retrieving Juju GUI source from default {} repository trunk.'
+            ''.format(branch_url))
+        cmd_log(git_clone('--depth', '1', branch_url, juju_gui_source_dir))
+    elif revision.startswith('@'):
+        log('Retrieving Juju GUI source from {} repository at commit {}.'
+            ''.format(branch_url, revision[1:]))
         # Retrieve a full clone and then checkout the specific commit.
         git_dir = os.path.join(juju_gui_source_dir, '.git')
         cmd_log(git_clone(branch_url, juju_gui_source_dir))
@@ -547,7 +550,8 @@ def fetch_gui_from_branch(branch_url, revision, logpath):
             'git', '--git-dir', git_dir, '--work-tree',
             juju_gui_source_dir, 'checkout', revision[1:]))
     else:
-        # Retrieve a single specific branch.
+        log('Retrieving Juju GUI source from {} repository {} branch.'
+            ''.format(branch_url, revision))
         cmd_log(git_clone(
             '--depth', '1', '-b', revision, branch_url, juju_gui_source_dir))
 
