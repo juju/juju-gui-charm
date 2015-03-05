@@ -27,14 +27,3 @@ performs the actual orchestration work. Both browser-server and server-
 Juju connections are bidirectional, using the WebSocket protocol on the
 same port as the HTTPS connection, allowing changes in the Juju
 environment to be propagated and shown immediately by the browser.
-
-## Activation ##
-
-Previously the Juju GUI has been served by a combination of haproxy and
-Apache, specifically deployed and configured by the charm.
-
-The new built-in server replaces them both and can be enabled by
-setting the config option `builtin-server` to `true`.
-
-In the future haproxy, Apache and the mentioned config option will be
-removed; only the built-in server will remain.
