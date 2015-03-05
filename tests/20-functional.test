@@ -43,7 +43,11 @@ from helpers import (
 import example
 
 
-JUJU_GUI_TEST_BRANCH = 'https://github.com/juju/juju-gui.git master'
+# Note that the "master" branch generated false positives in the past.
+JUJU_GUI_TEST_BRANCH = 'https://github.com/juju/juju-gui.git develop'
+JUJU_GUI_TEST_COMMIT = (
+    'https://github.com/juju/juju-gui.git '
+    '@8ee1bb316d3c43a5850b6613d103e805fa37c1aa')
 
 try:
     admin_secret = get_env_attr('admin-secret')
@@ -201,12 +205,18 @@ class TestDeployOptions(DeployTestMixin, unittest.TestCase):
         server_info = self.get_builtin_server_info(hostname)
         self.assertTrue(server_info['sandbox'])
 
-    @unittest.skipIf(
-        bootstrap_node_series == 'precise',
-        'deploying from git branches is not supported on precise')
     def test_branch_source(self):
         # Ensure the Juju GUI is correctly deployed from a Git branch.
         options = {'juju-gui-source': JUJU_GUI_TEST_BRANCH}
+        self.service_name, unit_info = juju_deploy_gui(options=options)
+        hostname = unit_info['public-address']
+        self.navigate_to(hostname)
+        self.handle_browser_warning()
+        self.assertEnvironmentIsConnected()
+
+    def test_commit_source(self):
+        # Ensure the Juju GUI is correctly deployed from a Git commit SHA.
+        options = {'juju-gui-source': JUJU_GUI_TEST_COMMIT}
         self.service_name, unit_info = juju_deploy_gui(options=options)
         hostname = unit_info['public-address']
         self.navigate_to(hostname)
