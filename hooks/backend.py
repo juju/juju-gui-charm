@@ -78,14 +78,13 @@ class GuiMixin(object):
             # Get a tarball somehow.
             origin, version_or_branch = utils.parse_source(
                 backend.config['juju-gui-source'])
-            if origin in ('branch', 'develop'):
+            if origin == 'develop':
                 # Develop is the latest passing build from Git.
-                if origin == 'develop':
-                    version_or_branch = (
-                        'https://github.com/juju/juju-gui.git',
-                        None
-                    )
+                origin = 'branch'
+                version_or_branch = (
+                    'https://github.com/juju/juju-gui.git', 'develop')
 
+            if origin == 'branch':
                 logpath = backend.config['command-log-file']
                 # Make sure we have the required build dependencies.
                 # Note that we also need to add the juju-gui repository
