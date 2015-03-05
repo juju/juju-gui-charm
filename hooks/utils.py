@@ -537,12 +537,12 @@ def fetch_gui_from_branch(branch_url, revision, logpath):
     git_clone = command('git', 'clone')
 
     if revision is None:
-        log('Retrieving Juju GUI source from default {} repository trunk.'
-            ''.format(branch_url))
+        log('Retrieving Juju GUI source from {} (default trunk).'.format(
+            branch_url))
         cmd_log(git_clone('--depth', '1', branch_url, juju_gui_source_dir))
     elif revision.startswith('@'):
-        log('Retrieving Juju GUI source from {} repository at commit {}.'
-            ''.format(branch_url, revision[1:]))
+        log('Retrieving Juju GUI source from {} (commit: {}).'.format(
+            branch_url, revision[1:]))
         # Retrieve a full clone and then checkout the specific commit.
         git_dir = os.path.join(juju_gui_source_dir, '.git')
         cmd_log(git_clone(branch_url, juju_gui_source_dir))
@@ -550,8 +550,8 @@ def fetch_gui_from_branch(branch_url, revision, logpath):
             'git', '--git-dir', git_dir, '--work-tree',
             juju_gui_source_dir, 'checkout', revision[1:]))
     else:
-        log('Retrieving Juju GUI source from {} repository {} branch.'
-            ''.format(branch_url, revision))
+        log('Retrieving Juju GUI source from {} (branch: {}).'.format(
+            branch_url, revision))
         cmd_log(git_clone(
             '--depth', '1', '-b', revision, branch_url, juju_gui_source_dir))
 
