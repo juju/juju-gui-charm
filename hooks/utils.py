@@ -103,11 +103,6 @@ DEB_BUILD_DEPENDENCIES = (
 
 # Store the configuration from on invocation to the next.
 config_json = Serializer(os.path.join(os.path.sep, 'tmp', 'config.json'))
-# Git checkout command.
-# This is the equivalent shallow clone. Note, to do a revision checkout we
-# 'undo' this later on.
-git_checkout = command('git', 'clone', '--depth', '1')
-
 release_expression = re.compile(r"""
     juju-gui-  # Juju GUI prefix.
     (
@@ -116,7 +111,6 @@ release_expression = re.compile(r"""
     )
     \.(?:tgz|xz)  # File extension.
 """, re.VERBOSE)
-
 results_log = None
 
 
@@ -539,33 +533,27 @@ def fetch_gui_from_branch(branch_url, revision, logpath):
 
     # Create a release starting from a branch.
     juju_gui_source_dir = os.path.join(CURRENT_DIR, 'juju-gui-source')
-
-    log('Retrieving Juju GUI source checkout from {} ({}).'.format(
-        branch_url, revision))
-
     cmd_log(run('rm', '-rf', juju_gui_source_dir))
-    checkout_args = [branch_url, juju_gui_source_dir]
-    cmd_log(git_checkout(*checkout_args))
+    git_clone = command('git', 'clone')
 
-    # If there's a revision attempt to checkout that revision.
-    if revision:
-        git_dir = juju_gui_source_dir + "/.git"
-        if revision.startswith('@'):
-            revision = revision[1:]
-            # We have to unshallow the checkout in order to be able to 'see'
-            # older commit hashes to check them out.
-            # Note that "git fetch --unshallow" was introduced after precise.
-            cmd_log(run(
-                'git', '--git-dir', git_dir, '--work-tree',
-                juju_gui_source_dir, 'fetch', '--depth', '20000'))
-        else:
-            cmd_log(run(
-                'git', '--git-dir', git_dir, '--work-tree',
-                juju_gui_source_dir, 'fetch', '--depth', '1',
-                'origin', '{0}:{0}'.format(revision)))
+    if revision is None:
+        log('Retrieving Juju GUI source from {} (default trunk).'.format(
+            branch_url))
+        cmd_log(git_clone('--depth', '1', branch_url, juju_gui_source_dir))
+    elif revision.startswith('@'):
+        log('Retrieving Juju GUI source from {} (commit: {}).'.format(
+            branch_url, revision[1:]))
+        # Retrieve a full clone and then checkout the specific commit.
+        git_dir = os.path.join(juju_gui_source_dir, '.git')
+        cmd_log(git_clone(branch_url, juju_gui_source_dir))
         cmd_log(run(
             'git', '--git-dir', git_dir, '--work-tree',
-            juju_gui_source_dir, 'checkout', revision))
+            juju_gui_source_dir, 'checkout', revision[1:]))
+    else:
+        log('Retrieving Juju GUI source from {} (branch: {}).'.format(
+            branch_url, revision))
+        cmd_log(git_clone(
+            '--depth', '1', '-b', revision, branch_url, juju_gui_source_dir))
 
     log('Preparing a Juju GUI release.')
     logdir = os.path.dirname(logpath)
