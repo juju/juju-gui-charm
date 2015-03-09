@@ -59,6 +59,7 @@ jujutest:
 
 lint: setup
 	@$(VENV)/bin/flake8 --show-source --exclude=.venv \
+		--filename *.py,20-functional.test \
 		hooks/ tests/ server/
 
 clean:

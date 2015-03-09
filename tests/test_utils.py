@@ -33,7 +33,6 @@ import tempita
 from utils import (
     JUJU_GUI_DIR,
     JUJU_PEM,
-    WEB_PORT,
     _get_by_attr,
     cmd_log,
     compute_build_dir,
@@ -49,17 +48,11 @@ from utils import (
     log_hook,
     parse_source,
     port_in_range,
-    remove_apache_setup,
-    remove_haproxy_setup,
     render_to_file,
     save_or_create_certificates,
-    setup_apache_config,
-    setup_haproxy_config,
     setup_ports,
     start_builtin_server,
-    start_haproxy_apache,
     stop_builtin_server,
-    stop_haproxy_apache,
     write_builtin_server_startup,
     write_gui_config,
 )
@@ -777,7 +770,7 @@ class TestCmdLog(unittest.TestCase):
         self.assertTrue(line.endswith(': juju-gui@INFO \nfoo\n'))
 
 
-class TestStartImprovAgentGui(unittest.TestCase):
+class TestStartGui(unittest.TestCase):
     # XXX frankban 2014-12-10: change this test case so that functions being
     # tested are better separated. Also avoid manually patching helper
     # functions and use the mock library instead.
@@ -828,8 +821,6 @@ class TestStartImprovAgentGui(unittest.TestCase):
             unit_get=(utils.unit_get, noop),
             render_to_file=(utils.render_to_file, render_to_file),
             get_api_address=(utils.get_api_address, noop),
-            APACHE_PORTS=(utils.APACHE_PORTS, 'PORTS_NOT_THERE'),
-            APACHE_SITE=(utils.APACHE_SITE, 'SITE_NOT_THERE'),
         )
         # Apply the patches.
         for fn, fcns in self.utils_names.items():
@@ -855,43 +846,6 @@ class TestStartImprovAgentGui(unittest.TestCase):
             self.assertIn(
                 result, build_dir, 'debug: {}, serve_tests: {}'.format(
                     juju_gui_debug, serve_tests))
-
-    def test_setup_haproxy_config(self):
-        setup_haproxy_config(self.ssl_cert_path)
-        haproxy_conf = self.files['haproxy.cfg']
-        self.assertIn('ca-base {}'.format(self.ssl_cert_path), haproxy_conf)
-        self.assertIn('crt-base {}'.format(self.ssl_cert_path), haproxy_conf)
-        self.assertIn('web1 127.0.0.1:{}'.format(WEB_PORT), haproxy_conf)
-        self.assertIn('crt {}'.format(JUJU_PEM), haproxy_conf)
-        self.assertIn('redirect scheme https', haproxy_conf)
-
-    def test_remove_haproxy_setup(self):
-        remove_haproxy_setup()
-        self.assertEqual(self.run_call_count, 2)
-
-    def test_setup_apache_config(self):
-        setup_apache_config(self.build_dir, serve_tests=True)
-        apache_site_conf = self.files['SITE_NOT_THERE']
-        self.assertIn('juju-gui/build-', apache_site_conf)
-        self.assertIn('VirtualHost *:{}'.format(WEB_PORT), apache_site_conf)
-        self.assertIn(
-            'Alias /test {}/test/'.format(JUJU_GUI_DIR), apache_site_conf)
-        apache_ports_conf = self.files['PORTS_NOT_THERE']
-        self.assertIn('NameVirtualHost *:8000', apache_ports_conf)
-        self.assertIn('Listen 8000', apache_ports_conf)
-
-    def test_start_haproxy_apache(self):
-        start_haproxy_apache(JUJU_GUI_DIR, False, self.ssl_cert_path, True)
-        self.assertEqual(self.svc_ctl_call_count, 2)
-        self.assertEqual(self.service_names, ['apache2', 'haproxy'])
-        self.assertEqual(
-            self.actions, [charmhelpers.RESTART, charmhelpers.RESTART])
-
-    def test_stop_haproxy_apache(self):
-        stop_haproxy_apache()
-        self.assertEqual(self.svc_ctl_call_count, 2)
-        self.assertEqual(self.service_names, ['haproxy', 'apache2'])
-        self.assertEqual(self.actions, [charmhelpers.STOP, charmhelpers.STOP])
 
     def test_install_builtin_server(self):
         install_builtin_server()
@@ -1040,11 +994,6 @@ class TestStartImprovAgentGui(unittest.TestCase):
             '~/.juju/environments/ with the same name as the current '
             'environment.')
         self.assertIn(expected_help, js_conf)
-
-    def test_setup_haproxy_config_insecure(self):
-        setup_haproxy_config(self.ssl_cert_path, secure=False)
-        # The insecure approach eliminates the https redirect.
-        self.assertNotIn('redirect scheme https', self.files['haproxy.cfg'])
 
     def test_write_gui_config_sandbox(self):
         write_gui_config(
@@ -1243,35 +1192,6 @@ class TestInstallBuiltinServer(unittest.TestCase):
                 '/usr/bin/python',
                 os.path.join(charm_dir, 'server', 'setup.py'), 'install')
         ])
-
-
-@mock.patch('utils.run')
-@mock.patch('utils.cmd_log', mock.Mock())
-@mock.patch('utils.log', mock.Mock())
-@mock.patch('utils.su', mock.MagicMock())
-class TestRemoveApacheSetup(unittest.TestCase):
-
-    def test_existing_configuration(self, mock_run):
-        # The Apache configuration is cleaned up if previously set up.
-        apache_site = tempfile.mkdtemp()
-        apache_ports = os.path.join(apache_site, 'ports.conf')
-        self.addCleanup(shutil.rmtree, apache_site)
-        with mock.patch('utils.APACHE_SITE', apache_site):
-            with mock.patch('utils.APACHE_PORTS', apache_ports):
-                remove_apache_setup()
-        self.assertEqual(4, mock_run.call_count)
-        expected_calls = [
-            mock.call('rm', '-f', apache_site),
-            mock.call('a2dismod', 'headers'),
-            mock.call('a2dissite', 'juju-gui'),
-            mock.call('a2ensite', 'default'),
-        ]
-        mock_run.assert_has_calls(expected_calls)
-
-    def test_missing_configuration(self, mock_run):
-        # Nothing happens if the configuration does not already exist.
-        remove_apache_setup()
-        self.assertEqual(0, mock_run.call_count)
 
 
 @mock.patch('utils.find_missing_packages')

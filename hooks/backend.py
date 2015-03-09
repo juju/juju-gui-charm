@@ -28,8 +28,7 @@ __init__, as needed. Then the install(), start(), and stop() methods have a
 "self" that is the simple instantiated mixin, and a "backend" argument that is
 the backend instance. Python inheritance machinery is somewhat mimicked in that
 certain properties and methods are explicitly aggregated on the backend
-instance: see the chain_methods and merge_properties functions, and their
-usages.
+instance: see the call_methods function.
 
 There is also a feature for determining if configuration values have changed
 between old and new configurations so we can selectively take action.
@@ -42,9 +41,7 @@ import errno
 import os
 import shutil
 
-from charmhelpers import (
-    log,
-)
+from charmhelpers import log
 
 import utils
 
@@ -66,15 +63,6 @@ class SetUpMixin(object):
         shutil.rmtree(utils.BASE_DIR)
 
 
-class SandboxMixin(object):
-    pass
-
-
-class GoMixin(object):
-    """Manage the real Go juju-core backend."""
-    pass
-
-
 class GuiMixin(object):
     """Install and start the GUI and its dependencies."""
 
@@ -90,14 +78,13 @@ class GuiMixin(object):
             # Get a tarball somehow.
             origin, version_or_branch = utils.parse_source(
                 backend.config['juju-gui-source'])
-            if origin in ('branch', 'develop'):
+            if origin == 'develop':
                 # Develop is the latest passing build from Git.
-                if origin == 'develop':
-                    version_or_branch = (
-                        'https://github.com/juju/juju-gui.git',
-                        None
-                    )
+                origin = 'branch'
+                version_or_branch = (
+                    'https://github.com/juju/juju-gui.git', 'develop')
 
+            if origin == 'branch':
                 logpath = backend.config['command-log-file']
                 # Make sure we have the required build dependencies.
                 # Note that we also need to add the juju-gui repository
@@ -141,45 +128,7 @@ class GuiMixin(object):
         utils.setup_ports(previous_port, current_port)
 
 
-class ServerInstallMixinBase(object):
-    """
-    Provide a common "_setup_certificates" method to HaproxyApacheMixin and
-    BuiltinServerMixin.
-    """
-
-    def _setup_certificates(self, backend):
-        # Set up the SSL certificates.
-        if backend.different(
-                'ssl-cert-path', 'ssl-cert-contents', 'ssl-key-contents'):
-            config = backend.config
-            utils.save_or_create_certificates(
-                config['ssl-cert-path'], config.get('ssl-cert-contents'),
-                config.get('ssl-key-contents'))
-
-
-class HaproxyApacheMixin(ServerInstallMixinBase):
-    """Manage haproxy and Apache via Upstart."""
-
-    debs = ('apache2', 'haproxy', 'openssl')
-    # We need to add the juju-gui PPA containing our customized haproxy.
-    ppa_required = True
-
-    def install(self, backend):
-        self._setup_certificates(backend)
-
-    def start(self, backend):
-        config = backend.config
-        build_dir = utils.compute_build_dir(
-            config['juju-gui-debug'], config['serve-tests'])
-        utils.start_haproxy_apache(
-            build_dir, config['serve-tests'], config['ssl-cert-path'],
-            config['secure'])
-
-    def stop(self, backend):
-        utils.stop_haproxy_apache()
-
-
-class BuiltinServerMixin(ServerInstallMixinBase):
+class GuiServerMixin(object):
     """Manage the builtin server via Upstart."""
 
     # The package openssl enables SSL support in Tornado.
@@ -192,7 +141,12 @@ class BuiltinServerMixin(ServerInstallMixinBase):
 
     def install(self, backend):
         utils.install_builtin_server()
-        self._setup_certificates(backend)
+        if backend.different(
+                'ssl-cert-path', 'ssl-cert-contents', 'ssl-key-contents'):
+            config = backend.config
+            utils.save_or_create_certificates(
+                config['ssl-cert-path'], config.get('ssl-cert-contents'),
+                config.get('ssl-key-contents'))
 
     def start(self, backend):
         config = backend.config
@@ -240,22 +194,8 @@ class Backend(object):
         if prev_config is None:
             prev_config = {}
         self.prev_config = prev_config
-        self.mixins = [SetUpMixin()]
-
-        if config['sandbox']:
-            self.mixins.append(SandboxMixin())
-        else:
-            mixin = GoMixin()
-            self.mixins.append(mixin)
-
-        # We always install and start the GUI.
-        self.mixins.append(GuiMixin())
-        # TODO: eventually this option will go away, as well as haproxy and
-        # Apache.
-        if config.get('builtin-server', False):
-            self.mixins.append(BuiltinServerMixin())
-        else:
-            self.mixins.append(HaproxyApacheMixin())
+        # XXX frankban: do we still need this mixin framework?
+        self.mixins = [SetUpMixin(), GuiMixin(), GuiServerMixin()]
 
     def different(self, *keys):
         """Return a boolean indicating if the current config
@@ -267,22 +207,16 @@ class Backend(object):
         return any(current(key) != previous(key) for key in keys)
 
     def get_dependencies(self):
-        """Return a tuple (debs, repository) representing dependencies."""
+        """Return a set of required dependencies."""
         debs = set()
-        needs_ppa = False
-        # Collect the required dependencies and check if adding the juju-gui
-        # PPA is required.
         for mixin in self.mixins:
             debs.update(getattr(mixin, 'debs', ()))
-            if getattr(mixin, 'ppa_required', False):
-                needs_ppa = True
-        return debs, self.config['repository-location'] if needs_ppa else None
+        return debs
 
     def install(self):
         """Execute the installation steps."""
-        debs, repository = self.get_dependencies()
         log('Installing dependencies.')
-        utils.install_missing_packages(debs, repository=repository)
+        utils.install_missing_packages(self.get_dependencies())
         call_methods(self.mixins, 'install', self)
 
     def start(self):

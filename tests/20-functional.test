@@ -20,6 +20,7 @@ from __future__ import print_function
 import httplib
 import json
 import itertools
+import socket
 import unittest
 import urllib2
 import urlparse
@@ -41,7 +42,12 @@ from helpers import (
 )
 import example
 
-JUJU_GUI_TEST_BRANCH = 'https://github.com/juju/juju-gui.git master'
+
+# Note that the "master" branch generated false positives in the past.
+JUJU_GUI_TEST_BRANCH = 'https://github.com/juju/juju-gui.git develop'
+JUJU_GUI_TEST_COMMIT = (
+    'https://github.com/juju/juju-gui.git '
+    '@8ee1bb316d3c43a5850b6613d103e805fa37c1aa')
 
 try:
     admin_secret = get_env_attr('admin-secret')
@@ -199,9 +205,6 @@ class TestDeployOptions(DeployTestMixin, unittest.TestCase):
         server_info = self.get_builtin_server_info(hostname)
         self.assertTrue(server_info['sandbox'])
 
-    @unittest.skipIf(
-        bootstrap_node_series == 'precise',
-        'deploying from git branches is not supported on precise')
     def test_branch_source(self):
         # Ensure the Juju GUI is correctly deployed from a Git branch.
         options = {'juju-gui-source': JUJU_GUI_TEST_BRANCH}
@@ -211,36 +214,12 @@ class TestDeployOptions(DeployTestMixin, unittest.TestCase):
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()
 
-    @unittest.skipUnless(
-        bootstrap_node_series == 'precise',
-        'the legacy server is only supported on precise')
-    def test_legacy_server(self):
-        # The legacy apache + haproxy server configuration works correctly.
-        # Also make sure the correct cache headers are sent.
-        self.service_name, unit_info = juju_deploy_gui(
-            options={'builtin-server': 'false'})
-        hostname = unit_info['public-address']
-        self.navigate_to(hostname)
-        self.handle_browser_warning()
-        self.assertEnvironmentIsConnected()
-        conn = httplib.HTTPSConnection(hostname)
-        conn.request('HEAD', '/')
-        headers = conn.getresponse().getheaders()
-        # There is only one Cache-Control header.
-        self.assertEqual(zip(*headers)[0].count('cache-control'), 1)
-        # The right cache directives are in Cache-Control.
-        cache_control = dict(headers)['cache-control']
-        cache_directives = [s.strip() for s in cache_control.split(',')]
-        self.assertIn('max-age=0', cache_directives)
-        self.assertIn('public', cache_directives)
-        self.assertIn('must-revalidate', cache_directives)
-
-    def test_different_port(self):
-        # The port on which the server listens can be successfully changed.
-        options = {'port': 8080}
+    def test_commit_source(self):
+        # Ensure the Juju GUI is correctly deployed from a Git commit SHA.
+        options = {'juju-gui-source': JUJU_GUI_TEST_COMMIT}
         self.service_name, unit_info = juju_deploy_gui(options=options)
         hostname = unit_info['public-address']
-        self.navigate_to(hostname, port=8080)
+        self.navigate_to(hostname)
         self.handle_browser_warning()
         self.assertEnvironmentIsConnected()
 
@@ -269,8 +248,19 @@ class TestBuiltinServerLocalRelease(DeployTestMixin, unittest.TestCase):
         If authenticated is set to True, also log in to the Juju API server.
         """
         client = WebSocketClient('wss://{}:443/ws'.format(self.hostname))
-        client.connect()
-        self.addCleanup(client.close)
+        # Retry the connection as the server might be not yet ready.
+        counter = 0
+        while True:
+            try:
+                client.connect()
+            except socket.error:
+                if counter > 10:
+                    raise
+                counter += 1
+            else:
+                self.addCleanup(client.close)
+                break
+        # Authenticate to Juju if requested.
         if authenticated:
             response = client.send({
                 'RequestId': self.counter.next(),
@@ -421,7 +411,8 @@ class TestBuiltinServerLocalRelease(DeployTestMixin, unittest.TestCase):
 
         # Observe three changes on the second deployment.
         for status in ('scheduled', 'started', 'completed'):
-            response = client.send({
+            # Create a new connection each time to avoid timeout issues.
+            response = self.make_websocket_client().send({
                 'RequestId': self.counter.next(),
                 'Type': 'Deployer',
                 'Request': 'Next',
@@ -434,6 +425,7 @@ class TestBuiltinServerLocalRelease(DeployTestMixin, unittest.TestCase):
             self.assertEqual(status, changes[0]['Status'])
 
         # An error is returned trying to re-deploy a bundle.
+        client = self.make_websocket_client()
         response = client.send({
             'RequestId': self.counter.next(),
             'Type': 'Deployer',
@@ -468,4 +460,4 @@ class TestBuiltinServerLocalRelease(DeployTestMixin, unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(verbosity=2)
+    unittest.main(verbosity=2, failfast=True)
