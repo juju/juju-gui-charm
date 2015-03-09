@@ -116,18 +116,13 @@ the charm can be deployed behind a firewall in the usual way:
 
     juju deploy juju-gui
 
-There are situations and customizations in which the charm needs to connect to
-the Internet:
+Network access (other than default Ubuntu repositories) is required in the case
+the `juju-gui-source` option is set to a configuration that requires accessing
+an external source (for instance in order to fetch a release tarball or a Git
+checkout).
 
-- juju-gui-source is set to a configuration that requires accessing an
-  external source in order to fetch a release tarball or a Git checkout in order
-  to build the source used by the charm.
-- builtin-server is set to false: in this case the charm adds an external
-  Launchpad PPA to install the legacy server dependencies.
-
-If, for any reason, you need to use the legacy server, it is still possible to
-deploy behind a firewall configuring the charm to pull the GUI release from a
-location you specify.
+In these cases, it is still possible to deploy behind a firewall configuring
+the charm to pull the GUI release from a location you specify.
 
 The config variable `juju-gui-source` allows a `url:` prefix which understands
 both `http://` and `file://` protocols.  We will use this to load a local copy
@@ -140,8 +135,8 @@ location that will be accessible to the *unit* either via filesystem or HTTP.
 
     `juju set juju-gui juju-gui-source=url:...`
 
-    where the ellipsis after the `url:` is your `http://` or `file://` URI.  This
-    may also be done during the deploy step using `--config`.
+    where the ellipsis after the `url:` is your `http://` or `file://` URI.
+    This may also be done during the deploy step using `--config`.
 
 3. If you had already tried to deploy the GUI and received an install error due
 to not being able to retrieve the source, you may also need to retry the unit
@@ -167,10 +162,8 @@ While the Juju GUI itself is a client-side JavaScript application, the charm
 installation also involves configuring and starting a GUI server, which is
 required to serve the application files and to enable some advanced features,
 so that using the GUI results in a seamless and powerful experience.
+This server is called *GUI server* or *builtin server*.
 
-### Builtin server ###
-
-By default, a builtin server is installed and started by the charm.
 The builtin server is already included in the charm. For this reason, it does
 not require any external dependencies.
 The builtin server provides the following functionalities:
@@ -196,23 +189,6 @@ The builtin server provides the following functionalities:
    redirects port 80 requests to port 443. The port where the server is
    listening can be changed using the charm configuration "port" option.
 
-### Legacy server ###
-
-By switching the charm option `builtin-server` to `false`, the charm configures
-and start the legacy server in place of the builtin one. This configuration
-requires retrieving HAProxy from an external PPA and uses HAProxy and Apache to
-serve the Juju GUI.
-
-Using the builtin server is the encouraged configuration, but if you decide to
-stick with the legacy server, be warned about the following limitations:
-
-* The legacy server is no longer supported/tested starting from trusty.
-  Use it only if the charm is deployed on a precise machine.
-* The legacy server only provides features 1-4 from the list above. This means
-  bundle deployments, timed authentication tokens and local charms are not
-  available when using the legacy configuration. Also changing the default port
-  where the server is listening is not supported on the legacy server.
-
 ## Contacting the Developers ##
 
 If you run into problems with the charm, please feel free to contact us on the
@@ -222,3 +198,5 @@ Europe and North America are your best bets), but if you send us a mail or
 ping "jujugui" we will eventually get back to you.
 
 If you want to help develop the charm, please see the charm's `HACKING.md`.
+
+
