@@ -29,9 +29,8 @@ tornado==3.2.2
 six==1.8.0
 websocket-client==0.18.0
 jujuclient==0.50.1
-# XXX frankban 17/12/2014: juju-deployer is a forked version created from
-# lp:~frankban/juju-deployer/guiserver-auth. Replace with the final release
-# when the new juju-deployer version including the deployment authentication
-# changes is released.
-juju-deployer==0.4.3
+# XXX makyo 2015-04-07: juju-deployer is currently trunk from lp:juju-deployer,
+# which allows v4 bundles. Once this is released, we may need to update this
+# dependency.
+juju-deployer==0.4.4
 charmworldlib==0.3.0
