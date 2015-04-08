@@ -29,8 +29,8 @@ tornado==3.2.2
 six==1.8.0
 websocket-client==0.18.0
 jujuclient==0.50.1
-# XXX makyo 2015-04-07: juju-deployer is a forked version created from 
-# lp:~juju-deployers/juju-deployer/trunk.  Replace with a final release
-# when the new juju-deployer is released.
+# XXX makyo 2015-04-07: juju-deployer is currently trunk from lp:juju-deployer,
+# which allows v4 bundles. Once this is released, we may need to update this
+# dependency.
 juju-deployer==0.4.4
 charmworldlib==0.3.0
