@@ -34,5 +34,5 @@ jujuclient==0.50.1
 # dependency.
 juju-deployer==0.4.4
 charmworldlib==0.3.0
-jujubundlelib==0.1.0
+jujubundlelib==0.1.1
 
