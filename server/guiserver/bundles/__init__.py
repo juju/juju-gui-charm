@@ -318,4 +318,132 @@ In the second response above, the Error field in the first attempted deployment
 (1) contains details about an error that occurred while deploying a bundle.
 This means that bundle deployment has been completed but an error occurred
 during the process.
+
+Retrieving deployment change sets
+---------------------------------
+
+The GUI server allows decomposing a bundle YAML into a collection of changes
+required to actually deploy the workloads to a Juju environment.
+All the requests below require an authenticated connection.
+
+To retrieve the change set, a client sends a request like the following:
+
+    {
+        'RequestId': 1,
+        'Type': 'Deployer',
+        'Request': 'GetChangeSet',
+        'Params': {
+            'YAML': '...',
+        },
+    }
+
+In the request above, the YAML parameters holds the YAML encoded content of the
+bundle. If the content is valid, the response from the server looks as follows:
+
+    {
+        'RequestId': 1,
+        'Response': {
+            'ChangeSet': [...],
+        },
+    }
+
+Otherwise, if the bundle is not valid, the response is like this:
+
+    {
+        'RequestId': 1,
+        'Response': {
+            'Errors': [...]
+        },
+    }
+
+The error response includes a list of all the bundle validation errors in
+human readable format.
+
+If the request itself is not valid, for instance due to invalid parameters,
+the response value is empty and the error is returned, e.g.:
+
+    {
+        'RequestId': 1,
+        'Response': {},
+        'Error': 'error: error details',
+    }
+
+It is also possible to store a bundle change set in the server, to be retrieved
+later by a client using a unique identifier.
+
+    {
+        'RequestId': 2,
+        'Type': 'Deployer',
+        'Request': 'SetChangeSet',
+        'Params': {
+            'YAML': '...',
+        },
+    }
+
+Assuming the bundle is valid, a unique token is returned by the server
+alongside with information on the token creation and expiration time:
+
+    {
+        'RequestId': 2,
+        'Response': {
+            'Token': 'unique-token',
+            'Created': '2015-04-17T11:21:27.210647Z',
+            'Expires': '...',
+        },
+    }
+
+In case of bundle verification errors, the token is not returned, the change
+set is not stored and an error response is returned, like the following:
+
+    {
+        'RequestId': 2,
+        'Response': {
+            'Errors': [...],
+        },
+
+    }
+
+Also in this case, if the request itself is not valid, for instance due to
+invalid parameters, the response value is empty and the error is returned,
+e.g.:
+
+    {
+        'RequestId': 2,
+        'Response': {},
+        'Error': 'error: error details',
+    }
+
+The returned token expires in 2 minutes and can only be retrieved once.
+Therefore a client has two minutes to retrieve the list of changes from the
+server using the token, with a request like this:
+
+    {
+        'RequestId': 3,
+        'Type': 'Deployer',
+        'Request': 'GetChangeSet',
+        'Params': {
+            'Token': 'unique-token'
+        },
+    }
+
+If the provided token is valid and not expired, the server response is the same
+as in GetChangeSet calls:
+
+    {
+        'RequestId': 3,
+        'Response': {
+            'ChangeSet': [...],
+        },
+    }
+
+An error response would look like the following:
+
+    {
+        'RequestId': 3,
+        'Response': {},
+        'Error': 'error: error details',
+    }
+
+In this case, the returned error is not related to the bundle content, but only
+depends on the token validity.
 """

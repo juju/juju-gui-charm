@@ -60,9 +60,16 @@ using "yield", and they must return their results using "raise response(...)"
 (the latter will be eventually fixed switching to a newer version of Python).
 """
 
+import datetime
 import logging
+import uuid
 
+from jujubundlelib import (
+    changeset,
+    validate,
+)
 from tornado import gen
+from tornado.ioloop import IOLoop
 import yaml
 
 from guiserver.bundles.utils import (
@@ -239,3 +246,112 @@ def status(request, deployer):
     last_changes = deployer.status()
     logging.info('status: returning last changes')
     raise response({'LastChanges': last_changes})
+
+
+# Map bundle tokens to the corresponding set of changes and the expire handle.
+_bundle_changesets = {}
+# Define the expiration timeout for a bundle token.
+_bundle_max_life = datetime.timedelta(minutes=2)
+
+
+@gen.coroutine
+@require_authenticated_user
+def get_change_set(request, _):
+    """Return a list of changes required to deploy a bundle.
+
+    The bundle can be specified by either passing its YAML content or its
+    unique identifier previously stored with a SetChangeSet request
+    (see below).
+
+    Request: 'GetChangeSet'.
+    Parameters example: {
+        'YAML': 'content ...',
+    }.
+    Parameters example: {
+        'Token': 'unique-id',
+    }.
+    """
+    params = request.params
+    if len(params) != 1:
+        error = 'invalid request: too many data parameters: {}'.format(params)
+        raise response(error=error)
+    token = params.get('Token')
+    if token is not None:
+        # Retrieve the change set using the provided token.
+        data = _bundle_changesets.pop(token, None)
+        if data is None:
+            error = 'unknown, fulfilled, or expired bundle token'
+            raise response(error=error)
+        logging.info('get change set: using token {}'.format(token))
+        io_loop = IOLoop.current()
+        io_loop.remove_timeout(data['handle'])
+        raise response({'ChangeSet': data['changes']})
+
+    # Retrieve the change set using the provided bundle content.
+    content = params.get('YAML')
+    if content is None:
+        error = 'invalid request: expected YAML or Token to be provided'
+        raise response(error=error)
+    changes, errors = _validate_and_parse_bundle(content)
+    if errors:
+        raise response({'Errors': errors})
+    raise response({'ChangeSet': changes})
+
+
+@gen.coroutine
+@require_authenticated_user
+def set_change_set(request, _):
+    """Store a change set for the provided bundle YAML content.
+
+    Return a unique identifier that can be used to retrieve the change set
+    later. The token expires in two minutes and can be only used once.
+
+    Request: 'SetChangeSet'.
+    Parameters example: {
+        'YAML': 'content ...',
+    }.
+    """
+    content = request.params.get('YAML')
+    if content is None:
+        error = 'invalid request: bundle YAML not found'
+        raise response(error=error)
+    changes, errors = _validate_and_parse_bundle(content)
+    if errors:
+        raise response({'Errors': errors})
+
+    # Create and store the bundle token.
+    token = uuid.uuid4().hex
+
+    def expire_token():
+        _bundle_changesets.pop(token, None)
+        logging.info('set change set: expired token {}'.format(token))
+
+    io_loop = IOLoop.current()
+    handle = io_loop.add_timeout(_bundle_max_life, expire_token)
+    now = datetime.datetime.utcnow()
+    _bundle_changesets[token] = {
+        'changes': changes,
+        'handle': handle,
+    }
+    raise response({
+        'Token': token,
+        'Created': now.isoformat() + 'Z',
+        'Expires': (now + _bundle_max_life).isoformat() + 'Z'
+    })
+
+
+def _validate_and_parse_bundle(content):
+    """Validate and parse the given bundle YAML encoded content.
+
+    If the content is valid, return the resulting change set and an empty list
+    of errors. Otherwise, return an empty list of changes and a list of errors.
+    """
+    try:
+        bundle = yaml.safe_load(content)
+    except Exception:
+        error = 'the provided bundle is not a valid YAML'
+        return [], [error]
+    errors = validate.validate(bundle)
+    if errors:
+        return [], errors
+    return tuple(changeset.parse(bundle)), []

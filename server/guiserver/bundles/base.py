@@ -277,6 +277,8 @@ class DeployMiddleware(object):
             'Next': views.next,
             'Cancel': views.cancel,
             'Status': views.status,
+            'GetChangeSet': views.get_change_set,
+            'SetChangeSet': views.set_change_set,
         }
 
     def requested(self, data):

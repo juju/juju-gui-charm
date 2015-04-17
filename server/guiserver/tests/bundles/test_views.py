@@ -16,6 +16,8 @@
 
 """Tests for the bundle deployment views."""
 
+import datetime
+
 import mock
 from tornado import concurrent
 from tornado.testing import(
@@ -24,6 +26,7 @@ from tornado.testing import(
     gen_test,
     LogTrapTestCase,
 )
+import yaml
 
 from guiserver.bundles import views
 from guiserver.tests import helpers
@@ -582,3 +585,127 @@ class TestStatus(
         expected_log = 'status: returning last changes'
         with ExpectLog('', expected_log, required=True):
             yield self.view(request, self.deployer)
+
+
+class TestGetChangeSet(
+        ViewsTestMixin, helpers.BundlesTestMixin, LogTrapTestCase,
+        AsyncTestCase):
+
+    invalid_params_error = (
+        'invalid request: expected YAML or Token to be provided')
+
+    def get_view(self):
+        return views.get_change_set
+
+    @gen_test
+    def test_valid_yaml(self):
+        # The change set is correctly returned when providing a YAML content.
+        content = yaml.safe_dump({
+            'services': {
+                'django': {
+                    'charm': 'cs:trusty/django-42',
+                    'num_units': 1,
+                },
+            },
+        })
+        request = self.make_view_request(params={'YAML': content})
+        expected_response = {
+            'Response': {
+                'ChangeSet': (
+                    {'args': ['cs:trusty/django-42'],
+                     'requires': [],
+                     'id': 'addCharm-0',
+                     'method': 'addCharm'},
+                    {'args': ['cs:trusty/django-42', 'django', {}],
+                     'requires': ['addCharm-0'],
+                     'id': 'addService-1',
+                     'method': 'deploy'},
+                    {'args': ['$addService-1', 1, None],
+                     'requires': ['addService-1'],
+                     'id': 'addUnit-2',
+                     'method': 'addUnit'},
+                ),
+            },
+        }
+        response = yield self.view(request, self.deployer)
+        self.assertEqual(expected_response, response)
+
+    @gen_test
+    def test_invalid_bundle(self):
+        # The validation errors are returned when providing an invalid bundle.
+        request = self.make_view_request(params={'YAML': '42'})
+        expected_response = {
+            'Response': {'Errors': ['bundle does not appear to be a bundle']},
+        }
+        response = yield self.view(request, self.deployer)
+        self.assertEqual(expected_response, response)
+
+    @gen_test
+    def test_not_yaml(self):
+        # The validation errors are returned when providing an invalid YAML.
+        request = self.make_view_request(params={'YAML': ':'})
+        expected_response = {
+            'Response': {
+                'Errors': ['the provided bundle is not a valid YAML'],
+            },
+        }
+        response = yield self.view(request, self.deployer)
+        self.assertEqual(expected_response, response)
+
+
+patch_time = mock.patch(
+    'datetime.datetime',
+    mock.Mock(**{'utcnow.return_value': datetime.datetime(2013, 11, 21, 21)}))
+
+
+class TestSetChangeSet(
+        ViewsTestMixin, helpers.BundlesTestMixin, LogTrapTestCase,
+        AsyncTestCase):
+
+    invalid_params_error = 'invalid request: bundle YAML not found'
+
+    def get_view(self):
+        return views.set_change_set
+
+    @mock.patch('uuid.uuid4', mock.Mock(return_value=mock.Mock(hex='DEFACED')))
+    @patch_time
+    @gen_test
+    def test_valid_yaml(self):
+        # The change set is correctly returned when providing a YAML content.
+        content = yaml.safe_dump({
+            'services': {
+                'django': {
+                    'charm': 'cs:trusty/django-42',
+                    'num_units': 0,
+                },
+            },
+        })
+        request = self.make_view_request(params={'YAML': content})
+        expected_response = {
+            'Response': {
+                'Created': '2013-11-21T21:00:00Z',
+                'Expires': '2013-11-21T21:02:00Z',
+                'Token': 'DEFACED',
+            },
+        }
+        response = yield self.view(request, self.deployer)
+        self.assertEqual(expected_response, response)
+
+        # Call GetChangeSet to retrieve the bundle changes.
+        request = self.make_view_request(params={'Token': 'DEFACED'})
+        expected_response = {
+            'Response': {
+                'ChangeSet': (
+                    {'args': ['cs:trusty/django-42'],
+                     'id': 'addCharm-0',
+                     'method': 'addCharm',
+                     'requires': []},
+                    {'args': ['cs:trusty/django-42', 'django', {}],
+                     'id': 'addService-1',
+                     'method': 'deploy',
+                     'requires': ['addCharm-0']},
+                ),
+            },
+        }
+        response = yield views.get_change_set(request, self.deployer)
+        self.assertEqual(expected_response, response)
