@@ -627,7 +627,7 @@ class TestGetChangeSet(
                 ),
             },
         }
-        response = yield self.view(request, self.deployer)
+        response = yield self.view(request, None)
         self.assertEqual(expected_response, response)
 
     @gen_test
@@ -637,7 +637,7 @@ class TestGetChangeSet(
         expected_response = {
             'Response': {'Errors': ['bundle does not appear to be a bundle']},
         }
-        response = yield self.view(request, self.deployer)
+        response = yield self.view(request, None)
         self.assertEqual(expected_response, response)
 
     @gen_test
@@ -649,7 +649,7 @@ class TestGetChangeSet(
                 'Errors': ['the provided bundle is not a valid YAML'],
             },
         }
-        response = yield self.view(request, self.deployer)
+        response = yield self.view(request, None)
         self.assertEqual(expected_response, response)
 
 
@@ -688,7 +688,7 @@ class TestSetChangeSet(
                 'Token': 'DEFACED',
             },
         }
-        response = yield self.view(request, self.deployer)
+        response = yield self.view(request, None)
         self.assertEqual(expected_response, response)
 
         # Call GetChangeSet to retrieve the bundle changes.
@@ -707,5 +707,13 @@ class TestSetChangeSet(
                 ),
             },
         }
-        response = yield views.get_change_set(request, self.deployer)
+        response = yield views.get_change_set(request, None)
+        self.assertEqual(expected_response, response)
+
+        # A second call to GetChangeSet returns an error.
+        expected_response = {
+            'Response': {},
+            'Error': 'unknown, fulfilled, or expired bundle token',
+        }
+        response = yield views.get_change_set(request, None)
         self.assertEqual(expected_response, response)
