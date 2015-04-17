@@ -652,6 +652,31 @@ class TestGetChangeSet(
         response = yield self.view(request, None)
         self.assertEqual(expected_response, response)
 
+    @gen_test
+    def test_invalid_token(self):
+        # An error is returned if the provided token is not valid.
+        request = self.make_view_request(params={'Token': 'no-such'})
+        expected_response = {
+            'Response': {},
+            'Error': 'unknown, fulfilled, or expired bundle token',
+        }
+        response = yield self.view(request, None)
+        self.assertEqual(expected_response, response)
+
+    @gen_test
+    def test_both_yaml_and_token_error(self):
+        # An error is returned if the provided token is not valid.
+        request = self.make_view_request(params={
+            'Token': 'token',
+            'YAML': 'content',
+        })
+        expected_response = {
+            'Response': {},
+            'Error': 'invalid request: too many data parameters: Token, YAML',
+        }
+        response = yield self.view(request, None)
+        self.assertEqual(expected_response, response)
+
 
 patch_time = mock.patch(
     'datetime.datetime',
@@ -716,4 +741,27 @@ class TestSetChangeSet(
             'Error': 'unknown, fulfilled, or expired bundle token',
         }
         response = yield views.get_change_set(request, None)
+        self.assertEqual(expected_response, response)
+
+    @gen_test
+    def test_invalid_bundle(self):
+        # The validation errors are returned when providing an invalid bundle.
+        content = yaml.safe_dump({
+            'services': {'django': {'charm': 'bad:wolf'}},
+            'machines': {'1': {}, 'invalid': {}},
+        })
+        request = self.make_view_request(params={'YAML': content})
+        expected_response = {
+            'Response': {
+                'Errors': [
+                    'machine invalid has an invalid id, must be digit',
+                    'invalid charm specified for service django: URL has '
+                    'invalid schema: bad',
+                    'num_units for service django must be an integer',
+                    'machine 1 not referred to by a placement directive',
+                    'machine invalid not referred to by a placement directive',
+                ],
+            },
+        }
+        response = yield self.view(request, None)
         self.assertEqual(expected_response, response)

@@ -273,7 +273,8 @@ def get_change_set(request, _):
     """
     params = request.params
     if len(params) != 1:
-        error = 'invalid request: too many data parameters: {}'.format(params)
+        error = 'invalid request: too many data parameters: {}'.format(
+            ', '.join(sorted(params.keys())))
         raise response(error=error)
     token = params.get('Token')
     if token is not None:
