@@ -665,7 +665,8 @@ class TestGetChangeSet(
 
     @gen_test
     def test_both_yaml_and_token_error(self):
-        # An error is returned if the provided token is not valid.
+        # An error is returned if both the bundle content and the token are
+        # provided.
         request = self.make_view_request(params={
             'Token': 'token',
             'YAML': 'content',
@@ -696,7 +697,7 @@ class TestSetChangeSet(
     @patch_time
     @gen_test
     def test_valid_yaml(self):
-        # The change set is correctly returned when providing a YAML content.
+        # The token is correctly returned when providing a YAML content.
         content = yaml.safe_dump({
             'services': {
                 'django': {
