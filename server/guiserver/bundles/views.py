@@ -66,7 +66,7 @@ import uuid
 
 from jujubundlelib import (
     changeset,
-    validate,
+    validation,
 )
 from tornado import gen
 from tornado.ioloop import IOLoop
@@ -352,7 +352,7 @@ def _validate_and_parse_bundle(content):
     except Exception:
         error = 'the provided bundle is not a valid YAML'
         return [], [error]
-    errors = validate.validate(bundle)
+    errors = validation.validate(bundle)
     if errors:
         return [], errors
     return tuple(changeset.parse(bundle)), []
