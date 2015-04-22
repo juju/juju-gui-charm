@@ -198,5 +198,3 @@ Europe and North America are your best bets), but if you send us a mail or
 ping "jujugui" we will eventually get back to you.
 
 If you want to help develop the charm, please see the charm's `HACKING.md`.
-
-
