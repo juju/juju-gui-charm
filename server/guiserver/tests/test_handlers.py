@@ -541,6 +541,103 @@ class TestWebSocketHandlerChangeSet(
         self.assertEqual(expected_response, json.loads(response))
 
 
+class TestSandboxHandler(
+        helpers.WSSTestMixin, LogTrapTestCase, AsyncHTTPSTestCase):
+
+    content = yaml.safe_dump({
+        'services': {
+            'django': {
+                'charm': 'cs:trusty/django-42',
+                'num_units': 0,
+            },
+        },
+    })
+    request = json.dumps({
+        'RequestId': 1,
+        'Type': 'ChangeSet',
+        'Request': 'GetChanges',
+        'Params': {'YAML': content},
+    })
+
+    def get_app(self):
+        """Return an application including the sandbox WebSocket handler."""
+        return web.Application([
+            (r'/ws', handlers.SandboxHandler, {}),
+        ])
+
+    def make_client(self):
+        """Return a WebSocket client ready to be connected to the server."""
+        return clients.websocket_connect(
+            self.io_loop, self.get_wss_url('/ws'), lambda message: None)
+
+    def make_handler(self, headers=None, mock_protocol=False, path=None):
+        """Create and return a WebSocketHandler instance."""
+        if headers is None:
+            headers = {}
+        if path is None:
+            path = ''
+        request = mock.Mock(headers=headers, path=path)
+        handler = handlers.WebSocketHandler(self.get_app(), request)
+        if mock_protocol:
+            # Mock the underlying connection protocol.
+            handler.ws_connection = mock.Mock()
+        return handler
+
+    @gen.coroutine
+    def make_initialized_handler(
+            self, apiurl=None, headers=None, mock_protocol=False, path=None):
+        """Create and return an initialized WebSocketHandler instance."""
+        if apiurl is None:
+            apiurl = self.apiurl
+        handler = self.make_handler(
+            headers=headers, mock_protocol=mock_protocol, path=path)
+        yield handler.initialize(
+            apiurl, self.auth_backend, self.deployer, self.tokens,
+            self.io_loop)
+        raise gen.Return(handler)
+
+    @gen_test
+    def test_changeset_request(self):
+        # The bundle change set is correctly returned.
+        write_message_path = 'guiserver.handlers.wrap_write_message'
+        with mock.patch(write_message_path) as mock_write_message:
+            handler = yield self.make_initialized_handler()
+        # Simulate the user is authenticated.
+        handler.user.is_authenticated = True
+        # Request changes.
+
+        yield handler.on_message(self.request)
+        expected_response = {
+            'RequestId': 1,
+            'Response': {
+                'Changes': (
+                    {'id': 'addCharm-0',
+                     'method': 'addCharm',
+                     'args': ['cs:trusty/django-42'],
+                     'requires': []},
+                    {'id': 'addService-1',
+                     'method': 'deploy',
+                     'args': ['cs:trusty/django-42', 'django', {}],
+                     'requires': ['addCharm-0']},
+                )
+            },
+        }
+        mock_write_message().assert_called_once_with(expected_response)
+
+    @gen_test
+    def test_not_authenticated(self):
+        # The bundle change set support is only activated for logged in users.
+        client = yield self.make_client()
+        client.write_message(self.request)
+        expected_response = {
+            'RequestId': 1,
+            'Response': {},
+            'Error': 'unauthorized access: no user logged in',
+        }
+        response = yield client.read_message()
+        self.assertEqual(expected_response, json.loads(response))
+
+
 class TestIndexHandler(LogTrapTestCase, AsyncHTTPTestCase):
 
     def setUp(self):
