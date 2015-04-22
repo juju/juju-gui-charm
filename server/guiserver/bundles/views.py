@@ -256,14 +256,13 @@ _bundle_max_life = datetime.timedelta(minutes=2)
 
 @gen.coroutine
 @require_authenticated_user
-def get_change_set(request, _):
+def get_changes(request):
     """Return a list of changes required to deploy a bundle.
 
     The bundle can be specified by either passing its YAML content or its
-    unique identifier previously stored with a SetChangeSet request
-    (see below).
+    unique identifier previously stored with a SetChanges request (see below).
 
-    Request: 'GetChangeSet'.
+    Request: 'GetChanges'.
     Parameters example: {
         'YAML': 'content ...',
     }.
@@ -286,7 +285,7 @@ def get_change_set(request, _):
         logging.info('get change set: using token {}'.format(token))
         io_loop = IOLoop.current()
         io_loop.remove_timeout(data['handle'])
-        raise response({'ChangeSet': data['changes']})
+        raise response({'Changes': data['changes']})
 
     # Retrieve the change set using the provided bundle content.
     content = params.get('YAML')
@@ -296,18 +295,18 @@ def get_change_set(request, _):
     changes, errors = _validate_and_parse_bundle(content)
     if errors:
         raise response({'Errors': errors})
-    raise response({'ChangeSet': changes})
+    raise response({'Changes': changes})
 
 
 @gen.coroutine
 @require_authenticated_user
-def set_change_set(request, _):
+def set_changes(request):
     """Store a change set for the provided bundle YAML content.
 
     Return a unique identifier that can be used to retrieve the change set
     later. The token expires in two minutes and can be only used once.
 
-    Request: 'SetChangeSet'.
+    Request: 'SetChanges'.
     Parameters example: {
         'YAML': 'content ...',
     }.

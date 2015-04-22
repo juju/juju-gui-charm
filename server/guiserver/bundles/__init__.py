@@ -330,8 +330,8 @@ To retrieve the change set, a client sends a request like the following:
 
     {
         'RequestId': 1,
-        'Type': 'Deployer',
-        'Request': 'GetChangeSet',
+        'Type': 'ChangeSet',
+        'Request': 'GetChanges',
         'Params': {
             'YAML': '...',
         },
@@ -343,7 +343,7 @@ bundle. If the content is valid, the response from the server looks as follows:
     {
         'RequestId': 1,
         'Response': {
-            'ChangeSet': [...],
+            'Changes': [...],
         },
     }
 
@@ -373,8 +373,8 @@ later by a client using a unique identifier.
 
     {
         'RequestId': 2,
-        'Type': 'Deployer',
-        'Request': 'SetChangeSet',
+        'Type': 'ChangeSet',
+        'Request': 'SetChanges',
         'Params': {
             'YAML': '...',
         },
@@ -419,8 +419,8 @@ server using the token, with a request like this:
 
     {
         'RequestId': 3,
-        'Type': 'Deployer',
-        'Request': 'GetChangeSet',
+        'Type': 'ChangeSet',
+        'Request': 'GetChanges',
         'Params': {
             'Token': 'unique-token'
         },
@@ -432,7 +432,7 @@ as in GetChangeSet calls:
     {
         'RequestId': 3,
         'Response': {
-            'ChangeSet': [...],
+            'Changes': [...],
         },
     }
 

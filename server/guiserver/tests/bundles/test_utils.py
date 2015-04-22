@@ -364,19 +364,19 @@ class TestPrepareBundle(unittest.TestCase):
 class TestRequireAuthenticatedUser(
         helpers.BundlesTestMixin, LogTrapTestCase, AsyncTestCase):
 
-    deployer = 'fake-deployer'
+    argument = 'boo!'
 
     def make_view(self):
         """Return a view to be used for tests.
 
         The resulting callable must be called with a request object as first
-        argument and with self.deployer as second argument.
+        argument and with self.argument as second argument.
         """
         @gen.coroutine
         @utils.require_authenticated_user
-        def myview(request, deployer):
+        def myview(request, argument):
             """An example testing view."""
-            self.assertEqual(self.deployer, deployer)
+            self.assertEqual(self.argument, argument)
             raise utils.response(info='ok')
         return myview
 
@@ -385,7 +385,7 @@ class TestRequireAuthenticatedUser(
         # The view is executed normally if the user is authenticated.
         view = self.make_view()
         request = self.make_view_request(is_authenticated=True)
-        response = yield view(request, self.deployer)
+        response = yield view(request, self.argument)
         self.assertEqual({'Response': 'ok'}, response)
 
     @gen_test
@@ -393,7 +393,7 @@ class TestRequireAuthenticatedUser(
         # The view returns an error response if the user is not authenticated.
         view = self.make_view()
         request = self.make_view_request(is_authenticated=False)
-        response = yield view(request, self.deployer)
+        response = yield view(request, self.argument)
         expected = {
             'Response': {},
             'Error': 'unauthorized access: no user logged in',

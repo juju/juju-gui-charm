@@ -271,14 +271,11 @@ class DeployMiddleware(object):
         self._deployer = deployer
         self._write_response = write_response
         self.routes = {
-            # Default import route
             'Import': views.import_bundle,
             'Watch': views.watch,
             'Next': views.next,
             'Cancel': views.cancel,
             'Status': views.status,
-            'GetChangeSet': views.get_change_set,
-            'SetChangeSet': views.set_change_set,
         }
 
     def requested(self, data):
@@ -297,5 +294,55 @@ class DeployMiddleware(object):
         view = self.routes[data['Request']]
         request = ObjectDict(params=params, user=self._user)
         response = yield view(request, self._deployer)
+        response['RequestId'] = request_id
+        self._write_response(response)
+
+
+class ChangeSetMiddleware(object):
+    """Handle the bundles change set request/response process.
+
+    This class handles the process of parsing requests from the GUI, checking
+    if any incoming message is a change set request, ensuring that the request
+    is well-formed and, if so, forwarding the requests to the bundle views.
+
+    Assuming that:
+      - user is a guiserver.auth.User instance (used by this middleware in
+        order to retrieve the credentials for connecting the Deployer to the
+        Juju API server);
+      - write_response is a callable that will be used to send responses to the
+        client, i.e. deployments status and the results;
+      - data is a JSON decoded object representing a single Juju API request;
+    here is an usage example:
+
+        changeset = ChangeSetMiddleware(user, write_response)
+        if changeset.requested(data):
+            changeset.process_request(data)
+    """
+
+    def __init__(self, user, deployer, write_response):
+        """Initialize the change set middleware."""
+        self._user = user
+        self._write_response = write_response
+        self.routes = {
+            'GetChanges': views.get_changes,
+            'SetChanges': views.set_changes,
+        }
+
+    def requested(self, data):
+        """Return True if data is a change set request, False otherwise."""
+        return (
+            'RequestId' in data and
+            data.get('Type') == 'ChangeSet' and
+            data.get('Request') in self.routes
+        )
+
+    @gen.coroutine
+    def process_request(self, data):
+        """Process a change set request."""
+        request_id = data['RequestId']
+        params = data.get('Params', {})
+        view = self.routes[data['Request']]
+        request = ObjectDict(params=params, user=self._user)
+        response = yield view(request)
         response['RequestId'] = request_id
         self._write_response(response)
