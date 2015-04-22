@@ -38,6 +38,7 @@ from tornado.testing import (
     gen_test,
     LogTrapTestCase,
 )
+import yaml
 
 from guiserver import (
     auth,
@@ -477,6 +478,67 @@ class TestWebSocketHandlerBundles(
             error='unauthorized access: no user logged in')
         response = yield client.read_message()
         self.assertEqual(expected, json.loads(response))
+
+
+class TestWebSocketHandlerChangeSet(
+        WebSocketHandlerTestMixin, helpers.WSSTestMixin, LogTrapTestCase,
+        AsyncHTTPSTestCase):
+
+    content = yaml.safe_dump({
+        'services': {
+            'django': {
+                'charm': 'cs:trusty/django-42',
+                'num_units': 0,
+            },
+        },
+    })
+    request = json.dumps({
+        'RequestId': 1,
+        'Type': 'ChangeSet',
+        'Request': 'GetChanges',
+        'Params': {'YAML': content},
+    })
+
+    @gen_test
+    def test_changeset_request(self):
+        # The bundle change set is correctly returned.
+        write_message_path = 'guiserver.handlers.wrap_write_message'
+        with mock.patch(write_message_path) as mock_write_message:
+            handler = yield self.make_initialized_handler()
+        # Simulate the user is authenticated.
+        handler.user.is_authenticated = True
+        # Request changes.
+
+        yield handler.on_message(self.request)
+        expected_response = {
+            'RequestId': 1,
+            'Response': {
+                'Changes': (
+                    {'id': 'addCharm-0',
+                     'method': 'addCharm',
+                     'args': ['cs:trusty/django-42'],
+                     'requires': []},
+                    {'id': 'addService-1',
+                     'method': 'deploy',
+                     'args': ['cs:trusty/django-42', 'django', {}],
+                     'requires': ['addCharm-0']},
+                )
+            },
+        }
+        mock_write_message().assert_called_once_with(expected_response)
+
+    @gen_test
+    def test_not_authenticated(self):
+        # The bundle change set support is only activated for logged in users.
+        client = yield self.make_client()
+        client.write_message(self.request)
+        expected_response = {
+            'RequestId': 1,
+            'Response': {},
+            'Error': 'unauthorized access: no user logged in',
+        }
+        response = yield client.read_message()
+        self.assertEqual(expected_response, json.loads(response))
 
 
 class TestIndexHandler(LogTrapTestCase, AsyncHTTPTestCase):

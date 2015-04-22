@@ -36,7 +36,10 @@ from guiserver.auth import (
     AuthMiddleware,
     User,
 )
-from guiserver.bundles.base import DeployMiddleware
+from guiserver.bundles.base import (
+    DeployMiddleware,
+    ChangeSetMiddleware,
+)
 from guiserver.clients import websocket_connect
 from guiserver.utils import (
     clone_request,
@@ -99,8 +102,9 @@ class WebSocketHandler(websocket.WebSocketHandler):
         self.user = User()
         self.auth = AuthMiddleware(
             self.user, auth_backend, tokens, write_message)
-        # Set up the bundle deployment infrastructure.
+        # Set up the bundle deployment and change set infrastructure.
         self.deployment = DeployMiddleware(self.user, deployer, write_message)
+        self.changeset = ChangeSetMiddleware(self.user, write_message)
         # XXX The handler is no longer path agnostic, and this can be fixed by
         # capturing the relevant path fragment on the regexp, and then
         # overriding the handler's open method to store the path in the
@@ -150,6 +154,7 @@ class WebSocketHandler(websocket.WebSocketHandler):
     def on_message(self, message):
         """Hook called when a new message is received from the browser.
 
+        If the message is a change set request, return the resulting changes.
         If the message is a deployment request, start the deployment process.
         Otherwise the message is propagated to the Juju API server.
         Messages sent before the client connection to the Juju API server is
@@ -158,6 +163,9 @@ class WebSocketHandler(websocket.WebSocketHandler):
         data = json_decode_dict(message)
         encoded = None
         if data is not None:
+            # Handle change set requests.
+            if self.changeset.requested(data):
+                return self.changeset.process_request(data)
             # Handle deployment requests.
             if self.deployment.requested(data):
                 return self.deployment.process_request(data)

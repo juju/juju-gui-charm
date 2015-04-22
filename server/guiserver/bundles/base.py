@@ -319,7 +319,7 @@ class ChangeSetMiddleware(object):
             changeset.process_request(data)
     """
 
-    def __init__(self, user, deployer, write_response):
+    def __init__(self, user, write_response):
         """Initialize the change set middleware."""
         self._user = user
         self._write_response = write_response
