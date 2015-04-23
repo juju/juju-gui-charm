@@ -354,4 +354,4 @@ def _validate_and_parse_bundle(content):
     errors = validation.validate(bundle)
     if errors:
         return [], errors
-    return tuple(changeset.parse(bundle)), []
+    return list(changeset.parse(bundle)), []

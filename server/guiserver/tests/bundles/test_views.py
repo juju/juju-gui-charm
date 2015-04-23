@@ -608,7 +608,7 @@ class TestGetChanges(
         request = self.make_view_request(params={'YAML': content})
         expected_response = {
             'Response': {
-                'Changes': (
+                'Changes': [
                     {'args': ['cs:trusty/django-42'],
                      'requires': [],
                      'id': 'addCharm-0',
@@ -621,7 +621,7 @@ class TestGetChanges(
                      'requires': ['addService-1'],
                      'id': 'addUnit-2',
                      'method': 'addUnit'},
-                ),
+                ],
             },
         }
         response = yield self.view(request)
@@ -734,7 +734,7 @@ class TestSetChanges(
         request = self.make_view_request(params={'Token': 'DEFACED'})
         expected_response = {
             'Response': {
-                'Changes': (
+                'Changes': [
                     {'args': ['cs:trusty/django-42'],
                      'id': 'addCharm-0',
                      'method': 'addCharm',
@@ -743,7 +743,7 @@ class TestSetChanges(
                      'id': 'addService-1',
                      'method': 'deploy',
                      'requires': ['addCharm-0']},
-                ),
+                ],
             },
         }
         response = yield views.get_changes(request)

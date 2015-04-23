@@ -238,13 +238,17 @@ class WebSocketHandler(_WebSocketBaseHandler):
             self.close()
 
 
-class SanboxHandler(_WebSocketBaseHandler):
+class SandboxHandler(_WebSocketBaseHandler):
     """Simulate WebSocket API in sandbox mode.
 
     This handler is used when there is no Juju environments to connect to, and
     the Juju GUI runs in sandbox mode. Only a small subset of the real Juju API
     is simulated here.
     """
+
+    # This handler is always connected so that wrap_write_message does not
+    # discard messages.
+    connected = True
 
     def initialize(self):
         """Set up a fake user and a change set middleware."""
@@ -265,7 +269,7 @@ class SanboxHandler(_WebSocketBaseHandler):
             return
         if self.changeset.requested(data):
             return self.changeset.process_request(data)
-        self.write_message({'Error': 'not implemented (sandbox mode'})
+        self.write_message({'Error': 'not implemented (sandbox mode)'})
 
 
 class IndexHandler(web.StaticFileHandler):
