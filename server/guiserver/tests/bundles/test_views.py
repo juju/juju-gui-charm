@@ -16,8 +16,6 @@
 
 """Tests for the bundle deployment views."""
 
-import datetime
-
 import mock
 from tornado import concurrent
 from tornado.testing import(
@@ -694,11 +692,6 @@ class TestGetChanges(
         self.assertEqual(expected_response, response)
 
 
-patch_time = mock.patch(
-    'datetime.datetime',
-    mock.Mock(**{'utcnow.return_value': datetime.datetime(2013, 11, 21, 21)}))
-
-
 class TestSetChanges(
         ViewsTestMixin, helpers.BundlesTestMixin, LogTrapTestCase,
         AsyncTestCase):
@@ -707,7 +700,7 @@ class TestSetChanges(
         return views.set_changes
 
     @mock.patch('uuid.uuid4', mock.Mock(return_value=mock.Mock(hex='DEFACED')))
-    @patch_time
+    @helpers.patch_time
     @gen_test
     def test_valid_yaml(self):
         # The token is correctly returned when providing a YAML content.

@@ -16,7 +16,6 @@
 
 """Tests for the Juju GUI server handlers."""
 
-import datetime
 import json
 import os
 import shutil
@@ -348,10 +347,7 @@ class TestWebSocketHandlerAuthentication(
         self.assertFalse(self.handler.auth.in_progress())
 
     @mock.patch('uuid.uuid4', mock.Mock(return_value=mock.Mock(hex='DEFACED')))
-    @mock.patch('datetime.datetime',
-                mock.Mock(
-                    **{'utcnow.return_value':
-                       datetime.datetime(2013, 11, 21, 21)}))
+    @helpers.patch_time
     def test_token_request(self):
         # It supports requesting a token when authenticated.
         self.handler.user.username = 'user'

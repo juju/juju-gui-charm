@@ -37,8 +37,8 @@ from guiserver.auth import (
     User,
 )
 from guiserver.bundles.base import (
-    DeployMiddleware,
     ChangeSetMiddleware,
+    DeployMiddleware,
 )
 from guiserver.clients import websocket_connect
 from guiserver.utils import (

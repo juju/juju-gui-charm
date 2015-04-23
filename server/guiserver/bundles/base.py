@@ -308,7 +308,7 @@ class ChangeSetMiddleware(object):
     Assuming that:
       - user is a guiserver.auth.User instance;
       - write_response is a callable that will be used to send responses to the
-        client, i.e. deployments status and the results;
+        client, i.e. the changes or the token responses;
       - data is a JSON decoded object representing a single Juju API request;
     here is an usage example:
 
