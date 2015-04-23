@@ -306,9 +306,7 @@ class ChangeSetMiddleware(object):
     is well-formed and, if so, forwarding the requests to the bundle views.
 
     Assuming that:
-      - user is a guiserver.auth.User instance (used by this middleware in
-        order to retrieve the credentials for connecting the Deployer to the
-        Juju API server);
+      - user is a guiserver.auth.User instance;
       - write_response is a callable that will be used to send responses to the
         client, i.e. deployments status and the results;
       - data is a JSON decoded object representing a single Juju API request;
