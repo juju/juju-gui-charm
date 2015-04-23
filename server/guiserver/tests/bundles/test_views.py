@@ -24,6 +24,7 @@ from tornado.testing import(
     gen_test,
     LogTrapTestCase,
 )
+import yaml
 
 from guiserver.bundles import views
 from guiserver.tests import helpers
@@ -582,3 +583,209 @@ class TestStatus(
         expected_log = 'status: returning last changes'
         with ExpectLog('', expected_log, required=True):
             yield self.view(request, self.deployer)
+
+
+class TestGetChanges(
+        ViewsTestMixin, helpers.BundlesTestMixin, LogTrapTestCase,
+        AsyncTestCase):
+
+    def get_view(self):
+        return views.get_changes
+
+    @gen_test
+    def test_valid_yaml(self):
+        # The change set is correctly returned when providing a YAML content.
+        content = yaml.safe_dump({
+            'services': {
+                'django': {
+                    'charm': 'cs:trusty/django-42',
+                    'num_units': 1,
+                },
+            },
+        })
+        request = self.make_view_request(params={'YAML': content})
+        expected_response = {
+            'Response': {
+                'Changes': [
+                    {'args': ['cs:trusty/django-42'],
+                     'requires': [],
+                     'id': 'addCharm-0',
+                     'method': 'addCharm'},
+                    {'args': ['cs:trusty/django-42', 'django', {}],
+                     'requires': ['addCharm-0'],
+                     'id': 'addService-1',
+                     'method': 'deploy'},
+                    {'args': ['$addService-1', 1, None],
+                     'requires': ['addService-1'],
+                     'id': 'addUnit-2',
+                     'method': 'addUnit'},
+                ],
+            },
+        }
+        response = yield self.view(request)
+        self.assertEqual(expected_response, response)
+
+    @gen_test
+    def test_invalid_parameters(self):
+        # An error response is returned if the parameters in the request are
+        # not valid.
+        invalid_params_error = (
+            'invalid request: expected YAML or Token to be provided')
+        request = self.make_view_request(params=self.invalid_params)
+        expected_log = 'deployer: {}'.format(invalid_params_error)
+        with ExpectLog('', expected_log, required=True):
+            response = yield self.view(request)
+        expected_response = {
+            'Response': {},
+            'Error': invalid_params_error,
+        }
+        self.assertEqual(expected_response, response)
+        # The Deployer methods have not been called.
+        self.assertEqual(0, len(self.deployer.mock_calls))
+
+    @gen_test
+    def test_invalid_bundle(self):
+        # The validation errors are returned when providing an invalid bundle.
+        request = self.make_view_request(params={'YAML': '42'})
+        expected_response = {
+            'Response': {'Errors': ['bundle does not appear to be a bundle']},
+        }
+        response = yield self.view(request)
+        self.assertEqual(expected_response, response)
+
+    @gen_test
+    def test_not_yaml(self):
+        # The validation errors are returned when providing an invalid YAML.
+        request = self.make_view_request(params={'YAML': ':'})
+        expected_response = {
+            'Response': {
+                'Errors': ['the provided bundle is not a valid YAML'],
+            },
+        }
+        response = yield self.view(request)
+        self.assertEqual(expected_response, response)
+
+    @gen_test
+    def test_invalid_token(self):
+        # An error is returned if the provided token is not valid.
+        request = self.make_view_request(params={'Token': 'no-such'})
+        expected_response = {
+            'Response': {},
+            'Error': 'unknown, fulfilled, or expired bundle token',
+        }
+        response = yield self.view(request)
+        self.assertEqual(expected_response, response)
+
+    @gen_test
+    def test_both_yaml_and_token_error(self):
+        # An error is returned if both the bundle content and the token are
+        # provided.
+        request = self.make_view_request(params={
+            'Token': 'token',
+            'YAML': 'content',
+        })
+        expected_response = {
+            'Response': {},
+            'Error': 'invalid request: too many data parameters: Token, YAML',
+        }
+        response = yield self.view(request)
+        self.assertEqual(expected_response, response)
+
+
+class TestSetChanges(
+        ViewsTestMixin, helpers.BundlesTestMixin, LogTrapTestCase,
+        AsyncTestCase):
+
+    def get_view(self):
+        return views.set_changes
+
+    @mock.patch('uuid.uuid4', mock.Mock(return_value=mock.Mock(hex='DEFACED')))
+    @helpers.patch_time
+    @gen_test
+    def test_valid_yaml(self):
+        # The token is correctly returned when providing a YAML content.
+        content = yaml.safe_dump({
+            'services': {
+                'django': {
+                    'charm': 'cs:trusty/django-42',
+                    'num_units': 0,
+                },
+            },
+        })
+        request = self.make_view_request(params={'YAML': content})
+        expected_response = {
+            'Response': {
+                'Created': '2013-11-21T21:00:00Z',
+                'Expires': '2013-11-21T21:02:00Z',
+                'Token': 'DEFACED',
+            },
+        }
+        response = yield self.view(request)
+        self.assertEqual(expected_response, response)
+
+        # Call GetChanges to retrieve the bundle changes.
+        request = self.make_view_request(params={'Token': 'DEFACED'})
+        expected_response = {
+            'Response': {
+                'Changes': [
+                    {'args': ['cs:trusty/django-42'],
+                     'id': 'addCharm-0',
+                     'method': 'addCharm',
+                     'requires': []},
+                    {'args': ['cs:trusty/django-42', 'django', {}],
+                     'id': 'addService-1',
+                     'method': 'deploy',
+                     'requires': ['addCharm-0']},
+                ],
+            },
+        }
+        response = yield views.get_changes(request)
+        self.assertEqual(expected_response, response)
+
+        # A second call to GetChanges returns an error.
+        expected_response = {
+            'Response': {},
+            'Error': 'unknown, fulfilled, or expired bundle token',
+        }
+        response = yield views.get_changes(request)
+        self.assertEqual(expected_response, response)
+
+    @gen_test
+    def test_invalid_parameters(self):
+        # An error response is returned if the parameters in the request are
+        # not valid.
+        invalid_params_error = 'invalid request: bundle YAML not found'
+        request = self.make_view_request(params=self.invalid_params)
+        expected_log = 'deployer: {}'.format(invalid_params_error)
+        with ExpectLog('', expected_log, required=True):
+            response = yield self.view(request)
+        expected_response = {
+            'Response': {},
+            'Error': invalid_params_error,
+        }
+        self.assertEqual(expected_response, response)
+        # The Deployer methods have not been called.
+        self.assertEqual(0, len(self.deployer.mock_calls))
+
+    @gen_test
+    def test_invalid_bundle(self):
+        # The validation errors are returned when providing an invalid bundle.
+        content = yaml.safe_dump({
+            'services': {'django': {'charm': 'bad:wolf'}},
+            'machines': {'1': {}, 'invalid': {}},
+        })
+        request = self.make_view_request(params={'YAML': content})
+        expected_response = {
+            'Response': {
+                'Errors': [
+                    'machine invalid has an invalid id, must be digit',
+                    'invalid charm specified for service django: URL has '
+                    'invalid schema: bad',
+                    'num_units for service django must be an integer',
+                    'machine 1 not referred to by a placement directive',
+                    'machine invalid not referred to by a placement directive',
+                ],
+            },
+        }
+        response = yield self.view(request)
+        self.assertEqual(expected_response, response)

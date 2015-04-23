@@ -44,7 +44,12 @@ def server():
                         options.charmworldurl)
     # Set up handlers.
     server_handlers = []
-    if not options.sandbox:
+    if options.sandbox:
+        # Sandbox mode.
+        server_handlers.append(
+            (r'^/ws(?:/.*)?$', handlers.SandboxHandler, {}))
+    else:
+        # Real environment.
         tokens = auth.AuthenticationTokenHandler()
         websocket_handler_options = {
             # The Juju API backend url.

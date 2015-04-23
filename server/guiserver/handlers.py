@@ -36,7 +36,10 @@ from guiserver.auth import (
     AuthMiddleware,
     User,
 )
-from guiserver.bundles.base import DeployMiddleware
+from guiserver.bundles.base import (
+    ChangeSetMiddleware,
+    DeployMiddleware,
+)
 from guiserver.clients import websocket_connect
 from guiserver.utils import (
     clone_request,
@@ -52,7 +55,23 @@ from guiserver.utils import (
 DEFAULT_CHARM_ICON_PATH = '/static/img/charm_160.svg'
 
 
-class WebSocketHandler(websocket.WebSocketHandler):
+class _WebSocketBaseHandler(websocket.WebSocketHandler):
+    """Base WebSocket handler defining shared methods."""
+
+    def select_subprotocol(self, subprotocols):
+        """Return the first sub-protocol sent by the client.
+
+        If the client does not include sub-protocols in the
+        Sec-WebSocket-Protocol header, this method is not called.
+
+        Overriding this method is required due to a new behavior of development
+        versions of the Chrome browser, which disconnects if if the
+        sub-protocol does not match the one sent by the client.
+        """
+        return subprotocols[0]
+
+
+class WebSocketHandler(_WebSocketBaseHandler):
     """WebSocket handler supporting secure WebSockets.
 
     This handler acts as a proxy between the browser connection and the
@@ -99,8 +118,9 @@ class WebSocketHandler(websocket.WebSocketHandler):
         self.user = User()
         self.auth = AuthMiddleware(
             self.user, auth_backend, tokens, write_message)
-        # Set up the bundle deployment infrastructure.
+        # Set up the bundle deployment and change set infrastructure.
         self.deployment = DeployMiddleware(self.user, deployer, write_message)
+        self.changeset = ChangeSetMiddleware(self.user, write_message)
         # XXX The handler is no longer path agnostic, and this can be fixed by
         # capturing the relevant path fragment on the regexp, and then
         # overriding the handler's open method to store the path in the
@@ -135,21 +155,10 @@ class WebSocketHandler(websocket.WebSocketHandler):
             logging.debug(self._summary + 'queue -> juju: {}'.format(encoded))
             self.juju_connection.write_message(message)
 
-    def select_subprotocol(self, subprotocols):
-        """Return the first sub-protocol sent by the client.
-
-        If the client does not include sub-protocols in the
-        Sec-WebSocket-Protocol header, this method is not called.
-
-        Overriding this method is required due to a new behavior of development
-        versions of the Chrome browser, which disconnects if if the
-        sub-protocol does not match the one sent by the client.
-        """
-        return subprotocols[0]
-
     def on_message(self, message):
         """Hook called when a new message is received from the browser.
 
+        If the message is a change set request, return the resulting changes.
         If the message is a deployment request, start the deployment process.
         Otherwise the message is propagated to the Juju API server.
         Messages sent before the client connection to the Juju API server is
@@ -158,6 +167,9 @@ class WebSocketHandler(websocket.WebSocketHandler):
         data = json_decode_dict(message)
         encoded = None
         if data is not None:
+            # Handle change set requests.
+            if self.changeset.requested(data):
+                return self.changeset.process_request(data)
             # Handle deployment requests.
             if self.deployment.requested(data):
                 return self.deployment.process_request(data)
@@ -224,6 +236,40 @@ class WebSocketHandler(websocket.WebSocketHandler):
         if self.connected:
             logging.error(self._summary + 'Juju API unexpectedly disconnected')
             self.close()
+
+
+class SandboxHandler(_WebSocketBaseHandler):
+    """Simulate WebSocket API in sandbox mode.
+
+    This handler is used when there is no Juju environments to connect to, and
+    the Juju GUI runs in sandbox mode. Only a small subset of the real Juju API
+    is simulated here.
+    """
+
+    # This handler is always connected so that wrap_write_message does not
+    # discard messages.
+    connected = True
+
+    def initialize(self):
+        """Set up a fake user and a change set middleware."""
+        user = User(
+            username='sandbox-user',
+            password='sandbox-passwd',
+            is_authenticated=True)
+        self.changeset = ChangeSetMiddleware(user, wrap_write_message(self))
+
+    def on_message(self, message):
+        """Hook called when a new message is received from the browser.
+
+        If the message is a change set request, return the resulting changes.
+        Otherwise return a not implemented response.
+        """
+        data = json_decode_dict(message)
+        if data is None:
+            return
+        if self.changeset.requested(data):
+            return self.changeset.process_request(data)
+        self.write_message({'Error': 'not implemented (sandbox mode)'})
 
 
 class IndexHandler(web.StaticFileHandler):

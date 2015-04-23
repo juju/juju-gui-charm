@@ -16,7 +16,6 @@
 
 """Tests for the Juju GUI server handlers."""
 
-import datetime
 import json
 import os
 import shutil
@@ -38,6 +37,7 @@ from tornado.testing import (
     gen_test,
     LogTrapTestCase,
 )
+import yaml
 
 from guiserver import (
     auth,
@@ -347,10 +347,7 @@ class TestWebSocketHandlerAuthentication(
         self.assertFalse(self.handler.auth.in_progress())
 
     @mock.patch('uuid.uuid4', mock.Mock(return_value=mock.Mock(hex='DEFACED')))
-    @mock.patch('datetime.datetime',
-                mock.Mock(
-                    **{'utcnow.return_value':
-                       datetime.datetime(2013, 11, 21, 21)}))
+    @helpers.patch_time
     def test_token_request(self):
         # It supports requesting a token when authenticated.
         self.handler.user.username = 'user'
@@ -477,6 +474,105 @@ class TestWebSocketHandlerBundles(
             error='unauthorized access: no user logged in')
         response = yield client.read_message()
         self.assertEqual(expected, json.loads(response))
+
+
+class ChangeSetTestMixin(object):
+    """Define data for working with bundle change sets."""
+
+    content = yaml.safe_dump({
+        'services': {
+            'django': {
+                'charm': 'cs:trusty/django-42',
+                'num_units': 0,
+            },
+        },
+    })
+    request = json.dumps({
+        'RequestId': 1,
+        'Type': 'ChangeSet',
+        'Request': 'GetChanges',
+        'Params': {'YAML': content},
+    })
+    response = {
+        'RequestId': 1,
+        'Response': {
+            'Changes': [
+                {'id': 'addCharm-0',
+                 'method': 'addCharm',
+                 'args': ['cs:trusty/django-42'],
+                 'requires': []},
+                {'id': 'addService-1',
+                 'method': 'deploy',
+                 'args': ['cs:trusty/django-42', 'django', {}],
+                 'requires': ['addCharm-0']},
+            ]
+        },
+    }
+
+
+class TestWebSocketHandlerChangeSet(
+        ChangeSetTestMixin, WebSocketHandlerTestMixin, helpers.WSSTestMixin,
+        LogTrapTestCase, AsyncHTTPSTestCase):
+
+    @gen_test
+    def test_changeset_request(self):
+        # The bundle change set is correctly returned.
+        write_message_path = 'guiserver.handlers.wrap_write_message'
+        with mock.patch(write_message_path) as mock_write_message:
+            handler = yield self.make_initialized_handler()
+        # Simulate the user is authenticated.
+        handler.user.is_authenticated = True
+        # Request changes.
+
+        yield handler.on_message(self.request)
+        mock_write_message().assert_called_once_with(self.response)
+
+    @gen_test
+    def test_not_authenticated(self):
+        # The bundle change set support is only activated for logged in users.
+        client = yield self.make_client()
+        client.write_message(self.request)
+        expected_response = {
+            'RequestId': 1,
+            'Response': {},
+            'Error': 'unauthorized access: no user logged in',
+        }
+        response = yield client.read_message()
+        self.assertEqual(expected_response, json.loads(response))
+
+
+class TestSandboxHandler(
+        ChangeSetTestMixin, helpers.WSSTestMixin, LogTrapTestCase,
+        AsyncHTTPSTestCase):
+
+    def get_app(self):
+        """Return an application including the sandbox WebSocket handler."""
+        return web.Application([
+            (r'/ws', handlers.SandboxHandler, {}),
+        ])
+
+    def make_client(self):
+        """Return a WebSocket client ready to be connected to the server."""
+        return clients.websocket_connect(
+            self.io_loop, self.get_wss_url('/ws'), lambda message: None)
+
+    @gen_test
+    def test_changeset_request(self):
+        # The bundle change set is correctly returned.
+        self.maxDiff = None
+        client = yield self.make_client()
+        client.write_message(self.request)
+        response = yield client.read_message()
+        self.assertEqual(self.response, json.loads(response))
+
+    @gen_test
+    def test_unknown_request(self):
+        # A not implemented error is always returned for unknown requests.
+        client = yield self.make_client()
+        client.write_message(json.dumps({'Request': 'invalid'}))
+        expected_response = {'Error': 'not implemented (sandbox mode)'}
+        response = yield client.read_message()
+        self.assertEqual(expected_response, json.loads(response))
 
 
 class TestIndexHandler(LogTrapTestCase, AsyncHTTPTestCase):

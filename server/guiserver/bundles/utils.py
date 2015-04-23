@@ -182,15 +182,16 @@ def require_authenticated_user(view):
     """Require the user to be authenticated when executing the decorated view.
 
     This function can be used to decorate bundle views. Each view receives
-    a request and a deployer, and the user instance is stored in request.user.
-    If the user is not authenticated an error response is raised when calling
-    the view. Otherwise, the view is executed normally.
+    a request and a zero or more other arguments.
+    The user instance is stored in request.user. If the user is not
+    authenticated an error response is raised when calling the view. Otherwise,
+    the view is executed normally.
     """
     @wraps(view)
-    def decorated(request, deployer):
+    def decorated(request, *args, **kwargs):
         if not request.user.is_authenticated:
             raise response(error='unauthorized access: no user logged in')
-        return view(request, deployer)
+        return view(request, *args, **kwargs)
     return decorated
 
 

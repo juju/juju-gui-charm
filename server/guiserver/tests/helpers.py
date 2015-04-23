@@ -17,6 +17,7 @@
 """Juju GUI server test utilities."""
 
 from contextlib import contextmanager
+import datetime
 import json
 import multiprocessing
 import os
@@ -40,6 +41,12 @@ def make_response(code, body='', headers=None, request=None):
         request = httpclient.HTTPRequest('https://example.com')
     return httpclient.HTTPResponse(
         request, code, headers=headers, buffer=io.StringIO(body))
+
+
+# Patch the current time (UTC format).
+patch_time = mock.patch(
+    'datetime.datetime',
+    mock.Mock(**{'utcnow.return_value': datetime.datetime(2013, 11, 21, 21)}))
 
 
 class EchoWebSocketHandler(websocket.WebSocketHandler):
