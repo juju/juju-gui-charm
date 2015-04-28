@@ -771,19 +771,20 @@ class TestSetChanges(
     def test_invalid_bundle(self):
         # The validation errors are returned when providing an invalid bundle.
         content = yaml.safe_dump({
-            'services': {'django': {'charm': 'bad:wolf'}},
-            'machines': {'1': {}, 'invalid': {}},
+            'services': {'django': {'charm': 'bad:wolf', 'num_units': 'bad'}},
+            'machines': {'1': {'constraints': 42}, '2': {'series': 'no:such'}},
         })
         request = self.make_view_request(params={'YAML': content})
         expected_response = {
             'Response': {
                 'Errors': [
-                    'machine invalid has an invalid id, must be digit',
-                    'invalid charm specified for service django: URL has '
-                    'invalid schema: bad',
-                    'num_units for service django must be an integer',
+                    'invalid charm specified for service django: '
+                    'URL has invalid schema: bad',
+                    'num_units for service django must be a digit',
                     'machine 1 not referred to by a placement directive',
-                    'machine invalid not referred to by a placement directive',
+                    'machine 2 not referred to by a placement directive',
+                    'machine 1 has invalid constraints 42',
+                    'machine 2 has invalid series no:such'
                 ],
             },
         }
