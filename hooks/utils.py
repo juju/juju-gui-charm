@@ -26,6 +26,7 @@ import re
 import shutil
 from subprocess import CalledProcessError
 import tempfile
+import time
 import urlparse
 import yaml
 
@@ -680,11 +681,12 @@ def save_or_create_certificates(
     else:
         # Generate certificates.
         # See http://superuser.com/questions/226192/openssl-without-prompt
+        cn = 'your-jujugui-{0}.local'.format(int(time.time()))
         cmd_log(run(
             'openssl', 'req', '-new', '-newkey', 'rsa:4096',
             '-days', '365', '-nodes', '-x509', '-subj',
             # These are arbitrary test values for the certificate.
-            '/C=GB/ST=Juju/L=GUI/O=Ubuntu/CN=your-jujugui.local',
+            '/C=GB/ST=Juju/L=GUI/O=Ubuntu/CN={0}'.format(cn),
             '-keyout', key_path, '-out', crt_path))
     # Generate the pem file.
     pem_path = os.path.join(ssl_cert_path, JUJU_PEM)
