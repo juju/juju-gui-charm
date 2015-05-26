@@ -21,6 +21,7 @@ import httplib
 import json
 import itertools
 import socket
+import ssl
 import unittest
 import urllib2
 import urlparse
@@ -173,7 +174,9 @@ class DeployTestMixin(object):
     def get_builtin_server_info(self, hostname):
         """Return a dictionary of info as exposed by the builtin server."""
         url = 'https://{}/gui-server-info'.format(hostname)
-        response = urllib2.urlopen(url)
+        # Disable TSL certificate verification for testing purposes.
+        context = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
+        response = urllib2.urlopen(url, context=context)
         self.assertEqual(200, response.code)
         return json.load(response)
 
