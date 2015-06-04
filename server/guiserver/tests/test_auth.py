@@ -327,10 +327,7 @@ class TestAuthenticationTokenHandler(LogTrapTestCase, unittest.TestCase):
             self.assertFalse(token_requested, request)
 
     @mock.patch('uuid.uuid4', mock.Mock(return_value=mock.Mock(hex='DEFACED')))
-    @mock.patch('datetime.datetime',
-                mock.Mock(
-                    **{'utcnow.return_value':
-                       datetime.datetime(2013, 11, 21, 21)}))
+    @helpers.patch_time
     def test_process_token_request(self):
         # It correctly responds to token requests.
         user = auth.User('user-admin', 'ADMINSECRET', True)
@@ -430,10 +427,7 @@ class TestAuthenticationTokenHandler(LogTrapTestCase, unittest.TestCase):
             Response={}))
 
     @mock.patch('uuid.uuid4', mock.Mock(return_value=mock.Mock(hex='DEFACED')))
-    @mock.patch('datetime.datetime',
-                mock.Mock(
-                    **{'utcnow.return_value':
-                       datetime.datetime(2013, 11, 21, 21)}))
+    @helpers.patch_time
     def test_token_request_and_authentication_collaborate(self):
         # process_token_request and process_authentication_request collaborate.
         # This is a small integration test of the two functions' interaction.
