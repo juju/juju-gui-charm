@@ -199,4 +199,3 @@ ping "jujugui" we will eventually get back to you.
 
 If you want to help develop the charm, please see the charm's `HACKING.md`.
 
-
