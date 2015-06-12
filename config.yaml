@@ -109,6 +109,12 @@ options:
       Do not set unless you understand and accept the risks.
     type: boolean
     default: true
+  ws-secure:
+    description: |
+      Force the client to use secure or unsecure WebSockets.
+      If left unset, the secure WebSocket are used based on the secure option.
+    type: boolean
+    default: null
   password:
     description: |
       If given, the password to use for the environment to immediately
