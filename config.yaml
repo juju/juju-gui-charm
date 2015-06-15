@@ -111,8 +111,9 @@ options:
     default: true
   ws-secure:
     description: |
-      Force the client to use secure or unsecure WebSockets.
-      If left unset, the secure WebSocket are used based on the secure option.
+      Force the client to use secure ("wss") or unsecure ("ws") WebSockets.
+      If left unset, secure WebSockets are used based on the secure option: if
+      secure is True the "wss" protocol is used, othewise the "ws" one is used.
     type: boolean
     default: null
   password:
