@@ -69,6 +69,7 @@ __all__ = [
     'get_api_address',
     'get_launchpad_release',
     'get_npm_cache_archive_url',
+    'get_port',
     'get_release_file_path',
     'install_missing_packages',
     'log_hook',
@@ -426,6 +427,13 @@ def setup_ports(previous_port, current_port):
     log('Opening default ports 80 and 443.')
     open_port(80)
     open_port(443)
+
+
+def get_port():
+    """Return the current port the GUI server is listening to."""
+    config = get_config()
+    default_port = 443 if config['secure'] else 80
+    return config.get('port', default_port) or default_port
 
 
 def install_builtin_server():
