@@ -112,11 +112,22 @@ class GuiMixin(object):
         config = backend.config
         build_dir = utils.compute_build_dir(
             config['juju-gui-debug'], config['serve-tests'])
+        # Check if a secure WebSocket client connection is required.
+        secure = config.get('ws-secure')
+        if secure is None:
+            # WebSocket security is not explicitly provided: use secure
+            # WebSocket if the GUI server is running in secure mode.
+            secure = config['secure']
         utils.write_gui_config(
-            config['juju-gui-console-enabled'], config.get('login-help'),
-            config['read-only'], config['charmworld-url'],
-            config['charmstore-url'], build_dir, secure=config['secure'],
-            sandbox=config['sandbox'], cached_fonts=config['cached-fonts'],
+            config['juju-gui-console-enabled'],
+            config.get('login-help'),
+            config['read-only'],
+            config['charmworld-url'],
+            config['charmstore-url'],
+            build_dir,
+            secure=secure,
+            sandbox=config['sandbox'],
+            cached_fonts=config['cached-fonts'],
             ga_key=config['ga-key'],
             hide_login_button=config['hide-login-button'],
             juju_core_version=config.get('juju-core-version'),
