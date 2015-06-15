@@ -42,6 +42,7 @@ from utils import (
     get_api_address,
     get_launchpad_release,
     get_npm_cache_archive_url,
+    get_port,
     get_release_file_path,
     install_builtin_server,
     install_missing_packages,
@@ -1166,6 +1167,37 @@ class TestSetupPorts(unittest.TestCase):
         self.assertEqual(2, mock_open_port.call_count)
         mock_open_port.assert_has_calls([mock.call(80), mock.call(443)])
         self.assertFalse(mock_close_port.called)
+
+
+class TestGetPort(unittest.TestCase):
+
+    def patch_config(self, data):
+        """Simulate that the given data is the current charm configuration."""
+        return mock.patch('utils.get_config', return_value=data)
+
+    def test_secure_missing_port(self):
+        with self.patch_config({'secure': True}):
+            self.assertEqual(443, get_port())
+
+    def test_secure_none_port(self):
+        with self.patch_config({'port': None, 'secure': True}):
+            self.assertEqual(443, get_port())
+
+    def test_secure_customized_port(self):
+        with self.patch_config({'port': 4242, 'secure': True}):
+            self.assertEqual(4242, get_port())
+
+    def test_missing_port(self):
+        with self.patch_config({'secure': False}):
+            self.assertEqual(80, get_port())
+
+    def test_none_port(self):
+        with self.patch_config({'port': None, 'secure': False}):
+            self.assertEqual(80, get_port())
+
+    def test_customized_port(self):
+        with self.patch_config({'port': 4747, 'secure': False}):
+            self.assertEqual(4747, get_port())
 
 
 @mock.patch('utils.run')

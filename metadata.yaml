@@ -22,6 +22,8 @@ tags: ["ops"]
 provides:
   web:
     interface: http
+  cached-website:
+    interface: http
   nrpe-external-master:
     interface: nrpe-external-master
     scope: container

@@ -128,18 +128,6 @@ class TestBackendCommands(unittest.TestCase):
             object_dict = dict(zip(mocks.keys(), context_managers))
             yield type('Mocks', (object,), object_dict)
 
-    def assert_write_gui_config_called(self, mocks, config):
-        """Ensure the mocked write_gui_config has been properly called."""
-        mocks.write_gui_config.assert_called_once_with(
-            config['juju-gui-console-enabled'], config['login-help'],
-            config['read-only'], config['charmworld-url'],
-            config['charmstore-url'], mocks.compute_build_dir(),
-            secure=config['secure'], sandbox=config['sandbox'],
-            cached_fonts=config['cached-fonts'], ga_key=config['ga-key'],
-            juju_core_version=config['juju-core-version'],
-            hide_login_button=config['hide-login-button'],
-            juju_env_uuid=None, password=None)
-
     def test_base_dir_created(self):
         # The base Juju GUI directory is correctly created.
         config = self.make_config()
@@ -200,12 +188,44 @@ class TestBackendCommands(unittest.TestCase):
             test_backend.start()
         mocks.compute_build_dir.assert_called_with(
             config['juju-gui-debug'], config['serve-tests'])
-        self.assert_write_gui_config_called(mocks, config)
+        mocks.write_gui_config.assert_called_once_with(
+            config['juju-gui-console-enabled'], config['login-help'],
+            config['read-only'], config['charmworld-url'],
+            config['charmstore-url'], mocks.compute_build_dir(),
+            secure=config['secure'], sandbox=config['sandbox'],
+            cached_fonts=config['cached-fonts'], ga_key=config['ga-key'],
+            juju_core_version=config['juju-core-version'],
+            hide_login_button=config['hide-login-button'],
+            juju_env_uuid=None, password=None)
         mocks.setup_ports.assert_called_once_with(None, None)
         mocks.start_builtin_server.assert_called_once_with(
             mocks.compute_build_dir(), self.ssl_cert_path,
             config['serve-tests'], config['sandbox'],
             config['builtin-server-logging'], not config['secure'],
+            config['charmworld-url'], port=None)
+
+    def test_start_insecure_ws_secure(self):
+        # It is possible to configure the service so that, even if the GUI
+        # server runs in insecure mode, the client still connects via a secure
+        # WebSocket connection. This is often used when proxying the GUI behind
+        # an SSL terminating service like Apache2.
+        config = self.make_config({'secure': False, 'ws-secure': True})
+        test_backend = backend.Backend(config=config)
+        with self.mock_all() as mocks:
+            test_backend.start()
+        mocks.write_gui_config.assert_called_once_with(
+            config['juju-gui-console-enabled'], config['login-help'],
+            config['read-only'], config['charmworld-url'],
+            config['charmstore-url'], mocks.compute_build_dir(),
+            secure=True, sandbox=config['sandbox'],
+            cached_fonts=config['cached-fonts'], ga_key=config['ga-key'],
+            juju_core_version=config['juju-core-version'],
+            hide_login_button=config['hide-login-button'],
+            juju_env_uuid=None, password=None)
+        mocks.start_builtin_server.assert_called_once_with(
+            mocks.compute_build_dir(), self.ssl_cert_path,
+            config['serve-tests'], config['sandbox'],
+            config['builtin-server-logging'], True,
             config['charmworld-url'], port=None)
 
     def test_start_user_provided_port(self):
