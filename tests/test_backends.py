@@ -207,7 +207,8 @@ class TestBackendCommands(unittest.TestCase):
     def test_start_insecure_ws_secure(self):
         # It is possible to configure the service so that, even if the GUI
         # server runs in insecure mode, the client still connects via a secure
-        # WebSocket connection.
+        # WebSocket connection. This is often used when proxying the GUI behind
+        # an SSL terminating service like Apache2.
         config = self.make_config({'secure': False, 'ws-secure': True})
         test_backend = backend.Backend(config=config)
         with self.mock_all() as mocks:
