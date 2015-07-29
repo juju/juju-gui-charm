@@ -20,6 +20,7 @@ var juju_config = {
   // socket_protocol is used instead by newer versions of the GUI to
   // dynamically generate the websocket address.
   socket_protocol: {{protocol}},
+  sandboxSocketURL: 'wss://demo.jujucharms.com/ws',
   user: {{user}},
   password: {{password}},
   apiBackend: {{api_backend}}, // Value can be 'python' or 'go'.
