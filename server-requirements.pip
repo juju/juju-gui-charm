@@ -29,9 +29,6 @@ tornado==3.2.2
 six==1.8.0
 websocket-client==0.18.0
 jujuclient==0.50.1
-# XXX makyo 2015-04-07: juju-deployer is currently trunk from lp:juju-deployer,
-# which allows v4 bundles. Once this is released, we may need to update this
-# dependency.
-juju-deployer==0.4.4
+juju-deployer==0.5.1
 charmworldlib==0.3.0
-jujubundlelib==0.1.8
+jujubundlelib==0.1.9
