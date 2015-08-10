@@ -29,6 +29,6 @@ tornado==3.2.2
 six==1.8.0
 websocket-client==0.18.0
 jujuclient==0.50.1
-juju-deployer==0.5.1
+juju-deployer==0.5.2
 charmworldlib==0.3.0
 jujubundlelib==0.1.9

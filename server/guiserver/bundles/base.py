@@ -120,7 +120,8 @@ class Deployer(object):
         except Exception as err:
             raise gen.Return(str(err))
 
-    def import_bundle(self, user, name, bundle, bundle_id, test_callback=None):
+    def import_bundle(
+            self, user, name, bundle, version, bundle_id, test_callback=None):
         """Schedule a deployment bundle import process.
 
         The deployment is executed in a separate process.
@@ -129,6 +130,7 @@ class Deployer(object):
           - user: the current authenticated user;
           - name: the name of the bundle to be imported;
           - bundle: a YAML decoded object representing the bundle contents.
+          - version: the version of the bundle syntax as an integer number;
           - bundle_id: the ID of the bundle.  May be None.
 
         It is possible to also provide an optional test_callback that will be
@@ -149,7 +151,7 @@ class Deployer(object):
         # to be called when the import process completes.
         future = self._run_executor.submit(
             blocking.import_bundle,
-            self._apiurl, user.username, user.password, name, bundle,
+            self._apiurl, user.username, user.password, name, bundle, version,
             self.importer_options)
         add_future(self._io_loop, future, self._import_callback,
                    deployment_id, bundle_id)
