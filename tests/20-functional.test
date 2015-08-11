@@ -72,7 +72,11 @@ else:
 bootstrap_node_series = juju_status()['machines']['0']['series']
 # Define an SSL context used to disable TLS certificate verification: for the
 # purpose of testing the charm this verification is not required.
-ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
+try:
+    context_kwargs = {'context': ssl.SSLContext(ssl.PROTOCOL_TLSv1)}
+except AttributeError:
+    # This is not a recent version of Python.
+    context_kwargs = {}
 
 
 def juju_deploy_gui(options=None):
@@ -177,7 +181,7 @@ class DeployTestMixin(object):
     def get_builtin_server_info(self, hostname):
         """Return a dictionary of info as exposed by the builtin server."""
         url = 'https://{}/gui-server-info'.format(hostname)
-        response = urllib2.urlopen(url, context=ssl_context)
+        response = urllib2.urlopen(url, **context_kwargs)
         self.assertEqual(200, response.code)
         return json.load(response)
 
@@ -287,7 +291,7 @@ class TestBuiltinServerLocalRelease(DeployTestMixin, unittest.TestCase):
 
     def test_headers(self):
         # Ensure the Tornado headers are correctly sent.
-        conn = httplib.HTTPSConnection(self.hostname, context=ssl_context)
+        conn = httplib.HTTPSConnection(self.hostname, **context_kwargs)
         conn.request('HEAD', '/')
         headers = conn.getresponse().getheaders()
         server_header = dict(headers)['server']
@@ -456,7 +460,7 @@ class TestBuiltinServerLocalRelease(DeployTestMixin, unittest.TestCase):
 
     def test_nrpe_check_available(self):
         # Make sure the check-app-access.sh script's ADDRESS is available.
-        conn = httplib.HTTPSConnection(self.hostname, context=ssl_context)
+        conn = httplib.HTTPSConnection(self.hostname, **context_kwargs)
         # This request matches the ADDRESS var in the script.
         conn.request('GET', '/juju-ui/version.js')
         message = 'ADDRESS in check-app-access.sh is not accessible.'
