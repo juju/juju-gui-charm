@@ -207,7 +207,7 @@ class TestImportBundleV3(
         # Ensure the Deployer methods have been correctly called.
         args = (request.user, {'services': {}})
         self.deployer.validate.assert_called_once_with(*args)
-        args = (request.user, 'mybundle', {'services': {}}, None)
+        args = (request.user, 'mybundle', {'services': {}}, 3, None)
         self.deployer.import_bundle.assert_called_once_with(*args)
 
     @gen_test
@@ -219,7 +219,8 @@ class TestImportBundleV3(
         self.deployer.validate.return_value = self.make_future(None)
         self.deployer.import_bundle.return_value = 42
         # Execute the view.
-        expected_log = "import_bundle: scheduling 'mybundle' deployment"
+        expected_log = (
+            "import_bundle: scheduling deployment of v3 bundle 'mybundle'")
         with ExpectLog('', expected_log, required=True):
             yield self.view(request, self.deployer)
 
@@ -229,14 +230,14 @@ class TestImportBundleV3(
         # YAML contents include just one bundle.
         params = {'YAML': 'mybundle: {services: {}}'}
         results = views._validate_import_params(params)
-        expected = ('mybundle', {'services': {}}, None)
+        expected = ('mybundle', {'services': {}}, 3, None)
         self.assertEqual(expected, results)
 
     def test_id_provided(self):
         params = {'YAML': 'mybundle: {services: {}}',
                   'BundleID': '~jorge/wiki/3/smallwiki'}
         results = views._validate_import_params(params)
-        expected = ('mybundle', {'services': {}}, '~jorge/wiki/3/smallwiki')
+        expected = ('mybundle', {'services': {}}, 3, '~jorge/wiki/3/smallwiki')
         self.assertEqual(expected, results)
 
     def test_id_and_name_provided(self):
@@ -244,7 +245,7 @@ class TestImportBundleV3(
                   'Name': 'mybundle',
                   'BundleID': '~jorge/wiki/3/smallwiki'}
         results = views._validate_import_params(params)
-        expected = ('mybundle', {'services': {}}, '~jorge/wiki/3/smallwiki')
+        expected = ('mybundle', {'services': {}}, 3, '~jorge/wiki/3/smallwiki')
         self.assertEqual(expected, results)
 
     @gen_test
@@ -259,11 +260,11 @@ class TestImportBundleV3(
         # Execute the view.
         yield self.view(request, self.deployer)
         # Ensure the Deployer methods have been correctly called.
-        args = (request.user, {'services': {}})
-        self.deployer.validate.assert_called_once_with(*args)
-        args = (request.user, 'mybundle', {'services': {}},
-                '~jorge/wiki/3/smallwiki')
-        self.deployer.import_bundle.assert_called_once_with(*args)
+        self.deployer.validate.assert_called_once_with(
+            request.user, {'services': {}})
+        self.deployer.import_bundle.assert_called_once_with(
+            request.user, 'mybundle', {'services': {}}, 3,
+            '~jorge/wiki/3/smallwiki')
 
 
 class TestImportBundleV4(
@@ -357,7 +358,7 @@ class TestImportBundleV4(
         # Ensure the Deployer methods have been correctly called.
         args = (request.user, {'services': {}})
         self.deployer.validate.assert_called_once_with(*args)
-        args = (request.user, 'bundle-v4', {'services': {}}, 'foo')
+        args = (request.user, 'bundle-v4', {'services': {}}, 4, 'foo')
         self.deployer.import_bundle.assert_called_once_with(*args)
 
     @gen_test
@@ -369,7 +370,8 @@ class TestImportBundleV4(
         self.deployer.validate.return_value = self.make_future(None)
         self.deployer.import_bundle.return_value = 42
         # Execute the view.
-        expected_log = "import_bundle: scheduling 'bundle-v4' deployment"
+        expected_log = (
+            "import_bundle: scheduling deployment of v4 bundle 'bundle-v4'")
         with ExpectLog('', expected_log, required=True):
             yield self.view(request, self.deployer)
 
@@ -379,7 +381,7 @@ class TestImportBundleV4(
                   'Version': 4,
                   'BundleID': '~jorge/wiki'}
         results = views._validate_import_params(params)
-        expected = ('bundle-v4', {'services': {}}, '~jorge/wiki')
+        expected = ('bundle-v4', {'services': {}}, 4, '~jorge/wiki')
         self.assertEqual(expected, results)
 
     @gen_test
@@ -394,11 +396,11 @@ class TestImportBundleV4(
         # Execute the view.
         yield self.view(request, self.deployer)
         # Ensure the Deployer methods have been correctly called.
-        args = (request.user, {'services': {}})
-        self.deployer.validate.assert_called_once_with(*args)
-        args = (request.user, 'bundle-v4', {'services': {}},
-                '~jorge/wiki/3/smallwiki')
-        self.deployer.import_bundle.assert_called_once_with(*args)
+        self.deployer.validate.assert_called_once_with(
+            request.user, {'services': {}})
+        self.deployer.import_bundle.assert_called_once_with(
+            request.user, 'bundle-v4', {'services': {}}, 4,
+            '~jorge/wiki/3/smallwiki')
 
 
 class TestWatch(
