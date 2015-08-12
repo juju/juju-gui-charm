@@ -80,22 +80,22 @@ from guiserver.bundles.utils import (
 
 
 def _validate_import_params(params):
-    """Parse the request data and return a (name, bundle, bundle_id) tuple.
+    """Parse the request data and return a (name, bundle, version, id) tuple.
 
     In the tuple:
       - name is the name of the bundle to be imported; this is required for old
-        style bundles, not for v4 bundles
-      - bundle is the YAML decoded bundle object.
-      - bundle_id is the permanent id of the bundle, in v3 of the form
-        ~user/basketname/version/bundlename, e.g.
-        ~jorge/mediawiki/3/mediawiki-simple.  The bundle_id is optional and
-        will be None if not given.
-        In v4, the bundle ID is in the form ~user/bundlename, e.g.
-        ~jorge/mediawiki-simple and is required.
+        style bundles, not for v4 bundles;
+      - bundle is the YAML decoded bundle object;
+      - version is the version number for the bundle syntax as an integer
+        (usually 3 or 4);
+      - id is the permanent id of the bundle, in v3 of the form
+        "~user/basketname/version/bundlename", e.g.
+        "~jorge/mediawiki/3/mediawiki-simple".  The bundle_id is optional and
+        will be None if not given. In v4, the bundle ID is in the form
+        "~user/bundlename", e.g. "~jorge/mediawiki-simple" and is required.
 
     Raise a ValueError if data represents an invalid request.
     """
-    bundle_id = params.get('BundleID')
     contents = params.get('YAML')
     if contents is None:
         raise ValueError('invalid data parameters')
@@ -103,8 +103,10 @@ def _validate_import_params(params):
         bundles = yaml.safe_load(contents)
     except Exception as err:
         raise ValueError('invalid YAML contents: {}'.format(err))
+    bundle_id = params.get('BundleID')
+
     if params.get('Version') == 4:
-        return 'bundle-v4', bundles, bundle_id
+        return 'bundle-v4', bundles, 4, bundle_id
 
     # This is an old-style bundle.
     name = params.get('Name')
@@ -118,7 +120,7 @@ def _validate_import_params(params):
     bundle = bundles.get(name)
     if bundle is None:
         raise ValueError('bundle {} not found'.format(name))
-    return name, bundle, bundle_id
+    return name, bundle, 3, bundle_id
 
 
 @gen.coroutine
@@ -139,7 +141,7 @@ def import_bundle(request, deployer):
     """
     # Validate the request parameters.
     try:
-        name, bundle, bundle_id = _validate_import_params(request.params)
+        name, bundle, version, id_ = _validate_import_params(request.params)
     except ValueError as err:
         raise response(error='invalid request: {}'.format(err))
     # Validate and prepare the bundle.
@@ -153,9 +155,11 @@ def import_bundle(request, deployer):
     if err is not None:
         raise response(error='invalid request: {}'.format(err))
     # Add the bundle deployment to the Deployer queue.
-    logging.info('import_bundle: scheduling {!r} deployment'.format(name))
+    logging.info(
+        'import_bundle: scheduling deployment of v{} bundle {!r}'
+        ''.format(version, name))
     deployment_id = deployer.import_bundle(
-        request.user, name, bundle, bundle_id)
+        request.user, name, bundle, version, id_)
     raise response({'DeploymentId': deployment_id})
 
 
