@@ -231,7 +231,8 @@ class WebSocketClient(object):
     def connect(self):
         """Connect to the WebSocket server."""
         logging.info('connecting to {}'.format(self._url))
-        self._conn = websocket.create_connection(self._url, sslopt=SSLOPT)
+        self._conn = websocket.create_connection(
+            self._url, timeout=10 * 60, sslopt=SSLOPT)
 
     def send(self, request):
         """Send the given WebSocket request.

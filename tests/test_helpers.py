@@ -469,7 +469,8 @@ class TestWebSocketClient(unittest.TestCase):
     def test_connect(self, mock_create_connection):
         # The WebSocket connection is correctly established.
         self.client.connect()
-        mock_create_connection.assert_called_once_with(self.url, sslopt=SSLOPT)
+        mock_create_connection.assert_called_once_with(
+            self.url, timeout=600, sslopt=SSLOPT)
 
     def test_send(self, mock_create_connection):
         # A request is correctly sent, and a response is returned.
