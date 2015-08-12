@@ -419,8 +419,7 @@ class TestBuiltinServerLocalRelease(DeployTestMixin, unittest.TestCase):
 
         # Observe three changes on the second deployment.
         for status in ('scheduled', 'started', 'completed'):
-            # Create a new connection each time to avoid timeout issues.
-            response = self.make_websocket_client().send({
+            response = client.send({
                 'RequestId': self.counter.next(),
                 'Type': 'Deployer',
                 'Request': 'Next',
@@ -433,7 +432,6 @@ class TestBuiltinServerLocalRelease(DeployTestMixin, unittest.TestCase):
             self.assertEqual(status, changes[0]['Status'])
 
         # An error is returned trying to re-deploy a bundle.
-        client = self.make_websocket_client()
         response = client.send({
             'RequestId': self.counter.next(),
             'Type': 'Deployer',
