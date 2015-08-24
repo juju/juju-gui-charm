@@ -104,7 +104,7 @@ web address.  Accessing the GUI via HTTP will redirect to using HTTPS.
 By default, the deployment uses self-signed certificates. The browser will ask
 you to accept a security exception once.
 
-You will see a login form with the username fixed to "admin". The
+You will see a login form with the username field prefilled to "admin". The
 password is the same as your Juju environment's `admin-secret`. The login
 screen includes hints about where to find the environment's password.
 
