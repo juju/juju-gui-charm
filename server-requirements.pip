@@ -29,8 +29,6 @@ tornado==3.2.2
 six==1.8.0
 websocket-client==0.18.0
 jujuclient==0.50.1
-# XXX frankban: replace the included tarball with a proper 0.5.2 release.
-# Current zip is made from lp:~frankban/juju-deployer/guiserver-bundle-v4.
 juju-deployer==0.5.2
 charmworldlib==0.3.0
 jujubundlelib==0.1.9
