@@ -341,6 +341,16 @@ class TestGetReleaseFilePath(unittest.TestCase):
             path = get_release_file_path()
         self.assert_path('juju-gui-2.0.1.xz', path)
 
+    def test_tar_gz(self):
+        # The last release is correctly retrieved for tar.gz files too.
+        self.add('juju-gui-0.12.1.tgz')
+        self.add('juju-gui-1.2.3.tgz')
+        self.add('juju-gui-2.0.0+build.42.tgz')
+        self.add('jujugui-2.0.1.tar.gz')
+        with self.mock_releases_dir():
+            path = get_release_file_path()
+        self.assert_path('jujugui-2.0.1.tar.gz', path)
+
     def test_xz_git_dev(self):
         # The last release is correctly retrieved.
         self.add('juju-gui-0.12.1.tgz')
@@ -369,7 +379,7 @@ class TestGetReleaseFilePath(unittest.TestCase):
     def test_no_releases_with_files(self):
         # A ValueError is raised if no releases are found.
         # Extraneous files are ignored while looking for releases.
-        self.add('jujugui-1.2.3.tgz')  # Wrong prefix.
+        self.add('hujugui-1.2.3.tgz')  # Wrong prefix.
         self.add('juju-gui-1.2.tgz')  # Missing patch version number.
         self.add('juju-gui-1.2.3.bz2')  # Wrong file extension.
         self.add('juju-gui-1.2.3.4.tgz')  # Wrong version.

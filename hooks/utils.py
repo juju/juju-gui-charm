@@ -103,15 +103,15 @@ DEB_BUILD_DEPENDENCIES = (
 )
 
 
-# Store the configuration from on invocation to the next.
+# Store the configuration from one invocation to the next.
 config_json = Serializer(os.path.join(os.path.sep, 'tmp', 'config.json'))
 release_expression = re.compile(r"""
-    juju-gui-  # Juju GUI prefix.
+    juju-?gui-  # Juju GUI prefix.
     (
         \d+\.\d+\.\d+  # Major, minor, and patch version numbers.
         (?:\+build\.\w+)?  # Optional git hash for development releases.
     )
-    \.(?:tgz|xz)  # File extension.
+    \.(?:tar.gz|tgz|xz)  # File extension.
 """, re.VERBOSE)
 results_log = None
 
