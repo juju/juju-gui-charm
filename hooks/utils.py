@@ -16,6 +16,7 @@
 
 """Juju GUI charm utilities."""
 
+from ConfigParser import RawConfigParser
 from contextlib import contextmanager
 from distutils.version import LooseVersion
 import errno
@@ -102,6 +103,11 @@ DEB_BUILD_DEPENDENCIES = (
     'bzr', 'g++', 'git', 'imagemagick', 'make',  'nodejs',
 )
 
+ASSETS_PATH = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), '..', 'config'))
+PRODUCTION_INI = 'production.ini'
+INI_PATH = os.path.join(ASSETS_PATH, PRODUCTION_INI)
+
 
 # Store the configuration from one invocation to the next.
 config_json = Serializer(os.path.join(os.path.sep, 'tmp', 'config.json'))
@@ -115,6 +121,17 @@ release_expression = re.compile(r"""
 """, re.VERBOSE)
 results_log = None
 
+
+def read_config(path=INI_PATH):
+    """Get the config from the given ini path."""
+    config = RawConfigParser()
+    config.read(path)
+    return config
+
+def write_config(config, path=INI_PATH):
+    """Write the INI file."""
+    with open(path, 'w') as ini_file:
+        config.write(ini_file)
 
 def get_api_address(unit_dir=None):
     """Return the Juju API address.
@@ -326,76 +343,12 @@ def write_gui_config(
         hide_login_button=False, config_js_path=None, ga_key='',
         juju_core_version=None, password=None, juju_env_uuid=None):
     """Generate the GUI configuration file."""
-    log('Generating the Juju GUI configuration file.')
-    user = 'user-admin'
-    # Normalize empty string passwords to None. If sandbox is enabled then set
-    # the password to admin and it will auto login.
-    if not password:
-        if sandbox:
-            password = 'admin'
-        else:
-            password = None
-    api_backend = 'go'
-    if secure:
-        protocol = 'wss'
-    else:
-        log('Running in insecure mode! Port 80 will serve unencrypted.')
-        protocol = 'ws'
-    # Set up the help message displayed by the GUI login view.
-    if login_help is None:
-        env_name = os.getenv('JUJU_ENV_NAME')
-        if env_name:
-            login_help = (
-                'The password is the admin-secret from the Juju environment. '
-                'This can be found by looking in ~/.juju/environments/{}.jenv '
-                'and searching for the password field. Note that using '
-                'juju-quickstart (https://launchpad.net/juju-quickstart) can '
-                'automate logging in, as well as other parts of installing '
-                'and starting Juju.'.format(env_name))
-        else:
-            # The Juju environment name is included in the hooks context
-            # starting from juju-core v1.18.
-            login_help = (
-                'The password for newer Juju clients can be found by locating '
-                'the Juju environment file placed in ~/.juju/environments/ '
-                'with the same name as the current environment. For example, '
-                'if you have an environment named "production", then the file '
-                'is named ~/.juju/environments/production.jenv. Look for the '
-                '"password" field in the file, or if that is empty, for the '
-                '"admin-secret". Remove the quotes from the value, and use '
-                'this to log in. The password for older Juju clients (< 1.16) '
-                'is in ~/.juju/environments.yaml, and listed as the '
-                'admin-secret for the environment you are using. Note that '
-                'using juju-quickstart '
-                '(https://launchpad.net/juju-quickstart) can automate logging '
-                'in, as well as other parts of installing and starting Juju.')
-    if not juju_core_version:
-        log('Retrieving Juju version.')
-        juju_core_version = run('jujud', '--version').strip()
 
-    context = {
-        'cached_fonts': json.dumps(cached_fonts),
-        'raw_protocol': protocol,
-        'address': unit_get('public-address'),
-        'console_enabled': json.dumps(console_enabled),
-        'login_help': json.dumps(login_help),
-        'password': json.dumps(password),
-        'api_backend': json.dumps(api_backend),
-        'readonly': json.dumps(readonly),
-        'user': json.dumps(user),
-        'protocol': json.dumps(protocol),
-        'sandbox': json.dumps(sandbox),
-        'charmworld_url': json.dumps(charmworld_url),
-        'charmstore_url': json.dumps(charmstore_url),
-        'ga_key': json.dumps(ga_key),
-        'hide_login_button': json.dumps(hide_login_button),
-        'juju_core_version': json.dumps(juju_core_version),
-        'juju_env_uuid': json.dumps(juju_env_uuid),
-    }
-    if config_js_path is None:
-        config_js_path = os.path.join(
-            build_dir, 'juju-ui', 'assets', 'config.js')
-    render_to_file('config.js.template', context, config_js_path)
+    log('Generating the Juju GUI configuration file to {}.'.format(INI_PATH))
+    ini = read_config()
+    section = 'app:main'
+    ini.set(section, 'jujugui.sandbox', sandbox)
+    write_config(ini)
 
 
 # Simple checker function for port ranges.
@@ -652,18 +605,14 @@ def fetch_gui_release(origin, version):
     return download_release(url, filename)
 
 
-def setup_gui(release_tarball):
+def setup_gui(release_tarball_path):
     """Set up Juju GUI."""
-    # Uncompress the release tarball.
-    log('Installing Juju GUI.')
-    release_dir = os.path.join(BASE_DIR, 'release')
-    cmd_log(run('rm', '-rf', release_dir))
-    os.mkdir(release_dir)
-    uncompress = command('tar', '-x', '-a', '-C', release_dir, '-f')
-    cmd_log(uncompress(release_tarball))
-    # Link the Juju GUI dir to the contents of the release tarball.
-    cmd_log(run('rm', '-rf', JUJU_GUI_DIR))
-    cmd_log(run('ln', '-s', first_path_in_dir(release_dir), JUJU_GUI_DIR))
+
+    log('Installing Juju GUI from {}.'.format(release_tarball_path))
+    cmd = '/usr/bin/pip install --no-dependencies --no-deps {}'.format(
+        release_tarball_path)
+    with su('root'):
+        cmd_log(run(*cmd.split()))
 
 
 def save_or_create_certificates(

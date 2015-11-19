@@ -11,3 +11,4 @@ tests/.venv
 tests/download-cache
 tags
 *.pyc
+*~
