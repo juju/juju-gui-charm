@@ -112,29 +112,7 @@ class GuiMixin(object):
     def start(self, backend):
         log('Starting Juju GUI.')
         config = backend.config
-        build_dir = utils.compute_build_dir(
-            config['juju-gui-debug'], config['serve-tests'])
-        # Check if a secure WebSocket client connection is required.
-        secure = config.get('ws-secure')
-        if secure is None:
-            # WebSocket security is not explicitly provided: use secure
-            # WebSocket if the GUI server is running in secure mode.
-            secure = config['secure']
-        utils.write_gui_config(
-            config['juju-gui-console-enabled'],
-            config.get('login-help'),
-            config['read-only'],
-            config['charmworld-url'],
-            config['charmstore-url'],
-            build_dir,
-            secure=secure,
-            sandbox=config['sandbox'],
-            cached_fonts=config['cached-fonts'],
-            ga_key=config['ga-key'],
-            hide_login_button=config['hide-login-button'],
-            juju_core_version=config.get('juju-core-version'),
-            password=config.get('password'),
-            juju_env_uuid=os.getenv('JUJU_ENV_UUID', None))
+        utils.write_gui_config(None, None, None, None, None, None, sandbox=config['sandbox'])
         # Set up TCP ports.
         previous_port = backend.prev_config.get('port')
         current_port = backend.config.get('port')
@@ -162,14 +140,7 @@ class GuiServerMixin(object):
                 config.get('ssl-key-contents'))
 
     def start(self, backend):
-        config = backend.config
-        build_dir = utils.compute_build_dir(
-            config['juju-gui-debug'], config['serve-tests'])
-        utils.start_builtin_server(
-            build_dir, config['ssl-cert-path'], config['serve-tests'],
-            config['sandbox'], config['builtin-server-logging'],
-            not config['secure'], config['charmworld-url'],
-            port=config.get('port'))
+        pass
 
     def stop(self, backend):
         utils.stop_builtin_server()
