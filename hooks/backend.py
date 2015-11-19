@@ -74,6 +74,7 @@ class GuiMixin(object):
         # If the source setting has changed since the last time this was run,
         # get the code, from either a static release or a branch as specified
         # by the souce setting, and install it.
+        log('Installing GUI')
         if backend.different('juju-gui-source'):
             # Get a tarball somehow.
             origin, version_or_branch = utils.parse_source(
@@ -103,6 +104,7 @@ class GuiMixin(object):
                 release_tarball_path = utils.fetch_gui_release(
                     origin, version_or_branch)
             # Install the tarball.
+            log('Installing juju gui from source at {}'.format(release_tarball_path))
             utils.setup_gui(release_tarball_path)
         else:
             log('No change to juju-gui-source. Skipping step.')
