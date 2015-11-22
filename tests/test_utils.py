@@ -341,15 +341,15 @@ class TestGetReleaseFilePath(unittest.TestCase):
             path = get_release_file_path()
         self.assert_path('juju-gui-2.0.1.xz', path)
 
-    def test_tar_gz(self):
-        # The last release is correctly retrieved for tar.gz files too.
+    def test_tar_bz2(self):
+        # The last release is correctly retrieved for tar.bz2 files too.
         self.add('juju-gui-0.12.1.tgz')
         self.add('juju-gui-1.2.3.tgz')
         self.add('juju-gui-2.0.0+build.42.tgz')
-        self.add('jujugui-2.0.1.tar.gz')
+        self.add('jujugui-2.0.1.tar.bz2')
         with self.mock_releases_dir():
             path = get_release_file_path()
-        self.assert_path('jujugui-2.0.1.tar.gz', path)
+        self.assert_path('jujugui-2.0.1.tar.bz2', path)
 
     def test_xz_git_dev(self):
         # The last release is correctly retrieved.
