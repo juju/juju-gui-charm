@@ -61,7 +61,6 @@ __all__ = [
     'JUJU_GUI_DIR',
     'JUJU_PEM',
     'cmd_log',
-    'compute_build_dir',
     'download_release',
     'fetch_gui_from_branch',
     'fetch_gui_release',
@@ -322,21 +321,6 @@ def cmd_log(results):
     results_log.info('\n' + results)
 
 
-def compute_build_dir(juju_gui_debug, serve_tests):
-    """Compute the build directory."""
-    with su('root'):
-        run('chown', '-R', 'ubuntu:', JUJU_GUI_DIR)
-        # XXX 2013-02-05 frankban bug=1116320:
-        # External insecure resources are still loaded when testing in the
-        # debug environment. For now, switch to the production environment if
-        # the charm is configured to serve tests.
-    if juju_gui_debug and not serve_tests:
-        build_dirname = 'build-debug'
-    else:
-        build_dirname = 'build-prod'
-    return os.path.join(JUJU_GUI_DIR, build_dirname)
-
-
 def write_gui_config(
         console_enabled, login_help, readonly, charmworld_url, charmstore_url,
         build_dir, secure=True, sandbox=False, cached_fonts=False,
@@ -408,14 +392,13 @@ def install_builtin_server():
 
 
 def write_builtin_server_startup(
-        gui_root, ssl_cert_path, serve_tests=False, sandbox=False,
+        ssl_cert_path, serve_tests=False, sandbox=False,
         builtin_server_logging='info', insecure=False, charmworld_url='',
         port=None):
     """Generate the builtin server Upstart file."""
     log('Generating the builtin server Upstart file.')
     context = {
         'builtin_server_logging': builtin_server_logging,
-        'gui_root': gui_root,
         'insecure': insecure,
         'sandbox': sandbox,
         'serve_tests': serve_tests,
@@ -439,14 +422,14 @@ def write_builtin_server_startup(
 
 
 def start_builtin_server(
-        build_dir, ssl_cert_path, serve_tests, sandbox, builtin_server_logging,
+        ssl_cert_path, serve_tests, sandbox, builtin_server_logging,
         insecure, charmworld_url, port=None):
     """Start the builtin server."""
     if (port is not None) and not port_in_range(port):
         # Do not use the user provided port if it is not valid.
         port = None
     write_builtin_server_startup(
-        build_dir, ssl_cert_path, serve_tests=serve_tests, sandbox=sandbox,
+        ssl_cert_path, serve_tests=serve_tests, sandbox=sandbox,
         builtin_server_logging=builtin_server_logging, insecure=insecure,
         charmworld_url=charmworld_url, port=port)
     log('Starting the builtin server.')

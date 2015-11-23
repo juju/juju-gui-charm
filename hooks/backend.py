@@ -140,7 +140,12 @@ class GuiServerMixin(object):
                 config.get('ssl-key-contents'))
 
     def start(self, backend):
-        pass
+        config = backend.config
+        utils.start_builtin_server(
+            config['ssl-cert-path'], config['serve-tests'],
+            config['sandbox'], config['builtin-server-logging'],
+            not config['secure'], config['charmworld-url'],
+            port=config.get('port'))
 
     def stop(self, backend):
         utils.stop_builtin_server()
