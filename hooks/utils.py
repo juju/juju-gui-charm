@@ -117,7 +117,7 @@ release_expression = re.compile(r"""
         \d+\.\d+\.\d+  # Major, minor, and patch version numbers.
         (?:\+build\.\w+)?  # Optional git hash for development releases.
     )
-    \.(?:tar.gz|tgz|xz)  # File extension.
+    \.(?:tar.bz2|tgz|xz)  # File extension.
 """, re.VERBOSE)
 results_log = None
 
@@ -609,7 +609,7 @@ def setup_gui(release_tarball_path):
     """Set up Juju GUI."""
 
     log('Installing Juju GUI from {}.'.format(release_tarball_path))
-    cmd = '/usr/bin/pip install --no-dependencies --no-deps {}'.format(
+    cmd = '/usr/bin/pip install {}'.format(
         release_tarball_path)
     with su('root'):
         cmd_log(run(*cmd.split()))
