@@ -178,7 +178,6 @@ class TestRun(LogTrapTestCase, unittest.TestCase):
         """
         options = {
             'apiversion': 'go',
-            'guiroot': '/my/guiroot',
             'port': None,
             'sslpath': '/my/sslpath',
         }

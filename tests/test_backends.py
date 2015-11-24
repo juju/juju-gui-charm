@@ -100,7 +100,6 @@ class TestBackendCommands(unittest.TestCase):
             return_value=self.parse_source_return_value)
         mocks = {
             'base_dir': mock.patch('backend.utils.BASE_DIR', self.base_dir),
-            'compute_build_dir': mock.patch('backend.utils.compute_build_dir'),
             'fetch_gui_from_branch': mock.patch(
                 'backend.utils.fetch_gui_from_branch'),
             'fetch_gui_release': mock.patch('backend.utils.fetch_gui_release'),
@@ -187,20 +186,18 @@ class TestBackendCommands(unittest.TestCase):
         test_backend = backend.Backend(config=config)
         with self.mock_all() as mocks:
             test_backend.start()
-        mocks.compute_build_dir.assert_called_with(
-            config['juju-gui-debug'], config['serve-tests'])
         mocks.write_gui_config.assert_called_once_with(
             config['juju-gui-console-enabled'], config['login-help'],
             config['read-only'], config['charmworld-url'],
-            config['charmstore-url'], mocks.compute_build_dir(),
-            secure=config['secure'], sandbox=config['sandbox'],
-            cached_fonts=config['cached-fonts'], ga_key=config['ga-key'],
+            config['charmstore-url'], secure=config['secure'],
+            sandbox=config['sandbox'], cached_fonts=config['cached-fonts'],
+            ga_key=config['ga-key'],
             juju_core_version=config['juju-core-version'],
             hide_login_button=config['hide-login-button'],
             juju_env_uuid=None, password=None)
         mocks.setup_ports.assert_called_once_with(None, None)
         mocks.start_builtin_server.assert_called_once_with(
-            mocks.compute_build_dir(), self.ssl_cert_path,
+            self.ssl_cert_path,
             config['serve-tests'], config['sandbox'],
             config['builtin-server-logging'], not config['secure'],
             config['charmworld-url'], port=None)
@@ -218,14 +215,14 @@ class TestBackendCommands(unittest.TestCase):
         mocks.write_gui_config.assert_called_once_with(
             config['juju-gui-console-enabled'], config['login-help'],
             config['read-only'], config['charmworld-url'],
-            config['charmstore-url'], mocks.compute_build_dir(),
+            config['charmstore-url'],
             secure=True, sandbox=config['sandbox'],
             cached_fonts=config['cached-fonts'], ga_key=config['ga-key'],
             juju_core_version=config['juju-core-version'],
             hide_login_button=config['hide-login-button'],
             juju_env_uuid=None, password=None)
         mocks.start_builtin_server.assert_called_once_with(
-            mocks.compute_build_dir(), self.ssl_cert_path,
+            self.ssl_cert_path,
             config['serve-tests'], config['sandbox'],
             config['builtin-server-logging'], True,
             config['charmworld-url'], port=None)
@@ -239,7 +236,7 @@ class TestBackendCommands(unittest.TestCase):
             test_backend.start()
         mocks.setup_ports.assert_called_once_with(None, 8080)
         mocks.start_builtin_server.assert_called_once_with(
-            mocks.compute_build_dir(), self.ssl_cert_path,
+            self.ssl_cert_path,
             config['serve-tests'], config['sandbox'],
             config['builtin-server-logging'], not config['secure'],
             config['charmworld-url'], port=8080)
