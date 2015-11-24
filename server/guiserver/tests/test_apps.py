@@ -79,7 +79,6 @@ class TestServer(AppsTestMixin, unittest.TestCase):
         options_dict = {
             'apiurl': 'wss://example.com:17070',
             'apiversion': 'go',
-            'guiroot': '/my/guiroot/',
             'sandbox': False,
         }
         options_dict.update(kwargs)
@@ -122,12 +121,6 @@ class TestServer(AppsTestMixin, unittest.TestCase):
         app = self.get_app(sandbox=True)
         spec = self.get_url_spec(app, r'^/juju-core/(.*)$')
         self.assertIsNone(spec)
-
-    def test_static_files(self):
-        # The Juju GUI static files are correctly served.
-        app = self.get_app()
-        spec = self.get_url_spec(app, r'^/juju-ui/(.*)$')
-        self.assert_in_spec(spec, 'path', value='/my/guiroot/juju-ui')
 
     def test_core_http_proxy(self):
         # The juju-core HTTPS proxy handler is properly set up.

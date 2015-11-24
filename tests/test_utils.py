@@ -35,7 +35,6 @@ from utils import (
     JUJU_PEM,
     _get_by_attr,
     cmd_log,
-    compute_build_dir,
     download_release,
     fetch_gui_release,
     first_path_in_dir,
@@ -846,18 +845,6 @@ class TestStartGui(unittest.TestCase):
         for fn, fcns in self.utils_names.items():
             setattr(utils, fn, fcns[0])
         shutil.copy = self.shutil_copy
-
-    def test_compute_build_dir(self):
-        for (juju_gui_debug, serve_tests, result) in (
-            (False, False, 'build-prod'),
-            (True, False, 'build-debug'),
-            (False, True, 'build-prod'),
-            (True, True, 'build-prod'),
-        ):
-            build_dir = compute_build_dir(juju_gui_debug, serve_tests)
-            self.assertIn(
-                result, build_dir, 'debug: {}, serve_tests: {}'.format(
-                    juju_gui_debug, serve_tests))
 
     def test_install_builtin_server(self):
         install_builtin_server()

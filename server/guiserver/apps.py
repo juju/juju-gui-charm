@@ -15,12 +15,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """Juju GUI server applications."""
-
-import os
 import time
 
+from pyramid.config import Configurator
 from tornado import web
 from tornado.options import options
+from tornado.wsgi import WSGIContainer
 
 from guiserver import (
     auth,
@@ -28,6 +28,7 @@ from guiserver import (
     utils,
 )
 from guiserver.bundles.base import Deployer
+from jujugui import make_application
 
 
 def server():
@@ -36,9 +37,6 @@ def server():
     The server app is responsible for serving the WebSocket connection, the
     Juju GUI static files and the main index file for dynamic URLs.
     """
-    # Set up static paths.
-    guiroot = options.guiroot
-    static_path = os.path.join(guiroot, 'juju-ui')
     # Set up the bundle deployer.
     deployer = Deployer(options.apiurl, options.apiversion,
                         options.charmworldurl)
@@ -87,14 +85,16 @@ def server():
         'sandbox': options.sandbox,
         'start_time': int(time.time()),
     }
+    settings = {}
+    config = Configurator(settings=settings)
+    wsgi_app = WSGIContainer(make_application(config))
     server_handlers.extend([
-        # Handle static files.
-        (r'^/juju-ui/(.*)', web.StaticFileHandler, {'path': static_path}),
-        (r'^/(favicon\.ico)$', web.StaticFileHandler, {'path': guiroot}),
         # Handle GUI server info.
         (r'^/gui-server-info', handlers.InfoHandler, info_handler_options),
-        # Any other path is served by index.html.
-        (r'^/(.*)', handlers.IndexHandler, {'path': guiroot}),
+        (r".*", web.FallbackHandler, dict(fallback=wsgi_app))
+    ])
+
+    server_handlers.extend([
     ])
     return web.Application(server_handlers, debug=options.debug)
 

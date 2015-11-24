@@ -100,10 +100,6 @@ def _get_ssl_options():
 def setup():
     """Set up options and logger. Configure the asynchronous HTTP client."""
     define(
-        'guiroot', type=str,
-        help='The Juju GUI static files path, e.g.: '
-             '/var/lib/juju/agents/unit-juju-gui-0/charm/juju-gui/build-prod')
-    define(
         'apiurl', type=str,
         help='The Juju WebSocket server address. This is usually the address '
              'of the bootstrap/state node as returned by "juju status".')
@@ -140,7 +136,6 @@ def setup():
 
     # In Tornado, parsing the options also sets up the default logger.
     parse_command_line()
-    _validate_required('guiroot')
     _validate_choices('apiversion', ('go', 'python'))
     _validate_range('port', 1, 65535)
     _add_debug(logging.getLogger())

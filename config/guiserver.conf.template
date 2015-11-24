@@ -18,7 +18,6 @@ env no_proxy="{{no_proxy}}"
 
 exec /usr/bin/python /usr/local/bin/runserver.py \
     --logging="{{builtin_server_logging}}" \
-    --guiroot="{{gui_root}}" \
     --sslpath="{{ssl_cert_path}}" \
     --charmworldurl="{{charmworld_url}}" \
     {{if port}}
