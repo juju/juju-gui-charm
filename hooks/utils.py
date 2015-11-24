@@ -20,7 +20,6 @@ from ConfigParser import RawConfigParser
 from contextlib import contextmanager
 from distutils.version import LooseVersion
 import errno
-import json
 import os
 import logging
 import re
@@ -42,8 +41,7 @@ from charmhelpers import (
     open_port,
     RESTART,
     service_control,
-    STOP,
-    unit_get,
+    STOP
 )
 from shelltoolbox import (
     apt_get_install,
@@ -127,10 +125,12 @@ def read_config(path=INI_PATH):
     config.read(path)
     return config
 
+
 def write_config(config, path=INI_PATH):
     """Write the INI file."""
     with open(path, 'w') as ini_file:
         config.write(ini_file)
+
 
 def get_api_address(unit_dir=None):
     """Return the Juju API address.

@@ -85,16 +85,16 @@ def server():
         'sandbox': options.sandbox,
         'start_time': int(time.time()),
     }
-    server_handlers.extend([
-        # Handle GUI server info.
-        (r'^/gui-server-info', handlers.InfoHandler, info_handler_options),
-    ])
-
     settings = {}
     config = Configurator(settings=settings)
     wsgi_app = WSGIContainer(make_application(config))
     server_handlers.extend([
+        # Handle GUI server info.
+        (r'^/gui-server-info', handlers.InfoHandler, info_handler_options),
         (r".*", web.FallbackHandler, dict(fallback=wsgi_app))
+    ])
+
+    server_handlers.extend([
     ])
     return web.Application(server_handlers, debug=options.debug)
 

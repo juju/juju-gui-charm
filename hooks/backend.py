@@ -104,7 +104,9 @@ class GuiMixin(object):
                 release_tarball_path = utils.fetch_gui_release(
                     origin, version_or_branch)
             # Install the tarball.
-            log('Installing juju gui from source at {}'.format(release_tarball_path))
+            log(
+                'Installing juju gui from source at {}'.format(
+                    release_tarball_path))
             utils.setup_gui(release_tarball_path)
         else:
             log('No change to juju-gui-source. Skipping step.')
@@ -112,7 +114,8 @@ class GuiMixin(object):
     def start(self, backend):
         log('Starting Juju GUI.')
         config = backend.config
-        utils.write_gui_config(None, None, None, None, None, None, sandbox=config['sandbox'])
+        utils.write_gui_config(
+            None, None, None, None, None, None, sandbox=config['sandbox'])
         # Set up TCP ports.
         previous_port = backend.prev_config.get('port')
         current_port = backend.config.get('port')
