@@ -73,7 +73,7 @@ class GuiMixin(object):
         """Install the GUI and dependencies."""
         # If the source setting has changed since the last time this was run,
         # get the code, from either a static release or a branch as specified
-        # by the souce setting, and install it.
+        # by the source setting, and install it.
         log('Installing GUI')
         if backend.different('juju-gui-source'):
             # Get a tarball somehow.

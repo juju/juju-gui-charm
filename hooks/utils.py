@@ -592,7 +592,9 @@ def setup_gui(release_tarball_path):
     """Set up Juju GUI."""
 
     log('Installing Juju GUI from {}.'.format(release_tarball_path))
-    cmd = '/usr/bin/pip install {}'.format(
+    # Install ensuring network access is not used.  All dependencies should
+    # already be installed from the deps directory.
+    cmd = '/usr/bin/pip install --no-index --no-dependencies {}'.format(
         release_tarball_path)
     with su('root'):
         cmd_log(run(*cmd.split()))
