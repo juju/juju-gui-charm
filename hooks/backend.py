@@ -115,7 +115,9 @@ class GuiMixin(object):
         log('Starting Juju GUI.')
         config = backend.config
         utils.write_gui_config(
-            None, None, None, None, None, None, sandbox=config['sandbox'])
+           sandbox=config['sandbox'],
+           debug=config['juju-gui-debug'],
+           juju_env_password=config.get('password'))
         # Set up TCP ports.
         previous_port = backend.prev_config.get('port')
         current_port = backend.config.get('port')
