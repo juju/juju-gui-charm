@@ -77,10 +77,11 @@ def apt_get_install(*args, **kwargs):
     :raises: subprocess.CalledProcessError
     """
     caller = kwargs.pop('caller', run)
+    stderr = kwargs.pop('stderr', None)
     debian_frontend = kwargs.pop('DEBIAN_FRONTEND', 'noninteractive')
     with environ(DEBIAN_FRONTEND=debian_frontend, **kwargs):
         cmd = ('apt-get', '-y', 'install') + args
-        return caller(*cmd)
+        return caller(*cmd, stderr=stderr)
 
 
 def bzr_whois(user):
