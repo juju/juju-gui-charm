@@ -23,12 +23,29 @@
 # The curl packages are required by Tornado's curl_httpclient. YAML support is
 # required to parse bundles. The Bazaar library is used by the deployer.
 
+argparse==1.2.1
 backports.ssl_match_hostname==3.4.0.2
+charmworldlib==0.3.0
+convoy==0.4.3
 futures==2.2.0
-tornado==3.2.2
-six==1.8.0
-websocket-client==0.18.0
+jujubundlelib==0.1.9
 jujuclient==0.50.1
 juju-deployer==0.5.2
-charmworldlib==0.3.0
-jujubundlelib==0.1.9
+Mako==1.0.1
+MarkupSafe==0.23
+Paste==2.0.2
+PasteDeploy==1.5.2
+Pygments==2.0.2
+pyramid==1.5.4
+pyramid_mako==1.0.2
+repoze.lru==0.6
+six==1.9.0
+tornado==3.2.2
+translationstring==1.3
+venusian==1.0
+waitress==0.8.9
+WebOb==1.4.1
+websocket-client==0.18.0
+wsgiref==0.1.2
+zope.deprecation==4.1.2
+zope.interface==4.1.2

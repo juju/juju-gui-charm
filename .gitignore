@@ -12,3 +12,4 @@ tests/download-cache
 tags
 *.pyc
 *~
+.go-cookies
