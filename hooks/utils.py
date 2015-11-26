@@ -103,7 +103,8 @@ DEB_BUILD_DEPENDENCIES = (
 ASSETS_PATH = os.path.normpath(
     os.path.join(os.path.dirname(__file__), '..', 'config'))
 PRODUCTION_INI = 'production.ini'
-INI_PATH = os.path.join(ASSETS_PATH, PRODUCTION_INI)
+INI_TEMPLATE_PATH = os.path.join(ASSETS_PATH, PRODUCTION_INI)
+INI_PATH = '/home/ubuntu/production.ini'
 
 
 # Store the configuration from one invocation to the next.
@@ -119,7 +120,7 @@ release_expression = re.compile(r"""
 results_log = None
 
 
-def read_config(path=INI_PATH):
+def read_config(path=INI_TEMPLATE_PATH):
     """Get the config from the given ini path."""
     config = RawConfigParser()
     config.read(path)
@@ -322,17 +323,21 @@ def cmd_log(results):
 
 
 def write_gui_config(
-        console_enabled, login_help, readonly, charmworld_url, charmstore_url,
-        build_dir, secure=True, sandbox=False, cached_fonts=False,
-        hide_login_button=False, config_js_path=None, ga_key='',
-        juju_core_version=None, password=None, juju_env_uuid=None):
+        sandbox=False, debug=False, juju_env_user=None, juju_env_password=None):
     """Generate the GUI configuration file."""
 
     log('Generating the Juju GUI configuration file to {}.'.format(INI_PATH))
-    ini = read_config()
+    if os.path.exists(INI_PATH):
+        ini = read_config(INI_PATH)
+    else:
+        ini = read_config(INI_TEMPLATE_PATH)
     section = 'app:main'
     ini.set(section, 'jujugui.sandbox', sandbox)
-    write_config(ini)
+    if debug:
+        ini.set(section, 'jujugui.raw', True)
+        ini.set(section, 'jujugui.combine', False)
+    ini.set(section, 'jujugui.password', juju_env_password)
+    write_config(ini, INI_PATH)
 
 
 # Simple checker function for port ranges.
