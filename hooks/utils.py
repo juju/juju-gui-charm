@@ -370,7 +370,7 @@ def install_builtin_server():
 def write_builtin_server_startup(
         ssl_cert_path, serve_tests=False, sandbox=False,
         builtin_server_logging='info', insecure=False, charmworld_url='',
-        debug=False, port=None):
+        env_password=None, debug=False, port=None):
     """Generate the builtin server Upstart file."""
     log('Generating the builtin server Upstart file.')
     context = {
@@ -384,6 +384,7 @@ def write_builtin_server_startup(
         'https_proxy': os.environ.get('https_proxy'),
         'no_proxy': os.environ.get('no_proxy', os.environ.get('NO_PROXY')),
         'juju_gui_debug': debug,
+        'env_password': env_password,
         'port': port,
     }
     if not sandbox:
@@ -400,7 +401,7 @@ def write_builtin_server_startup(
 
 def start_builtin_server(
         ssl_cert_path, serve_tests, sandbox, builtin_server_logging,
-        insecure, charmworld_url, debug=False, port=None):
+        insecure, charmworld_url, env_password=None, debug=False, port=None):
     """Start the builtin server."""
     if (port is not None) and not port_in_range(port):
         # Do not use the user provided port if it is not valid.
@@ -408,7 +409,8 @@ def start_builtin_server(
     write_builtin_server_startup(
         ssl_cert_path, serve_tests=serve_tests, sandbox=sandbox,
         builtin_server_logging=builtin_server_logging, insecure=insecure,
-        charmworld_url=charmworld_url, debug=debug, port=port)
+        charmworld_url=charmworld_url, env_password=env_password,
+        debug=debug, port=port)
     log('Starting the builtin server.')
     with su('root'):
         service_control(GUISERVER, RESTART)

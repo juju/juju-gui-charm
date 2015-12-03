@@ -137,7 +137,12 @@ def setup():
         'jujuguidebug', type=bool, default=False,
         help='Set to True to run the gui without minifiying or combining '
              'source files.')
-
+    define(
+        'user', type=str,
+        help='The juju environment user.')
+    define(
+        'password', type=str,
+        help='The juju environment user.')
     # In Tornado, parsing the options also sets up the default logger.
     parse_command_line()
     _validate_choices('apiversion', ('go', 'python'))

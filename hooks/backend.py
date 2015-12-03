@@ -145,6 +145,7 @@ class GuiServerMixin(object):
             config['ssl-cert-path'], config['serve-tests'],
             config['sandbox'], config['builtin-server-logging'],
             not config['secure'], config['charmworld-url'],
+            env_password=config.get('password'),
             debug=config['juju-gui-debug'], port=config.get('port'))
 
     def stop(self, backend):

@@ -85,12 +85,13 @@ def server():
         'sandbox': options.sandbox,
         'start_time': int(time.time()),
     }
-    # TODO: Need to set password here as well.
     wsgi_settings = {
         'jujugui.sandbox': options.sandbox,
         'jujugui.raw': options.jujuguidebug,
         'jujugui.combine': (not options.jujuguidebug),
     }
+    if options.password:
+        wsgi_settings['jujugui.password'] = options.password
     config = Configurator(settings=wsgi_settings)
     wsgi_app = WSGIContainer(make_application(config))
     server_handlers.extend([
