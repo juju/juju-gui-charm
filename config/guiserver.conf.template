@@ -34,3 +34,6 @@ exec /usr/bin/python /usr/local/bin/runserver.py \
     {{if insecure}}
         --insecure
     {{endif}}
+    {{if juju_gui_debug}}
+        --juju-gui-debug
+    {{endif}}

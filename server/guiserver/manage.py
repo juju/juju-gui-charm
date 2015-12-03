@@ -133,6 +133,10 @@ def setup():
         help='User defined port to run the server on. If no port is defined '
              'the server will be started on 80 and 443 as per the default '
              'port options from the charm.')
+    define(
+        'juju-gui-debug', type=bool, default=False,
+        help='Set to True to run the gui without minifiying or combining '
+             'source files.')
 
     # In Tornado, parsing the options also sets up the default logger.
     parse_command_line()

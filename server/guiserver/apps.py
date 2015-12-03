@@ -15,8 +15,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """Juju GUI server applications."""
-from ConfigParser import RawConfigParser
-import os
 import time
 
 from pyramid.config import Configurator
@@ -31,8 +29,6 @@ from guiserver import (
 )
 from guiserver.bundles.base import Deployer
 from jujugui import make_application
-
-INI_PATH = '/home/ubuntu/production.ini'
 
 
 def server():
@@ -89,9 +85,13 @@ def server():
         'sandbox': options.sandbox,
         'start_time': int(time.time()),
     }
-    settings = RawConfigParser()
-    settings.read(INI_PATH)
-    config = Configurator(settings=dict(settings.items('app:main')))
+    # TODO: Need to set password here as well.
+    wsgi_settings = {
+        'jujugui.sandbox': options.sandbox,
+        'jujugui.raw': options['juju-gui-debug'],
+        'jujugui.combine': (not options['juju-gui-debug']),
+    }
+    config = Configurator(settings=wsgi_settings)
     wsgi_app = WSGIContainer(make_application(config))
     server_handlers.extend([
         # Handle GUI server info.
