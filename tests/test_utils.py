@@ -54,7 +54,6 @@ from utils import (
     start_builtin_server,
     stop_builtin_server,
     write_builtin_server_startup,
-    write_gui_config,
 )
 # Import the whole utils package for monkey patching.
 import utils
@@ -780,7 +779,6 @@ class TestCmdLog(unittest.TestCase):
         self.assertTrue(line.endswith(': juju-gui@INFO \nfoo\n'))
 
 
-@unittest.skip("start config not done")
 class TestStartGui(unittest.TestCase):
     # XXX frankban 2014-12-10: change this test case so that functions being
     # tested are better separated. Also avoid manually patching helper
@@ -829,7 +827,6 @@ class TestStartGui(unittest.TestCase):
             log=(utils.log, noop),
             su=(utils.su, su),
             run=(utils.run, run),
-            unit_get=(utils.unit_get, noop),
             render_to_file=(utils.render_to_file, render_to_file),
             get_api_address=(utils.get_api_address, noop),
         )
@@ -854,7 +851,7 @@ class TestStartGui(unittest.TestCase):
 
     def test_write_builtin_server_startup(self):
         write_builtin_server_startup(
-            JUJU_GUI_DIR, self.ssl_cert_path, serve_tests=True, insecure=True,
+            self.ssl_cert_path, serve_tests=True, insecure=True,
             charmworld_url=self.charmworld_url)
         guiserver_conf = self.files['guiserver.conf']
         self.assertIn('description "GUIServer"', guiserver_conf)
@@ -874,8 +871,7 @@ class TestStartGui(unittest.TestCase):
     def test_write_builtin_server_startup_with_port(self):
         # The builtin server Upstart file is properly generate when a
         # customized port is provided.
-        write_builtin_server_startup(
-            JUJU_GUI_DIR, self.ssl_cert_path, port=8000)
+        write_builtin_server_startup(self.ssl_cert_path, port=8000)
         guiserver_conf = self.files['guiserver.conf']
         self.assertIn('--port=8000', guiserver_conf)
 
@@ -884,7 +880,7 @@ class TestStartGui(unittest.TestCase):
         # generated when the GUI is in sandbox mode and when a customized log
         # level is specified.
         write_builtin_server_startup(
-            JUJU_GUI_DIR, self.ssl_cert_path, serve_tests=True, sandbox=True,
+            self.ssl_cert_path, serve_tests=True, sandbox=True,
             builtin_server_logging='debug')
         guiserver_conf = self.files['guiserver.conf']
         self.assertIn('description "GUIServer"', guiserver_conf)
@@ -895,7 +891,7 @@ class TestStartGui(unittest.TestCase):
 
     def test_start_builtin_server(self):
         start_builtin_server(
-            JUJU_GUI_DIR, self.ssl_cert_path, serve_tests=False, sandbox=False,
+            self.ssl_cert_path, serve_tests=False, sandbox=False,
             builtin_server_logging='info', insecure=False,
             charmworld_url='http://charmworld.example.com/', port=443)
         self.assertEqual(self.svc_ctl_call_count, 1)
@@ -908,145 +904,6 @@ class TestStartGui(unittest.TestCase):
         self.assertEqual(self.service_names, ['guiserver'])
         self.assertEqual(self.actions, [charmhelpers.STOP])
         self.assertEqual(self.run_call_count, 1)
-
-    def test_write_gui_config(self):
-        write_gui_config(
-            False, 'This is login help.', True, self.charmworld_url,
-            self.charmstore_url, self.build_dir, config_js_path='config',
-            ga_key='UA-123456')
-        js_conf = self.files['config']
-        self.assertIn('cachedFonts: false', js_conf)
-        self.assertIn('consoleEnabled: false', js_conf)
-        self.assertIn('user: "user-admin"', js_conf)
-        self.assertIn('password: null', js_conf)
-        self.assertIn('login_help: "This is login help."', js_conf)
-        self.assertIn('readOnly: true', js_conf)
-        self.assertIn("socket_url: 'wss://", js_conf)
-        self.assertIn('socket_protocol: "wss"', js_conf)
-        self.assertIn(
-            'charmworldURL: "http://charmworld.example.com/"', js_conf)
-        self.assertIn(
-            'charmstoreURL: "http://charmstore.example.com/"', js_conf)
-        self.assertIn('GA_key: "UA-123456"', js_conf)
-
-    def test_write_gui_config_uuid(self):
-        # If the environment has the JUJU_ENV_UUID argument then it should
-        # populate the config with the value.
-        with mock.patch('os.environ', {'JUJU_ENV_UUID': 'long-uuid'}):
-            write_gui_config(
-                False, None, True, True, self.charmworld_url,
-                self.charmstore_url, self.build_dir, config_js_path='config',
-                juju_env_uuid=os.getenv('JUJU_ENV_UUID', None))
-        self.assertIn('jujuEnvUUID: "long-uuid"', self.files['config'])
-
-    def test_write_gui_config_insecure(self):
-        write_gui_config(
-            False, 'This is login help.', True, self.charmworld_url,
-            self.charmstore_url, self.build_dir, secure=False,
-            config_js_path='config')
-        js_conf = self.files['config']
-        self.assertIn("socket_url: 'ws://", js_conf)
-        self.assertIn('socket_protocol: "ws"', js_conf)
-
-    def test_write_gui_config_default_sandbox_backend(self):
-        write_gui_config(
-            False, 'This is login help.', True, self.charmworld_url,
-            self.charmstore_url, self.build_dir, config_js_path='config',
-            password='kumquat', sandbox=True)
-        js_conf = self.files['config']
-        # Because this is sandbox, the apiBackend is always go.
-        self.assertIn('apiBackend: "go"', js_conf)
-
-    def test_write_gui_config_default_go_password(self):
-        write_gui_config(
-            False, 'This is login help.', True, True, self.charmworld_url,
-            self.charmstore_url, self.build_dir, config_js_path='config',
-            password='kumquat')
-        js_conf = self.files['config']
-        self.assertIn('user: "user-admin"', js_conf)
-        self.assertIn('password: "kumquat"', js_conf)
-
-    def test_write_gui_config_help_with_env_name(self):
-        # The login help message refers to the specific jenv file is the Juju
-        # environment name is available.
-        with mock.patch('os.environ', {'JUJU_ENV_NAME': 'my-env'}):
-            write_gui_config(
-                False, None, True, True, self.charmworld_url,
-                self.charmstore_url, self.build_dir, config_js_path='config')
-        js_conf = self.files['config']
-        expected_help = (
-            'login_help: "The password is the admin-secret from the Juju '
-            'environment. This can be found by looking in '
-            '~/.juju/environments/my-env.jenv and searching for the '
-            'password field.')
-        self.assertIn(expected_help, js_conf)
-
-    def test_write_gui_config_help_without_env_name(self):
-        # The login help points to the path where to find the jenv files.
-        write_gui_config(
-            False, None, True, True, self.charmworld_url, self.charmstore_url,
-            self.build_dir, config_js_path='config',)
-        js_conf = self.files['config']
-        expected_help = (
-            'login_help: "The password for newer Juju clients can be found by '
-            'locating the Juju environment file placed in '
-            '~/.juju/environments/ with the same name as the current '
-            'environment.')
-        self.assertIn(expected_help, js_conf)
-
-    def test_write_gui_config_sandbox(self):
-        write_gui_config(
-            False, 'This is login help.', False, False, self.charmworld_url,
-            self.charmstore_url, self.build_dir, sandbox=True,
-            config_js_path='config')
-        js_conf = self.files['config']
-        self.assertIn('sandbox: true', js_conf)
-        self.assertIn('user: "user-admin"', js_conf)
-        self.assertIn('password: "admin"', js_conf)
-
-    def test_write_gui_config_with_button(self):
-        write_gui_config(
-            False, 'This is login help.', False, False, self.charmworld_url,
-            self.charmstore_url, self.build_dir, sandbox=True,
-            hide_login_button=False, config_js_path='config')
-        self.assertIn('hideLoginButton: false', self.files['config'])
-
-    def test_write_gui_config_cached_fonts(self):
-        write_gui_config(
-            False, 'This is login help.', False, False, self.charmworld_url,
-            self.charmstore_url, self.build_dir, cached_fonts=True,
-            config_js_path='config')
-        js_conf = self.files['config']
-        self.assertIn('cachedFonts: true', js_conf)
-
-    def test_write_gui_config_with_provided_version(self):
-        # The Juju version is included in the GUI config file when provided as
-        # an option.
-        write_gui_config(
-            False, 'This is login help.', False, False, self.charmworld_url,
-            self.charmstore_url, self.build_dir, sandbox=True,
-            juju_core_version='1.20', config_js_path='config')
-        self.assertIn('jujuCoreVersion: "1.20"', self.files['config'])
-
-    def test_write_gui_config_with_version_from_jujud(self):
-        # If not provided as an option, the Juju version is dynamically
-        # retrieved and included in the GUI config file.
-        with mock.patch('utils.run', return_value='1.42.47\n'):
-            write_gui_config(
-                False, None, True, True, self.charmworld_url,
-                self.charmstore_url, self.build_dir, config_js_path='config')
-        self.assertIn('jujuCoreVersion: "1.42.47"', self.files['config'])
-
-    def test_write_gui_config_with_provided_empty_version(self):
-        # If the provided Juju version is empty, the Juju version is still
-        # dynamically retrieved and included in the GUI config file.
-        with mock.patch('utils.run', return_value='1.20.13-trusty-amd64\n'):
-            write_gui_config(
-                False, None, True, True, self.charmworld_url,
-                self.charmstore_url, self.build_dir, config_js_path='config',
-                juju_core_version='')
-        self.assertIn(
-            'jujuCoreVersion: "1.20.13-trusty-amd64"', self.files['config'])
 
 
 class TestPortInRange(unittest.TestCase):

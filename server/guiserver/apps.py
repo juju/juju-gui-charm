@@ -88,8 +88,8 @@ def server():
     # TODO: Need to set password here as well.
     wsgi_settings = {
         'jujugui.sandbox': options.sandbox,
-        'jujugui.raw': options['juju-gui-debug'],
-        'jujugui.combine': (not options['juju-gui-debug']),
+        'jujugui.raw': options.jujuguidebug,
+        'jujugui.combine': (not options.jujuguidebug),
     }
     config = Configurator(settings=wsgi_settings)
     wsgi_app = WSGIContainer(make_application(config))

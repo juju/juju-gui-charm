@@ -118,7 +118,6 @@ class TestBackendCommands(unittest.TestCase):
                 'backend.utils.start_builtin_server'),
             'stop_builtin_server': mock.patch(
                 'backend.utils.stop_builtin_server'),
-            'write_gui_config': mock.patch('backend.utils.write_gui_config'),
         }
         # Note: nested is deprecated for good reasons which do not apply here.
         # Used here to easily nest a dynamically generated list of context

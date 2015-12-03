@@ -134,7 +134,7 @@ def setup():
              'the server will be started on 80 and 443 as per the default '
              'port options from the charm.')
     define(
-        'juju-gui-debug', type=bool, default=False,
+        'jujuguidebug', type=bool, default=False,
         help='Set to True to run the gui without minifiying or combining '
              'source files.')
 

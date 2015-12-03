@@ -357,6 +357,16 @@ def install_builtin_server():
         cmd_log(run('/usr/bin/python', setup_cmd, 'install'))
 
 
+# TODO: add these config options -- some may no longer be necessary, some may
+# need updates to the gui
+# * google analytics key
+# * charmstore url
+# * console enabled (?)
+# * cached fonts (?)
+# * read only (?)
+# * setting socket url based on jes config options
+# * test serving (?)
+# * remove charmworld (?)
 def write_builtin_server_startup(
         ssl_cert_path, serve_tests=False, sandbox=False,
         builtin_server_logging='info', insecure=False, charmworld_url='',
