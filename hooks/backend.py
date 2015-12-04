@@ -113,11 +113,6 @@ class GuiMixin(object):
 
     def start(self, backend):
         log('Starting Juju GUI.')
-        config = backend.config
-        utils.write_gui_config(
-           sandbox=config['sandbox'],
-           debug=config['juju-gui-debug'],
-           juju_env_password=config.get('password'))
         # Set up TCP ports.
         previous_port = backend.prev_config.get('port')
         current_port = backend.config.get('port')
@@ -150,7 +145,8 @@ class GuiServerMixin(object):
             config['ssl-cert-path'], config['serve-tests'],
             config['sandbox'], config['builtin-server-logging'],
             not config['secure'], config['charmworld-url'],
-            port=config.get('port'))
+            env_password=config.get('password'),
+            debug=config['juju-gui-debug'], port=config.get('port'))
 
     def stop(self, backend):
         utils.stop_builtin_server()

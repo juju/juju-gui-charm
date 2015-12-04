@@ -16,7 +16,6 @@
 
 """Juju GUI charm utilities."""
 
-from ConfigParser import RawConfigParser
 from contextlib import contextmanager
 from distutils.version import LooseVersion
 import errno
@@ -79,7 +78,6 @@ __all__ = [
     'setup_ports',
     'start_builtin_server',
     'stop_builtin_server',
-    'write_gui_config',
 ]
 
 
@@ -100,12 +98,6 @@ DEB_BUILD_DEPENDENCIES = (
     'bzr', 'g++', 'git', 'imagemagick', 'make',  'nodejs',
 )
 
-ASSETS_PATH = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), '..', 'config'))
-PRODUCTION_INI = 'production.ini'
-INI_TEMPLATE_PATH = os.path.join(ASSETS_PATH, PRODUCTION_INI)
-INI_PATH = '/home/ubuntu/production.ini'
-
 
 # Store the configuration from one invocation to the next.
 config_json = Serializer(os.path.join(os.path.sep, 'tmp', 'config.json'))
@@ -118,19 +110,6 @@ release_expression = re.compile(r"""
     \.(?:tar.bz2|tgz|xz)  # File extension.
 """, re.VERBOSE)
 results_log = None
-
-
-def read_config(path=INI_TEMPLATE_PATH):
-    """Get the config from the given ini path."""
-    config = RawConfigParser()
-    config.read(path)
-    return config
-
-
-def write_config(config, path=INI_PATH):
-    """Write the INI file."""
-    with open(path, 'w') as ini_file:
-        config.write(ini_file)
 
 
 def get_api_address(unit_dir=None):
@@ -322,24 +301,6 @@ def cmd_log(results):
     results_log.info('\n' + results)
 
 
-def write_gui_config(
-        sandbox=False, debug=False, juju_env_user=None, juju_env_password=None):
-    """Generate the GUI configuration file."""
-
-    log('Generating the Juju GUI configuration file to {}.'.format(INI_PATH))
-    if os.path.exists(INI_PATH):
-        ini = read_config(INI_PATH)
-    else:
-        ini = read_config(INI_TEMPLATE_PATH)
-    section = 'app:main'
-    ini.set(section, 'jujugui.sandbox', sandbox)
-    if debug:
-        ini.set(section, 'jujugui.raw', True)
-        ini.set(section, 'jujugui.combine', False)
-    ini.set(section, 'jujugui.password', juju_env_password)
-    write_config(ini, INI_PATH)
-
-
 # Simple checker function for port ranges.
 port_in_range = lambda port: 1 <= port <= 65535
 
@@ -396,10 +357,20 @@ def install_builtin_server():
         cmd_log(run('/usr/bin/python', setup_cmd, 'install'))
 
 
+# TODO: add these config options -- some may no longer be necessary, some may
+# need updates to the gui
+# * google analytics key
+# * charmstore url
+# * console enabled (?)
+# * cached fonts (?)
+# * read only (?)
+# * setting socket url based on jes config options
+# * test serving (?)
+# * remove charmworld (?)
 def write_builtin_server_startup(
         ssl_cert_path, serve_tests=False, sandbox=False,
         builtin_server_logging='info', insecure=False, charmworld_url='',
-        port=None):
+        env_password=None, debug=False, port=None):
     """Generate the builtin server Upstart file."""
     log('Generating the builtin server Upstart file.')
     context = {
@@ -412,6 +383,8 @@ def write_builtin_server_startup(
         'http_proxy': os.environ.get('http_proxy'),
         'https_proxy': os.environ.get('https_proxy'),
         'no_proxy': os.environ.get('no_proxy', os.environ.get('NO_PROXY')),
+        'juju_gui_debug': debug,
+        'env_password': env_password,
         'port': port,
     }
     if not sandbox:
@@ -428,7 +401,7 @@ def write_builtin_server_startup(
 
 def start_builtin_server(
         ssl_cert_path, serve_tests, sandbox, builtin_server_logging,
-        insecure, charmworld_url, port=None):
+        insecure, charmworld_url, env_password=None, debug=False, port=None):
     """Start the builtin server."""
     if (port is not None) and not port_in_range(port):
         # Do not use the user provided port if it is not valid.
@@ -436,7 +409,8 @@ def start_builtin_server(
     write_builtin_server_startup(
         ssl_cert_path, serve_tests=serve_tests, sandbox=sandbox,
         builtin_server_logging=builtin_server_logging, insecure=insecure,
-        charmworld_url=charmworld_url, port=port)
+        charmworld_url=charmworld_url, env_password=env_password,
+        debug=debug, port=port)
     log('Starting the builtin server.')
     with su('root'):
         service_control(GUISERVER, RESTART)
