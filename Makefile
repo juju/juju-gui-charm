@@ -67,7 +67,7 @@ clean:
 	find . -name '*.pyc' -delete
 	rm -rf $(VENV)
 	rm -rf tests/download-cache
-	rm -rf jujugui-deps/*
+	rm -rf jujugui-deps
 	rm -rf releases/*
 
 deploy: setup
@@ -77,7 +77,7 @@ deploy: setup
 package: clean
 	$(MAKE) -C src package
 	cp -r src/juju-gui/dist/* releases
-	cp -r src/juju-gui/collected-requirements/* jujugui-deps
+	cp -r src/juju-gui/collected-requirements jujugui-deps
 	rm -rf src/juju-gui
 
 help:
