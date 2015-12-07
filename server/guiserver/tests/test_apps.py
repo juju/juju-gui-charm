@@ -80,6 +80,7 @@ class TestServer(AppsTestMixin, unittest.TestCase):
             'apiurl': 'wss://example.com:17070',
             'apiversion': 'go',
             'sandbox': False,
+            'jujuguidebug': False,
         }
         options_dict.update(kwargs)
         options = mock.Mock(**options_dict)
