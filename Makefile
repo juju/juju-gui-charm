@@ -1,6 +1,6 @@
 # This file is part of the Juju GUI, which lets users view and manage Juju
 # environments within a graphical interface (https://launchpad.net/juju-gui).
-# Copyright (C) 2012-2013 Canonical Ltd.
+# Copyright (C) 2012-2015 Canonical Ltd.
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU Affero General Public License version 3, as published by
@@ -67,9 +67,18 @@ clean:
 	find . -name '*.pyc' -delete
 	rm -rf $(VENV)
 	rm -rf tests/download-cache
+	rm -rf jujugui-deps
+	rm -rf releases
 
 deploy: setup
 	$(VENV)/bin/python tests/deploy.py
+
+.PHONY: package
+package: clean
+	$(MAKE) -C src package
+	cp -r src/juju-gui/dist releases
+	cp -r src/juju-gui/collected-requirements jujugui-deps
+	rm -rf src/juju-gui
 
 help:
 	@echo -e 'Juju GUI charm - list of make targets:\n'
@@ -82,6 +91,8 @@ help:
 	@echo -e '  JUJU_ENV is the Juju environment that will be bootstrapped.\n'
 	@echo -e 'make lint - Run linter and pep8.\n'
 	@echo -e 'make clean - Remove bytecode files and virtualenvs.\n'
+	@echo 'make package - Download Juju GUI source, build a package,'
+	@echo -e '  and collect dependencies. Ready to deploy or upload.\n'
 	@echo 'make deploy [JUJU_ENV="my-juju-env"] [SERIES="trusty"] - Deploy and'
 	@echo '  expose the Juju GUI charm setting up a temporary Juju repository.'
 	@echo '  Wait for the service to be started. If JUJU_ENV is not passed,'
@@ -91,3 +102,4 @@ help:
 
 .PHONY: all clean deploy ensure-juju-env ensure-juju-test ftest help \
     jujutest lint setup sysdeps test unittest
+

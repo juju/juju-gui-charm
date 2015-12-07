@@ -349,7 +349,8 @@ def install_builtin_server():
     with su('root'):
         cmd_log(run(
             'pip', 'install', '--no-index', '--no-dependencies',
-            '--find-links', 'file:///{}'.format(deps), '-r', requirements
+            '--find-links', 'file:///{}'.format(deps),
+            '-r', requirements
         ))
     log('Installing the builtin server.')
     setup_cmd = os.path.join(SERVER_DIR, 'setup.py')
@@ -573,10 +574,15 @@ def setup_gui(release_tarball_path):
     log('Installing Juju GUI from {}.'.format(release_tarball_path))
     # Install ensuring network access is not used.  All dependencies should
     # already be installed from the deps directory.
-    cmd = '/usr/bin/pip install --no-index --no-dependencies {}'.format(
-        release_tarball_path)
+    jujugui_deps = os.path.join(CURRENT_DIR, 'jujugui-deps')
+    cmd = (
+        '/usr/bin/pip',  'install',
+        '--no-index',
+        '--find-links', 'file:///{}'.format(jujugui_deps),
+        release_tarball_path,
+    )
     with su('root'):
-        cmd_log(run(*cmd.split()))
+        cmd_log(run(*cmd))
 
 
 def save_or_create_certificates(
