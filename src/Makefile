@@ -17,13 +17,11 @@
 JUJU_GUI_PROJECT ?= https://github.com/juju/juju-gui.git
 
 juju-gui:
-	git clone $(JUJU_GUI_PROJECT)
+	git clone --depth 1 --branch master $(JUJU_GUI_PROJECT)
 
 .PHONY: package
 package: juju-gui
-	cd juju-gui && \
-	  git pull && \
-	  git checkout master
+	cd juju-gui && git pull
 	$(MAKE) -C juju-gui dist
 	$(MAKE) -C juju-gui collect-requirements
 
