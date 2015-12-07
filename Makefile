@@ -68,7 +68,7 @@ clean:
 	rm -rf $(VENV)
 	rm -rf tests/download-cache
 	rm -rf jujugui-deps
-	rm -rf releases/*
+	rm -rf releases
 
 deploy: setup
 	$(VENV)/bin/python tests/deploy.py
@@ -76,7 +76,7 @@ deploy: setup
 .PHONY: package
 package: clean
 	$(MAKE) -C src package
-	cp -r src/juju-gui/dist/* releases
+	cp -r src/juju-gui/dist releases
 	cp -r src/juju-gui/collected-requirements jujugui-deps
 	rm -rf src/juju-gui
 
