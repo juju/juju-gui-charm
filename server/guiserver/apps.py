@@ -91,6 +91,8 @@ def server():
         'jujugui.combine': (not options.jujuguidebug),
         'jujugui.apiAddress': options.apiurl,
         'jujugui.socketTemplate': '/environment/$uuid/api',
+        'jujugui.jujuCoreVersion': options.jujuversion,
+        'jujugui.uuid': options.uuid
     }
     if options.password:
         wsgi_settings['jujugui.password'] = options.password

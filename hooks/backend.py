@@ -42,6 +42,7 @@ import os
 import shutil
 
 from charmhelpers import log
+from shelltoolbox import run
 
 import utils
 
@@ -141,12 +142,15 @@ class GuiServerMixin(object):
 
     def start(self, backend):
         config = backend.config
+        env_uuid = os.getenv('JUJU_ENV_UUID', None)
+        juju_version = run('jujud', '--version').strip()
         utils.start_builtin_server(
             config['ssl-cert-path'], config['serve-tests'],
             config['sandbox'], config['builtin-server-logging'],
             not config['secure'], config['charmworld-url'],
-            env_password=config.get('password'),
-            debug=config['juju-gui-debug'], port=config.get('port'))
+            env_password=config.get('password'), env_uuid=env_uuid,
+            juju_version=juju_version, debug=config['juju-gui-debug'],
+            port=config.get('port'))
 
     def stop(self, backend):
         utils.stop_builtin_server()

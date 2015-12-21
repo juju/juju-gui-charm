@@ -1,7 +1,6 @@
 # This file is part of the Juju GUI, which lets users view and manage Juju
 # environments within a graphical interface (https://launchpad.net/juju-gui).
-# Copyright (C) 2013 Canonical Ltd.
-#
+# Copyright (C) 2013 Canonical Ltd.  #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU Affero General Public License version 3, as published by
 # the Free Software Foundation.
@@ -137,12 +136,10 @@ def setup():
         'jujuguidebug', type=bool, default=False,
         help='Set to True to run the gui without minifiying or combining '
              'source files.')
-    define(
-        'user', type=str,
-        help='The juju environment user.')
-    define(
-        'password', type=str,
-        help='The juju environment user.')
+    define('user', type=str, help='The juju environment user.')
+    define('password', type=str, help='The juju environment user.')
+    define('uuid', type=str, help='The juju environment uuid.')
+    define('jujuversion', type=str, help='The jujud version.')
     # In Tornado, parsing the options also sets up the default logger.
     parse_command_line()
     _validate_choices('apiversion', ('go', 'python'))
