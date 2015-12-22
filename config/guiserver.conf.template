@@ -32,11 +32,17 @@ exec /usr/bin/python /usr/local/bin/runserver.py \
         --testsroot="{{tests_root}}" \
     {{endif}}
     {{if insecure}}
-        --insecure
+        --insecure \
     {{endif}}
     {{if juju_gui_debug}}
-        --jujuguidebug
+        --jujuguidebug \
     {{endif}}
     {{if env_password}}
-        --password="{{env_password}}"
+        --password="{{env_password}}" \
+    {{endif}}
+    {{if env_uuid}}
+        --uuid="{{env_uuid}}" \
+    {{endif}}
+    {{if juju_version}}
+        --jujuversion="{{juju_version}}" \
     {{endif}}
