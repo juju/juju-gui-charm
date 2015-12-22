@@ -365,14 +365,13 @@ def install_builtin_server():
 # * console enabled (?)
 # * cached fonts (?)
 # * read only (?)
-# * setting socket url based on jes config options
 # * test serving (?)
 # * remove charmworld (?)
 def write_builtin_server_startup(
         ssl_cert_path, serve_tests=False, sandbox=False,
         builtin_server_logging='info', insecure=False, charmworld_url='',
         env_password=None, env_uuid=None, juju_version=None, debug=False,
-        port=None):
+        port=None, jem_location=None, interactive_login=False):
     """Generate the builtin server Upstart file."""
     log('Generating the builtin server Upstart file.')
     context = {
@@ -390,6 +389,8 @@ def write_builtin_server_startup(
         'env_uuid': env_uuid,
         'juju_version': juju_version,
         'port': port,
+        'jem_location': jem_location,
+        'interactive_login': interactive_login,
     }
     if not sandbox:
         api_url = 'wss://{}'.format(get_api_address())
@@ -406,7 +407,8 @@ def write_builtin_server_startup(
 def start_builtin_server(
         ssl_cert_path, serve_tests, sandbox, builtin_server_logging,
         insecure, charmworld_url, env_password=None, env_uuid=None,
-        juju_version=None, debug=False, port=None):
+        juju_version=None, debug=False, port=None, jem_location=None,
+        interactive_login=False):
     """Start the builtin server."""
     if (port is not None) and not port_in_range(port):
         # Do not use the user provided port if it is not valid.
@@ -416,7 +418,8 @@ def start_builtin_server(
         builtin_server_logging=builtin_server_logging, insecure=insecure,
         charmworld_url=charmworld_url, env_password=env_password,
         env_uuid=env_uuid, juju_version=juju_version,
-        debug=debug, port=port)
+        debug=debug, port=port, jem_location=jem_location,
+        interactive_login=interactive_login)
     log('Starting the builtin server.')
     with su('root'):
         service_control(GUISERVER, RESTART)

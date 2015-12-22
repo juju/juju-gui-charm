@@ -46,3 +46,9 @@ exec /usr/bin/python /usr/local/bin/runserver.py \
     {{if juju_version}}
         --jujuversion="{{juju_version}}" \
     {{endif}}
+    {{if jem_location}}
+        --jemlocation="{{jem_location}}" \
+    {{endif}}
+    {{if interactive_login}}
+        --interactivelogin="{{interactive_login}}" \
+    {{endif}}
