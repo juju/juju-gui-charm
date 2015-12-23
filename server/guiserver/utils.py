@@ -66,7 +66,11 @@ def get_juju_api_url(path, template, default):
     """Return the Juju WebSocket API fully qualified URL.
 
     Receives the current WebSocket handler path and the template used by the
-    Juju GUI. If a URL cannot be inferred, return the given default.
+    Juju GUI. For instance, path is a string representing the path used by the
+    client to connect to the GUI server (like "/ws/api/1.2.3.4/17070/uuid").
+    The template specifies where in the path relevant information can be found:
+    for instance "/api/$server/$port/$uuid".
+    If a URL cannot be inferred as described, return the given default.
     """
     pattern = template.replace(
         '$server', '(?P<server>.*)').replace(
