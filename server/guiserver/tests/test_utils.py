@@ -127,6 +127,29 @@ class TestGetHeaders(unittest.TestCase):
         self.assertEqual({'Origin': 'https://server.example.com'}, headers)
 
 
+class TestGetJujuApiUrl(unittest.TestCase):
+
+    template = '/api/$server/$port/$uuid'
+    default = 'wss://example.com:17070/'
+
+    def test_no_match(self):
+        # The default URL is returned if there is no match.
+        url = utils.get_juju_api_url('/ws', self.template, self.default)
+        self.assertEqual(self.default, url)
+
+    def test_precise_match(self):
+        # The expected URL is returned when the path matches precisely.
+        path = '/api/1.2.3.4/4242/my-uuid'
+        url = utils.get_juju_api_url(path, self.template, self.default)
+        self.assertEqual('wss://1.2.3.4:4242/environment/my-uuid/api', url)
+
+    def test_prefixed_match(self):
+        # The expected URL is returned when the path also includes a prefix.
+        path = '/my/prefix/api/1.2.3.4/47/uuid'
+        url = utils.get_juju_api_url(path, self.template, self.default)
+        self.assertEqual('wss://1.2.3.4:47/environment/uuid/api', url)
+
+
 class TestJoinUrl(unittest.TestCase):
 
     def test_url_parts(self):

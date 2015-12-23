@@ -19,6 +19,7 @@
 import collections
 import functools
 import logging
+import re
 import urlparse
 import weakref
 
@@ -59,6 +60,24 @@ def get_headers(request, websocket_url):
     if origin is None:
         origin = ws_to_http(websocket_url)
     return {'Origin': origin}
+
+
+def get_juju_api_url(path, template, default):
+    """Return the Juju WebSocket API fully qualified URL.
+
+    Receives the current WebSocket handler path and the template used by the
+    Juju GUI. If a URL cannot be inferred, return the given default.
+    """
+    pattern = template.replace(
+        '$server', '(?P<server>.*)').replace(
+        '$port', '(?P<port>\d+)').replace(
+        '$uuid', '(?P<uuid>.*)')
+    match = re.search(pattern, path)
+    if match is None:
+        # The path is empty: probably an old Juju version is being used.
+        return default
+    return 'wss://{server}:{port}/environment/{uuid}/api'.format(
+        **match.groupdict())
 
 
 def join_url(base_url, path, query):

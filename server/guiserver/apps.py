@@ -31,6 +31,10 @@ from guiserver.bundles.base import Deployer
 from jujugui import make_application
 
 
+# Define the template to use for building the WebSocket URL.
+WEBSOCKET_URL_TEMPLATE = '/api/$server/$port/$uuid'
+
+
 def server():
     """Return the main server application.
 
@@ -58,6 +62,8 @@ def server():
             'deployer': deployer,
             # The tokens collection for authentication token requests.
             'tokens': tokens,
+            # The WebSocket URL template.
+            'ws_url_template': WEBSOCKET_URL_TEMPLATE,
         }
         juju_proxy_handler_options = {
             'target_url': utils.ws_to_http(options.apiurl),
@@ -90,7 +96,7 @@ def server():
         'jujugui.raw': options.jujuguidebug,
         'jujugui.combine': not options.jujuguidebug,
         'jujugui.apiAddress': options.apiurl,
-        'jujugui.socketTemplate': '/environment/$uuid/api',
+        'jujugui.socketTemplate': WEBSOCKET_URL_TEMPLATE,
         'jujugui.jujuCoreVersion': options.jujuversion,
         'jujugui.jem_url': options.jemlocation,
         'jujugui.uuid': options.uuid,
