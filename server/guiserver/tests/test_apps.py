@@ -157,7 +157,7 @@ class TestServer(AppsTestMixin, unittest.TestCase):
             'https://api.jujucharms.com/charmstore/',
             config['jujugui.charmstore_url'])
         self.assertEqual(
-            '/environment/$uuid/api', config['jujugui.socketTemplate'])
+            apps.WEBSOCKET_URL_TEMPLATE, config['jujugui.socketTemplate'])
         self.assertTrue(config['jujugui.combine'])
         self.assertFalse(config['jujugui.interactive_login'])
         self.assertFalse(config['jujugui.sandbox'])

@@ -40,6 +40,7 @@ from tornado.testing import (
 import yaml
 
 from guiserver import (
+    apps,
     auth,
     clients,
     get_version,
@@ -80,6 +81,7 @@ class WebSocketHandlerTestMixin(object):
             'deployer': self.deployer,
             'io_loop': self.io_loop,
             'tokens': self.tokens,
+            'ws_url_template': apps.WEBSOCKET_URL_TEMPLATE,
         }
         return web.Application([
             (r'/echo', helpers.EchoWebSocketHandler, echo_options),
@@ -116,7 +118,7 @@ class WebSocketHandlerTestMixin(object):
             headers=headers, mock_protocol=mock_protocol, path=path)
         yield handler.initialize(
             apiurl, self.auth_backend, self.deployer, self.tokens,
-            self.io_loop)
+            apps.WEBSOCKET_URL_TEMPLATE, self.io_loop)
         raise gen.Return(handler)
 
 
@@ -149,11 +151,20 @@ class TestWebSocketHandlerConnection(
         # Make sure that it will initialize with a supplied path.
         with self.mock_websocket_connect() as mock_websocket_connect:
             yield self.make_initialized_handler(
-                path='/ws/environments/1234-1234-1234/api')
+                path='/ws/api/1.2.3.4/17070/1234-1234-1234')
         self.assertEqual(1, mock_websocket_connect.call_count)
         call_args = mock_websocket_connect.call_args[0]
         self.assertEqual(
-            call_args[1], self.apiurl + '/environments/1234-1234-1234/api')
+            call_args[1], 'wss://1.2.3.4:17070/environment/1234-1234-1234/api')
+
+    @gen_test
+    def test_initialize_api_path_legacy(self):
+        # A connection is established to the legacy Juju API endpoint.
+        with self.mock_websocket_connect() as mock_websocket_connect:
+            yield self.make_initialized_handler(path='/ws')
+        self.assertEqual(1, mock_websocket_connect.call_count)
+        call_args = mock_websocket_connect.call_args[0]
+        self.assertEqual(call_args[1], self.apiurl)
 
     @gen_test
     def test_juju_connection_failure(self):
@@ -248,7 +259,7 @@ class TestWebSocketHandlerProxy(
         with mock.patch(mock_path) as mock_write_message:
             initialization = handler.initialize(
                 self.apiurl, self.auth_backend, self.deployer, self.tokens,
-                io_loop=self.io_loop)
+                apps.WEBSOCKET_URL_TEMPLATE, io_loop=self.io_loop)
             handler.on_message(self.hello_message)
             self.assertFalse(mock_write_message.called)
             yield initialization
@@ -301,7 +312,7 @@ class TestWebSocketHandlerAuthentication(
         self.handler = self.make_handler(mock_protocol=True)
         self.handler.initialize(
             self.apiurl, self.auth_backend, self.deployer, self.tokens,
-            io_loop=self.io_loop)
+            apps.WEBSOCKET_URL_TEMPLATE, io_loop=self.io_loop)
 
     def send_login_request(self):
         """Create a login request and send it to the handler."""

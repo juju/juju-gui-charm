@@ -44,6 +44,7 @@ from guiserver.clients import websocket_connect
 from guiserver.utils import (
     clone_request,
     get_headers,
+    get_juju_api_url,
     join_url,
     json_decode_dict,
     request_summary,
@@ -97,7 +98,9 @@ class WebSocketHandler(_WebSocketBaseHandler):
     """
 
     @gen.coroutine
-    def initialize(self, apiurl, auth_backend, deployer, tokens, io_loop=None):
+    def initialize(
+            self, apiurl, auth_backend, deployer, tokens, ws_url_template,
+            io_loop=None):
         """Initialize the WebSocket server.
 
         Create a new WebSocket client and connect it to the Juju API.
@@ -121,15 +124,7 @@ class WebSocketHandler(_WebSocketBaseHandler):
         # Set up the bundle deployment and change set infrastructure.
         self.deployment = DeployMiddleware(self.user, deployer, write_message)
         self.changeset = ChangeSetMiddleware(self.user, write_message)
-        # XXX The handler is no longer path agnostic, and this can be fixed by
-        # capturing the relevant path fragment on the regexp, and then
-        # overriding the handler's open method to store the path in the
-        # instance.
-        path = self.request.path[len('/ws'):]
-        if path:
-            # If they provided a path in their request then we need to use
-            # that api endpoint.
-            apiurl = '{}{}'.format(apiurl, path)
+        apiurl = get_juju_api_url(self.request.path, ws_url_template, apiurl)
         # Juju requires the Origin header to be included in the WebSocket
         # client handshake request. Propagate the client origin if present;
         # use the Juju API server as origin otherwise.
