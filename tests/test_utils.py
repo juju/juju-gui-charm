@@ -869,7 +869,7 @@ class TestStartGui(unittest.TestCase):
         self.assertNotIn('--port', guiserver_conf)
 
     def test_write_builtin_server_startup_with_port(self):
-        # The builtin server Upstart file is properly generate when a
+        # The builtin server Upstart file is properly generated when a
         # customized port is provided.
         write_builtin_server_startup(self.ssl_cert_path, port=8000)
         guiserver_conf = self.files['guiserver.conf']
@@ -888,6 +888,15 @@ class TestStartGui(unittest.TestCase):
         self.assertIn('--sandbox', guiserver_conf)
         self.assertNotIn('--apiurl', guiserver_conf)
         self.assertNotIn('--apiversion', guiserver_conf)
+
+    def test_write_builtin_server_startup_with_jem(self):
+        # The builtin server Upstart file is properly generated with JEM.
+        write_builtin_server_startup(
+            self.ssl_cert_path, jem_location='https://1.2.3.4/jem',
+            interactive_login=True)
+        guiserver_conf = self.files['guiserver.conf']
+        self.assertIn('--jemlocation="https://1.2.3.4/jem"', guiserver_conf)
+        self.assertIn('--interactivelogin="True"', guiserver_conf)
 
     def test_start_builtin_server(self):
         start_builtin_server(

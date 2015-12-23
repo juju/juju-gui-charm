@@ -202,3 +202,12 @@ options:
       the Juju version is dynamically retrieved.
     type: string
     default:
+  jem-location:
+    type: string
+    default: ''
+    description: Publicly accessible URL of a Juju Environment Manager.
+  interactive-login:
+    description: |
+      Enables interactive login to an identity-manager, if applicable.
+    type: boolean
+    default: false

@@ -87,6 +87,11 @@ class TestServer(AppsTestMixin, unittest.TestCase):
         with mock.patch('guiserver.apps.options', options):
             return apps.server()
 
+    def get_gui_config(self, app):
+        """Return the GUI config as a dictionary, given an app object."""
+        spec = self.get_url_spec(app, r'.*$')
+        return spec.kwargs['fallback'].wsgi_application.registry.settings
+
     def test_auth_backend(self):
         # The authentication backend instance is correctly passed to the
         # WebSocket handler.
@@ -116,6 +121,8 @@ class TestServer(AppsTestMixin, unittest.TestCase):
         spec = self.get_url_spec(app, r'^/ws(?:/.*)?$')
         self.assertIsNotNone(spec)
         self.assertEqual(handlers.SandboxHandler, spec.handler_class)
+        config = self.get_gui_config(app)
+        self.assertTrue(config['jujugui.sandbox'])
 
     def test_proxy_excluded_in_sandbox_mode(self):
         # The juju-core HTTPS proxy is excluded if sandbox mode is enabled.
@@ -141,6 +148,35 @@ class TestServer(AppsTestMixin, unittest.TestCase):
         app = self.get_app(testsroot=None)
         spec = self.get_url_spec(app, r'^/test/(.*)$')
         self.assertIsNone(spec)
+
+    def test_gui_options(self):
+        # The Juju GUI WSGI application is properly configured.
+        app = self.get_app()
+        config = self.get_gui_config(app)
+        self.assertEqual(
+            'https://api.jujucharms.com/charmstore/',
+            config['jujugui.charmstore_url'])
+        self.assertEqual(
+            '/environment/$uuid/api', config['jujugui.socketTemplate'])
+        self.assertTrue(config['jujugui.combine'])
+        self.assertFalse(config['jujugui.interactive_login'])
+        self.assertFalse(config['jujugui.sandbox'])
+        self.assertFalse(config['jujugui.raw'])
+        self.assertIsNone(config['jujugui.base_url'])
+
+    def test_gui_jem_connection(self):
+        # The server can be configured to connect the Juju GUI to a JEM.
+        jemlocation = 'https://1.2.3.4/jem'
+        app = self.get_app(jemlocation=jemlocation, interactivelogin=True)
+        config = self.get_gui_config(app)
+        self.assertEqual(jemlocation, config['jujugui.jem_url'])
+        self.assertTrue(config['jujugui.interactive_login'])
+
+    def test_gui_debug_mode(self):
+        # The server can be configured to serve the GUI in debug mode.
+        app = self.get_app(jujuguidebug=True)
+        config = self.get_gui_config(app)
+        self.assertTrue(config['jujugui.raw'])
 
 
 class TestRedirector(AppsTestMixin, unittest.TestCase):

@@ -88,11 +88,13 @@ def server():
     wsgi_settings = {
         'jujugui.sandbox': options.sandbox,
         'jujugui.raw': options.jujuguidebug,
-        'jujugui.combine': (not options.jujuguidebug),
+        'jujugui.combine': not options.jujuguidebug,
         'jujugui.apiAddress': options.apiurl,
         'jujugui.socketTemplate': '/environment/$uuid/api',
         'jujugui.jujuCoreVersion': options.jujuversion,
-        'jujugui.uuid': options.uuid
+        'jujugui.jem_url': options.jemlocation,
+        'jujugui.uuid': options.uuid,
+        'jujugui.interactive_login': options.interactivelogin,
     }
     if options.password:
         wsgi_settings['jujugui.password'] = options.password
@@ -102,9 +104,6 @@ def server():
         # Handle GUI server info.
         (r'^/gui-server-info', handlers.InfoHandler, info_handler_options),
         (r".*", web.FallbackHandler, dict(fallback=wsgi_app))
-    ])
-
-    server_handlers.extend([
     ])
     return web.Application(server_handlers, debug=options.debug)
 

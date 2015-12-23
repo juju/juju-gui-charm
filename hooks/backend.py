@@ -150,7 +150,8 @@ class GuiServerMixin(object):
             not config['secure'], config['charmworld-url'],
             env_password=config.get('password'), env_uuid=env_uuid,
             juju_version=juju_version, debug=config['juju-gui-debug'],
-            port=config.get('port'))
+            port=config.get('port'), jem_location=config['jem-location'],
+            interactive_login=config['interactive-login'])
 
     def stop(self, backend):
         utils.stop_builtin_server()

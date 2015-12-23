@@ -141,6 +141,12 @@ def setup():
     define('password', type=str, help='The juju environment password.')
     define('uuid', type=str, help='The juju environment uuid.')
     define('jujuversion', type=str, help='The jujud version.')
+    define(
+        'jemlocation', type=str,
+        help="The url for a Juju Environment Manager.")
+    define(
+        'interactivelogin', type=bool, default=False,
+        help='Enables interactive login to identity manager, if applicable.')
     # In Tornado, parsing the options also sets up the default logger.
     parse_command_line()
     _validate_choices('apiversion', ('go', 'python'))
