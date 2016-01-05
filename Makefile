@@ -25,7 +25,7 @@ all: setup
 # The virtualenv is created by the 00-setup script and not here. This way we
 # support the juju-test plugin, which calls the executable files in
 # alphabetical order.
-setup:
+setup: releases
 	tests/00-setup
 	# Ensure the correct version of pip has been installed.
 	# 1.4.x - 1.9.x or 6.x or 7.x
@@ -73,12 +73,13 @@ clean:
 deploy: setup
 	$(VENV)/bin/python tests/deploy.py
 
-.PHONY: package
-package: clean
+releases:
 	$(MAKE) -C src package
 	cp -r src/juju-gui/dist releases
 	cp -r src/juju-gui/collected-requirements jujugui-deps
 	rm -rf src/juju-gui
+
+package: clean releases
 
 help:
 	@echo -e 'Juju GUI charm - list of make targets:\n'
@@ -102,4 +103,3 @@ help:
 
 .PHONY: all clean deploy ensure-juju-env ensure-juju-test ftest help \
     jujutest lint setup sysdeps test unittest
-
