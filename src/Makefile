@@ -21,7 +21,7 @@ JUJU_GUI_BRANCH ?=
 juju-gui:
 	rm -rf juju-gui
 ifdef JUJU_GUI_BRANCH
-	git clone --branch master $(JUJU_GUI_BRANCH)
+	git clone $(JUJU_GUI_BRANCH)
 else
 	git clone --depth 1 --branch master $(JUJU_GUI_PROJECT)
 endif
