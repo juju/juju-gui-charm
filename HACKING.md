@@ -52,6 +52,13 @@ running the command:
 The command above will create a ".venv" directory inside "juju-gui/tests/",
 ignored by version control, containing the development virtual environment with
 all the testing dependencies.
+
+The command will also download the master branch of juju-gui from GitHub and
+build it into a tarball in the `releases` directory. If you want to use a
+local branch you can specify it using JUJU_GUI_BRANCH, e.g.
+
+    JUJU_GUI_BRANCH=$HOME/git/juju-gui make package
+
 Run "make help" to see all the available make targets.
 
 ## Testing ##
