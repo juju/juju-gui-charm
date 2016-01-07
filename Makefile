@@ -63,10 +63,13 @@ lint: setup
 		--filename *.py,20-functional.test \
 		hooks/ tests/ server/
 
-clean:
+.PHONY: clean-tests
+clean-tests:
+	rm -rf tests/download-cache
+
+clean: clean-tests
 	find . -name '*.pyc' -delete
 	rm -rf $(VENV)
-	rm -rf tests/download-cache
 	rm -rf jujugui-deps
 	rm -rf releases
 
@@ -92,6 +95,7 @@ help:
 	@echo -e '  JUJU_ENV is the Juju environment that will be bootstrapped.\n'
 	@echo -e 'make lint - Run linter and pep8.\n'
 	@echo -e 'make clean - Remove bytecode files and virtualenvs.\n'
+	@echo -e 'make clean-tests - Clean up tests directory.\n'
 	@echo 'make package - Download Juju GUI source, build a package,'
 	@echo -e '  and collect dependencies. Ready to deploy or upload.\n'
 	@echo 'make deploy [JUJU_ENV="my-juju-env"] [SERIES="trusty"] - Deploy and'

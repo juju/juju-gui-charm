@@ -81,6 +81,7 @@ Before uploading, check to see the currently available version:
 
 Next, to upload the charm, go to the charm source directory and do:
 
+    make clean-tests
     charm upload . cs:~yellow/juju-gui  (may need to specify the series)
     charm info --include=id,perm cs:~yellow/juju-gui
 
@@ -98,6 +99,7 @@ To move the charm out of the development channel, publish it with:
 The procedure is the same but the beta is owned by ~juju-gui-charmers but it
 is promulgated so you can publish directly to:
 
+    make clean-tests
     charm upload . cs:development/juju-gui
 
 ## Publishing a beta becomes the released version ##
