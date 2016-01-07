@@ -83,6 +83,7 @@ launched, the following tests should be performed, where applicable.
 
 * Create a new model and switch to it.
 * Deploy a bundle
+* Create a relation
 * Allocate machines and containers
 * Deploy services on the new machines and containers
 * Switch back and forth between models and ensure services, machines, and

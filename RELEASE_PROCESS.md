@@ -71,7 +71,7 @@ can only be tested using Juju 1.26 alphas.
 
 ## Uploading an alpha version ##
 
-Our alphas are development versions of the charm are published to the
+Our alphas are development versions of the charm and are published to the
 cs:~yellow namespace for thorough testing before making a more general
 release.
 
