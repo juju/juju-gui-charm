@@ -11,22 +11,23 @@ Commons, 171 Second Street, Suite 300, San Francisco, California, 94105, USA.
 
 ## Updating the GUI ##
 
-If the new charm release contains a new drop of the Juju GUI then before
+If the new charm will have a new revision of the Juju GUI then before
 releasing the charm the GUI should have its version bumped and committed to
 the master branch.  Follow the instructions in the
-`juju-gui/RELEASE_PROCESS.rst` file.  If the charm code is all that changed
-then the GUI doesn't need to be updated.
+`juju-gui/RELEASE_PROCESS.rst` file.  If, however, the charm code is all that
+changed then the GUI doesn't need to be updated.
 
 ## Packaging the GUI ##
 
-In the juju-gui-charm branch you'll need to create the juju-gui package and
+The charm no longer has any code for the Juju GUI under version control.
+So, in the juju-gui-charm branch you'll need to create the juju-gui package and
 dependencies which can be done with:
 
     make package
 
-Ensure that a tar.bz2 for the expected juju-gui release is in `releases` and
-that `jujugui-deps` is full of dependency wheels and a couple of source
-packages.
+Ensure that a `tar.bz2` file for the expected juju-gui release is in
+`releases` and that `jujugui-deps` is full of wheels and a couple
+of source packages.
 
 ## Testing the charm ##
 
@@ -50,11 +51,12 @@ Then install the package with:
     sudo apt update
     sudo apt install charm
 
-## Where the juju-gui charm versions live in the charmstore ##
+## The juju-gui charm versions in the charmstore ##
 
 We have multiple versions of the juju-gui charm in the charmstore.
 
 | Release | Intent / Audience | URL | CS reference |
+| ------- | ----------------- | --- | ------------ |
 | Alphas | Dev team testing only | https://jujucharms.com/u/yellow/juju-gui | cs:~yellow/juju-gui |
 | Betas  | Wider testing. Only via Juju 1.26 | https://jujucharms.com/development/juju-gui | cs:development/juju-gui |
 | Released | GA | https://jujucharms.com/juju-gui | cs:juju-gui |
@@ -67,14 +69,15 @@ Before the release of Juju v2.0 the betas will be of limited utility as they
 can only be tested using Juju 1.26 alphas.
 
 
-## Uploading a ~yellow development version ##
+## Uploading an alpha version ##
 
-Our development versions of the charm are published to the cs:~yellow
-namespace for thorough testing before making a more general release.
+Our alphas are development versions of the charm are published to the
+cs:~yellow namespace for thorough testing before making a more general
+release.
 
 Before uploading, check to see the currently available version:
 
-    charm info --include=id,perm cs:~yellow/juju-gui
+    charm info --include=id,perm cs:~yellow/development/juju-gui
 
 Next, to upload the charm, go to the charm source directory and do:
 
@@ -88,7 +91,7 @@ At this point the charm is in the development channel and is referenced as
 
 To move the charm out of the development channel, publish it with:
 
-    charm publish cs:~yellow/trusty/juju-gui  /!\ Is series required here?
+    charm publish cs:~yellow/development/juju-gui
 
 ## Uploading to beta ##
 
