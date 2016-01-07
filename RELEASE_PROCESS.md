@@ -1,5 +1,5 @@
 <!--
-RELEASE.md
+RELEASE_PROCESS.md
 Copyright 2016 Canonical Ltd.
 This work is licensed under the Creative Commons Attribution-Share Alike 3.0
 Unported License. To view a copy of this license, visit
@@ -107,3 +107,7 @@ version (the beta) after being published.  So upload the beta, do all of the
 required testing, and then publish it to make the release:
 
     charm publish cs:development/juju-gui
+
+# QA Process #
+
+Refer to the `QA.md` doc for details on doing pre-release testing of the charm.
