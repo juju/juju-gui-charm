@@ -70,7 +70,7 @@ All of the above tests need to be run on these providers:
 * Amazon
 * local
 * lxd (time permitting)
-* openstack on bastion or canonistack
+* openstack on bastion[1] or canonistack
 * Azure
   - Do not test with juju 1.24
   - juju 1.25 should allow model creation, pending GUI support.
@@ -88,3 +88,6 @@ launched, the following tests should be performed, where applicable.
 * Deploy services on the new machines and containers
 * Switch back and forth between models and ensure services, machines, and
   containers are where you put them.
+
+[1] To access bastion, connect to the Canonical VPN and ssh to
+10.245.163.113. The `trusty` environment is the one we are using.
