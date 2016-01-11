@@ -75,42 +75,8 @@ class GuiMixin(object):
         # If the source setting has changed since the last time this was run,
         # get the code, from either a static release or a branch as specified
         # by the source setting, and install it.
-        log('Installing GUI')
-        if backend.different('juju-gui-source'):
-            # Get a tarball somehow.
-            origin, version_or_branch = utils.parse_source(
-                backend.config['juju-gui-source'])
-            if origin == 'develop':
-                # Develop is the latest passing build from Git.
-                origin = 'branch'
-                version_or_branch = (
-                    'https://github.com/juju/juju-gui.git', 'develop')
-
-            if origin == 'branch':
-                logpath = backend.config['command-log-file']
-                # Make sure we have the required build dependencies.
-                # Note that we also need to add the juju-gui repository
-                # containing our version of nodejs.
-                log('Installing build dependencies.')
-                utils.install_missing_packages(
-                    utils.DEB_BUILD_DEPENDENCIES,
-                    repository=backend.config['repository-location'])
-
-                branch_url, revision = version_or_branch
-                log('Using source {}: {}'.format(branch_url, revision))
-
-                release_tarball_path = utils.fetch_gui_from_branch(
-                    branch_url, revision, logpath)
-            else:
-                release_tarball_path = utils.fetch_gui_release(
-                    origin, version_or_branch)
-            # Install the tarball.
-            log(
-                'Installing juju gui from source at {}'.format(
-                    release_tarball_path))
-            utils.setup_gui(release_tarball_path)
-        else:
-            log('No change to juju-gui-source. Skipping step.')
+        log('Installing juju gui.')
+        utils.setup_gui()
 
     def start(self, backend):
         log('Starting Juju GUI.')

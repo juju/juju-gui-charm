@@ -59,7 +59,6 @@ __all__ = [
     'JUJU_PEM',
     'cmd_log',
     'download_release',
-    'fetch_gui_from_branch',
     'fetch_gui_release',
     'find_missing_packages',
     'first_path_in_dir',
@@ -201,57 +200,6 @@ def log_hook():
         raise
     finally:
         log("<<< Exiting {}".format(script))
-
-
-def parse_source(source):
-    """Parse the ``juju-gui-source`` option.
-
-    Return a tuple of two elements representing info on how to deploy Juju GUI.
-    Examples:
-       - ('local', None): latest local release;
-       - ('stable', None): latest stable release;
-       - ('develop', None): latest build from git trunk;
-       - ('release', '0.1.0'): release v0.1.0;
-       - ('branch', ('https://github.com/juju/juju-gui.git', 'add-feature'):
-         release is made from a branch -
-         in this case the second element includes the branch or SHA;
-       - ('branch', ('https://github.com/juju/juju-gui.git', None): no
-         revision is specified;
-       - ('url', 'http://example.com/gui.tar.gz'): release from a downloaded
-         file.
-    """
-
-    def is_url(url_check):
-        if ' ' in url_check:
-            url_check, _ = url_check.split(' ')
-
-        if url_check.startswith('http') and not url_check.endswith('.git'):
-            return True
-        else:
-            return False
-
-    def is_branch(check_branch):
-        target = None
-        if ' ' in check_branch:
-            check_branch, target = check_branch.split(' ')
-
-        if check_branch.startswith('http') and check_branch.endswith('.git'):
-            return (check_branch, target)
-        else:
-            return False
-
-    if is_url(source):
-        return 'url', source
-
-    if source in ('local', 'stable', 'develop'):
-        return source, None
-
-    check_branch = is_branch(source)
-    if (check_branch):
-        return ('branch', check_branch)
-
-    log('Source is defaulting to stable release.')
-    return 'stable', source
 
 
 def render_to_file(template_name, context, destination):
@@ -459,61 +407,6 @@ def prime_npm_cache(npm_cache_url):
     cmd_log(uncompress(npm_cache_archive))
 
 
-def fetch_gui_from_branch(branch_url, revision, logpath):
-    """Retrieve the Juju GUI from a branch and build a release archive."""
-    # Inject NPM packages into the cache for faster building.
-    prime_npm_cache(get_npm_cache_archive_url())
-
-    # Create a release starting from a branch.
-    juju_gui_source_dir = os.path.join(CURRENT_DIR, 'juju-gui-source')
-    cmd_log(run('rm', '-rf', juju_gui_source_dir))
-    git_clone = command('git', 'clone')
-
-    if revision is None:
-        log('Retrieving Juju GUI source from {} (default trunk).'.format(
-            branch_url))
-        cmd_log(git_clone('--depth', '1', branch_url, juju_gui_source_dir))
-    elif revision.startswith('@'):
-        log('Retrieving Juju GUI source from {} (commit: {}).'.format(
-            branch_url, revision[1:]))
-        # Retrieve a full clone and then checkout the specific commit.
-        git_dir = os.path.join(juju_gui_source_dir, '.git')
-        cmd_log(git_clone(branch_url, juju_gui_source_dir))
-        cmd_log(run(
-            'git', '--git-dir', git_dir, '--work-tree',
-            juju_gui_source_dir, 'checkout', revision[1:]))
-    else:
-        log('Retrieving Juju GUI source from {} (branch: {}).'.format(
-            branch_url, revision))
-        cmd_log(git_clone(
-            '--depth', '1', '-b', revision, branch_url, juju_gui_source_dir))
-
-    log('Preparing a Juju GUI release.')
-    logdir = os.path.dirname(logpath)
-
-    fd, name = tempfile.mkstemp(prefix='make-distfile-', dir=logdir)
-    log('Output from "make distfile" sent to %s' % name)
-
-    # Passing HOME is required by node during npm packages installation.
-    run('make', '-C', juju_gui_source_dir, 'distfile', 'BRANCH_IS_GOOD=true',
-        'HOME={}'.format(os.path.expanduser('~')), stdout=fd, stderr=fd)
-
-    return first_path_in_dir(
-        os.path.join(juju_gui_source_dir, 'releases'))
-
-
-def download_release(url, filename):
-    """Download a Juju GUI release from the given URL.
-
-    Save the resulting file as filename in the local releases repository.
-    Return the full path of the saved file.
-    """
-    destination = os.path.join(RELEASES_DIR, filename)
-    log('Downloading release file: {} --> {}.'.format(url, destination))
-    cmd_log(run('curl', '-L', '-o', destination, url))
-    return destination
-
-
 def get_release_file_path(version=None):
     """Return the local path of the release file with the given version.
 
@@ -540,40 +433,12 @@ def get_release_file_path(version=None):
     return version_path_map.get(version)
 
 
-def fetch_gui_release(origin, version):
-    """Retrieve a Juju GUI release. Return the release tarball local path.
-
-    The release file can be retrieved from:
-      - an arbitrary URL (if origin is "url");
-      - the local releases repository (if origin is "local" or if a release
-        version is specified and the corresponding file is present locally);
-      - Launchpad (in all the other cases).
-    """
+def fetch_gui_release():
+    """Retrieve a Juju GUI release. Return the release tarball local path."""
     log('Retrieving Juju GUI release.')
-    if origin == 'url':
-        # "version" is a url.
-        _, _, extension = version.rpartition('.')
-        if extension not in ('tgz', 'xz'):
-            extension = 'xz'
-        return download_release(version, 'url-release.' + extension)
-    if origin == 'local':
-        path = get_release_file_path()
-        log('Using a local release: {}'.format(path))
-        return path
-    # Handle "stable"
-    if version is not None:
-        # If the user specified a version, before attempting to download the
-        # requested release from Launchpad, check if that version is already
-        # stored locally.
-        path = get_release_file_path(version)
-        if path is not None:
-            log('Using a local release: {}'.format(path))
-            return path
-    # Retrieve a release from Launchpad.
-    launchpad = Launchpad.login_anonymously('Juju GUI charm', 'production')
-    project = launchpad.projects['juju-gui']
-    url, filename = get_launchpad_release(project, origin, version)
-    return download_release(url, filename)
+    path = get_release_file_path()
+    log('Using a local release: {}'.format(path))
+    return path
 
 
 def setup_gui(release_tarball_path):
@@ -582,6 +447,7 @@ def setup_gui(release_tarball_path):
     log('Installing Juju GUI from {}.'.format(release_tarball_path))
     # Install ensuring network access is not used.  All dependencies should
     # already be installed from the deps directory.
+    jujugui_deps = os.path.join(CURRENT_DIR, 'jujugui-deps')
     jujugui_deps = os.path.join(CURRENT_DIR, 'jujugui-deps')
     cmd = (
         '/usr/bin/pip',  'install',
