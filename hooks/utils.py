@@ -429,19 +429,18 @@ def get_release_file_path(version=None):
     return version_path_map.get(version)
 
 
-def setup_gui(release_tarball_path):
+def setup_gui():
     """Set up Juju GUI."""
 
     # Install ensuring network access is not used.  All dependencies should
     # already be installed from the deps directory.
     jujugui_deps = os.path.join(CURRENT_DIR, 'jujugui-deps')
-    releases = os.path.join(CURRENT_DIR, 'releases')
-    log('Installing Juju GUI from {}.'.format(releases))
+    release_tarball_path = get_release_file_path()
+    log('Installing Juju GUI from {}.'.format(release_tarball_path))
     cmd = (
-        '/usr/bin/pip',  'install', '-U', 'jujugui',
-        '--no-index',
+        '/usr/bin/pip',  'install', '--no-index',
         '--find-links', 'file:///{}'.format(jujugui_deps),
-        '--find-links', 'file:///{}'.format(releases),
+        release_tarball_path,
     )
     with su('root'):
         cmd_log(run(*cmd))
