@@ -24,7 +24,6 @@ import logging
 import re
 import shutil
 from subprocess import CalledProcessError
-import tempfile
 import time
 import urlparse
 import yaml
@@ -58,8 +57,6 @@ __all__ = [
     'JUJU_GUI_DIR',
     'JUJU_PEM',
     'cmd_log',
-    'download_release',
-    'fetch_gui_release',
     'find_missing_packages',
     'first_path_in_dir',
     'get_api_address',
@@ -69,7 +66,6 @@ __all__ = [
     'get_release_file_path',
     'install_missing_packages',
     'log_hook',
-    'parse_source',
     'prime_npm_cache',
     'render_to_file',
     'save_or_create_certificates',
@@ -433,27 +429,19 @@ def get_release_file_path(version=None):
     return version_path_map.get(version)
 
 
-def fetch_gui_release():
-    """Retrieve a Juju GUI release. Return the release tarball local path."""
-    log('Retrieving Juju GUI release.')
-    path = get_release_file_path()
-    log('Using a local release: {}'.format(path))
-    return path
-
-
 def setup_gui(release_tarball_path):
     """Set up Juju GUI."""
 
-    log('Installing Juju GUI from {}.'.format(release_tarball_path))
     # Install ensuring network access is not used.  All dependencies should
     # already be installed from the deps directory.
     jujugui_deps = os.path.join(CURRENT_DIR, 'jujugui-deps')
-    jujugui_deps = os.path.join(CURRENT_DIR, 'jujugui-deps')
+    releases = os.path.join(CURRENT_DIR, 'releases')
+    log('Installing Juju GUI from {}.'.format(releases))
     cmd = (
-        '/usr/bin/pip',  'install',
+        '/usr/bin/pip',  'install', '-U', 'jujugui',
         '--no-index',
         '--find-links', 'file:///{}'.format(jujugui_deps),
-        release_tarball_path,
+        '--find-links', 'file:///{}'.format(releases),
     )
     with su('root'):
         cmd_log(run(*cmd))
