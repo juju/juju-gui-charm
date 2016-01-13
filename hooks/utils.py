@@ -90,7 +90,7 @@ GUISERVER_INIT_PATH = os.path.join(SYS_INIT_DIR, 'guiserver.conf')
 
 JUJU_PEM = 'juju.includes-private-key.pem'
 DEB_BUILD_DEPENDENCIES = (
-    'bzr', 'g++', 'git', 'imagemagick', 'make',  'nodejs',
+    'bzr', 'g++', 'imagemagick', 'make',  'nodejs',
 )
 
 
