@@ -112,49 +112,7 @@ screen includes hints about where to find the environment's password.
 
 When using the default options the charm uses the network connection only for
 installing Deb packages from the default Ubuntu repositories. For this reason
-the charm can be deployed behind a firewall in the usual way:
-
-    juju deploy juju-gui
-
-Network access (other than default Ubuntu repositories) is required in the case
-the `juju-gui-source` option is set to a configuration that requires accessing
-an external source (for instance in order to fetch a release tarball or a Git
-checkout).
-
-In these cases, it is still possible to deploy behind a firewall configuring
-the charm to pull the GUI release from a location you specify.
-
-The config variable `juju-gui-source` allows a `url:` prefix which understands
-both `http://` and `file://` protocols.  We will use this to load a local copy
-of the GUI source.
-
-1. Download the latest release of the Juju GUI Source from [the Launchpad
-downloads page](https://launchpad.net/juju-gui/+download) and save it to a
-location that will be accessible to the *unit* either via filesystem or HTTP.
-2. Set the config variable to that location using a command such as
-
-    `juju set juju-gui juju-gui-source=url:...`
-
-    where the ellipsis after the `url:` is your `http://` or `file://` URI.
-    This may also be done during the deploy step using `--config`.
-
-3. If you had already tried to deploy the GUI and received an install error due
-to not being able to retrieve the source, you may also need to retry the unit
-with the following command (using the unit the GUI is deployed on):
-
-    `juju resolved --retry juju-gui/0`
-
-### Upgrading the charm behind a firewall ###
-
-When a new version of Juju GUI is released, the charm is updated to include the
-new release in the local releases repository. Assuming the new version is
-1.0.1, after upgrading the charm, it is possible to also upgrade to the newer
-Juju GUI release by running the following:
-
-    juju set juju-gui-source=1.0.1
-
-In this case the new version will be found in the local repository and
-therefore the charm will not attempt to connect to Launchpad.
+the charm can be deployed behind a firewall in the usual way.
 
 ## The Juju GUI server ##
 

@@ -96,20 +96,13 @@ class TestBackendCommands(unittest.TestCase):
     @contextmanager
     def mock_all(self):
         """Mock all the extrenal functions used by the backend framework."""
-        mock_parse_source = mock.Mock(
-            return_value=self.parse_source_return_value)
         mocks = {
             'base_dir': mock.patch('backend.utils.BASE_DIR', self.base_dir),
-            'fetch_gui_from_branch': mock.patch(
-                'backend.utils.fetch_gui_from_branch'),
-            'fetch_gui_release': mock.patch('backend.utils.fetch_gui_release'),
             'install_builtin_server': mock.patch(
                 'backend.utils.install_builtin_server'),
             'install_missing_packages': mock.patch(
                 'backend.utils.install_missing_packages'),
             'log': mock.patch('backend.log'),
-            'parse_source': mock.patch(
-                'backend.utils.parse_source', mock_parse_source),
             'save_or_create_certificates': mock.patch(
                 'backend.utils.save_or_create_certificates'),
             'setup_gui': mock.patch('backend.utils.setup_gui'),
@@ -143,39 +136,14 @@ class TestBackendCommands(unittest.TestCase):
             test_backend.destroy()
         self.assertFalse(os.path.exists(utils.BASE_DIR), utils.BASE_DIR)
 
-    def test_install_stable_release(self):
+    def test_install(self):
         # Install a stable release.
         test_backend = backend.Backend(config=self.make_config())
         with self.mock_all() as mocks:
             test_backend.install()
         mocks.install_missing_packages.assert_called_once_with(
             set(EXPECTED_DEBS))
-        mocks.parse_source.assert_called_once_with(self.juju_gui_source)
-        mocks.fetch_gui_release.assert_called_once_with(
-            *self.parse_source_return_value)
-        self.assertFalse(mocks.fetch_gui_from_branch.called)
-        mocks.setup_gui.assert_called_once_with(mocks.fetch_gui_release())
-        mocks.install_builtin_server.assert_called_once_with()
-
-    def test_install_branch_release(self):
-        # Install a branch release.
-        self.parse_source_return_value = ('branch', ('lp:juju-gui', 42))
-        expected_calls = [
-            mock.call(set(EXPECTED_DEBS)),
-            mock.call(
-                utils.DEB_BUILD_DEPENDENCIES,
-                repository=self.repository_location,
-            ),
-        ]
-        test_backend = backend.Backend(config=self.make_config())
-        with self.mock_all() as mocks:
-            test_backend.install()
-        mocks.install_missing_packages.assert_has_calls(expected_calls)
-        mocks.parse_source.assert_called_once_with(self.juju_gui_source)
-        mocks.fetch_gui_from_branch.assert_called_once_with(
-            'lp:juju-gui', 42, self.command_log_file)
-        self.assertFalse(mocks.fetch_gui_release.called)
-        mocks.setup_gui.assert_called_once_with(mocks.fetch_gui_from_branch())
+        mocks.setup_gui.assert_called_once_with()
         mocks.install_builtin_server.assert_called_once_with()
 
     @unittest.skip("start config not done")

@@ -35,8 +35,6 @@ from utils import (
     JUJU_PEM,
     _get_by_attr,
     cmd_log,
-    download_release,
-    fetch_gui_release,
     first_path_in_dir,
     get_api_address,
     get_launchpad_release,
@@ -46,7 +44,6 @@ from utils import (
     install_builtin_server,
     install_missing_packages,
     log_hook,
-    parse_source,
     port_in_range,
     render_to_file,
     save_or_create_certificates,
@@ -81,121 +78,6 @@ class TestAttrDict(unittest.TestCase):
         # corresponding to an existent key.
         with self.assertRaises(AttributeError):
             AttrDict().myattr
-
-
-@mock.patch('utils.run')
-@mock.patch('utils.log')
-@mock.patch('utils.cmd_log', mock.Mock())
-class TestDownloadRelease(unittest.TestCase):
-
-    def test_download(self, mock_log, mock_run):
-        # A release is properly downloaded using curl.
-        url = 'http://download.example.com/release.tgz'
-        filename = 'local-release.tgz'
-        destination = download_release(url, filename)
-        expected_destination = os.path.join(os.getcwd(), 'releases', filename)
-        self.assertEqual(expected_destination, destination)
-        expected_log = 'Downloading release file: {} --> {}.'.format(
-            url, expected_destination)
-        mock_log.assert_called_once_with(expected_log)
-        mock_run.assert_called_once_with(
-            'curl', '-L', '-o', expected_destination, url)
-
-
-@mock.patch('utils.log', mock.Mock())
-class TestFetchGuiRelease(unittest.TestCase):
-
-    sources = tuple(
-        {'filename': 'release.' + extension,
-         'release_path': '/my/release.' + extension}
-        for extension in ('tgz', 'xz'))
-
-    @contextmanager
-    def patch_launchpad(self, origin, version, source):
-        """Mock the functions used to download a release from Launchpad.
-
-        Ensure all the functions are called correctly.
-        """
-        url = 'http://launchpad.example.com/' + source['filename'] + '/file'
-        patch_launchpad = mock.patch('utils.Launchpad')
-        patch_get_launchpad_release = mock.patch(
-            'utils.get_launchpad_release',
-            mock.Mock(return_value=(url, source['filename'])),
-        )
-        patch_download_release = mock.patch(
-            'utils.download_release',
-            mock.Mock(return_value=source['release_path']),
-        )
-        with patch_launchpad as mock_launchpad:
-            with patch_get_launchpad_release as mock_get_launchpad_release:
-                with patch_download_release as mock_download_release:
-                    yield
-        login = mock_launchpad.login_anonymously
-        login.assert_called_once_with('Juju GUI charm', 'production')
-        mock_get_launchpad_release.assert_called_once_with(
-            login().projects['juju-gui'], origin, version)
-        mock_download_release.assert_called_once_with(url, source['filename'])
-
-    @mock.patch('utils.download_release')
-    def test_url(self, mock_download_release):
-        # The release is retrieved from an URL.
-        for source in self.sources:
-            mock_download_release.return_value = source['release_path']
-            url = 'http://download.example.com/' + source['filename']
-            path = fetch_gui_release('url', url)
-            self.assertEqual(source['release_path'], path)
-            mock_download_release.assert_called_once_with(
-                url, 'url-' + source['filename'])
-            mock_download_release.reset_mock()
-
-    @mock.patch('utils.get_release_file_path')
-    def test_local(self, mock_get_release_file_path):
-        # The last local release is requested.
-        for source in self.sources:
-            mock_get_release_file_path.return_value = source['release_path']
-            path = fetch_gui_release('local', None)
-            self.assertEqual(source['release_path'], path)
-            mock_get_release_file_path.assert_called_once_with()
-            mock_get_release_file_path.reset_mock()
-
-    @mock.patch('utils.get_release_file_path')
-    def test_version_found(self, mock_get_release_file_path):
-        # A release version is specified and found locally.
-        for source in self.sources:
-            mock_get_release_file_path.return_value = source['release_path']
-            path = fetch_gui_release('stable', '0.1.42')
-            self.assertEqual(source['release_path'], path)
-            mock_get_release_file_path.assert_called_once_with('0.1.42')
-            mock_get_release_file_path.reset_mock()
-
-    @mock.patch('utils.get_release_file_path')
-    def test_version_not_found(self, mock_get_release_file_path):
-        # A release version is specified but not found locally.
-        for source in self.sources:
-            mock_get_release_file_path.return_value = None
-            with self.patch_launchpad('stable', '0.1.42', source):
-                path = fetch_gui_release('stable', '0.1.42')
-            self.assertEqual(source['release_path'], path)
-            mock_get_release_file_path.assert_called_once_with('0.1.42')
-            mock_get_release_file_path.reset_mock()
-
-    @mock.patch('utils.get_release_file_path')
-    def test_stable(self, mock_get_release_file_path):
-        # The last stable release is requested.
-        for source in self.sources:
-            with self.patch_launchpad('stable', None, source):
-                path = fetch_gui_release('stable', None)
-            self.assertEqual(source['release_path'], path)
-            self.assertFalse(mock_get_release_file_path.called)
-
-    @mock.patch('utils.get_release_file_path')
-    def test_trunk(self, mock_get_release_file_path):
-        # The last development release is requested.
-        for source in self.sources:
-            with self.patch_launchpad('trunk', None, source):
-                path = fetch_gui_release('trunk', None)
-            self.assertEqual(source['release_path'], path)
-            self.assertFalse(mock_get_release_file_path.called)
 
 
 class TestFirstPathInDir(unittest.TestCase):
@@ -653,61 +535,6 @@ class TestLogHook(unittest.TestCase):
         exception = cm.exception
         self.assertIsInstance(exception, TypeError)
         self.assertIn('<<< Exiting', self.output[-1])
-
-
-class TestParseSource(unittest.TestCase):
-
-    def setUp(self):
-        # Monkey patch utils.CURRENT_DIR.
-        self.original_current_dir = utils.CURRENT_DIR
-        utils.CURRENT_DIR = '/current/dir'
-
-    def tearDown(self):
-        # Restore the original utils.CURRENT_DIR.
-        utils.CURRENT_DIR = self.original_current_dir
-
-    def test_latest_local_release(self):
-        # Ensure the latest local release is correctly parsed.
-        expected = ('local', None)
-        self.assertTupleEqual(expected, parse_source('local'))
-
-    def test_latest_stable_release(self):
-        # Ensure the latest stable release is correctly parsed.
-        expected = ('stable', None)
-        self.assertTupleEqual(expected, parse_source('stable'))
-
-    def test_latest_develop_release(self):
-        # Ensure the latest develop branch release is correctly parsed.
-        expected = ('develop', None)
-        self.assertTupleEqual(expected, parse_source('develop'))
-
-    @mock.patch('utils.log')
-    def test_stable_release(self, *args):
-        # Ensure a specific stable release is correctly parsed.
-        expected = ('stable', '0.1.0')
-        self.assertTupleEqual(expected, parse_source('0.1.0'))
-
-    def test_git_branch(self):
-        # Ensure a Git branch is correctly parsed.
-        source = 'https://github.com/juju/juju-gui.git'
-        expected = ('branch', (source, None))
-        self.assertEqual(expected, parse_source(source))
-
-    def test_git_branch_and_revision(self):
-        # A Git branch is correctly parsed when including revision.
-        sources = (
-            'https://github.com/juju/juju-gui.git test_feature',
-            'https://github.com/juju/juju-gui.git @de5e6',
-        )
-
-        for source in sources:
-            expected = ('branch', tuple(source.rsplit(' ', 1)))
-            self.assertEqual(expected, parse_source(source))
-
-    def test_url(self):
-        expected = ('url', 'http://example.com/gui')
-        self.assertTupleEqual(
-            expected, parse_source('http://example.com/gui'))
 
 
 class TestRenderToFile(unittest.TestCase):
