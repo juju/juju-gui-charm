@@ -186,3 +186,8 @@ options:
       Enables interactive login to an identity-manager, if applicable.
     type: boolean
     default: false
+  gzip-compression:
+    description: |
+      Enables gzip compressed responses from the gui.
+    type: boolean
+    default: true

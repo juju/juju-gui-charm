@@ -301,26 +301,27 @@ def write_builtin_server_startup(
         ssl_cert_path, serve_tests=False, sandbox=False,
         builtin_server_logging='info', insecure=False, charmworld_url='',
         env_password=None, env_uuid=None, juju_version=None, debug=False,
-        port=None, jem_location=None, interactive_login=False):
+        port=None, jem_location=None, interactive_login=False, gzip=True):
     """Generate the builtin server Upstart file."""
     log('Generating the builtin server Upstart file.')
     context = {
         'builtin_server_logging': builtin_server_logging,
+        'charmworld_url': charmworld_url,
+        'env_password': env_password,
+        'env_uuid': env_uuid,
+        'gzip': gzip,
+        'http_proxy': os.environ.get('http_proxy'),
+        'https_proxy': os.environ.get('https_proxy'),
         'insecure': insecure,
+        'interactive_login': interactive_login,
+        'jem_location': jem_location,
+        'juju_gui_debug': debug,
+        'juju_version': juju_version,
+        'no_proxy': os.environ.get('no_proxy', os.environ.get('NO_PROXY')),
+        'port': port,
         'sandbox': sandbox,
         'serve_tests': serve_tests,
         'ssl_cert_path': ssl_cert_path,
-        'charmworld_url': charmworld_url,
-        'http_proxy': os.environ.get('http_proxy'),
-        'https_proxy': os.environ.get('https_proxy'),
-        'no_proxy': os.environ.get('no_proxy', os.environ.get('NO_PROXY')),
-        'juju_gui_debug': debug,
-        'env_password': env_password,
-        'env_uuid': env_uuid,
-        'juju_version': juju_version,
-        'port': port,
-        'jem_location': jem_location,
-        'interactive_login': interactive_login,
     }
     if not sandbox:
         api_url = 'wss://{}'.format(get_api_address())
@@ -338,7 +339,7 @@ def start_builtin_server(
         ssl_cert_path, serve_tests, sandbox, builtin_server_logging,
         insecure, charmworld_url, env_password=None, env_uuid=None,
         juju_version=None, debug=False, port=None, jem_location=None,
-        interactive_login=False):
+        interactive_login=False, gzip=True):
     """Start the builtin server."""
     if (port is not None) and not port_in_range(port):
         # Do not use the user provided port if it is not valid.
@@ -349,7 +350,7 @@ def start_builtin_server(
         charmworld_url=charmworld_url, env_password=env_password,
         env_uuid=env_uuid, juju_version=juju_version,
         debug=debug, port=port, jem_location=jem_location,
-        interactive_login=interactive_login)
+        interactive_login=interactive_login, gzip=gzip)
     log('Starting the builtin server.')
     with su('root'):
         service_control(GUISERVER, RESTART)
