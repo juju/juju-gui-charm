@@ -30,12 +30,7 @@ convoy==0.4.3
 futures==2.2.0
 jujubundlelib==0.1.9
 jujuclient==0.50.1
-# Using a forked version of juju-deployer that uses the new
-# charmstore. It is built from the branch at:
-# https://code.launchpad.net/~bac/juju-deployer/update-store-url
-# When that branch is incorporated into a new juju-deployer release we
-# should use the upstream version.
-juju-deployer==0.6.1-bac-0
+juju-deployer==0.6.2
 Mako==1.0.2
 MarkupSafe==0.23
 Paste==2.0.2
