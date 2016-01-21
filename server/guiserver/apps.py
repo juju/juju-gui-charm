@@ -91,11 +91,15 @@ def server():
         'sandbox': options.sandbox,
         'start_time': int(time.time()),
     }
+    if options.sandbox:
+        apiUrl = ''
+    else:
+        apiUrl = options.apiurl
     wsgi_settings = {
         'jujugui.sandbox': options.sandbox,
         'jujugui.raw': options.jujuguidebug,
         'jujugui.combine': not options.jujuguidebug,
-        'jujugui.apiAddress': options.apiurl,
+        'jujugui.apiAddress': apiUrl,
         'jujugui.socketTemplate': WEBSOCKET_URL_TEMPLATE,
         'jujugui.jujuCoreVersion': options.jujuversion,
         'jujugui.jem_url': options.jemlocation,

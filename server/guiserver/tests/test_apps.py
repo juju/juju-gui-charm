@@ -90,7 +90,8 @@ class TestServer(AppsTestMixin, unittest.TestCase):
     def get_gui_config(self, app):
         """Return the GUI config as a dictionary, given an app object."""
         spec = self.get_url_spec(app, r'.*$')
-        return spec.kwargs['fallback'].wsgi_application.registry.settings
+        application = spec.kwargs['fallback'].wsgi_application.application
+        return application.registry.settings
 
     def test_auth_backend(self):
         # The authentication backend instance is correctly passed to the
