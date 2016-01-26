@@ -639,12 +639,15 @@ class TestStartGui(unittest.TestCase):
 
         self.shutil_copy = shutil.copy
         shutil.copy = noop
+        self.os_chmod = os.chmod
+        os.chmod = noop
 
     def tearDown(self):
         # Undo all of the monkey patching.
         for fn, fcns in self.utils_names.items():
             setattr(utils, fn, fcns[0])
         shutil.copy = self.shutil_copy
+        os.chmod = self.os_chmod
 
     def test_install_builtin_server(self):
         install_builtin_server()
@@ -656,7 +659,7 @@ class TestStartGui(unittest.TestCase):
         write_builtin_server_startup(
             self.ssl_cert_path, serve_tests=True, insecure=True,
             charmworld_url=self.charmworld_url)
-        guiserver_conf = self.files['guiserver.conf']
+        guiserver_conf = self.files['runserver.sh']
         self.assertIn('description "GUIServer"', guiserver_conf)
         self.assertIn('--logging="info"', guiserver_conf)
         # The get_api_address is noop'd in these tests so the addr is None.
@@ -675,7 +678,7 @@ class TestStartGui(unittest.TestCase):
         # The builtin server Upstart file is properly generated when a
         # customized port is provided.
         write_builtin_server_startup(self.ssl_cert_path, port=8000)
-        guiserver_conf = self.files['guiserver.conf']
+        guiserver_conf = self.files['runserver.sh']
         self.assertIn('--port=8000', guiserver_conf)
 
     def test_write_builtin_server_startup_sandbox_and_logging(self):
@@ -685,7 +688,7 @@ class TestStartGui(unittest.TestCase):
         write_builtin_server_startup(
             self.ssl_cert_path, serve_tests=True, sandbox=True,
             builtin_server_logging='debug')
-        guiserver_conf = self.files['guiserver.conf']
+        guiserver_conf = self.files['runserver.sh']
         self.assertIn('description "GUIServer"', guiserver_conf)
         self.assertIn('--logging="debug"', guiserver_conf)
         self.assertIn('--sandbox', guiserver_conf)
@@ -697,7 +700,7 @@ class TestStartGui(unittest.TestCase):
         write_builtin_server_startup(
             self.ssl_cert_path, jem_location='https://1.2.3.4/jem',
             interactive_login=True)
-        guiserver_conf = self.files['guiserver.conf']
+        guiserver_conf = self.files['runserver.sh']
         self.assertIn('--jemlocation="https://1.2.3.4/jem"', guiserver_conf)
         self.assertIn('--interactivelogin="True"', guiserver_conf)
 

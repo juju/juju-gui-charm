@@ -1,0 +1,7 @@
+[Unit]
+Description=GUIServer
+
+[Service]
+Type=simple
+
+ExecStart=/usr/local/bin/runserver.sh
