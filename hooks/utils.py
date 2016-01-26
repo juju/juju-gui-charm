@@ -79,8 +79,16 @@ JUJU_GUI_DIR = os.path.join(BASE_DIR, 'juju-gui')
 RELEASES_DIR = os.path.join(CURRENT_DIR, 'releases')
 SERVER_DIR = os.path.join(CURRENT_DIR, 'server')
 
+# Support both upstart via conf file in /etc/init
+# and systemd via service file in /lib/systemd/system
+# Each of these execs /usr/local/bin/runserver.sh which is updated
+# on charm config changes.
 SYS_INIT_DIR = os.path.join(os.path.sep, 'etc', 'init')
 GUISERVER_INIT_PATH = os.path.join(SYS_INIT_DIR, 'guiserver.conf')
+SYSTEMD_SERVICE_DIR = os.path.join(os.path.sep, 'lib', 'systemd', 'system')
+GUISERVER_SERVICE_PATH = os.path.join(SYSTEMD_SERVICE_DIR, 'guiserver.service')
+RUNSERVER_DIR = os.path.join(os.path.sep, 'usr', 'local', 'bin')
+RUNSERVER_SH_PATH = os.path.join(RUNSERVER_DIR, 'runserver.sh')
 
 JUJU_PEM = 'juju.includes-private-key.pem'
 
@@ -333,6 +341,11 @@ def write_builtin_server_startup(
         context['tests_root'] = os.path.join(JUJU_GUI_DIR, 'test', '')
     render_to_file(
         'guiserver.conf.template', context, GUISERVER_INIT_PATH)
+    render_to_file(
+        'guiserver.service.template', context, GUISERVER_SERVICE_PATH)
+    render_to_file(
+        'runserver.sh.template', context, RUNSERVER_SH_PATH)
+    os.chmod(RUNSERVER_SH_PATH, 0755)
 
 
 def start_builtin_server(
