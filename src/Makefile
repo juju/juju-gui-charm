@@ -32,3 +32,6 @@ package: juju-gui
 	$(MAKE) -C juju-gui dist
 	$(MAKE) -C juju-gui collect-requirements
 
+.PHONY: clean
+clean:
+	rm -rf juju-gui

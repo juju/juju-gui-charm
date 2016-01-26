@@ -19,15 +19,17 @@ changed then the GUI doesn't need to be updated.
 
 ## Packaging the GUI ##
 
-The charm no longer has any code for the Juju GUI under version control.
-So, in the juju-gui-charm branch you'll need to create the juju-gui package and
-dependencies which can be done with:
+To build a new jujugui tar.bz2 file and gather all of the current dependencies,
+run:
 
     make package
 
 Ensure that a `tar.bz2` file for the expected juju-gui release is in
 `releases` and that `jujugui-deps` is full of wheels and a couple
 of source packages.
+
+If a new `tar.bz2` file is in releases, you'll need to add it to git and
+remove the old one.  The same for new packages in `jujugui-deps`.
 
 ## Testing the charm ##
 

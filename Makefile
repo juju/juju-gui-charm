@@ -70,17 +70,16 @@ clean-tests:
 clean: clean-tests
 	find . -name '*.pyc' -delete
 	rm -rf $(VENV)
-	rm -rf jujugui-deps
-	rm -rf releases
+	$(MAKE) -C src clean
 
 deploy: setup
 	$(VENV)/bin/python tests/deploy.py
 
+.PHONY: releases
 releases:
 	$(MAKE) -C src package
-	cp -r src/juju-gui/dist releases
-	cp -r src/juju-gui/collected-requirements jujugui-deps
-	rm -rf src/juju-gui
+	cp -r src/juju-gui/dist/* releases
+	cp -r src/juju-gui/collected-requirements/* jujugui-deps
 
 package: clean releases
 
