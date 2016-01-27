@@ -29,6 +29,7 @@ Ensure that a `tar.bz2` file for the expected juju-gui release is in
 `releases` and that `jujugui-deps` is full of wheels and a couple
 of source packages.
 
+
 ## Testing the charm ##
 
 Ensure the newly packaged charm deploys and behaves. Ensure you can create a
@@ -82,7 +83,8 @@ Before uploading, check to see the currently available version:
 Next, to upload the charm, go to the charm source directory and do:
 
     make clean-tests
-    charm upload . cs:~yellow/juju-gui  (may need to specify the series)
+    # NB: trusty is the default series unless specified in metadata.yaml.
+    charm upload . cs:~yellow/juju-gui
     charm info --include=id,perm cs:~yellow/juju-gui
 
 At this point the charm is in the development channel and is referenced as
@@ -113,3 +115,12 @@ required testing, and then publish it to make the release:
 # QA Process #
 
 Refer to the `QA.md` doc for details on doing pre-release testing of the charm.
+
+## Supporting the GUI for precise ##
+
+Due to vagaries with supporting precise, a separately packaged charm
+for precise is required. Follow all of the steps above on a precise
+machine and upload specifically to the precise series:
+
+    charm upload . cs:~yellow/precise/juju-gui
+
