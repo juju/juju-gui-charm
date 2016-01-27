@@ -81,6 +81,7 @@ class TestServer(AppsTestMixin, unittest.TestCase):
             'apiversion': 'go',
             'sandbox': False,
             'jujuguidebug': False,
+            'gzip': True,
         }
         options_dict.update(kwargs)
         options = mock.Mock(**options_dict)

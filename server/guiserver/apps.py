@@ -105,6 +105,7 @@ def server():
         'jujugui.jem_url': options.jemlocation,
         'jujugui.uuid': options.uuid,
         'jujugui.interactive_login': options.interactivelogin,
+        'jujugui.gzip': options.gzip,
     }
     if options.password:
         wsgi_settings['jujugui.password'] = options.password

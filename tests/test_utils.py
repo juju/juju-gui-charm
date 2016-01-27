@@ -35,10 +35,8 @@ from utils import (
     JUJU_PEM,
     _get_by_attr,
     cmd_log,
-    first_path_in_dir,
     get_api_address,
     get_launchpad_release,
-    get_npm_cache_archive_url,
     get_port,
     get_release_file_path,
     install_builtin_server,
@@ -78,28 +76,6 @@ class TestAttrDict(unittest.TestCase):
         # corresponding to an existent key.
         with self.assertRaises(AttributeError):
             AttrDict().myattr
-
-
-class TestFirstPathInDir(unittest.TestCase):
-
-    def setUp(self):
-        self.directory = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, self.directory)
-        self.path = os.path.join(self.directory, 'file_or_dir')
-
-    def test_file_path(self):
-        # Ensure the full path of a file is correctly returned.
-        open(self.path, 'w').close()
-        self.assertEqual(self.path, first_path_in_dir(self.directory))
-
-    def test_directory_path(self):
-        # Ensure the full path of a directory is correctly returned.
-        os.mkdir(self.path)
-        self.assertEqual(self.path, first_path_in_dir(self.directory))
-
-    def test_empty_directory(self):
-        # An IndexError is raised if the directory is empty.
-        self.assertRaises(IndexError, first_path_in_dir, self.directory)
 
 
 class TestGetApiAddress(unittest.TestCase):
@@ -663,12 +639,15 @@ class TestStartGui(unittest.TestCase):
 
         self.shutil_copy = shutil.copy
         shutil.copy = noop
+        self.os_chmod = os.chmod
+        os.chmod = noop
 
     def tearDown(self):
         # Undo all of the monkey patching.
         for fn, fcns in self.utils_names.items():
             setattr(utils, fn, fcns[0])
         shutil.copy = self.shutil_copy
+        os.chmod = self.os_chmod
 
     def test_install_builtin_server(self):
         install_builtin_server()
@@ -680,7 +659,7 @@ class TestStartGui(unittest.TestCase):
         write_builtin_server_startup(
             self.ssl_cert_path, serve_tests=True, insecure=True,
             charmworld_url=self.charmworld_url)
-        guiserver_conf = self.files['guiserver.conf']
+        guiserver_conf = self.files['runserver.sh']
         self.assertIn('description "GUIServer"', guiserver_conf)
         self.assertIn('--logging="info"', guiserver_conf)
         # The get_api_address is noop'd in these tests so the addr is None.
@@ -699,7 +678,7 @@ class TestStartGui(unittest.TestCase):
         # The builtin server Upstart file is properly generated when a
         # customized port is provided.
         write_builtin_server_startup(self.ssl_cert_path, port=8000)
-        guiserver_conf = self.files['guiserver.conf']
+        guiserver_conf = self.files['runserver.sh']
         self.assertIn('--port=8000', guiserver_conf)
 
     def test_write_builtin_server_startup_sandbox_and_logging(self):
@@ -709,7 +688,7 @@ class TestStartGui(unittest.TestCase):
         write_builtin_server_startup(
             self.ssl_cert_path, serve_tests=True, sandbox=True,
             builtin_server_logging='debug')
-        guiserver_conf = self.files['guiserver.conf']
+        guiserver_conf = self.files['runserver.sh']
         self.assertIn('description "GUIServer"', guiserver_conf)
         self.assertIn('--logging="debug"', guiserver_conf)
         self.assertIn('--sandbox', guiserver_conf)
@@ -721,7 +700,7 @@ class TestStartGui(unittest.TestCase):
         write_builtin_server_startup(
             self.ssl_cert_path, jem_location='https://1.2.3.4/jem',
             interactive_login=True)
-        guiserver_conf = self.files['guiserver.conf']
+        guiserver_conf = self.files['runserver.sh']
         self.assertIn('--jemlocation="https://1.2.3.4/jem"', guiserver_conf)
         self.assertIn('--interactivelogin="True"', guiserver_conf)
 
@@ -964,41 +943,6 @@ class TestInstallMissingPackages(unittest.TestCase):
         self.assertFalse(mock_install_extra_repositories.called)
         self.assertFalse(mock_apt_get_install.called)
         mock_log.assert_called_once_with('No missing deb packages.')
-
-
-class TestNpmCache(unittest.TestCase):
-    """To speed building from a branch we prepopulate the NPM cache."""
-
-    def test_retrieving_cache_url(self):
-        # The URL for the latest cache file can be retrieved from Launchpad.
-        class FauxLaunchpadFactory(object):
-            @staticmethod
-            def login_anonymously(agent, site):
-                # We download the cache from the production site.
-                self.assertEqual(site, 'production')
-                return FauxLaunchpad
-
-        class CacheFile(object):
-            file_link = 'http://launchpad.example/path/to/cache/file'
-
-            def __str__(self):
-                return 'cache-file-123.tgz'
-
-        class NpmRelease(object):
-            files = [CacheFile()]
-
-        class NpmSeries(object):
-            name = 'npm-cache'
-            releases = [NpmRelease]
-
-        class FauxProject(object):
-            series = [NpmSeries]
-
-        class FauxLaunchpad(object):
-            projects = {'juju-gui': FauxProject()}
-
-        url = get_npm_cache_archive_url(Launchpad=FauxLaunchpadFactory())
-        self.assertEqual(url, 'http://launchpad.example/path/to/cache/file')
 
 
 if __name__ == '__main__':

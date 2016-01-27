@@ -18,7 +18,6 @@
 
 from contextlib import contextmanager
 from distutils.version import LooseVersion
-import errno
 import os
 import logging
 import re
@@ -29,7 +28,6 @@ import urlparse
 import yaml
 
 import apt
-from launchpadlib.launchpad import Launchpad
 import tempita
 
 from charmhelpers import (
@@ -43,7 +41,6 @@ from charmhelpers import (
 )
 from shelltoolbox import (
     apt_get_install,
-    command,
     install_extra_repositories,
     run,
     script_name,
@@ -58,15 +55,12 @@ __all__ = [
     'JUJU_PEM',
     'cmd_log',
     'find_missing_packages',
-    'first_path_in_dir',
     'get_api_address',
     'get_launchpad_release',
-    'get_npm_cache_archive_url',
     'get_port',
     'get_release_file_path',
     'install_missing_packages',
     'log_hook',
-    'prime_npm_cache',
     'render_to_file',
     'save_or_create_certificates',
     'setup_gui',
@@ -85,13 +79,18 @@ JUJU_GUI_DIR = os.path.join(BASE_DIR, 'juju-gui')
 RELEASES_DIR = os.path.join(CURRENT_DIR, 'releases')
 SERVER_DIR = os.path.join(CURRENT_DIR, 'server')
 
+# Support both upstart via conf file in /etc/init
+# and systemd via service file in /lib/systemd/system
+# Each of these execs /usr/local/bin/runserver.sh which is updated
+# on charm config changes.
 SYS_INIT_DIR = os.path.join(os.path.sep, 'etc', 'init')
 GUISERVER_INIT_PATH = os.path.join(SYS_INIT_DIR, 'guiserver.conf')
+SYSTEMD_SERVICE_DIR = os.path.join(os.path.sep, 'lib', 'systemd', 'system')
+GUISERVER_SERVICE_PATH = os.path.join(SYSTEMD_SERVICE_DIR, 'guiserver.service')
+RUNSERVER_DIR = os.path.join(os.path.sep, 'usr', 'local', 'bin')
+RUNSERVER_SH_PATH = os.path.join(RUNSERVER_DIR, 'runserver.sh')
 
 JUJU_PEM = 'juju.includes-private-key.pem'
-DEB_BUILD_DEPENDENCIES = (
-    'bzr', 'g++', 'imagemagick', 'make',  'nodejs',
-)
 
 
 # Store the configuration from one invocation to the next.
@@ -131,11 +130,6 @@ def get_api_address(unit_dir=None):
     contents = yaml.load(open(agent_conf))
     return contents['apiinfo']['addrs'][0]
     return api_addresses.split()[0]
-
-
-def first_path_in_dir(directory):
-    """Return the full path of the first file/dir in *directory*."""
-    return os.path.join(directory, os.listdir(directory)[0])
 
 
 def _get_by_attr(collection, attr, value):
@@ -315,26 +309,27 @@ def write_builtin_server_startup(
         ssl_cert_path, serve_tests=False, sandbox=False,
         builtin_server_logging='info', insecure=False, charmworld_url='',
         env_password=None, env_uuid=None, juju_version=None, debug=False,
-        port=None, jem_location=None, interactive_login=False):
+        port=None, jem_location=None, interactive_login=False, gzip=True):
     """Generate the builtin server Upstart file."""
     log('Generating the builtin server Upstart file.')
     context = {
         'builtin_server_logging': builtin_server_logging,
+        'charmworld_url': charmworld_url,
+        'env_password': env_password,
+        'env_uuid': env_uuid,
+        'gzip': gzip,
+        'http_proxy': os.environ.get('http_proxy'),
+        'https_proxy': os.environ.get('https_proxy'),
         'insecure': insecure,
+        'interactive_login': interactive_login,
+        'jem_location': jem_location,
+        'juju_gui_debug': debug,
+        'juju_version': juju_version,
+        'no_proxy': os.environ.get('no_proxy', os.environ.get('NO_PROXY')),
+        'port': port,
         'sandbox': sandbox,
         'serve_tests': serve_tests,
         'ssl_cert_path': ssl_cert_path,
-        'charmworld_url': charmworld_url,
-        'http_proxy': os.environ.get('http_proxy'),
-        'https_proxy': os.environ.get('https_proxy'),
-        'no_proxy': os.environ.get('no_proxy', os.environ.get('NO_PROXY')),
-        'juju_gui_debug': debug,
-        'env_password': env_password,
-        'env_uuid': env_uuid,
-        'juju_version': juju_version,
-        'port': port,
-        'jem_location': jem_location,
-        'interactive_login': interactive_login,
     }
     if not sandbox:
         api_url = 'wss://{}'.format(get_api_address())
@@ -346,13 +341,18 @@ def write_builtin_server_startup(
         context['tests_root'] = os.path.join(JUJU_GUI_DIR, 'test', '')
     render_to_file(
         'guiserver.conf.template', context, GUISERVER_INIT_PATH)
+    render_to_file(
+        'guiserver.service.template', context, GUISERVER_SERVICE_PATH)
+    render_to_file(
+        'runserver.sh.template', context, RUNSERVER_SH_PATH)
+    os.chmod(RUNSERVER_SH_PATH, 0755)
 
 
 def start_builtin_server(
         ssl_cert_path, serve_tests, sandbox, builtin_server_logging,
         insecure, charmworld_url, env_password=None, env_uuid=None,
         juju_version=None, debug=False, port=None, jem_location=None,
-        interactive_login=False):
+        interactive_login=False, gzip=True):
     """Start the builtin server."""
     if (port is not None) and not port_in_range(port):
         # Do not use the user provided port if it is not valid.
@@ -363,7 +363,7 @@ def start_builtin_server(
         charmworld_url=charmworld_url, env_password=env_password,
         env_uuid=env_uuid, juju_version=juju_version,
         debug=debug, port=port, jem_location=jem_location,
-        interactive_login=interactive_login)
+        interactive_login=interactive_login, gzip=gzip)
     log('Starting the builtin server.')
     with su('root'):
         service_control(GUISERVER, RESTART)
@@ -375,32 +375,6 @@ def stop_builtin_server():
     with su('root'):
         service_control(GUISERVER, STOP)
     cmd_log(run('rm', '-f', GUISERVER_INIT_PATH))
-
-
-def get_npm_cache_archive_url(Launchpad=Launchpad):
-    """Figure out the URL of the most recent NPM cache archive on Launchpad."""
-    launchpad = Launchpad.login_anonymously('Juju GUI charm', 'production')
-    project = launchpad.projects['juju-gui']
-    # Find the URL of the most recently created NPM cache archive.
-    npm_cache_url, _ = get_launchpad_release(project, 'npm-cache', None)
-    return npm_cache_url
-
-
-def prime_npm_cache(npm_cache_url):
-    """Download NPM cache archive and prime the NPM cache with it."""
-    # Download the cache archive and then uncompress it into the NPM cache.
-    npm_cache_archive = os.path.join(CURRENT_DIR, 'npm-cache.tgz')
-    cmd_log(run('curl', '-L', '-o', npm_cache_archive, npm_cache_url))
-    npm_cache_dir = os.path.expanduser('~/.npm')
-    # The NPM cache directory probably does not exist, so make it if not.
-    try:
-        os.mkdir(npm_cache_dir)
-    except OSError, e:
-        # If the directory already exists then ignore the error.
-        if e.errno != errno.EEXIST:  # File exists.
-            raise
-    uncompress = command('tar', '-x', '-z', '-C', npm_cache_dir, '-f')
-    cmd_log(uncompress(npm_cache_archive))
 
 
 def get_release_file_path(version=None):

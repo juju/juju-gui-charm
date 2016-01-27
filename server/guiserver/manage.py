@@ -147,6 +147,9 @@ def setup():
     define(
         'interactivelogin', type=bool, default=False,
         help='Enables interactive login to identity manager, if applicable.')
+    define(
+        'gzip', type=bool, default=False,
+        help='Enable gzip compression in the gui.')
     # In Tornado, parsing the options also sets up the default logger.
     parse_command_line()
     _validate_choices('apiversion', ('go', 'python'))
