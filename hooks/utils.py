@@ -298,7 +298,6 @@ def install_builtin_server():
 
 # TODO: add these config options -- some may no longer be necessary, some may
 # need updates to the gui
-# * google analytics key
 # * charmstore url
 # * console enabled (?)
 # * cached fonts (?)
