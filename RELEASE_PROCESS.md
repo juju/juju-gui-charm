@@ -29,7 +29,9 @@ Ensure that a `tar.bz2` file for the expected juju-gui release is in
 of source packages.
 
 If a new `tar.bz2` file is in releases, you'll need to add it to git and
-remove the old one.  The same for new packages in `jujugui-deps`.
+remove the old one.  The same for new packages in `jujugui-deps`.  See the
+note below about updating the charm for Ubuntu Precise. You will not commit
+the changes seen while packaging for precise into git.
 
 ## Testing the charm ##
 
@@ -84,7 +86,8 @@ Before uploading, check to see the currently available version:
 Next, to upload the charm, go to the charm source directory and do:
 
     make clean-tests
-    charm upload . cs:~yellow/juju-gui  (may need to specify the series)
+    # NB: trusty is the default series unless specified in metadata.yaml.
+    charm upload . cs:~yellow/juju-gui
     charm info --include=id,perm cs:~yellow/juju-gui
 
 At this point the charm is in the development channel and is referenced as
@@ -115,3 +118,28 @@ required testing, and then publish it to make the release:
 # QA Process #
 
 Refer to the `QA.md` doc for details on doing pre-release testing of the charm.
+
+## Supporting the GUI for precise ##
+
+Due to vagaries with supporting precise, a separately packaged charm
+for precise is required. On precise the use of Python wheels is not supported
+so all of the packages in `jujugui-deps` will be tarballs, not wheels.  The
+charm we have commited to version control is series newer than precise.
+Because of that, you'll need to temporarily remove all of the wheels in
+`jujugui-deps` before making the package for precise.  On a precise machine,
+do the following:
+
+    rm -rf jujugui-deps/*
+    make package
+
+At this point `jujugui-deps` should have no wheels, only gzipped tarballs.
+After testing and QA, upload the fat charm to the charmstore with:
+
+    charm upload --publish . cs:~yellow/precise/juju-gui
+    charm upload --publish . cs:~juju-gui-charmers/precise/juju-gui
+
+At this point it is important that the packaging changes that were just made
+are discarded so they are not accidentally committed to git.  Do the
+following:
+
+    git reset --hard HEAD~1
