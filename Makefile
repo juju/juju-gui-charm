@@ -27,7 +27,7 @@ all: setup
 # support the juju-test plugin, which calls the executable files in
 # alphabetical order.
 .PHONY: setup
-setup: releases
+setup:
 	tests/00-setup
 	# Ensure the correct version of pip has been installed.
 	# 1.4.x - 1.9.x or 6.x or 7.x
