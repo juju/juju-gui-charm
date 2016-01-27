@@ -19,9 +19,8 @@ changed then the GUI doesn't need to be updated.
 
 ## Packaging the GUI ##
 
-The charm no longer has any code for the Juju GUI under version control.
-So, in the juju-gui-charm branch you'll need to create the juju-gui package and
-dependencies which can be done with:
+To build a new jujugui tar.bz2 file and gather all of the current dependencies,
+run:
 
     make package
 
@@ -29,6 +28,10 @@ Ensure that a `tar.bz2` file for the expected juju-gui release is in
 `releases` and that `jujugui-deps` is full of wheels and a couple
 of source packages.
 
+If a new `tar.bz2` file is in releases, you'll need to add it to git and
+remove the old one.  The same for new packages in `jujugui-deps`.  See the
+note below about updating the charm for Ubuntu Precise. You will not commit
+the changes seen while packaging for precise into git.
 
 ## Testing the charm ##
 
@@ -112,6 +115,15 @@ required testing, and then publish it to make the release:
 
     charm publish cs:development/juju-gui
 
+## Releasing to Launchpad for production ##
+
+When the charm is ready to be released to production, it must be packaged,
+commited to github, QA'd, reviewed, and merged.  It must also be pushed to
+Launchpad using the following:
+
+    git remote add lporigin lp:~yellow/canonical-theblues-charms/+git/juju-gui
+    git push lporigin develop
+
 # QA Process #
 
 Refer to the `QA.md` doc for details on doing pre-release testing of the charm.
@@ -119,8 +131,24 @@ Refer to the `QA.md` doc for details on doing pre-release testing of the charm.
 ## Supporting the GUI for precise ##
 
 Due to vagaries with supporting precise, a separately packaged charm
-for precise is required. Follow all of the steps above on a precise
-machine and upload specifically to the precise series:
+for precise is required. On precise the use of Python wheels is not supported
+so all of the packages in `jujugui-deps` will be tarballs, not wheels.  The
+charm we have commited to version control is series newer than precise.
+Because of that, you'll need to temporarily remove all of the wheels in
+`jujugui-deps` before making the package for precise.  On a precise machine,
+do the following:
 
-    charm upload . cs:~yellow/precise/juju-gui
+    rm -rf jujugui-deps/*
+    make package
 
+At this point `jujugui-deps` should have no wheels, only gzipped tarballs.
+After testing and QA, upload the fat charm to the charmstore with:
+
+    charm upload --publish . cs:~yellow/precise/juju-gui
+    charm upload --publish . cs:~juju-gui-charmers/precise/juju-gui
+
+At this point it is important that the packaging changes that were just made
+are discarded so they are not accidentally committed to git.  Do the
+following:
+
+    git reset --hard HEAD~1

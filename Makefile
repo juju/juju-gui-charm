@@ -20,44 +20,54 @@ VENV = tests/.venv
 SYSDEPS = build-essential bzr charm-tools firefox libapt-pkg-dev \
 	libpython-dev python-virtualenv rsync xvfb
 
+.PHONY: all
 all: setup
 
 # The virtualenv is created by the 00-setup script and not here. This way we
 # support the juju-test plugin, which calls the executable files in
 # alphabetical order.
+.PHONY: setup
 setup: releases
 	tests/00-setup
 	# Ensure the correct version of pip has been installed.
 	# 1.4.x - 1.9.x or 6.x or 7.x
 	tests/.venv/bin/pip --version | grep -E '1\.[4-9]\.|[6-7]\.[0-9]\.[0-9]' || exit 1
 
+.PHONY: sysdeps
 sysdeps:
 	sudo apt-get install --yes $(SYSDEPS)
 
+.PHONY: unittest
 unittest: setup
 	tests/10-unit.test
 	tests/11-server.test
 
+.PHONY: ensure-juju-env
 ensure-juju-env:
 ifndef JUJU_ENV
 	$(error JUJU_ENV must be set.  See HACKING.md)
 endif
 
+.PHONY: ensure-juju-test
 ensure-juju-test: ensure-juju-env
 	@which juju-test > /dev/null \
 		|| (echo 'The "juju-test" command is missing.  See HACKING.md' \
 		; false)
 
+.PHONY: ftest
 ftest: setup ensure-juju-test
 	$(JUJUTEST) 20-functional.test
 
 # This will be eventually removed when we have juju-test --clean-state.
+.PHONY: test
 test: unittest ftest
 
 # This will be eventually renamed as test when we have juju-test --clean-state.
+.PHONY: jujutest
 jujutest:
 	$(JUJUTEST)
 
+.PHONY: lint
 lint: setup
 	@$(VENV)/bin/flake8 --show-source --exclude=.venv \
 		--filename *.py,20-functional.test \
@@ -66,24 +76,29 @@ lint: setup
 .PHONY: clean-tests
 clean-tests:
 	rm -rf tests/download-cache
+	rm -rf tests/.venv
 
+.PHONY: clean
 clean: clean-tests
 	find . -name '*.pyc' -delete
 	rm -rf $(VENV)
-	rm -rf jujugui-deps
-	rm -rf releases
+	$(MAKE) -C src clean
 
+.PHONY: deploy
 deploy: setup
 	$(VENV)/bin/python tests/deploy.py
 
+.PHONY: releases
 releases:
 	$(MAKE) -C src package
-	cp -r src/juju-gui/dist releases
-	cp -r src/juju-gui/collected-requirements jujugui-deps
-	rm -rf src/juju-gui
+	cp -r src/juju-gui/dist/* releases
+	cp -r src/juju-gui/collected-requirements/* jujugui-deps
+	$(MAKE) -C src clean
 
+.PHONY: package
 package: clean releases
 
+.PHONY: help
 help:
 	@echo -e 'Juju GUI charm - list of make targets:\n'
 	@echo -e 'make sysdeps - Install the required system packages.\n'
@@ -104,6 +119,3 @@ help:
 	@echo '  the charm will be deployed in the default Juju environment.'
 	@echo '  If SERIES is not passed, "trusty" is used. Possible values are'
 	@echo '  "precise" and "trusty".'
-
-.PHONY: all clean deploy ensure-juju-env ensure-juju-test ftest help \
-    jujutest lint setup sysdeps test unittest

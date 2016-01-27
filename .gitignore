@@ -13,6 +13,4 @@ tags
 *.pyc
 *~
 .go-cookies
-releases
-jujugui-deps
 src/juju-gui
