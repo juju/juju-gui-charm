@@ -183,6 +183,7 @@ class TestBackendCommands(unittest.TestCase):
             config['charmstore-url'],
             secure=True, sandbox=config['sandbox'],
             cached_fonts=config['cached-fonts'],
+            gtm_enabled=config['gtm_enabled'],
             juju_core_version=config['juju-core-version'],
             hide_login_button=config['hide-login-button'],
             juju_env_uuid=None, password=None)

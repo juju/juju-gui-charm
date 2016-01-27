@@ -180,3 +180,8 @@ options:
       Enables gzip compressed responses from the gui.
     type: boolean
     default: true
+  gtm-enabled:
+    description: |
+      Enables Google tag manager tracking.
+    type: boolean
+    default: false
