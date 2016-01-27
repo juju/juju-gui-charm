@@ -115,6 +115,15 @@ required testing, and then publish it to make the release:
 
     charm publish cs:development/juju-gui
 
+## Releasing to Launchpad for production ##
+
+When the charm is ready to be released to production, it must be packaged,
+commited to github, QA'd, reviewed, and merged.  It must also be pushed to
+Launchpad using the following:
+
+    git remote add lporigin lp:~yellow/canonical-theblues-charms/+git/juju-gui
+    git push lporigin develop
+
 # QA Process #
 
 Refer to the `QA.md` doc for details on doing pre-release testing of the charm.
