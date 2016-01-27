@@ -298,7 +298,6 @@ def install_builtin_server():
 
 # TODO: add these config options -- some may no longer be necessary, some may
 # need updates to the gui
-# * google analytics key
 # * charmstore url
 # * console enabled (?)
 # * cached fonts (?)
@@ -309,7 +308,8 @@ def write_builtin_server_startup(
         ssl_cert_path, serve_tests=False, sandbox=False,
         builtin_server_logging='info', insecure=False, charmworld_url='',
         env_password=None, env_uuid=None, juju_version=None, debug=False,
-        port=None, jem_location=None, interactive_login=False, gzip=True):
+        port=None, jem_location=None, interactive_login=False, gzip=True,
+        gtm_enabled=False):
     """Generate the builtin server Upstart file."""
     log('Generating the builtin server Upstart file.')
     context = {
@@ -317,6 +317,7 @@ def write_builtin_server_startup(
         'charmworld_url': charmworld_url,
         'env_password': env_password,
         'env_uuid': env_uuid,
+        'gtm_enabled': gtm_enabled,
         'gzip': gzip,
         'http_proxy': os.environ.get('http_proxy'),
         'https_proxy': os.environ.get('https_proxy'),
@@ -352,7 +353,7 @@ def start_builtin_server(
         ssl_cert_path, serve_tests, sandbox, builtin_server_logging,
         insecure, charmworld_url, env_password=None, env_uuid=None,
         juju_version=None, debug=False, port=None, jem_location=None,
-        interactive_login=False, gzip=True):
+        interactive_login=False, gzip=True, gtm_enabled=False):
     """Start the builtin server."""
     if (port is not None) and not port_in_range(port):
         # Do not use the user provided port if it is not valid.
@@ -363,7 +364,8 @@ def start_builtin_server(
         charmworld_url=charmworld_url, env_password=env_password,
         env_uuid=env_uuid, juju_version=juju_version,
         debug=debug, port=port, jem_location=jem_location,
-        interactive_login=interactive_login, gzip=gzip)
+        interactive_login=interactive_login, gzip=gzip,
+        gtm_enabled=gtm_enabled)
     log('Starting the builtin server.')
     with su('root'):
         service_control(GUISERVER, RESTART)

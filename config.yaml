@@ -128,17 +128,6 @@ options:
       'add-apt-repository'.
     type: string
     default: ppa:juju-gui-charmers/stable
-  ga-key:
-    description: |
-      The Google Analytics key to use.  Set to blank to disable analytics.
-      The team developing the Juju GUI benefits from understanding how
-      different deployments use the tool.  By keeping the default key value,
-      anonymized usage data is reported back using Google Analytics.  The type
-      of data collected includes the charms that are deployed and the number
-      of units per service.  Use of analytics is optional but we hope you will
-      allow us to improve our tool based on your experience.
-    type: string
-    default: UA-41463568-2
   hide-login-button:
     description: |
       There are deployment modes for Juju GUI which are not intended as regular
@@ -191,3 +180,8 @@ options:
       Enables gzip compressed responses from the gui.
     type: boolean
     default: true
+  gtm-enabled:
+    description: |
+      Enables Google tag manager tracking.
+    type: boolean
+    default: false

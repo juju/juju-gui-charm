@@ -118,7 +118,7 @@ class GuiServerMixin(object):
             juju_version=juju_version, debug=config['juju-gui-debug'],
             port=config.get('port'), jem_location=config['jem-location'],
             interactive_login=config['interactive-login'],
-            gzip=config['gzip-compression'])
+            gzip=config['gzip-compression'], gtm_enabled=config['gtm-enabled'])
 
     def stop(self, backend):
         utils.stop_builtin_server()

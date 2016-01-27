@@ -75,7 +75,6 @@ class TestBackendCommands(unittest.TestCase):
             'charmworld-url': 'http://charmworld.example.com/',
             'charmstore-url': 'http://charmstore.example.com/',
             'command-log-file': self.command_log_file,
-            'ga-key': 'my-key',
             'juju-gui-debug': False,
             'juju-gui-console-enabled': False,
             'juju-gui-source': self.juju_gui_source,
@@ -158,7 +157,6 @@ class TestBackendCommands(unittest.TestCase):
             config['read-only'], config['charmworld-url'],
             config['charmstore-url'], secure=config['secure'],
             sandbox=config['sandbox'], cached_fonts=config['cached-fonts'],
-            ga_key=config['ga-key'],
             juju_core_version=config['juju-core-version'],
             hide_login_button=config['hide-login-button'],
             juju_env_uuid=None, password=None)
@@ -184,7 +182,8 @@ class TestBackendCommands(unittest.TestCase):
             config['read-only'], config['charmworld-url'],
             config['charmstore-url'],
             secure=True, sandbox=config['sandbox'],
-            cached_fonts=config['cached-fonts'], ga_key=config['ga-key'],
+            cached_fonts=config['cached-fonts'],
+            gtm_enabled=config['gtm_enabled'],
             juju_core_version=config['juju-core-version'],
             hide_login_button=config['hide-login-button'],
             juju_env_uuid=None, password=None)
