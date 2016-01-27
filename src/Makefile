@@ -15,11 +15,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 JUJU_GUI_PROJECT = https://github.com/juju/juju-gui.git
-JUJU_GUI_BRANCH ?= 
+JUJU_GUI_BRANCH ?=
 
 .PHONY: juju-gui
-juju-gui:
-	rm -rf juju-gui
+juju-gui: clean
 ifdef JUJU_GUI_BRANCH
 	git clone $(JUJU_GUI_BRANCH)
 else
@@ -28,7 +27,6 @@ endif
 
 .PHONY: package
 package: juju-gui
-	cd juju-gui && git pull
 	$(MAKE) -C juju-gui dist
 	$(MAKE) -C juju-gui collect-requirements
 
