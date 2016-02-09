@@ -22,6 +22,7 @@ from contextlib import (
     nested,
 )
 import os
+from shelltoolbox import run
 import shutil
 import tempfile
 import unittest
@@ -35,6 +36,8 @@ import utils
 EXPECTED_DEBS = (
     'curl', 'libcurl3', 'openssl', 'python-bzrlib', 'python-pip',
     'python-pycurl')
+
+JUJU_VERSION = run('jujud', '--version').strip()
 
 
 class TestBackendProperties(unittest.TestCase):
@@ -87,6 +90,10 @@ class TestBackendCommands(unittest.TestCase):
             'hide-login-button': False,
             'juju-core-version': '1.21',
             'ssl-cert-path': self.ssl_cert_path,
+            'jem-location': '',
+            'interactive-login': False,
+            'gzip-compression': True,
+            'gtm-enabled': False,
         }
         if options is not None:
             config.update(options)
@@ -167,7 +174,6 @@ class TestBackendCommands(unittest.TestCase):
             config['builtin-server-logging'], not config['secure'],
             config['charmworld-url'], port=None)
 
-    @unittest.skip("start config not done")
     def test_start_insecure_ws_secure(self):
         # It is possible to configure the service so that, even if the GUI
         # server runs in insecure mode, the client still connects via a secure
@@ -177,21 +183,22 @@ class TestBackendCommands(unittest.TestCase):
         test_backend = backend.Backend(config=config)
         with self.mock_all() as mocks:
             test_backend.start()
-        mocks.write_gui_config.assert_called_once_with(
-            config['juju-gui-console-enabled'], config['login-help'],
-            config['read-only'], config['charmworld-url'],
-            config['charmstore-url'],
-            secure=True, sandbox=config['sandbox'],
-            cached_fonts=config['cached-fonts'],
-            gtm_enabled=config['gtm_enabled'],
-            juju_core_version=config['juju-core-version'],
-            hide_login_button=config['hide-login-button'],
-            juju_env_uuid=None, password=None)
         mocks.start_builtin_server.assert_called_once_with(
             self.ssl_cert_path,
-            config['serve-tests'], config['sandbox'],
-            config['builtin-server-logging'], True,
-            config['charmworld-url'], port=None)
+            config['serve-tests'],
+            config['sandbox'],
+            config['builtin-server-logging'],
+            True,
+            config['charmworld-url'],
+            jem_location='',
+            env_uuid=None,
+            interactive_login=False,
+            juju_version=JUJU_VERSION,
+            debug=False,
+            gtm_enabled=False,
+            gzip=True,
+            port=None,
+            env_password=None)
 
     @unittest.skip("start config not done")
     def test_start_user_provided_port(self):

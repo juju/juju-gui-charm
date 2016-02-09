@@ -103,6 +103,7 @@ def server():
         'jujugui.interactive_login': options.interactivelogin,
         'jujugui.gzip': options.gzip,
         'jujugui.GTM_enabled': options.gtm,
+        'jujugui.insecure': options.insecure,
     }
     if options.password:
         wsgi_settings['jujugui.password'] = options.password
