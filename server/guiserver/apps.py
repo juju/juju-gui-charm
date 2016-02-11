@@ -32,7 +32,7 @@ from jujugui import make_application
 
 
 # Define the template to use for building the WebSocket URL.
-WEBSOCKET_URL_TEMPLATE = '/api/$server/$port/$uuid'
+WEBSOCKET_URL_TEMPLATE = '/ws/api/$server/$port/$uuid'
 
 
 def server():
