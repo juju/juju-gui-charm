@@ -44,14 +44,9 @@ new environment.
 
 ## Get the charm publishing tools ##
 
-You'll need the `charm` package from the private PPA at:
-https://launchpad.net/~yellow/+archive/ubuntu/theblues
+You'll need the `charm` package from the juju/devel PPA:
 
-Follow the instructions to install the PPA at
-https://launchpad.net/~/+archivesubscriptions
-
-Then install the package with:
-
+    sudo add-apt-repository ppa:juju/devel
     sudo apt update
     sudo apt install charm
 
@@ -79,16 +74,22 @@ Our alphas are development versions of the charm and are published to the
 cs:~yellow namespace for thorough testing before making a more general
 release.
 
-Before uploading, check to see the currently available version:
+Before uploading, check to see the currently available versions:
 
-    charm info --include=id,perm cs:~yellow/development/juju-gui
+    charm2 info --include=id,perm cs:~yellow/juju-gui
+    charm2 info --include=id,perm cs:~yellow/development/juju-gui
 
 Next, to upload the charm, go to the charm source directory and do:
 
     make clean-tests
     # NB: trusty is the default series unless specified in metadata.yaml.
-    charm upload . cs:~yellow/juju-gui
-    charm info --include=id,perm cs:~yellow/juju-gui
+    charm2 upload . cs:~yellow/trusty/juju-gui
+
+Now you should see the published version didn't change but the development
+version did:
+
+    charm2 info --include=id,perm cs:~yellow/juju-gui
+    charm2 info --include=id,perm cs:~yellow/development/juju-gui
 
 At this point the charm is in the development channel and is referenced as
 `cs:~yellow/development/juju-gui`
@@ -97,29 +98,28 @@ At this point the charm is in the development channel and is referenced as
 
 To move the charm out of the development channel, publish it with:
 
-    charm publish cs:~yellow/development/juju-gui
+    charm2 publish cs:~yellow/juju-gui
 
-## Uploading to beta ##
+## Publishing the released version ##
 
-The procedure is the same but the beta is owned by ~juju-gui-charmers but it
-is promulgated so you can publish directly to:
+The promulgated version of the charm is owned by ~juju-gui-charmers.  Due to a
+bug in the charmstore, the juju-gui must be uploaded and published in one step:
 
     make clean-tests
-    charm upload . cs:development/juju-gui
-
-## Publishing a beta becomes the released version ##
-
-The released version of the charm is simply the promulgated development
-version (the beta) after being published.  So upload the beta, do all of the
-required testing, and then publish it to make the release:
-
-    charm publish cs:development/juju-gui
+    charm2 upload --publish . cs:~juju-gui-charmers/trusty/juju-gui
 
 ## Releasing to Launchpad for production ##
 
 When the charm is ready to be released to production, it must be packaged,
-commited to github, QA'd, reviewed, and merged.  It must also be pushed to
-Launchpad using the following:
+commited to github, QA'd, reviewed, and merged.
+
+In order to push to Launchpad you need the following stanza in your
+$HOME/.gitconfig.  Replace LPUSER with your Launchpad user id.
+
+[url "ssh://LPUSER@git.launchpad.net/"]
+	insteadOf = lp:
+
+Then push to Launchpad using the following:
 
     git remote add lporigin lp:~yellow/canonical-theblues-charms/+git/juju-gui
     git push lporigin develop
@@ -144,8 +144,8 @@ do the following:
 At this point `jujugui-deps` should have no wheels, only gzipped tarballs.
 After testing and QA, upload the fat charm to the charmstore with:
 
-    charm upload --publish . cs:~yellow/precise/juju-gui
-    charm upload --publish . cs:~juju-gui-charmers/precise/juju-gui
+    charm2 upload --publish . cs:~yellow/precise/juju-gui
+    charm2 upload --publish . cs:~juju-gui-charmers/precise/juju-gui
 
 At this point it is important that the packaging changes that were just made
 are discarded so they are not accidentally committed to git.  Do the
