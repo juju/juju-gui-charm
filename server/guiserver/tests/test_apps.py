@@ -164,7 +164,7 @@ class TestServer(AppsTestMixin, unittest.TestCase):
         self.assertFalse(config['jujugui.interactive_login'])
         self.assertFalse(config['jujugui.sandbox'])
         self.assertFalse(config['jujugui.raw'])
-        self.assertIsNone(config['jujugui.base_url'])
+        self.assertEqual('', config['jujugui.base_url'])
 
     def test_gui_jem_connection(self):
         # The server can be configured to connect the Juju GUI to a JEM.
