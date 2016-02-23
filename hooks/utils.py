@@ -286,7 +286,7 @@ def install_builtin_server():
     # from the network.
     with su('root'):
         cmd_log(run(
-            'pip2', 'install', '--no-index', '--no-dependencies',
+            '/usr/bin/pip', 'install', '--no-index', '--no-dependencies',
             '--find-links', 'file:///{}'.format(deps),
             '-r', requirements
         ))
