@@ -286,7 +286,7 @@ def install_builtin_server():
     # from the network.
     with su('root'):
         cmd_log(run(
-            '/usr/bin/pip', 'install', '--no-index', '--no-dependencies',
+            '/usr/bin/pip2', 'install', '--no-index', '--no-dependencies',
             '--find-links', 'file:///{}'.format(deps),
             '-r', requirements
         ))
@@ -414,7 +414,7 @@ def setup_gui():
     release_tarball_path = get_release_file_path()
     log('Installing Juju GUI from {}.'.format(release_tarball_path))
     cmd = (
-        '/usr/bin/pip',  'install', '--no-index',
+        '/usr/bin/pip2',  'install', '--no-index',
         '--find-links', 'file:///{}'.format(jujugui_deps),
         release_tarball_path,
     )
