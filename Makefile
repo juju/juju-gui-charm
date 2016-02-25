@@ -31,7 +31,7 @@ setup:
 	tests/00-setup
 	# Ensure the correct version of pip has been installed.
 	# 1.4.x - 1.9.x or 6.x or 7.x
-	tests/.venv/bin/pip --version | grep -E '1\.[4-9]\.|[6-7]\.[0-9]\.[0-9]' || exit 1
+	$(VENV)/bin/pip --version | grep -E '1\.[4-9]\.|[6-7]\.[0-9]\.[0-9]' || exit 1
 
 .PHONY: sysdeps
 sysdeps:
@@ -76,12 +76,11 @@ lint: setup
 .PHONY: clean-tests
 clean-tests:
 	rm -rf tests/download-cache
-	rm -rf tests/.venv
+	rm -rf $(VENV)
 
 .PHONY: clean
 clean: clean-tests
 	find . -name '*.pyc' -delete
-	rm -rf $(VENV)
 	$(MAKE) -C src clean
 
 .PHONY: deploy
@@ -97,6 +96,10 @@ releases:
 
 .PHONY: package
 package: clean releases
+
+.PHONY: sync
+sync: charm-helpers.yaml
+	scripts/charm_helpers_sync.py -d hooks/charmhelpers -c charm-helpers.yaml
 
 .PHONY: help
 help:
@@ -119,3 +122,4 @@ help:
 	@echo '  the charm will be deployed in the default Juju environment.'
 	@echo '  If SERIES is not passed, "trusty" is used. Possible values are'
 	@echo '  "precise" and "trusty".'
+	@echo -e 'make sync - Update the version of charmhelpers.\n'

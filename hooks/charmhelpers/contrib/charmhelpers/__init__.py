@@ -1,173 +1,87 @@
+# Copyright 2014-2015 Canonical Limited.
+#
+# This file is part of charm-helpers.
+#
+# charm-helpers is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License version 3 as
+# published by the Free Software Foundation.
+#
+# charm-helpers is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with charm-helpers.  If not, see <http://www.gnu.org/licenses/>.
+
 # Copyright 2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-# This file is taken from the python-charmhelpers package.  It is possibly no
-# longer maintained there, now that a new charmhelpers package has replaced
-# the one from which this was taken, so the file has been copied here.  We
-# intend to transition to the newer charmhelpers library at some point in the
-# future.
+import warnings
+warnings.warn("contrib.charmhelpers is deprecated", DeprecationWarning)  # noqa
 
-# IMPORTANT: Do not modify this file to add or change functionality.  If you
-# really feel the need to do so, first convert our code to the charmhelpers
-# library, and modify it instead (or modify the helpers or utils module here,
-# as appropriate).
+import operator
+import tempfile
+import time
+import yaml
+import subprocess
+
+import six
+if six.PY3:
+    from urllib.request import urlopen
+    from urllib.error import (HTTPError, URLError)
+else:
+    from urllib2 import (urlopen, HTTPError, URLError)
 
 """Helper functions for writing Juju charms in Python."""
 
 __metaclass__ = type
-__all__ = ['get_config',
-           'log',
-           'log_entry',
-           'log_exit',
-           'relation_get',
-           'relation_set',
-           'relation_ids',
-           'relation_list',
-           'config_get',
-           'unit_get',
-           'open_port',
-           'close_port',
-           'service_control',
-           'unit_info',
-           'wait_for_machine',
-           'wait_for_page_contents',
-           'wait_for_relation',
-           'wait_for_unit',
-           ]
-
-from collections import namedtuple
-import json
-import operator
-from shelltoolbox import (
-    command,
-    script_name,
-    run,
-)
-import tempfile
-import time
-import urllib2
-import yaml
-from subprocess import CalledProcessError
+__all__ = [
+    # 'get_config',             # core.hookenv.config()
+    # 'log',                    # core.hookenv.log()
+    # 'log_entry',              # core.hookenv.log()
+    # 'log_exit',               # core.hookenv.log()
+    # 'relation_get',           # core.hookenv.relation_get()
+    # 'relation_set',           # core.hookenv.relation_set()
+    # 'relation_ids',           # core.hookenv.relation_ids()
+    # 'relation_list',          # core.hookenv.relation_units()
+    # 'config_get',             # core.hookenv.config()
+    # 'unit_get',               # core.hookenv.unit_get()
+    # 'open_port',              # core.hookenv.open_port()
+    # 'close_port',             # core.hookenv.close_port()
+    # 'service_control',        # core.host.service()
+    'unit_info',              # client-side, NOT IMPLEMENTED
+    'wait_for_machine',       # client-side, NOT IMPLEMENTED
+    'wait_for_page_contents',  # client-side, NOT IMPLEMENTED
+    'wait_for_relation',      # client-side, NOT IMPLEMENTED
+    'wait_for_unit',          # client-side, NOT IMPLEMENTED
+]
 
 
 SLEEP_AMOUNT = 0.1
-Env = namedtuple('Env', 'uid gid home')
+
+
 # We create a juju_status Command here because it makes testing much,
 # much easier.
-juju_status = lambda: command('juju')('status')
+def juju_status():
+    subprocess.check_call(['juju', 'status'])
+
+# re-implemented as charmhelpers.fetch.configure_sources()
+# def configure_source(update=False):
+#    source = config_get('source')
+#    if ((source.startswith('ppa:') or
+#         source.startswith('cloud:') or
+#         source.startswith('http:'))):
+#        run('add-apt-repository', source)
+#    if source.startswith("http:"):
+#        run('apt-key', 'import', config_get('key'))
+#    if update:
+#        run('apt-get', 'update')
 
 
-def log(message, juju_log=command('juju-log')):
-    return juju_log('--', message)
-
-
-def log_entry():
-    log("--> Entering {}".format(script_name()))
-
-
-def log_exit():
-    log("<-- Exiting {}".format(script_name()))
-
-
-def get_config():
-    _config_get = command('config-get', '--format=json')
-    return json.loads(_config_get())
-
-
-def relation_get(attribute=None, unit=None, rid=None):
-    cmd = command('relation-get')
-    if attribute is None and unit is None and rid is None:
-        return cmd().strip()
-    _args = []
-    if rid:
-        _args.append('-r')
-        _args.append(rid)
-    if attribute is not None:
-        _args.append(attribute)
-    if unit:
-        _args.append(unit)
-    return cmd(*_args).strip()
-
-
-def relation_set(**kwargs):
-    cmd = command('relation-set')
-    args = ['{}={}'.format(k, v) for k, v in kwargs.items()]
-    cmd(*args)
-
-
-def relation_ids(relation_name):
-    cmd = command('relation-ids')
-    args = [relation_name]
-    return cmd(*args).split()
-
-
-def relation_list(rid=None):
-    cmd = command('relation-list')
-    args = []
-    if rid:
-        args.append('-r')
-        args.append(rid)
-    return cmd(*args).split()
-
-
-def config_get(attribute):
-    cmd = command('config-get')
-    args = [attribute]
-    return cmd(*args).strip()
-
-
-def unit_get(attribute):
-    cmd = command('unit-get')
-    args = [attribute]
-    return cmd(*args).strip()
-
-
-def open_port(port, protocol="TCP"):
-    cmd = command('open-port')
-    args = ['{}/{}'.format(port, protocol)]
-    cmd(*args)
-
-
-def close_port(port, protocol="TCP"):
-    cmd = command('close-port')
-    args = ['{}/{}'.format(port, protocol)]
-    cmd(*args)
-
-START = "start"
-RESTART = "restart"
-STOP = "stop"
-RELOAD = "reload"
-
-
-def service_control(service_name, action):
-    cmd = command('service')
-    args = [service_name, action]
-    try:
-        if action == RESTART:
-            try:
-                cmd(*args)
-            except CalledProcessError:
-                service_control(service_name, START)
-        else:
-            cmd(*args)
-    except CalledProcessError:
-        log("Failed to perform {} on service {}".format(action, service_name))
-
-
-def configure_source(update=False):
-    source = config_get('source')
-    if ((source.startswith('ppa:') or
-         source.startswith('cloud:') or
-         source.startswith('http:'))):
-        run('add-apt-repository', source)
-    if source.startswith("http:"):
-        run('apt-key', 'import', config_get('key'))
-    if update:
-        run('apt-get', 'update')
-
-
+# DEPRECATED: client-side only
 def make_charm_config_file(charm_config):
-    charm_config_file = tempfile.NamedTemporaryFile()
+    charm_config_file = tempfile.NamedTemporaryFile(mode='w+')
     charm_config_file.write(yaml.dump(charm_config))
     charm_config_file.flush()
     # The NamedTemporaryFile instance is returned instead of just the name
@@ -176,6 +90,7 @@ def make_charm_config_file(charm_config):
     return charm_config_file
 
 
+# DEPRECATED: client-side only
 def unit_info(service_name, item_name, data=None, unit=None):
     if data is None:
         data = yaml.safe_load(juju_status())
@@ -200,10 +115,12 @@ def unit_info(service_name, item_name, data=None, unit=None):
     return item
 
 
+# DEPRECATED: client-side only
 def get_machine_data():
     return yaml.safe_load(juju_status())['machines']
 
 
+# DEPRECATED: client-side only
 def wait_for_machine(num_machines=1, timeout=300):
     """Wait `timeout` seconds for `num_machines` machines to come up.
 
@@ -228,7 +145,7 @@ def wait_for_machine(num_machines=1, timeout=300):
         # we're in LXC.
         machine_data = get_machine_data()
         non_zookeeper_machines = [
-            machine_data[key] for key in machine_data.keys()[1:]]
+            machine_data[key] for key in list(machine_data.keys())[1:]]
         if len(non_zookeeper_machines) >= num_machines:
             all_machines_running = True
             for machine in non_zookeeper_machines:
@@ -243,6 +160,7 @@ def wait_for_machine(num_machines=1, timeout=300):
     return num_machines, time.time() - start_time
 
 
+# DEPRECATED: client-side only
 def wait_for_unit(service_name, timeout=480):
     """Wait `timeout` seconds for a given service name to come up."""
     wait_for_machine(num_machines=1)
@@ -258,6 +176,7 @@ def wait_for_unit(service_name, timeout=480):
         raise RuntimeError('unit did not start, agent-state: ' + state)
 
 
+# DEPRECATED: client-side only
 def wait_for_relation(service_name, relation_name, timeout=120):
     """Wait `timeout` seconds for a given relation to come up."""
     start_time = time.time()
@@ -270,14 +189,15 @@ def wait_for_relation(service_name, relation_name, timeout=120):
         time.sleep(SLEEP_AMOUNT)
 
 
+# DEPRECATED: client-side only
 def wait_for_page_contents(url, contents, timeout=120, validate=None):
     if validate is None:
         validate = operator.contains
     start_time = time.time()
     while True:
         try:
-            stream = urllib2.urlopen(url)
-        except (urllib2.HTTPError, urllib2.URLError):
+            stream = urlopen(url)
+        except (HTTPError, URLError):
             pass
         else:
             page = stream.read()

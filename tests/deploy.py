@@ -24,7 +24,7 @@ import logging
 import os
 import tempfile
 
-from charmhelpers import make_charm_config_file
+from charmhelpers.contrib.charmhelpers import make_charm_config_file
 
 from helpers import (
     command,

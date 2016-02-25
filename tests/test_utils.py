@@ -33,6 +33,8 @@ import tempita
 from utils import (
     JUJU_GUI_DIR,
     JUJU_PEM,
+    RESTART,
+    STOP,
     _get_by_attr,
     cmd_log,
     get_api_address,
@@ -563,21 +565,17 @@ class TestSaveOrCreateCertificates(unittest.TestCase):
 
 class TestCmdLog(unittest.TestCase):
 
+    def mock_get_config(self):
+        return self.mock_config
+
     def setUp(self):
-        # Patch the charmhelpers 'command', which powers get_config.  The
-        # result of this is the mock_config dictionary will be returned.
-        # The monkey patch is undone in the tearDown.
-        self.command = charmhelpers.command
         fd, self.log_file_name = tempfile.mkstemp()
         os.close(fd)
-        mock_config = {'command-log-file': self.log_file_name}
-        charmhelpers.command = lambda *args: lambda: json.dumps(mock_config)
-
-    def tearDown(self):
-        charmhelpers.command = self.command
+        self.mock_config = {'command-log-file': self.log_file_name}
 
     def test_contents_logged(self):
-        cmd_log('foo')
+        with mock.patch('utils.get_config', self.mock_get_config):
+            cmd_log('foo')
         line = open(self.log_file_name, 'r').read()
         self.assertTrue(line.endswith(': juju-gui@INFO \nfoo\n'))
 
@@ -600,7 +598,7 @@ class TestStartGui(unittest.TestCase):
 
         # Monkey patches.
 
-        def service_control_mock(service_name, action):
+        def service_mock(action, service_name):
             self.svc_ctl_call_count += 1
             self.service_names.append(service_name)
             self.actions.append(action)
@@ -626,7 +624,7 @@ class TestStartGui(unittest.TestCase):
                 self.files[os.path.basename(dest)] = fp.read()
 
         self.utils_names = dict(
-            service_control=(utils.service_control, service_control_mock),
+            service=(utils.service, service_mock),
             log=(utils.log, noop),
             su=(utils.su, su),
             run=(utils.run, run),
@@ -711,13 +709,13 @@ class TestStartGui(unittest.TestCase):
             charmworld_url='http://charmworld.example.com/', port=443)
         self.assertEqual(self.svc_ctl_call_count, 1)
         self.assertEqual(self.service_names, ['guiserver'])
-        self.assertEqual(self.actions, [charmhelpers.RESTART])
+        self.assertEqual(self.actions, [RESTART])
 
     def test_stop_builtin_server(self):
         stop_builtin_server()
         self.assertEqual(self.svc_ctl_call_count, 1)
         self.assertEqual(self.service_names, ['guiserver'])
-        self.assertEqual(self.actions, [charmhelpers.STOP])
+        self.assertEqual(self.actions, [STOP])
         self.assertEqual(self.run_call_count, 1)
 
 
