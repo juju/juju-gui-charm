@@ -44,6 +44,7 @@ This module includes the pieces required to process user authentication.
       methods.
 """
 
+import copy
 import datetime
 import logging
 import uuid
@@ -370,7 +371,7 @@ class AuthenticationTokenHandler(object):
         This includes the username and password so that clients can then use
         them.  For instance, the GUI stashes them in session storage so that
         reloading the page does not require logging in again."""
-        return {
-            'RequestId': data['RequestId'],
-            'Response': {'AuthTag': user.username, 'Password': user.password}
-        }
+        data = copy.deepcopy(data)
+        response = data.setdefault('Response', {})
+        response.update({'AuthTag': user.username, 'Password': user.password})
+        return data
