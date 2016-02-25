@@ -209,6 +209,7 @@ def wait_for_unit(svc_name):
         unit = units.values()[0]
         state = unit.get('agent-state')
         if state is None:
+            # Status information for Juju 2.0.
             state = unit['agent-status']['current']
             if state == 'idle':
                 return unit
