@@ -69,7 +69,8 @@ jujutest:
 
 .PHONY: lint
 lint: setup
-	@$(VENV)/bin/flake8 --show-source --exclude=.venv \
+	@$(VENV)/bin/flake8 --show-source \
+		--exclude=.venv,charmhelpers \
 		--filename *.py,20-functional.test \
 		hooks/ tests/ server/
 

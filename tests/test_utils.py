@@ -17,7 +17,6 @@
 """Juju GUI utils tests."""
 
 from contextlib import contextmanager
-import json
 import os
 import shutil
 from subprocess import CalledProcessError
@@ -25,7 +24,6 @@ import tempfile
 import unittest
 import yaml
 
-import charmhelpers
 import mock
 from shelltoolbox import environ
 import tempita
