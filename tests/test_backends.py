@@ -40,6 +40,13 @@ EXPECTED_DEBS = (
 JUJU_VERSION = run('jujud', '--version').strip()
 
 
+def patch_environ(**kwargs):
+    """Patch the environment context by adding the given kwargs."""
+    environ = os.environ.copy()
+    environ.update(kwargs)
+    return mock.patch('os.environ', environ)
+
+
 class TestBackendProperties(unittest.TestCase):
     """Ensure the correct mixins and property values are collected."""
 
@@ -152,27 +159,65 @@ class TestBackendCommands(unittest.TestCase):
         mocks.setup_gui.assert_called_once_with()
         mocks.install_builtin_server.assert_called_once_with()
 
-    @unittest.skip("start config not done")
     def test_start(self):
         # Start the GUI server.
         config = self.make_config()
         test_backend = backend.Backend(config=config)
         with self.mock_all() as mocks:
-            test_backend.start()
-        mocks.write_gui_config.assert_called_once_with(
-            config['juju-gui-console-enabled'], config['login-help'],
-            config['read-only'], config['charmworld-url'],
-            config['charmstore-url'], secure=config['secure'],
-            sandbox=config['sandbox'], cached_fonts=config['cached-fonts'],
-            juju_core_version=config['juju-core-version'],
-            hide_login_button=config['hide-login-button'],
-            juju_env_uuid=None, password=None)
-        mocks.setup_ports.assert_called_once_with(None, None)
+            with patch_environ(JUJU_MODEL_UUID='model-uuid'):
+                test_backend.start()
         mocks.start_builtin_server.assert_called_once_with(
             self.ssl_cert_path,
-            config['serve-tests'], config['sandbox'],
-            config['builtin-server-logging'], not config['secure'],
-            config['charmworld-url'], port=None)
+            config['serve-tests'],
+            config['sandbox'],
+            config['builtin-server-logging'],
+            False,
+            config['charmworld-url'],
+            jem_location='',
+            env_uuid='model-uuid',
+            interactive_login=False,
+            juju_version=JUJU_VERSION,
+            debug=False,
+            gtm_enabled=False,
+            gzip=True,
+            port=None,
+            env_password=None)
+
+    def test_start_uuid_pre2(self):
+        # Start the GUI server with Juju < 2.0.
+        config = self.make_config()
+        test_backend = backend.Backend(config=config)
+        with self.mock_all() as mocks:
+            with patch_environ(JUJU_ENV_UUID='env-uuid'):
+                test_backend.start()
+        mocks.start_builtin_server.assert_called_once_with(
+            self.ssl_cert_path,
+            config['serve-tests'],
+            config['sandbox'],
+            config['builtin-server-logging'],
+            False,
+            config['charmworld-url'],
+            jem_location='',
+            env_uuid='env-uuid',
+            interactive_login=False,
+            juju_version=JUJU_VERSION,
+            debug=False,
+            gtm_enabled=False,
+            gzip=True,
+            port=None,
+            env_password=None)
+
+    def test_start_uuid_error(self):
+        # A ValueError is raised if the model UUID cannot be found in the hook
+        # context.
+        config = self.make_config()
+        test_backend = backend.Backend(config=config)
+        with self.mock_all():
+            with self.assertRaises(ValueError) as ctx:
+                test_backend.start()
+        self.assertEqual(
+            'cannot retrieve model UUID from hook context',
+            ctx.exception.message)
 
     def test_start_insecure_ws_secure(self):
         # It is possible to configure the service so that, even if the GUI
@@ -182,7 +227,8 @@ class TestBackendCommands(unittest.TestCase):
         config = self.make_config({'secure': False, 'ws-secure': True})
         test_backend = backend.Backend(config=config)
         with self.mock_all() as mocks:
-            test_backend.start()
+            with patch_environ(JUJU_MODEL_UUID='uuid'):
+                test_backend.start()
         mocks.start_builtin_server.assert_called_once_with(
             self.ssl_cert_path,
             config['serve-tests'],
@@ -191,7 +237,7 @@ class TestBackendCommands(unittest.TestCase):
             True,
             config['charmworld-url'],
             jem_location='',
-            env_uuid=None,
+            env_uuid='uuid',
             interactive_login=False,
             juju_version=JUJU_VERSION,
             debug=False,
