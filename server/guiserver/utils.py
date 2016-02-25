@@ -62,17 +62,18 @@ def get_headers(request, websocket_url):
     return {'Origin': origin}
 
 
-def get_juju_api_url(path, template, default):
+def get_juju_api_url(path, source_template, target_template, default):
     """Return the Juju WebSocket API fully qualified URL.
 
-    Receives the current WebSocket handler path and the template used by the
+    Receives the current WebSocket handler path and the templates used by the
     Juju GUI. For instance, path is a string representing the path used by the
     client to connect to the GUI server (like "/ws/api/1.2.3.4/17070/uuid").
-    The template specifies where in the path relevant information can be found:
-    for instance "/api/$server/$port/$uuid".
+    The source template specifies where in the path relevant information can be
+    found: for instance "/api/$server/$port/$uuid". The target template maps
+    parsed values to the real Juju WebSocket URL.
     If a URL cannot be inferred as described, return the given default.
     """
-    pattern = template.replace(
+    pattern = source_template.replace(
         '$server', '(?P<server>.*)').replace(
         '$port', '(?P<port>\d+)').replace(
         '$uuid', '(?P<uuid>.*)')
@@ -80,8 +81,7 @@ def get_juju_api_url(path, template, default):
     if match is None:
         # The path is empty: probably an old Juju version is being used.
         return default
-    return 'wss://{server}:{port}/environment/{uuid}/api'.format(
-        **match.groupdict())
+    return target_template.format(**match.groupdict())
 
 
 def join_url(base_url, path, query):

@@ -129,25 +129,29 @@ class TestGetHeaders(unittest.TestCase):
 
 class TestGetJujuApiUrl(unittest.TestCase):
 
-    template = '/api/$server/$port/$uuid'
+    source_template = '/api/$server/$port/$uuid'
+    target_template = 'wss://{server}:{port}/model/{uuid}/exterminate'
     default = 'wss://example.com:17070/'
+
+    def call(self, path):
+        """Call the get_juju_api_url function using the given path."""
+        return utils.get_juju_api_url(
+            path, self.source_template, self.target_template, self.default)
 
     def test_no_match(self):
         # The default URL is returned if there is no match.
-        url = utils.get_juju_api_url('/ws', self.template, self.default)
+        url = self.call('/ws')
         self.assertEqual(self.default, url)
 
     def test_precise_match(self):
         # The expected URL is returned when the path matches precisely.
-        path = '/api/1.2.3.4/4242/my-uuid'
-        url = utils.get_juju_api_url(path, self.template, self.default)
-        self.assertEqual('wss://1.2.3.4:4242/environment/my-uuid/api', url)
+        url = self.call('/api/1.2.3.4/4242/my-uuid')
+        self.assertEqual('wss://1.2.3.4:4242/model/my-uuid/exterminate', url)
 
     def test_prefixed_match(self):
         # The expected URL is returned when the path also includes a prefix.
-        path = '/my/prefix/api/1.2.3.4/47/uuid'
-        url = utils.get_juju_api_url(path, self.template, self.default)
-        self.assertEqual('wss://1.2.3.4:47/environment/uuid/api', url)
+        url = self.call('/my/prefix/api/1.2.3.4/47/uuid')
+        self.assertEqual('wss://1.2.3.4:47/model/uuid/exterminate', url)
 
 
 class TestJoinUrl(unittest.TestCase):
