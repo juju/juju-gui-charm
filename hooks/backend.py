@@ -41,7 +41,7 @@ import errno
 import os
 import shutil
 
-from charmhelpers import log
+from charmhelpers.core.hookenv import log
 from shelltoolbox import run
 
 import utils

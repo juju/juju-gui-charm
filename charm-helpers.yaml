@@ -1,0 +1,7 @@
+destination: lib/charmhelpers
+branch: lp:charm-helpers
+include:
+  - core
+  - contrib.charmhelpers
+  - contrib.charmsupport
+  

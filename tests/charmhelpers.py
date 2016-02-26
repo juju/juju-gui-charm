@@ -1,1 +1,0 @@
-../hooks/charmhelpers.py

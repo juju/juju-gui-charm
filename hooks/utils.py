@@ -30,15 +30,13 @@ import yaml
 import apt
 import tempita
 
-from charmhelpers import (
+from charmhelpers.contrib.charmsupport.volumes import get_config
+from charmhelpers.core.hookenv import (
     close_port,
-    get_config,
     log,
     open_port,
-    RESTART,
-    service_control,
-    STOP
 )
+from charmhelpers.core.host import service
 from shelltoolbox import (
     apt_get_install,
     install_extra_repositories,
@@ -53,6 +51,10 @@ __all__ = [
     'CURRENT_DIR',
     'JUJU_GUI_DIR',
     'JUJU_PEM',
+    'START',
+    'STOP',
+    'RELOAD',
+    'RESTART',
     'cmd_log',
     'find_missing_packages',
     'get_api_address',
@@ -92,6 +94,10 @@ RUNSERVER_SH_PATH = os.path.join(RUNSERVER_DIR, 'runserver.sh')
 
 JUJU_PEM = 'juju.includes-private-key.pem'
 
+START = "start"
+RESTART = "restart"
+STOP = "stop"
+RELOAD = "reload"
 
 # Store the configuration from one invocation to the next.
 config_json = Serializer(os.path.join(os.path.sep, 'tmp', 'config.json'))
@@ -368,14 +374,14 @@ def start_builtin_server(
         gtm_enabled=gtm_enabled)
     log('Starting the builtin server.')
     with su('root'):
-        service_control(GUISERVER, RESTART)
+        service(RESTART, GUISERVER)
 
 
 def stop_builtin_server():
     """Stop the builtin server."""
     log('Stopping the builtin server.')
     with su('root'):
-        service_control(GUISERVER, STOP)
+        service(STOP, GUISERVER)
     cmd_log(run('rm', '-f', GUISERVER_INIT_PATH))
 
 
