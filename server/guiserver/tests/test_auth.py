@@ -445,8 +445,17 @@ class TestAuthenticationTokenHandler(LogTrapTestCase, unittest.TestCase):
     def test_process_authentication_response(self):
         # It translates a normal authentication success.
         user = auth.User('user-admin', 'ADMINSECRET', True)
-        response = {'RequestId': 42, 'Response': {}}
-        self.assertEqual(
-            dict(RequestId=42,
-                 Response=dict(AuthTag=user.username, Password=user.password)),
-            self.tokens.process_authentication_response(response, user))
+        original_response = {'RequestId': 42, 'Response': {'facades': {}}}
+        expected_response = {
+            'RequestId': 42,
+            'Response': {
+                'facades': {},
+                'AuthTag': user.username,
+                'Password': user.password,
+            },
+        }
+        obtained_response = self.tokens.process_authentication_response(
+            original_response, user)
+        self.assertEqual(expected_response, obtained_response)
+        # The original response is not mutated in the process.
+        self.assertNotEqual(original_response, obtained_response)
