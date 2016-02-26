@@ -30,9 +30,9 @@ import yaml
 import apt
 import tempita
 
-from charmhelpers.contrib.charmsupport.volumes import get_config
 from charmhelpers.core.hookenv import (
     close_port,
+    config as get_config,
     log,
     open_port,
 )

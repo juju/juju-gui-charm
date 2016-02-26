@@ -19,8 +19,10 @@
 
 import sys
 
-from charmhelpers.contrib.charmsupport.volumes import get_config
-from charmhelpers.core.hookenv import log
+from charmhelpers.core.hookenv import (
+    config as get_config,
+    log,
+)
 from shelltoolbox import DictDiffer
 
 from backend import Backend
