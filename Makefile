@@ -99,7 +99,7 @@ releases:
 package: clean releases
 
 .PHONY: sync
-sync: charm-helpers.yaml
+sync: 
 	scripts/charm_helpers_sync.py -d hooks/charmhelpers -c charm-helpers.yaml
 
 .PHONY: help
