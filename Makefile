@@ -30,8 +30,8 @@ all: setup
 setup:
 	tests/00-setup
 	# Ensure the correct version of pip has been installed.
-	# 1.4.x - 1.9.x or 6.x or 7.x
-	$(VENV)/bin/pip --version | grep -E '1\.[4-9]\.|[6-7]\.[0-9]\.[0-9]' || exit 1
+	# 1.4.x - 1.9.x or 6.x - 8.x
+	$(VENV)/bin/pip --version | grep -E '[6-8]\.[0-9]\.[0-9]' || exit 1
 
 .PHONY: sysdeps
 sysdeps:
