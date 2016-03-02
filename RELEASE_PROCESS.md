@@ -50,7 +50,7 @@ new environment.
      make deploy
 
 ### Juju 2 ###
-     juju bootstrap controller <cloud> --upload-tools
+     juju bootstrap <controller> <cloud> --upload-tools
      make deploy
 
 ## Get the charm publishing tools ##
