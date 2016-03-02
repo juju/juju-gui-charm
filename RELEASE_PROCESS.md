@@ -11,11 +11,17 @@ Commons, 171 Second Street, Suite 300, San Francisco, California, 94105, USA.
 
 ## Updating the GUI ##
 
-If the new charm will have a new revision of the Juju GUI then before
-releasing the charm the GUI should have its version bumped and committed to
-the master branch.  Follow the instructions in the
-`juju-gui/RELEASE_PROCESS.rst` file.  If, however, the charm code is all that
-changed then the GUI doesn't need to be updated.
+If the new release of the charm is to include a new version of Juju GUI then
+that version should be released and tagged in the master branch of the GUI. It
+is ill-advised that the charm is released with a novel, unreleased version of
+the GUI.  If, however, that is the goal, ensure you follow the instructions in
+the `juju-gui/RELEASE_PROCESS.rst` file.
+
+## Work from a freshly fetched repo ##
+
+    git clone --branch master git@github.com:juju/juju-gui-charm.git
+    cd juju-gui-charm
+    git merge origin/develop
 
 ## Packaging the GUI ##
 
@@ -38,8 +44,13 @@ the changes seen while packaging for precise into git.
 Ensure the newly packaged charm deploys and behaves. Ensure you can create a
 new environment.
 
+### Juju 1.25 ###
      export JUJU_DEV_FEATURE_FLAGS=jes
      juju bootstrap
+     make deploy
+
+### Juju 2 ###
+     juju bootstrap <controller> <cloud> --upload-tools
      make deploy
 
 ## Get the charm publishing tools ##
@@ -57,7 +68,7 @@ We have multiple versions of the juju-gui charm in the charmstore.
 | Release | Intent / Audience | URL | CS reference |
 | ------- | ----------------- | --- | ------------ |
 | Alphas | Dev team testing only | https://jujucharms.com/u/yellow/juju-gui | cs:~yellow/juju-gui |
-| Betas  | Wider testing. Only via Juju 1.26 | https://jujucharms.com/development/juju-gui | cs:development/juju-gui |
+| Betas  | Wider testing. Only via Juju > 2.0 | https://jujucharms.com/development/juju-gui | cs:development/juju-gui |
 | Released | GA | https://jujucharms.com/juju-gui | cs:juju-gui |
 
 The betas and released versions are owned by ~juju-gui-charmers. (A bug
@@ -108,6 +119,14 @@ bug in the charmstore, the juju-gui must be uploaded and published in one step:
     make clean-tests
     charm2 upload --publish . cs:~juju-gui-charmers/trusty/juju-gui
 
+## Tagging the charm code ##
+
+The charm should be tagged, ideallly with a number based on the release
+version of the Juju GUI. It should then be pushed back to github.
+
+    git tag <semver>
+    git push --tags origin master
+
 ## Releasing to Launchpad for production ##
 
 When the charm is ready to be released to production, it must be packaged,
@@ -122,7 +141,7 @@ $HOME/.gitconfig.  Replace LPUSER with your Launchpad user id.
 Then push to Launchpad using the following:
 
     git remote add lporigin lp:~yellow/canonical-theblues-charms/+git/juju-gui
-    git push lporigin develop
+    git push --tags lporigin master
 
 # QA Process #
 
