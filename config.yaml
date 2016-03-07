@@ -174,7 +174,7 @@ options:
     description: |
       Enables interactive login to an identity-manager, if applicable.
     type: boolean
-    default: false
+    default: true
   gzip-compression:
     description: |
       Enables gzip compressed responses from the gui.
