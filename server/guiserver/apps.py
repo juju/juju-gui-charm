@@ -15,6 +15,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """Juju GUI server applications."""
+
+from distutils.version import LooseVersion
 import time
 
 from pyramid.config import Configurator
@@ -31,8 +33,10 @@ from guiserver.bundles.base import Deployer
 from jujugui import make_application
 
 
-# Define the template to use for building the WebSocket URL.
-WEBSOCKET_URL_TEMPLATE = '/api/$server/$port/$uuid'
+# Define the templates to use for building the WebSocket URL.
+WEBSOCKET_SOURCE_TEMPLATE = '/ws/api/$server/$port/$uuid'
+WEBSOCKET_TARGET_TEMPLATE = 'wss://{server}:{port}/model/{uuid}/api'
+WEBSOCKET_TARGET_TEMPLATE_PRE2 = 'wss://{server}:{port}/environment/{uuid}/api'
 
 
 def server():
@@ -52,6 +56,9 @@ def server():
             (r'^/ws(?:/.*)?$', handlers.SandboxHandler, {}))
     else:
         # Real environment.
+        ws_target_template = WEBSOCKET_TARGET_TEMPLATE
+        if LooseVersion(options.jujuversion) < LooseVersion('2'):
+            ws_target_template = WEBSOCKET_TARGET_TEMPLATE_PRE2
         tokens = auth.AuthenticationTokenHandler()
         websocket_handler_options = {
             # The Juju API backend url.
@@ -62,8 +69,10 @@ def server():
             'deployer': deployer,
             # The tokens collection for authentication token requests.
             'tokens': tokens,
-            # The WebSocket URL template.
-            'ws_url_template': WEBSOCKET_URL_TEMPLATE,
+            # The WebSocket URL template the browser uses for the connection.
+            'ws_source_template': WEBSOCKET_SOURCE_TEMPLATE,
+            # The WebSocket URL template used for connecting to Juju.
+            'ws_target_template': ws_target_template,
         }
         juju_proxy_handler_options = {
             'target_url': utils.ws_to_http(options.apiurl),
@@ -96,7 +105,7 @@ def server():
         'jujugui.raw': options.jujuguidebug,
         'jujugui.combine': not options.jujuguidebug,
         'jujugui.apiAddress': options.apiurl,
-        'jujugui.socketTemplate': WEBSOCKET_URL_TEMPLATE,
+        'jujugui.socketTemplate': WEBSOCKET_SOURCE_TEMPLATE,
         'jujugui.jujuCoreVersion': options.jujuversion,
         'jujugui.jem_url': options.jemlocation,
         'jujugui.uuid': options.uuid,

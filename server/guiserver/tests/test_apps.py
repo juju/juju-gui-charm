@@ -79,9 +79,10 @@ class TestServer(AppsTestMixin, unittest.TestCase):
         options_dict = {
             'apiurl': 'wss://example.com:17070',
             'apiversion': 'go',
-            'sandbox': False,
-            'jujuguidebug': False,
             'gzip': True,
+            'jujuguidebug': False,
+            'jujuversion': '2.0.0',
+            'sandbox': False,
         }
         options_dict.update(kwargs)
         options = mock.Mock(**options_dict)
@@ -109,6 +110,26 @@ class TestServer(AppsTestMixin, unittest.TestCase):
         spec = self.get_url_spec(app, r'^/ws(?:/.*)?$')
         deployer = self.assert_in_spec(spec, 'deployer')
         self.assertIsInstance(deployer, base.Deployer)
+
+    def test_ws_templates(self):
+        # The WebSocket templates are properly passed to the WebSocket handler.
+        app = self.get_app()
+        spec = self.get_url_spec(app, r'^/ws(?:/.*)?$')
+        source = self.assert_in_spec(spec, 'ws_source_template')
+        self.assertEqual('/ws/api/$server/$port/$uuid', source)
+        target = self.assert_in_spec(spec, 'ws_target_template')
+        self.assertEqual('wss://{server}:{port}/model/{uuid}/api', target)
+
+    def test_ws_templates_pre2(self):
+        # The WebSocket templates are properly passed to the WebSocket handler
+        # and the correct target template is used for Juju 1.x.
+        app = self.get_app(jujuversion='1.25.42')
+        spec = self.get_url_spec(app, r'^/ws(?:/.*)?$')
+        source = self.assert_in_spec(spec, 'ws_source_template')
+        self.assertEqual('/ws/api/$server/$port/$uuid', source)
+        target = self.assert_in_spec(spec, 'ws_target_template')
+        self.assertEqual(
+            'wss://{server}:{port}/environment/{uuid}/api', target)
 
     def test_tokens(self):
         # The tokens instance is correctly passed to the WebSocket handler.
@@ -159,12 +180,12 @@ class TestServer(AppsTestMixin, unittest.TestCase):
             'https://api.jujucharms.com/charmstore/',
             config['jujugui.charmstore_url'])
         self.assertEqual(
-            apps.WEBSOCKET_URL_TEMPLATE, config['jujugui.socketTemplate'])
+            apps.WEBSOCKET_SOURCE_TEMPLATE, config['jujugui.socketTemplate'])
         self.assertTrue(config['jujugui.combine'])
         self.assertFalse(config['jujugui.interactive_login'])
         self.assertFalse(config['jujugui.sandbox'])
         self.assertFalse(config['jujugui.raw'])
-        self.assertIsNone(config['jujugui.base_url'])
+        self.assertEqual('', config['jujugui.base_url'])
 
     def test_gui_jem_connection(self):
         # The server can be configured to connect the Juju GUI to a JEM.

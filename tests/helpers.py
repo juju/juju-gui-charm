@@ -190,8 +190,8 @@ def stop_services(hostname, services):
         ssh(target, 'sudo', 'service', service, 'stop')
 
 
-def wait_for_unit(sevice):
-    """Wait for the first unit of the given service to be started.
+def wait_for_unit(svc_name):
+    """Wait for the first unit of the given svc_name to be started.
 
     Also wait for the service to be exposed.
     Raise a RuntimeError if the unit is found in an error state.
@@ -200,19 +200,25 @@ def wait_for_unit(sevice):
     """
     while True:
         status = juju_status()
-        service = status.get('services', {}).get(sevice)
+        service = status.get('services', {}).get(svc_name)
         if service is None or not service.get('exposed'):
             continue
         units = service.get('units', {})
         if not len(units):
             continue
         unit = units.values()[0]
-        state = unit['agent-state']
+        state = unit.get('agent-state')
+        if state is None:
+            # Status information for Juju 2.0.
+            state = unit['agent-status']['current']
+            if state == 'idle':
+                return unit
+        else:
+            if state == 'started':
+                return unit
         if 'error' in state:
             raise RuntimeError(
                 'the service unit is in an error state: {}'.format(state))
-        if state == 'started':
-            return unit
 
 
 SSLOPT = {

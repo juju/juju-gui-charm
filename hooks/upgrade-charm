@@ -4,8 +4,8 @@
 # Copyright 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from charmhelpers import (
-    get_config,
+from charmhelpers.core.hookenv import (
+    config as get_config,
     log,
 )
 

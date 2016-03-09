@@ -30,15 +30,13 @@ import yaml
 import apt
 import tempita
 
-from charmhelpers import (
+from charmhelpers.core.hookenv import (
     close_port,
-    get_config,
+    config as get_config,
     log,
     open_port,
-    RESTART,
-    service_control,
-    STOP
 )
+from charmhelpers.core.host import service
 from shelltoolbox import (
     apt_get_install,
     install_extra_repositories,
@@ -53,6 +51,10 @@ __all__ = [
     'CURRENT_DIR',
     'JUJU_GUI_DIR',
     'JUJU_PEM',
+    'START',
+    'STOP',
+    'RELOAD',
+    'RESTART',
     'cmd_log',
     'find_missing_packages',
     'get_api_address',
@@ -92,6 +94,10 @@ RUNSERVER_SH_PATH = os.path.join(RUNSERVER_DIR, 'runserver.sh')
 
 JUJU_PEM = 'juju.includes-private-key.pem'
 
+START = "start"
+RESTART = "restart"
+STOP = "stop"
+RELOAD = "reload"
 
 # Store the configuration from one invocation to the next.
 config_json = Serializer(os.path.join(os.path.sep, 'tmp', 'config.json'))
@@ -286,7 +292,7 @@ def install_builtin_server():
     # from the network.
     with su('root'):
         cmd_log(run(
-            'pip', 'install', '--no-index', '--no-dependencies',
+            '/usr/bin/pip2', 'install', '--no-index', '--no-dependencies',
             '--find-links', 'file:///{}'.format(deps),
             '-r', requirements
         ))
@@ -368,14 +374,14 @@ def start_builtin_server(
         gtm_enabled=gtm_enabled)
     log('Starting the builtin server.')
     with su('root'):
-        service_control(GUISERVER, RESTART)
+        service(RESTART, GUISERVER)
 
 
 def stop_builtin_server():
     """Stop the builtin server."""
     log('Stopping the builtin server.')
     with su('root'):
-        service_control(GUISERVER, STOP)
+        service(STOP, GUISERVER)
     cmd_log(run('rm', '-f', GUISERVER_INIT_PATH))
 
 
@@ -414,7 +420,7 @@ def setup_gui():
     release_tarball_path = get_release_file_path()
     log('Installing Juju GUI from {}.'.format(release_tarball_path))
     cmd = (
-        '/usr/bin/pip',  'install', '--no-index',
+        '/usr/bin/pip2',  'install', '--no-index',
         '--find-links', 'file:///{}'.format(jujugui_deps),
         release_tarball_path,
     )

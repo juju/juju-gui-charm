@@ -41,7 +41,7 @@ import errno
 import os
 import shutil
 
-from charmhelpers import log
+from charmhelpers.core.hookenv import log
 from shelltoolbox import run
 
 import utils
@@ -108,7 +108,10 @@ class GuiServerMixin(object):
 
     def start(self, backend):
         config = backend.config
-        env_uuid = os.getenv('JUJU_ENV_UUID', None)
+        # In Juju < 2.0 the model UUID is present in the JUJU_ENV_UUID env var.
+        env_uuid = os.getenv('JUJU_MODEL_UUID') or os.getenv('JUJU_ENV_UUID')
+        if env_uuid is None:
+            raise ValueError('cannot retrieve model UUID from hook context')
         juju_version = run('jujud', '--version').strip()
         utils.start_builtin_server(
             config['ssl-cert-path'], config['serve-tests'],

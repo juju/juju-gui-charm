@@ -46,8 +46,8 @@ apt_get_install(*PYTHON_DEPENDENCIES)
 
 # The charmhelpers module depends on python-yaml and must be imported only
 # after the installation of the Python dependencies above.
-from charmhelpers import (
-    get_config,
+from charmhelpers.core.hookenv import (
+    config as get_config,
     log,
 )
 

@@ -99,8 +99,8 @@ class WebSocketHandler(_WebSocketBaseHandler):
 
     @gen.coroutine
     def initialize(
-            self, apiurl, auth_backend, deployer, tokens, ws_url_template,
-            io_loop=None):
+            self, apiurl, auth_backend, deployer, tokens, ws_source_template,
+            ws_target_template, io_loop=None):
         """Initialize the WebSocket server.
 
         Create a new WebSocket client and connect it to the Juju API.
@@ -124,7 +124,8 @@ class WebSocketHandler(_WebSocketBaseHandler):
         # Set up the bundle deployment and change set infrastructure.
         self.deployment = DeployMiddleware(self.user, deployer, write_message)
         self.changeset = ChangeSetMiddleware(self.user, write_message)
-        apiurl = get_juju_api_url(self.request.path, ws_url_template, apiurl)
+        apiurl = get_juju_api_url(
+            self.request.path, ws_source_template, ws_target_template, apiurl)
         # Juju requires the Origin header to be included in the WebSocket
         # client handshake request. Propagate the client origin if present;
         # use the Juju API server as origin otherwise.
@@ -141,7 +142,7 @@ class WebSocketHandler(_WebSocketBaseHandler):
             return
         # At this point the Juju API is successfully connected.
         self.juju_connected = True
-        logging.info(self._summary + 'Juju API connected')
+        logging.info(self._summary + 'Juju API connected: {}'.format(apiurl))
         # Send all the messages that have been enqueued before the connection
         # to the Juju API server was established.
         while self.connected and self.juju_connected and len(queue):
