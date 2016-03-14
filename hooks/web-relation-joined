@@ -19,7 +19,7 @@
 
 import socket
 
-from charmhelpers import relation_set
+from charmhelpers.core.hookenv import relation_set
 from utils import (
     get_port,
     log_hook,
