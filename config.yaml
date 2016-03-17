@@ -118,7 +118,7 @@ options:
     default: https://api.jujucharms.com/charmstore/
   charmstore-version:
     description: |
-      The version of the charmstore api to use.
+      The version of the charmstore API to use.
     type: string
     default: v4
   repository-location:
@@ -177,7 +177,7 @@ options:
     description: Publicly accessible URL of a Juju Environment Manager.
   jem-version:
     type: string
-    default: 'v1'
+    default: v1
     description: The version of the Juju Environment Manager API to use.
   interactive-login:
     description: |
