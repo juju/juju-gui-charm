@@ -83,6 +83,10 @@ class TestServer(AppsTestMixin, unittest.TestCase):
             'jujuguidebug': False,
             'jujuversion': '2.0.0',
             'sandbox': False,
+            'charmstoreurl': 'https://api.jujucharms.com/charmstore/',
+            'charmstoreversion': 'v4',
+            'jemlocation': '',
+            'jemversion': 'v1',
         }
         options_dict.update(kwargs)
         options = mock.Mock(**options_dict)
