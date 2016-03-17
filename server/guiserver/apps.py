@@ -101,18 +101,21 @@ def server():
         'start_time': int(time.time()),
     }
     wsgi_settings = {
-        'jujugui.sandbox': options.sandbox,
-        'jujugui.raw': options.jujuguidebug,
-        'jujugui.combine': not options.jujuguidebug,
         'jujugui.apiAddress': options.apiurl,
-        'jujugui.socketTemplate': WEBSOCKET_SOURCE_TEMPLATE,
-        'jujugui.jujuCoreVersion': options.jujuversion,
-        'jujugui.jem_url': options.jemlocation,
-        'jujugui.uuid': options.uuid,
-        'jujugui.interactive_login': options.interactivelogin,
-        'jujugui.gzip': options.gzip,
+        'jujugui.combine': not options.jujuguidebug,
         'jujugui.GTM_enabled': options.gtm,
+        'jujugui.gzip': options.gzip,
         'jujugui.insecure': options.insecure,
+        'jujugui.interactive_login': options.interactivelogin,
+        'jujugui.jem_url': options.jemlocation,
+        'jujugui.jem_api_path': options.jemversion,
+        'jujugui.charmstore_url': options.charmstoreurl,
+        'jujugui.charmstore_api_path': options.charmstoreversion,
+        'jujugui.jujuCoreVersion': options.jujuversion,
+        'jujugui.raw': options.jujuguidebug,
+        'jujugui.sandbox': options.sandbox,
+        'jujugui.socketTemplate': WEBSOCKET_SOURCE_TEMPLATE,
+        'jujugui.uuid': options.uuid,
     }
     if options.password:
         wsgi_settings['jujugui.password'] = options.password

@@ -120,8 +120,11 @@ class GuiServerMixin(object):
             env_password=config.get('password'), env_uuid=env_uuid,
             juju_version=juju_version, debug=config['juju-gui-debug'],
             port=config.get('port'), jem_location=config['jem-location'],
+            jem_version=config['jem-version'],
             interactive_login=config['interactive-login'],
-            gzip=config['gzip-compression'], gtm_enabled=config['gtm-enabled'])
+            gzip=config['gzip-compression'], gtm_enabled=config['gtm-enabled'],
+            charmstore_url=config['charmstore-url'],
+            charmstore_version=config['charmstore-version'])
 
     def stop(self, backend):
         utils.stop_builtin_server()
