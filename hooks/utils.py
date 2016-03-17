@@ -304,7 +304,6 @@ def install_builtin_server():
 
 # TODO: add these config options -- some may no longer be necessary, some may
 # need updates to the gui
-# * charmstore url
 # * console enabled (?)
 # * cached fonts (?)
 # * read only (?)
@@ -314,12 +313,15 @@ def write_builtin_server_startup(
         ssl_cert_path, serve_tests=False, sandbox=False,
         builtin_server_logging='info', insecure=False, charmworld_url='',
         env_password=None, env_uuid=None, juju_version=None, debug=False,
-        port=None, jem_location=None, interactive_login=False, gzip=True,
-        gtm_enabled=False):
+        port=None, jem_location=None, jem_version=None,
+        interactive_login=False, gzip=True, gtm_enabled=False,
+        charmstore_url=None, charmstore_version=None):
     """Generate the builtin server Upstart file."""
     log('Generating the builtin server Upstart file.')
     context = {
         'builtin_server_logging': builtin_server_logging,
+        'charmstore_url': charmstore_url,
+        'charmstore_version': charmstore_version,
         'charmworld_url': charmworld_url,
         'env_password': env_password,
         'env_uuid': env_uuid,
@@ -330,6 +332,7 @@ def write_builtin_server_startup(
         'insecure': insecure,
         'interactive_login': interactive_login,
         'jem_location': jem_location,
+        'jem_version': jem_version,
         'juju_gui_debug': debug,
         'juju_version': juju_version,
         'no_proxy': os.environ.get('no_proxy', os.environ.get('NO_PROXY')),
@@ -359,7 +362,8 @@ def start_builtin_server(
         ssl_cert_path, serve_tests, sandbox, builtin_server_logging,
         insecure, charmworld_url, env_password=None, env_uuid=None,
         juju_version=None, debug=False, port=None, jem_location=None,
-        interactive_login=False, gzip=True, gtm_enabled=False):
+        jem_version=None, interactive_login=False, gzip=True,
+        gtm_enabled=False, charmstore_url=None, charmstore_version=None):
     """Start the builtin server."""
     if (port is not None) and not port_in_range(port):
         # Do not use the user provided port if it is not valid.
@@ -368,10 +372,11 @@ def start_builtin_server(
         ssl_cert_path, serve_tests=serve_tests, sandbox=sandbox,
         builtin_server_logging=builtin_server_logging, insecure=insecure,
         charmworld_url=charmworld_url, env_password=env_password,
-        env_uuid=env_uuid, juju_version=juju_version,
-        debug=debug, port=port, jem_location=jem_location,
+        env_uuid=env_uuid, juju_version=juju_version, debug=debug, port=port,
+        jem_location=jem_location, jem_version=jem_version,
         interactive_login=interactive_login, gzip=gzip,
-        gtm_enabled=gtm_enabled)
+        gtm_enabled=gtm_enabled, charmstore_url=charmstore_url,
+        charmstore_version=charmstore_version)
     log('Starting the builtin server.')
     with su('root'):
         service(RESTART, GUISERVER)
