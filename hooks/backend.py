@@ -122,7 +122,9 @@ class GuiServerMixin(object):
             port=config.get('port'), jem_location=config['jem-location'],
             jem_version=config['jem-version'],
             interactive_login=config['interactive-login'],
-            gzip=config['gzip-compression'], gtm_enabled=config['gtm-enabled'],
+            gzip=config['gzip-compression'],
+            gtm_enabled=config['gtm-enabled'],
+            gisf_enabled=config['gisf-enabled'],
             charmstore_url=config['charmstore-url'],
             charmstore_version=config['charmstore-version'])
 
