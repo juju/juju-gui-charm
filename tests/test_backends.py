@@ -103,6 +103,7 @@ class TestBackendCommands(unittest.TestCase):
             'interactive-login': False,
             'gzip-compression': True,
             'gtm-enabled': False,
+            'gisf-enabled': False,
         }
         if options is not None:
             config.update(options)
@@ -173,7 +174,7 @@ class TestBackendCommands(unittest.TestCase):
             config['serve-tests'],
             config['sandbox'],
             config['builtin-server-logging'],
-            False,
+            False,                        # insecure
             config['charmworld-url'],
             charmstore_url='http://charmstore.example.com/',
             jem_location='',
@@ -184,6 +185,7 @@ class TestBackendCommands(unittest.TestCase):
             jem_version='v1',
             charmstore_version='v4',
             gtm_enabled=False,
+            gisf_enabled=False,
             gzip=True,
             port=None,
             env_password=None)
@@ -200,7 +202,7 @@ class TestBackendCommands(unittest.TestCase):
             config['serve-tests'],
             config['sandbox'],
             config['builtin-server-logging'],
-            False,
+            False,                        # insecure
             config['charmworld-url'],
             charmstore_url='http://charmstore.example.com/',
             jem_location='',
@@ -211,6 +213,7 @@ class TestBackendCommands(unittest.TestCase):
             jem_version='v1',
             charmstore_version='v4',
             gtm_enabled=False,
+            gisf_enabled=False,
             gzip=True,
             port=None,
             env_password=None)
@@ -242,7 +245,7 @@ class TestBackendCommands(unittest.TestCase):
             config['serve-tests'],
             config['sandbox'],
             config['builtin-server-logging'],
-            True,
+            True,                         # insecure
             config['charmworld-url'],
             charmstore_url='http://charmstore.example.com/',
             jem_location='',
@@ -253,6 +256,34 @@ class TestBackendCommands(unittest.TestCase):
             jem_version='v1',
             charmstore_version='v4',
             gtm_enabled=False,
+            gisf_enabled=False,
+            gzip=True,
+            port=None,
+            env_password=None)
+
+    def test_gisf_enabled(self):
+        config = self.make_config({'gisf-enabled': True})
+        test_backend = backend.Backend(config=config)
+        with self.mock_all() as mocks:
+            with patch_environ(JUJU_MODEL_UUID='uuid'):
+                test_backend.start()
+        mocks.start_builtin_server.assert_called_once_with(
+            self.ssl_cert_path,
+            config['serve-tests'],
+            config['sandbox'],
+            config['builtin-server-logging'],
+            False,                        # insecure
+            config['charmworld-url'],
+            charmstore_url='http://charmstore.example.com/',
+            jem_location='',
+            env_uuid='uuid',
+            interactive_login=False,
+            juju_version=JUJU_VERSION,
+            debug=False,
+            jem_version='v1',
+            charmstore_version='v4',
+            gtm_enabled=False,
+            gisf_enabled=True,
             gzip=True,
             port=None,
             env_password=None)
@@ -268,7 +299,8 @@ class TestBackendCommands(unittest.TestCase):
         mocks.start_builtin_server.assert_called_once_with(
             self.ssl_cert_path,
             config['serve-tests'], config['sandbox'],
-            config['builtin-server-logging'], not config['secure'],
+            config['builtin-server-logging'],
+            not config['secure'],
             config['charmworld-url'], port=8080)
 
     def test_stop(self):
