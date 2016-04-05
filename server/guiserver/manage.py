@@ -161,6 +161,7 @@ def setup():
         'gzip', type=bool, default=False,
         help='Enable gzip compression in the gui.')
     define('gtm', type=bool, default=False, help='Enable Google tag manager.')
+    define('gisf', type=bool, default=False, help='Enable GUI in store front.')
     # In Tornado, parsing the options also sets up the default logger.
     parse_command_line()
     _validate_choices('apiversion', ('go', 'python'))
