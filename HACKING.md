@@ -192,8 +192,8 @@ introduction to the process.
 
 ## Making charm releases ##
 
-See the `RELEASE_PROCESS.md` file for detailed instructions on making releases
-of this charm.
+See the [RELEASE_PROCESS.md](RELEASE_PROCESS.md) file for detailed
+instructions on making releases of this charm.
 
 ## Upgrading the builtin server dependencies ##
 
@@ -229,9 +229,10 @@ add those tarballs to the download cache as well.
 ## Builtin server bundle support ##
 
 The builtin server starts/schedules bundle deployment processes when it
-receives Deployer Import API requests. The user can then observe the deployment
-progress using the GUI. The builtin server also exposes the possibility to
-watch a bundle deployment progress: see `server/guiserver/bundles/__init__.py`
+receives Deployer Import API requests. The user can then observe the
+deployment progress using the GUI. The builtin server also exposes the
+possibility to watch a bundle deployment progress: see
+[server/guiserver/bundles/__init__.py](server/guiserver/bundles/__init__.py)
 for a detailed description of the API request/response process.
 
 Under the hood, the builtin server leverages the juju-deployer library in order
