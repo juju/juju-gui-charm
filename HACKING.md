@@ -1,6 +1,6 @@
 <!--
 HACKING.md
-Copyright 2013 Canonical Ltd.
+Copyright 2013-2016 Canonical Ltd.
 This work is licensed under the Creative Commons Attribution-Share Alike 3.0
 Unported License. To view a copy of this license, visit
 http://creativecommons.org/licenses/by-sa/3.0/ or send a letter to Creative
@@ -19,9 +19,7 @@ join [the GUI developers mailing list](https://lists.ubuntu.com/mailman/listinfo
 ## Getting Started ##
 
 First, you need a configured Juju environment: see the Juju docs about
-[getting started](https://juju.ubuntu.com/docs/getting-started.html). If you
-do not yet have an environment defined, the Juju Quickstart plugin is an easy
-way to get started. See https://pypi.python.org/pypi/juju-quickstart.
+[getting started](https://juju.ubuntu.com/docs/getting-started.html).
 
 You'll also need some system dependencies and developer basics.
 
@@ -29,8 +27,8 @@ You'll also need some system dependencies and developer basics.
 
 The command above will run as root and install the required deb packages.
 
-Next, you need the bzr branch.  We work from
-[lp:~juju-gui/charms/trusty/juju-gui/trunk](https://code.launchpad.net/~juju-gui/charms/trusty/juju-gui/trunk).
+Next, you need to clone the branch from github:
+[https://github.com/juju/juju-gui-charm](https://github.com/juju/juju-gui-charm).
 
 You could start hacking now, but there's a bit more to do to prepare for
 running and writing tests.
@@ -49,13 +47,15 @@ running the command:
 
     make
 
-The command above will create a ".venv" directory inside "juju-gui/tests/",
+The command above will create a ".venv" directory inside "tests/",
 ignored by version control, containing the development virtual environment with
 all the testing dependencies.
 
-The command will also download the master branch of juju-gui from GitHub and
-build it into a tarball in the `releases` directory. If you want to use a
-local branch you can specify it using JUJU_GUI_BRANCH, e.g.
+This is a "fat charm" in that it contains a tarball for the Juju GUI in the
+`releases` directory.  If you'd like to use a different version of the GUI
+than what is checked in you can use `make package` to obtain and build from
+the master branch in GitHub.  If you want to use a local branch you can
+specify it using JUJU_GUI_BRANCH, e.g.
 
     JUJU_GUI_BRANCH=$HOME/git/juju-gui make package
 
@@ -98,6 +98,8 @@ Unit tests should be created in the "tests" subdirectory and be named in the
 customary way (i.e., "test_*.py").
 
 ### Functional Tests ###
+
+** Note the following instructions are for Juju 1.x. Slight changes are required for Juju 2.x.**
 
 Running the functional tests requires a Juju testing environment as provided
 by the juju-test command (see "Getting Started", above).
@@ -163,8 +165,8 @@ When something goes wrong, on your local machine run
 `juju debug-hooks juju-gui/0` or similar.  This will initially put you on the
 unit that has the problem.  You can look at what is going on in
 `/var/lib/juju/agents/[NAME OF UNIT]` (or instead of agents use `containers`
-in the local environment. There is a charm.log file to investigate, and a 
-charm directory which contains the charm.  The charm directory contains the 
+in the local environment. There is a charm.log file to investigate, and a
+charm directory which contains the charm.  The charm directory contains the
 `juju-gui` and `juju` directories, so everything you need is there.
 
 If juju recognized an error (for instance, the unit is in an "install-error"
@@ -190,14 +192,8 @@ introduction to the process.
 
 ## Making charm releases ##
 
-The same code base is used for both precise and trusty releases.
-Releasing the charm is done by pushing changes from the development branch to
-the precise and trusty release branches.
-The branches live in the following locations:
-
-- development branch: `lp:~juju-gui/charms/trusty/juju-gui/trunk`
-- precise release: `lp:charms/juju-gui`
-- trusty release: `lp:charms/trusty/juju-gui`
+See the `RELEASE_PROCESS.md` file for detailed instructions on making releases
+of this charm.
 
 ## Upgrading the builtin server dependencies ##
 
@@ -268,24 +264,6 @@ following in the Juju GUI machine:
 
 ## Proposing Branches ##
 
-We use [lbox](http://launchpad.net/lbox) to propose branches for review
-and submit them to the trunk. Gustavo Niemeyer has
-[a helpful blogpost](http://blog.labix.org/2011/11/17/launchpad-rietveld-happycodereviews)
-about this tool.
-
-To install lbox make sure you GOPATH is set and run go get launchpad.net/lbox.
-
-On first run lbox will attempt to launch sensible-browser or failing that
-$BROWSER to obtain oauth credentials to launchpad.  This is stored to
-$HOME/.lpad_oath .  You may want to chmod 0600 this file if your umask is more
-open by default.
-
-Next, to post to https://codereview.appspot.com, your google credentials are
-requested. This uses https://www.google.com/accounts/ClientLogin (You don't
-have to worry about plain text password over internet.) Cookies and oauth
-credentials get stored at $HOME/.goetveld_codereview.appspot.com . This time
-the file should default to mode 0600, but you can double check for your own
-security sanity.
-
-To post a review, bzr push to lp:~YOURNAME/charms/trusty/juju-gui/BRANCHNAME and
-run lbox propose. 
+We use GitHub pull requests.  Follow normal git development practices to clone
+the charm, push your branch, and create a pull request targing the `develop`
+branch.
