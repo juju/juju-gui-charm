@@ -59,7 +59,7 @@ specify it using JUJU_GUI_BRANCH, e.g.
 
     JUJU_GUI_BRANCH=$HOME/git/juju-gui make package
 
-Run "make help" to see all the available make targets.
+Run `make help` to see all the available make targets.
 
 ## Testing ##
 
@@ -99,7 +99,7 @@ customary way (i.e., "test_*.py").
 
 ### Functional Tests ###
 
-** Note the following instructions are for Juju 1.x. Slight changes are required for Juju 2.x.**
+**Note the following instructions are for Juju 1.x. Slight changes are required for Juju 2.x.**
 
 Running the functional tests requires a Juju testing environment as provided
 by the juju-test command (see "Getting Started", above).
