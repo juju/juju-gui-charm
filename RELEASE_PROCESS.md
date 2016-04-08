@@ -88,36 +88,21 @@ release.
 Before uploading, check to see the currently available versions:
 
     charm2 info --include=id,perm cs:~yellow/juju-gui
-    charm2 info --include=id,perm cs:~yellow/development/juju-gui
 
 Next, to upload the charm, go to the charm source directory and do:
 
-    make clean-tests
-    # NB: trusty is the default series unless specified in metadata.yaml.
-    charm2 upload . cs:~yellow/trusty/juju-gui
+    make publish-yellow
 
-Now you should see the published version didn't change but the development
-version did:
+And check the information to ensure it changed:
 
     charm2 info --include=id,perm cs:~yellow/juju-gui
-    charm2 info --include=id,perm cs:~yellow/development/juju-gui
-
-At this point the charm is in the development channel and is referenced as
-`cs:~yellow/development/juju-gui`
-
-## Publishing the charm alpha ##
-
-To move the charm out of the development channel, publish it with:
-
-    charm2 publish cs:~yellow/juju-gui
 
 ## Publishing the released version ##
 
-The promulgated version of the charm is owned by ~juju-gui-charmers.  Due to a
-bug in the charmstore, the juju-gui must be uploaded and published in one step:
+The promulgated version of the charm is owned by ~juju-gui-charmers.  Publish
+to it with:
 
-    make clean-tests
-    charm2 upload --publish . cs:~juju-gui-charmers/trusty/juju-gui
+    make publish-promulgated
 
 ## Tagging the charm code ##
 

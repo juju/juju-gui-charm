@@ -20,6 +20,10 @@ VENV = tests/.venv
 SYSDEPS = build-essential bzr charm-tools firefox libapt-pkg-dev \
 	libpython-dev python-virtualenv rsync xvfb
 
+CHARMCMD := charm2
+YELLOW_CS_URL ?= cs:~yellow/trusty/juju-gui
+PROMULGATED_CS_URL ?= cs:~juju-gui-charmers/trusty/juju-gui
+
 .PHONY: all
 all: setup
 
@@ -69,7 +73,7 @@ lint: setup
 	@$(VENV)/bin/flake8 --show-source \
 		--exclude=.venv,charmhelpers \
 		--filename *.py,20-functional.test \
-		hooks/ tests/ server/
+		hooks/* tests/ server/
 
 .PHONY: clean-tests
 clean-tests:
@@ -99,6 +103,14 @@ package: clean releases
 sync: 
 	scripts/charm_helpers_sync.py -d hooks/charmhelpers -c charm-helpers.yaml
 
+.PHONY: publish-yellow
+publish-yellow: clean
+	$(CHARMCMD) upload --publish . $(YELLOW_CS_URL)
+
+.PHONY: publish-promulgated
+publish-promulgated: clean
+	$(CHARMCMD) upload --publish . $(PROMULGATED_CS_URL)
+
 .PHONY: help
 help:
 	@echo -e 'Juju GUI charm - list of make targets:\n'
@@ -119,5 +131,7 @@ help:
 	@echo '  Wait for the service to be started. If JUJU_ENV is not passed,'
 	@echo '  the charm will be deployed in the default Juju environment.'
 	@echo '  If SERIES is not passed, "trusty" is used. Possible values are'
-	@echo '  "precise" and "trusty".'
+	@echo -e '  "precise" and "trusty".\n'
 	@echo -e 'make sync - Update the version of charmhelpers.\n'
+	@echo -e 'make publish-yellow - Upload and publish the charm to the ~yellow namespace.\n'
+	@echo -e 'make publish-promulgated - Upload and publish the charm to cs:juju-gui.\n'

@@ -5,8 +5,9 @@ import charmsupport.nrpe
 
 def get_nrpe():
     nrpe = charmsupport.nrpe.NRPE()
-    nrpe.add_check('app-is-accessible', 'Check_the_app_can_be_downloaded',
-        'check-app-access.sh')
+    nrpe.add_check('app-is-accessible',
+                   'Check_the_app_can_be_downloaded',
+                   'check-app-access.sh')
     return nrpe
 
 
