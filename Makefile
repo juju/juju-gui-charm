@@ -69,7 +69,7 @@ lint: setup
 	@$(VENV)/bin/flake8 --show-source \
 		--exclude=.venv,charmhelpers \
 		--filename *.py,20-functional.test \
-		hooks/ tests/ server/
+		hooks/* tests/ server/
 
 .PHONY: clean-tests
 clean-tests:
