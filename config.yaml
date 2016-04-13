@@ -194,3 +194,8 @@ options:
       Enables Google tag manager tracking.
     type: boolean
     default: false
+  gisf-enabled:
+    description: |
+      Enables the GUI in Storefront mode
+    type: boolean
+    default: false

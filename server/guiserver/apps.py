@@ -103,6 +103,7 @@ def server():
     wsgi_settings = {
         'jujugui.apiAddress': options.apiurl,
         'jujugui.combine': not options.jujuguidebug,
+        'jujugui.gisf': options.gisf,
         'jujugui.GTM_enabled': options.gtm,
         'jujugui.gzip': options.gzip,
         'jujugui.insecure': options.insecure,
