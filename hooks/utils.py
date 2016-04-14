@@ -24,7 +24,6 @@ import re
 import shutil
 from subprocess import CalledProcessError
 import time
-import urlparse
 import yaml
 
 import apt
@@ -58,7 +57,6 @@ __all__ = [
     'cmd_log',
     'find_missing_packages',
     'get_api_address',
-    'get_launchpad_release',
     'get_port',
     'get_release_file_path',
     'install_missing_packages',
@@ -136,47 +134,6 @@ def get_api_address(unit_dir=None):
     contents = yaml.load(open(agent_conf))
     return contents['apiinfo']['addrs'][0]
     return api_addresses.split()[0]
-
-
-def _get_by_attr(collection, attr, value):
-    """Return the first item in collection having attr == value.
-
-    Return None if the item is not found.
-    """
-    for item in collection:
-        if getattr(item, attr) == value:
-            return item
-
-
-def get_launchpad_release(project, series_name, release_version):
-    """Return the URL and the name of the release file hosted in Launchpad.
-
-    The returned URL points to a release file for the given project, series
-    name and release version.
-    The argument *project* is a project object as returned by launchpadlib.
-    The arguments *series_name* and *release_version* are strings. If
-    *release_version* is None, the URL and file name of the latest release will
-    be returned.
-    """
-    series = _get_by_attr(project.series, 'name', series_name)
-    if series is None:
-        raise ValueError('%r: series not found' % series_name)
-    # Releases are returned by Launchpad in reverse date order.
-    releases = list(series.releases)
-    if not releases:
-        raise ValueError('%r: series does not contain releases' % series_name)
-    if release_version is not None:
-        release = _get_by_attr(releases, 'version', release_version)
-        if release is None:
-            raise ValueError('%r: release not found' % release_version)
-        releases = [release]
-    for release in releases:
-        for file_ in release.files:
-            file_url = str(file_)
-            if file_url.endswith('.tgz') or file_url.endswith('.xz'):
-                filename = os.path.split(urlparse.urlsplit(file_url).path)[1]
-                return file_.file_link, filename
-    raise ValueError('%r: file not found' % release_version)
 
 
 @contextmanager
@@ -290,6 +247,10 @@ def install_builtin_server():
     requirements = os.path.join(CURRENT_DIR, 'server-requirements.pip')
     # Install the builtin server dependencies avoiding to download requirements
     # from the network.
+    # XXX frankban: this pip installation here implicitly depends on juju-gui
+    # dependencies to be installed. In essence, this function does not fetch
+    # dependencies from the network only incidentally, because setup_gui() has
+    # been already called in the unit.
     with su('root'):
         cmd_log(run(
             '/usr/bin/pip2', 'install', '--no-index', '--no-dependencies',
@@ -421,7 +382,6 @@ def get_release_file_path(version=None):
 
 def setup_gui():
     """Set up Juju GUI."""
-
     # Install ensuring network access is not used.  All dependencies should
     # already be installed from the deps directory.
     jujugui_deps = os.path.join(CURRENT_DIR, 'jujugui-deps')

@@ -19,15 +19,10 @@
 from collections import namedtuple
 from functools import wraps
 import json
-import logging
 import os
-import random
-import string
 import subprocess
-import ssl
 import time
 
-import websocket
 import yaml
 
 
@@ -161,33 +156,10 @@ def juju(command, *args):
     return juju_command(*arguments)
 
 
-def juju_destroy_service(service):
-    """Destroy the given service and wait for the service to be removed."""
-    juju('destroy-service', service)
-    while True:
-        services = juju_status().get('services', {})
-        if service not in services:
-            return
-
-
 def juju_status():
     """Return the Juju status as a dictionary."""
     status = juju('status', '--format', 'json')
     return json.loads(status)
-
-
-def make_service_name(prefix='service-'):
-    """Generate a long, random service name."""
-    characters = string.ascii_lowercase
-    suffix = ''.join([random.choice(characters) for _ in range(20)])
-    return prefix + suffix
-
-
-def stop_services(hostname, services):
-    """Stop the given upstart services running on hostname."""
-    target = 'ubuntu@{}'.format(hostname)
-    for service in services:
-        ssh(target, 'sudo', 'service', service, 'stop')
 
 
 def wait_for_unit(svc_name):
@@ -219,42 +191,3 @@ def wait_for_unit(svc_name):
         if 'error' in state:
             raise RuntimeError(
                 'the service unit is in an error state: {}'.format(state))
-
-
-SSLOPT = {
-    'cert_reqs': ssl.CERT_NONE,
-    'ssl_version': ssl.PROTOCOL_TLSv1,
-}
-
-
-class WebSocketClient(object):
-    """A simple blocking WebSocket client used in functional tests."""
-
-    def __init__(self, url):
-        self._url = url
-        self._conn = None
-
-    def connect(self):
-        """Connect to the WebSocket server."""
-        logging.info('connecting to {}'.format(self._url))
-        self._conn = websocket.create_connection(
-            self._url, timeout=10 * 60, sslopt=SSLOPT)
-
-    def send(self, request):
-        """Send the given WebSocket request.
-
-        Return the decoded WebSocket response returned by the server.
-        Block until the server response is received.
-        """
-        logging.info('sending message: {}'.format(request))
-        self._conn.send(json.dumps(request))
-        response = self._conn.recv()
-        logging.info('received message: {}'.format(response))
-        return json.loads(response)
-
-    def close(self):
-        """Close the WebSocket connection."""
-        if self._conn is not None:
-            logging.info('closing the connection')
-            self._conn.close()
-            self._conn = None

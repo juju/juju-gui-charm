@@ -63,67 +63,12 @@ Run `make help` to see all the available make targets.
 
 ## Testing ##
 
-There are two types of tests for the charm: unit tests and functional tests.
+To run unit tests and lint Python charm files:
 
-Functional tests make use of a real Juju environment, and thus they need the
-`~/.juju/environments.yaml` file to be properly configured, including the
-`default-series` option. Since functional tests deploy the charm in the
-bootstrap node, setting the default series also selects which series version
-the charm will be deployed by functional tests. For instance, to test the Juju
-GUI charm on trusty, set `default-series: trusty` in your
-`~/.juju/environments.yaml` file. Possible values are `precise` and `trusty`.
-
-Long story short, to run both unit and functional tests:
-
-    make test JUJU_ENV="myenv"
-
-In the command above, "myenv" is the juju environment, as it is specified in
-your `~/.juju/environments.yaml`, that will be bootstrapped before running the
-tests and destroyed at the end of the test run.
-
-Note that the **functional tests will not work using an LXC environment**.
-As mentioned, the test co-locates the juju-gui on the bootstrap node, which is
-not possible in LXC.
-
-Please read further for additional details.
-
-### Unit Tests ###
-
-The unit tests do not require a functional Juju environment, and can be run
-with this command::
-
-    make unittest
+    make check
 
 Unit tests should be created in the "tests" subdirectory and be named in the
 customary way (i.e., "test_*.py").
-
-### Functional Tests ###
-
-**Note the following instructions are for Juju 1.x. Slight changes are required for Juju 2.x.**
-
-Running the functional tests requires a Juju testing environment as provided
-by the juju-test command (see "Getting Started", above).
-
-To run only the functional tests:
-
-    make ftest JUJU_ENV="myenv"
-
-As seen before, "myenv" is the juju environment, as it is specified in your
-`~/.juju/environments.yaml`, that will be bootstrapped before running the
-tests and destroyed at the end of the test run.
-
-To run a test on a local environment, create an environment named "local"
-and type "local" like this:
-
-environments.yaml
-
-environments:
-  local:
-    type: local
-
-Then run:
-
-    make ftest JUJU_ENV="local"
 
 ## Running the Charm From Development ##
 
