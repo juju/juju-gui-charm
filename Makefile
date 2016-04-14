@@ -38,18 +38,6 @@ test: setup
 	tests/10-unit.test
 	tests/11-server.test
 
-.PHONY: ensure-juju-env
-ensure-juju-env:
-ifndef JUJU_ENV
-	$(error JUJU_ENV must be set.  See HACKING.md)
-endif
-
-.PHONY: ensure-juju-test
-ensure-juju-test: ensure-juju-env
-	@which juju-test > /dev/null \
-		|| (echo 'The "juju-test" command is missing.  See HACKING.md' \
-		; false)
-
 .PHONY: lint
 lint: setup
 	@$(VENV)/bin/flake8 --show-source \

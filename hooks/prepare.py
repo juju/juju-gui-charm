@@ -34,9 +34,7 @@ from utils import (
 
 
 def main():
-    # Run pre-install tasks, if available.  Please do not rely on the
-    # exec.d interface without conferring with the Juju GUI team: it may
-    # change after upcoming discussion with Canonical IS.
+    # Run pre-install tasks, if available.
     if os.path.isdir('exec.d'):
         dirnames = os.listdir('exec.d')
         dirnames.sort()
