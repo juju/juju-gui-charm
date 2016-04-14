@@ -58,7 +58,7 @@ lint: setup
 		hooks/ tests/ server/
 
 .PHONY: check
-check: test lint
+check: clean lint test
 
 .PHONY: clean-tests
 clean-tests:
