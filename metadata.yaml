@@ -15,9 +15,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 name: juju-gui
-summary: User interface for Juju (development)
+summary: User interface for Juju
 maintainer: Juju GUI Team <juju-gui@lists.launchpad.net>
 description: Web GUI for Juju
+series: ["trusty", "xenial"]
 tags: ["ops"]
 provides:
   web:

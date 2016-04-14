@@ -68,16 +68,13 @@ We have multiple versions of the juju-gui charm in the charmstore.
 | Release | Intent / Audience | URL | CS reference |
 | ------- | ----------------- | --- | ------------ |
 | Alphas | Dev team testing only | https://jujucharms.com/u/yellow/juju-gui | cs:~yellow/juju-gui |
-| Betas  | Wider testing. Only via Juju > 2.0 | https://jujucharms.com/development/juju-gui | cs:development/juju-gui |
+| Betas  | Wider testing. Only via Juju > 2.0 | hhttps://jujucharms.com/juju-gui/?channel=development | cs:juju-gui --channel development |
 | Released | GA | https://jujucharms.com/juju-gui | cs:juju-gui |
 
-The betas and released versions are owned by ~juju-gui-charmers. (A bug
-currently causes the beta to appear to be owned by ~charmers but it is not.)
-Both are promulgated but the beta is not published.
+The betas and released versions are owned by ~juju-gui-charmers.
 
 Before the release of Juju v2.0 the betas will be of limited utility as they
 can only be tested using Juju 1.26 alphas.
-
 
 ## Uploading an alpha version ##
 
@@ -87,22 +84,56 @@ release.
 
 Before uploading, check to see the currently available versions:
 
-    charm2 info --include=id,perm cs:~yellow/juju-gui
+    charm show cs:~yellow/juju-gui id perm
 
 Next, to upload the charm, go to the charm source directory and do:
 
-    make publish-yellow
+    make clean
+    charm push . cs:~yellow/juju-gui
+
+The `charm push` command above will output the fully qualified URL of the
+charm, for instance "cs:~yellow/juju-gui-42". Use that to publish the charm:
+
+    charm publish cs:~yellow/juju-gui-42
 
 And check the information to ensure it changed:
 
-    charm2 info --include=id,perm cs:~yellow/juju-gui
+    charm show cs:~yellow/juju-gui id perm
+
+## Uploading a beta version ##
+
+Our betas are development versions of the charm and are published to the
+cs:~juju-gui-charmers namespace for thorough testing before making it stable.
+
+Before uploading, check to see the currently available versions:
+
+    charm show cs:~juju-gui-charmers/juju-gui id perm published
+
+Next, to upload the charm, go to the charm source directory and do:
+
+    make clean
+    charm push . cs:~juju-gui-charmers/juju-gui
+
+The `charm push` command above will output the fully qualified URL of the
+charm, for instance "cs:~juju-gui-charmers/juju-gui-42". Use that to publish
+the charm:
+
+    charm publish --channel development cs:~juju-gui-charmers/juju-gui-42
+
+And check the information to ensure it changed:
+
+    charm show --channel development cs:~juju-gui-charmers/juju-gui id perm published
 
 ## Publishing the released version ##
 
-The promulgated version of the charm is owned by ~juju-gui-charmers.  Publish
-to it with:
+Once the charm has been QAed and proved to be solid and reliable, make it
+stable by executing the following command:
 
-    make publish-promulgated
+    charm publish cs:~juju-gui-charmers/juju-gui-42
+
+And check the information to ensure it changed:
+
+    charm show cs:~juju-gui-charmers/juju-gui id perm published
 
 ## Tagging the charm code ##
 
@@ -145,11 +176,16 @@ do the following:
     rm -rf jujugui-deps/*
     make package
 
+Also modify the `metadata.yaml` file by removing the line starting with
+"series: ".
+
 At this point `jujugui-deps` should have no wheels, only gzipped tarballs.
 After testing and QA, upload the fat charm to the charmstore with:
 
-    charm2 upload --publish . cs:~yellow/precise/juju-gui
-    charm2 upload --publish . cs:~juju-gui-charmers/precise/juju-gui
+    charm push . cs:~yellow/precise/juju-gui
+    charm push . cs:~juju-gui-charmers/precise/juju-gui
+
+And then publish them with `charm publish` specifying the revisions.
 
 At this point it is important that the packaging changes that were just made
 are discarded so they are not accidentally committed to git.  Do the

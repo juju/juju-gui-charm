@@ -1,9 +1,8 @@
-#!/usr/bin/env python2
-# -*- python -*-
+#!/bin/sh
 
 # This file is part of the Juju GUI, which lets users view and manage Juju
 # environments within a graphical interface (https://launchpad.net/juju-gui).
-# Copyright (C) 2012-2014 Canonical Ltd.
+# Copyright (C) 2016 Canonical Ltd.
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU Affero General Public License version 3, as published by
@@ -17,76 +16,35 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import errno
-import os
+juju-log -- "Updating APT sources."
+apt-get update
 
-from shelltoolbox import (
-    apt_get_install,
-    run,
-)
+juju-log -- "Installing base Python dependencies."
+# Debian packages:
+# language-pack-en: required by pip;
+# python-minimal: the charm hooks are written in Python2;
+# python-apt: used to calculate additional required debian packages;
+# python-pip: used to install GUI server and Juju GUI deps;
+# python-setuptools: used by GUI server and Juju GUI setup.py files;
+# python-six: required by charm tools;
+# python-tempita: used to render config files;
+# python-yaml: Juju speaks yaml;
+# python-zope.deprecation and python-zope.interface are required by the Juju
+# GUI (both packages) and by the GUI server (just the interface one), and
+# installed globally so that we don't end up with a top level zope package not
+# including both deprecation and interface subpackages, which can happen in the
+# case one package is installed with apt and the other with pip.
+DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    language-pack-en \
+    python-minimal \
+    python-apt \
+    python-pip \
+    python-setuptools \
+    python-six \
+    python-tempita \
+    python-yaml \
+    python-zope.deprecation \
+    python-zope.interface
 
-
-PYTHON_DEPENDENCIES = (
-    'python-apt',
-    'python-launchpadlib',
-    'python-tempita',
-    'python-yaml',
-)
-
-
-# Update the list of dependencies to ensure sources are not stale.
-run('juju-log', '--', 'Updating APT sources.')
-run('apt-get', 'update')
-# Python dependencies must be installed here so that the charm can import and
-# use required libraries.
-run('juju-log', '--', 'Installing base Python dependencies: {}.'.format(
-    ', '.join(PYTHON_DEPENDENCIES)))
-apt_get_install(*PYTHON_DEPENDENCIES)
-
-
-# The charmhelpers module depends on python-yaml and must be imported only
-# after the installation of the Python dependencies above.
-from charmhelpers.core.hookenv import (
-    config as get_config,
-    log,
-)
-
-from utils import (
-    config_json,
-    log_hook,
-)
-from backend import Backend
-
-
-def main():
-    # Run pre-install tasks, if available.  Please do not rely on the
-    # exec.d interface without conferring with the Juju GUI team: it may
-    # change after upcoming discussion with Canonical IS.
-    if os.path.isdir('exec.d'):
-        dirnames = os.listdir('exec.d')
-        dirnames.sort()
-        for module in dirnames:
-            filename = os.path.join('exec.d', module, 'charm-pre-install')
-            try:
-                run(filename)
-            except OSError, e:
-                # If the exec.d file does not exist or is not runnable or
-                # is not a directory, assume we can recover.  Log the problem
-                # and proceed.  Note that Juju Core has a special need of
-                # errno.ENOTDIR because it apparently adds a ".empty" file in
-                # empty charm directories, so trying to run
-                # ./exec.d/.empty/charm-pre-install will trigger that error.
-                if e.errno in (errno.ENOENT, errno.EACCES, errno.ENOTDIR):
-                    log('{}: {}'.format(e.strerror, filename))
-                else:
-                    raise
-    config = get_config()
-    backend = Backend(config)
-    backend.install()
-    # Store current configuration.
-    config_json.set(config)
-
-
-if __name__ == '__main__':
-    with log_hook():
-        main()
+juju-log -- "Completing the installation."
+/usr/bin/env python2 hooks/prepare.py
