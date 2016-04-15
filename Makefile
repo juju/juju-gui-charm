@@ -19,6 +19,9 @@ VENV = tests/.venv
 SYSDEPS = build-essential bzr charm-tools firefox libapt-pkg-dev \
 	libpython-dev python-virtualenv rsync xvfb
 
+CHARMCMD := charm
+CHARMURL ?= cs:~juju-gui-charmers/juju-gui
+
 .PHONY: all
 all: setup
 
@@ -72,6 +75,20 @@ releases:
 .PHONY: package
 package: clean releases
 
+.PHONY: publish-development
+publish-development: push-to-charmstore
+	$(CHARMCMD) publish --channel development $(fullurl)
+
+.PHONY: publish-stable
+publish-stable: push-to-charmstore
+	$(CHARMCMD) publish $(fullurl)
+
+.PHONY: push-to-charmstore
+push-to-charmstore: clean
+	$(CHARMCMD) login
+	@echo $(CHARMCMD) push . $(CHARMURL)
+	$(eval fullurl = $(shell $(CHARMCMD) push . $(CHARMURL) | grep 'url: ' | awk -F 'url: ' '{print $$2}'))
+
 .PHONY: sync
 sync:
 	scripts/charm_helpers_sync.py -d hooks/charmhelpers -c charm-helpers.yaml
@@ -94,4 +111,8 @@ help:
 	@echo '  the charm will be deployed in the default Juju environment.'
 	@echo '  If SERIES is not passed, "trusty" is used. Possible values are'
 	@echo -e '  "precise" and "trusty".\n'
+	@echo 'make publish-development - Push and publish the charm to the'
+	@echo -e '  development channel.\n'
+	@echo 'make publish-stable - Push and publish the charm to the'
+	@echo -e '  stable channel.\n'
 	@echo -e 'make sync - Update the version of charmhelpers.\n'
