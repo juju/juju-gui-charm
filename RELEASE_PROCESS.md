@@ -124,6 +124,12 @@ And check the information to ensure it changed:
 
     charm show --channel development cs:~juju-gui-charmers/juju-gui id perm published
 
+# QA Process #
+
+Before publishing the new juju-gui charm to the stable channel, both manual and
+automatic QA must be performed. Refer to the `QA.md` doc for details on doing
+pre-release testing of the charm.
+
 ## Publishing the released version ##
 
 Once the charm has been QAed and proved to be solid and reliable, make it
@@ -158,10 +164,6 @@ Then push to Launchpad using the following:
 
     git remote add lporigin lp:~yellow/canonical-theblues-charms/+git/juju-gui
     git push --tags lporigin master
-
-# QA Process #
-
-Refer to the `QA.md` doc for details on doing pre-release testing of the charm.
 
 ## Supporting the GUI for precise ##
 
