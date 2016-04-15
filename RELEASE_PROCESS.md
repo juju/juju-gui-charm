@@ -103,13 +103,22 @@ And check the information to ensure it changed:
 ## Uploading a beta version ##
 
 Our betas are development versions of the charm and are published to the
-cs:~juju-gui-charmers namespace for thorough testing before making it stable.
+"cs:~juju-gui-charmers" namespace for thorough testing before making it stable.
 
 Before uploading, check to see the currently available versions:
 
     charm show cs:~juju-gui-charmers/juju-gui id perm published
 
-Next, to upload the charm, go to the charm source directory and do:
+Next, to upload and publish the charm, go to the charm source directory and do:
+
+    make publish-development
+
+Check the information to ensure it changed:
+
+    charm show --channel development cs:~juju-gui-charmers/juju-gui id perm published
+
+Done.
+If you want to perform the same operation manually, do the following:
 
     make clean
     charm push . cs:~juju-gui-charmers/juju-gui
@@ -135,9 +144,14 @@ pre-release testing of the charm.
 Once the charm has been QAed and proved to be solid and reliable, make it
 stable by executing the following command:
 
+    make publish-stable
+
+Assuming the current development charm has revision 42, the above can be also
+done by manually running the charm command:
+
     charm publish cs:~juju-gui-charmers/juju-gui-42
 
-And check the information to ensure it changed:
+Finally, check the information to ensure it changed:
 
     charm show cs:~juju-gui-charmers/juju-gui id perm published
 
