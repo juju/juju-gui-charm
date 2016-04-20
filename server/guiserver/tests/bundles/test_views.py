@@ -609,21 +609,26 @@ class TestGetChanges(
         expected_response = {
             'Response': {
                 'Changes': [
-                    {'args': ['cs:trusty/django-42'],
-                     'requires': [],
-                     'id': 'addCharm-0',
-                     'method': 'addCharm'},
-                    {'args': ['cs:trusty/django-42', 'django', {}],
-                     'requires': ['addCharm-0'],
-                     'id': 'addService-1',
-                     'method': 'deploy'},
-                    {'args': ['$addService-1', 1, None],
-                     'requires': ['addService-1'],
-                     'id': 'addUnit-2',
-                     'method': 'addUnit'},
-                ],
-            },
+                    {
+                        u'args': ['cs:trusty/django-42'],
+                        u'requires': [],
+                        u'id': u'addCharm-0',
+                        u'method': u'addCharm'
+                    }, {
+                        u'args': [u'$addCharm-0', 'django', {}, u'', {}],
+                        u'requires': [u'addCharm-0'],
+                        u'id': u'deploy-1',
+                        u'method': u'deploy'
+                    }, {
+                        u'args': [u'$deploy-1', None],
+                        u'requires': [u'deploy-1'],
+                        u'id': u'addUnit-2',
+                        u'method': u'addUnit'
+                    }
+                ]
+            }
         }
+        self.maxDiff = None
         response = yield self.view(request)
         self.assertEqual(expected_response, response)
 
@@ -730,18 +735,22 @@ class TestSetChanges(
         expected_response = {
             'Response': {
                 'Changes': [
-                    {'args': ['cs:trusty/django-42'],
-                     'id': 'addCharm-0',
-                     'method': 'addCharm',
-                     'requires': []},
-                    {'args': ['cs:trusty/django-42', 'django', {}],
-                     'id': 'addService-1',
-                     'method': 'deploy',
-                     'requires': ['addCharm-0']},
-                ],
-            },
+                    {
+                        u'args': ['cs:trusty/django-42'],
+                        u'requires': [],
+                        u'id': u'addCharm-0',
+                        u'method': u'addCharm'
+                    }, {
+                        u'args': [u'$addCharm-0', 'django', {}, u'', {}],
+                        u'requires': [u'addCharm-0'],
+                        u'id': u'deploy-1',
+                        u'method': u'deploy'
+                    }
+                ]
+            }
         }
         response = yield views.get_changes(request)
+        self.maxDiff = None
         self.assertEqual(expected_response, response)
 
         # A second call to GetChanges returns an error.
