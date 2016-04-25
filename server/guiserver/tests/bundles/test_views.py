@@ -628,7 +628,6 @@ class TestGetChanges(
                 ]
             }
         }
-        self.maxDiff = None
         response = yield self.view(request)
         self.assertEqual(expected_response, response)
 
@@ -750,7 +749,6 @@ class TestSetChanges(
             }
         }
         response = yield views.get_changes(request)
-        self.maxDiff = None
         self.assertEqual(expected_response, response)
 
         # A second call to GetChanges returns an error.
