@@ -509,19 +509,21 @@ class ChangeSetTestMixin(object):
         'Params': {'YAML': content},
     })
     response = {
-        'RequestId': 1,
         'Response': {
             'Changes': [
-                {'id': 'addCharm-0',
-                 'method': 'addCharm',
-                 'args': ['cs:trusty/django-42'],
-                 'requires': []},
-                {'id': 'addService-1',
-                 'method': 'deploy',
-                 'args': ['cs:trusty/django-42', 'django', {}],
-                 'requires': ['addCharm-0']},
+                {
+                    u'args': ['cs:trusty/django-42'],
+                    u'requires': [],
+                    u'id': u'addCharm-0',
+                    u'method': u'addCharm'
+                }, {
+                    u'args': [u'$addCharm-0', 'django', {}, u'', {}],
+                    u'requires': [u'addCharm-0'],
+                    u'id': u'deploy-1',
+                    u'method': u'deploy'
+                }
             ]
-        },
+        }, 'RequestId': 1
     }
 
 

@@ -28,7 +28,7 @@ backports.ssl_match_hostname==3.4.0.2
 charmworldlib==0.3.0
 convoy==0.4.3
 futures==2.2.0
-jujubundlelib==0.1.9
+jujubundlelib==0.5.1
 jujuclient==0.50.1
 juju-deployer==0.6.2
 Mako==1.0.2
