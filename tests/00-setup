@@ -34,7 +34,9 @@ createvenv() {
     fi
     if [ ! -f "$ACTIVATE" -o "$TEST_REQUIREMENTS" -nt "$ACTIVATE" -o "$SERVER_REQUIREMENTS" -nt "$ACTIVATE" ]; then
         [ $updated_downloadcache -eq 0 ] && bzr up $DOWNLOADCACHE
-        virtualenv --distribute --extra-search-dir=$DOWNLOADCACHE $VENV
+	# --system-site-packages is used because there is not at present a
+	# release of python-apt that installs via pip on xenial.
+        virtualenv --system-site-packages --distribute --extra-search-dir=$DOWNLOADCACHE $VENV
         . $ACTIVATE && \
         pip install --upgrade pip && \
         pip install --find-links releases --find-links jujugui-deps jujugui --no-cache && \
