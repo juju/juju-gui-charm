@@ -114,19 +114,23 @@ class GuiServerMixin(object):
             raise ValueError('cannot retrieve model UUID from hook context')
         juju_version = run('jujud', '--version').strip()
         utils.start_builtin_server(
-            config['ssl-cert-path'], config['serve-tests'],
-            config['sandbox'], config['builtin-server-logging'],
-            not config['secure'], config['charmworld-url'],
-            env_password=config.get('password'), env_uuid=env_uuid,
-            juju_version=juju_version, debug=config['juju-gui-debug'],
-            port=config.get('port'), jem_location=config['jem-location'],
-            jem_version=config['jem-version'],
+            config['ssl-cert-path'],
+            config['serve-tests'],
+            config['sandbox'],
+            config['builtin-server-logging'],
+            not config['secure'],
+            config['charmworld-url'],
+            env_password=config.get('password'),
+            env_uuid=env_uuid,
+            juju_version=juju_version,
+            debug=config['juju-gui-debug'],
+            port=config.get('port'),
+            jem_url=config['jem-url'],
             interactive_login=config['interactive-login'],
             gzip=config['gzip-compression'],
             gtm_enabled=config['gtm-enabled'],
             gisf_enabled=config['gisf-enabled'],
-            charmstore_url=config['charmstore-url'],
-            charmstore_version=config['charmstore-version'])
+            charmstore_url=config['charmstore-url'])
 
     def stop(self, backend):
         utils.stop_builtin_server()

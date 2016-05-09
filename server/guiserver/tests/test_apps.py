@@ -84,9 +84,7 @@ class TestServer(AppsTestMixin, unittest.TestCase):
             'jujuversion': '2.0.0',
             'sandbox': False,
             'charmstoreurl': 'https://api.jujucharms.com/charmstore/',
-            'charmstoreversion': 'v4',
-            'jemlocation': '',
-            'jemversion': 'v1',
+            'jemurl': '',
         }
         options_dict.update(kwargs)
         options = mock.Mock(**options_dict)
@@ -193,10 +191,10 @@ class TestServer(AppsTestMixin, unittest.TestCase):
 
     def test_gui_jem_connection(self):
         # The server can be configured to connect the Juju GUI to a JEM.
-        jemlocation = 'https://1.2.3.4/jem'
-        app = self.get_app(jemlocation=jemlocation, interactivelogin=True)
+        jemurl = 'https://1.2.3.4/jem'
+        app = self.get_app(jemurl=jemurl, interactivelogin=True)
         config = self.get_gui_config(app)
-        self.assertEqual(jemlocation, config['jujugui.jem_url'])
+        self.assertEqual(jemurl, config['jujugui.jem_url'])
         self.assertTrue(config['jujugui.interactive_login'])
 
     def test_gui_debug_mode(self):

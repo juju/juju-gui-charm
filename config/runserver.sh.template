@@ -47,14 +47,8 @@ exec /usr/bin/python /usr/local/bin/runserver.py \
     {{if charmstore_url}}
         --charmstoreurl="{{charmstore_url}}" \
     {{endif}}
-    {{if charmstore_version}}
-        --charmstoreversion="{{charmstore_version}}" \
-    {{endif}}
-    {{if jem_location}}
-        --jemlocation="{{jem_location}}" \
-    {{endif}}
-    {{if jem_version}}
-        --jemversion="{{jem_version}}" \
+    {{if jem_url}}
+        --jemurl="{{jem_url}}" \
     {{endif}}
     {{if interactive_login}}
         --interactivelogin="{{interactive_login}}" \
