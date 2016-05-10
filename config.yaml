@@ -116,11 +116,6 @@ options:
       charmworld-url option above.
     type: string
     default: https://api.jujucharms.com/charmstore/
-  charmstore-version:
-    description: |
-      The version of the charmstore API to use.
-    type: string
-    default: v4
   repository-location:
     description: |
       The charm depends on several software packages that are not packaged in
@@ -171,14 +166,10 @@ options:
       the Juju version is dynamically retrieved.
     type: string
     default:
-  jem-location:
+  jem-url:
     type: string
     default: ''
-    description: Publicly accessible URL of a Juju Environment Manager.
-  jem-version:
-    type: string
-    default: v1
-    description: The version of the Juju Environment Manager API to use.
+    description: Publicly accessible URL of JEM.
   interactive-login:
     description: |
       Enables interactive login to an identity-manager, if applicable.

@@ -144,16 +144,8 @@ def setup():
     define(
         'charmstoreurl', type=str,
         default='https://api.jujucharms.com/charmstore/',
-        help="The url for the charmstore.")
-    define(
-        'charmstoreversion', type=str, default='v4',
-        help="The version of the charmstore API to use.")
-    define(
-        'jemlocation', type=str,
-        help="The url for a Juju Environment Manager.")
-    define(
-        'jemversion', type=str, default='v1',
-        help="The version of the JEM API to use.")
+        help="The URL for the charmstore.")
+    define('jemurl', type=str, help="The URL for a Juju Environment Manager.")
     define(
         'interactivelogin', type=bool, default=False,
         help='Enables interactive login to identity manager, if applicable.')
