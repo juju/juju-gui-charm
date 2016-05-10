@@ -33,7 +33,6 @@ PyYAML==3.10
 
 # Charm hooks.
 launchpadlib==1.10.2
-#python-apt==0.8.5
 Tempita==0.5.1
 
 # Charm tests + GUI server tests.
