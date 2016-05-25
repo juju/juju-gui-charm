@@ -22,6 +22,8 @@ VENV="$TESTDIR/.venv"
 ACTIVATE="$VENV/bin/activate"
 TEST_REQUIREMENTS="test-requirements.pip"
 SERVER_REQUIREMENTS="server-requirements.pip"
+APT_PATH=`python2 -c 'import apt; print(apt.__path__[0])'`
+APT_PKG_PATH=`python2 -c 'import apt_pkg; print(apt_pkg.__file__)'`
 
 
 createvenv() {
@@ -33,14 +35,16 @@ createvenv() {
         updated_downloadcache=1
     fi
     if [ ! -f "$ACTIVATE" -o "$TEST_REQUIREMENTS" -nt "$ACTIVATE" -o "$SERVER_REQUIREMENTS" -nt "$ACTIVATE" ]; then
+        # Note that, since there is not at present a release of python-apt that
+        # installs via pip on xenial, apt is symlinked from the global library.
         [ $updated_downloadcache -eq 0 ] && bzr up $DOWNLOADCACHE
-	# --system-site-packages is used because there is not at present a
-	# release of python-apt that installs via pip on xenial.
-        virtualenv --system-site-packages --distribute --extra-search-dir=$DOWNLOADCACHE $VENV
+        virtualenv --distribute --extra-search-dir=$DOWNLOADCACHE $VENV
         . $ACTIVATE && \
         pip install --upgrade pip && \
         pip install --find-links releases --find-links jujugui-deps jujugui --no-cache && \
-        BZR_PLUGIN_PATH='-user' pip install -r $TEST_REQUIREMENTS --find-links releases --find-links deps --find-links $DOWNLOADCACHE --no-allow-external --no-index --no-cache
+        BZR_PLUGIN_PATH='-user' pip install -r $TEST_REQUIREMENTS --find-links releases --find-links deps --find-links $DOWNLOADCACHE --no-allow-external --no-index --no-cache && \
+        ln -s $APT_PATH $VENV/lib/python2.7/site-packages/ && \
+        ln -s $APT_PKG_PATH $VENV/lib/python2.7/site-packages/
 
         retcode=$?
         [ $retcode -eq 0 ] && touch $ACTIVATE || touch $TEST_REQUIREMENTS

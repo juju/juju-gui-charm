@@ -17,23 +17,17 @@
 """Juju GUI deploy module tests."""
 
 import os
-import shutil
-import tempfile
 import unittest
 
 import mock
 
-import deploy
-from deploy import (
-    juju_deploy,
-    setup_repository,
-)
+from deploy import juju_deploy
 
 
 def contains(needle, haystack):
     """Does the sequence (haystack) contain the given subsequence (needle)?"""
-    for i in xrange(len(haystack)-len(needle)+1):
-        for j in xrange(len(needle)):
+    for i in range(len(haystack)-len(needle)+1):
+        for j in range(len(needle)):
             if haystack[i+j] != needle[j]:
                 break
         else:
@@ -41,77 +35,10 @@ def contains(needle, haystack):
     return False
 
 
-class TestSetupRepository(unittest.TestCase):
-
-    name = 'test-charm'
-
-    def setUp(self):
-        # Create a directory structure for the charm source.
-        self.source = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, self.source)
-        # Create a file in the source dir.
-        _, self.root_file = tempfile.mkstemp(dir=self.source)
-        # Create a tests directory including a .venv directory and a file.
-        self.tests_dir = os.path.join(self.source, 'tests')
-        venv_dir = os.path.join(self.tests_dir, '.venv')
-        os.makedirs(venv_dir)
-        tempfile.mkstemp(dir=venv_dir)
-        # Create a test file.
-        _, self.tests_file = tempfile.mkstemp(dir=self.tests_dir)
-
-    def assert_dir_exists(self, path):
-        self.assertTrue(
-            os.path.isdir(path),
-            'the directory {!r} does not exist'.format(path))
-
-    def assert_files_equal(self, expected, path):
-        fileset = set()
-        for dirpath, _, filenames in os.walk(path):
-            relpath = os.path.relpath(dirpath, path)
-            if relpath == '.':
-                relpath = ''
-            else:
-                fileset.add(relpath + os.path.sep)
-            fileset.update(os.path.join(relpath, name) for name in filenames)
-        self.assertEqual(expected, fileset)
-
-    def check_repository(self, repo, series):
-        # The repository has been created in the temp directory.
-        self.assertEqual(tempfile.tempdir, os.path.split(repo)[0])
-        self.assert_dir_exists(repo)
-        # The repository only contains the series directory.
-        self.assertEqual([series], os.listdir(repo))
-        series_dir = os.path.join(repo, series)
-        self.assert_dir_exists(series_dir)
-        # The series directory only contains our charm.
-        self.assertEqual([self.name], os.listdir(series_dir))
-        self.assert_dir_exists(os.path.join(series_dir, self.name))
-
-    def test_repository(self):
-        # The charm repository is correctly created with the default series.
-        repo = setup_repository(self.name, self.source)
-        self.check_repository(repo, 'trusty')
-
-    def test_series(self):
-        # The charm repository is created with the given series.
-        repo = setup_repository(self.name, self.source, series='raring')
-        self.check_repository(repo, 'raring')
-
-    def test_charm_files(self):
-        # The charm files are correctly copied inside the repository, excluding
-        # unwanted directories.
-        repo = setup_repository(self.name, self.source)
-        charm_dir = os.path.join(repo, 'trusty', self.name)
-        expected = set([
-            os.path.basename(self.root_file)
-        ])
-        self.assert_files_equal(expected, charm_dir)
-
-
 REPO_PATH = '/tmp/repo/'
 
 
-@mock.patch('deploy.setup_repository', mock.Mock(return_value=REPO_PATH))
+@mock.patch('tempfile.mkdtemp', mock.Mock(return_value=REPO_PATH))
 class TestJujuDeploy(unittest.TestCase):
 
     unit_info = {'public-address': 'unit.example.com'}
@@ -123,19 +50,18 @@ class TestJujuDeploy(unittest.TestCase):
     def call_deploy(
             self, mock_wait_for_unit, mock_juju,
             service_name=None, options=None, force_machine=None,
-            charm_source=None, series='trusty'):
+            charm_source=None, series='xenial'):
         mock_wait_for_unit.return_value = self.unit_info
         if charm_source is None:
             expected_source = os.path.join(os.path.dirname(__file__), '..')
         else:
             expected_source = charm_source
-        deploy.setup_repository.reset_mock()
-        unit_info = juju_deploy(
-            self.charm, service_name=service_name, options=options,
-            force_machine=force_machine, charm_source=charm_source,
-            series=series)
-        deploy.setup_repository.assert_called_once_with(
-            self.charm, expected_source, series=series)
+        with mock.patch('deploy.rsync') as mock_rsync:
+            unit_info = juju_deploy(
+                self.charm, service_name=service_name, options=options,
+                force_machine=force_machine, charm_source=charm_source,
+                series=series)
+        mock_rsync.assert_called_once_with(expected_source, REPO_PATH)
         # The unit address is correctly returned.
         self.assertEqual(self.unit_info, unit_info)
         self.assertEqual(1, mock_wait_for_unit.call_count)
@@ -152,10 +78,9 @@ class TestJujuDeploy(unittest.TestCase):
     def test_deployment(self):
         # The function deploys and exposes the given charm.
         command = self.call_deploy()
-        # A local repository is included in the command.
-        self.assertTrue(contains(('--repository', REPO_PATH), command))
-        # The charm name is also included.
-        self.assertIn(self.local_charm, command)
+        self.assertEqual(
+            ('deploy', '--series', 'xenial', REPO_PATH, self.charm),
+            command)
 
     def test_options(self):
         # The function handles charm options.
@@ -175,21 +100,13 @@ class TestJujuDeploy(unittest.TestCase):
 
     def test_charm_source(self):
         # The function can deploy a charm from a specific source.
-        with mock.patch('deploy.setup_repository') as mock_setup_repository:
-            charm_source = '/tmp/source/'
-            self.call_deploy(charm_source=charm_source)
-            # The setup_repository function is called with the charm source as
-            # its second argument.
-            setup_source = mock_setup_repository.mock_calls[0][1][1]
-        # The source provided to the "deploy" call is the same that was passed
-        # along to setup_repository.
-        self.assertEqual(setup_source, charm_source)
+        charm_source = '/tmp/source/'
+        self.call_deploy(charm_source=charm_source)
 
     def test_series(self):
         # The function can deploy a charm from a specific series.
-        charm_url = 'local:raring/{}'.format(self.charm)
         command = self.call_deploy(series='raring')
-        self.assertIn(charm_url, command)
+        self.assertTrue(contains(('--series', 'raring'), command))
 
     def test_no_service_name(self):
         # If the service name is not provided, the charm name is used.
