@@ -38,23 +38,6 @@ rsync = command('rsync', '-a',
                 '--exclude', '/tests')
 
 
-def setup_repository(name, source, series='trusty'):
-    """Create a temporary Juju repository to use for charm deployment.
-
-    Copy the charm files in source in the repository section corresponding to
-    the given series, using the provided charm name and excluding the
-    virtualenv and Git directories.
-
-    Return the repository path.
-    """
-    source = os.path.abspath(source) + os.path.sep
-    repo = tempfile.mkdtemp()
-    destination = os.path.join(repo, series, name)
-    os.makedirs(destination)
-    rsync(source, destination)
-    return repo
-
-
 def juju_deploy(
         charm_name, service_name=None, options=None, force_machine=None,
         charm_source=None, series=None):
@@ -67,7 +50,7 @@ def juju_deploy(
     If force_machine is not None, create the unit in the specified machine.
     If charm_source is None, dynamically retrieve the charm source directory.
     If series is None, the series specified in the SERIES environment variable
-    is used if found, defaulting to "trusty".
+    is used if found, defaulting to "xenial".
     """
     # Note: this function is used by both the functional tests and
     # "make deploy": see the "if main" section below.
@@ -75,10 +58,11 @@ def juju_deploy(
         # Dynamically retrieve the charm source based on the path of this file.
         charm_source = os.path.join(os.path.dirname(__file__), '..')
     if series is None:
-        series = os.getenv('SERIES', '').strip() or 'trusty'
-    logging.debug('setting up the charms repository')
-    repo = setup_repository(charm_name, charm_source, series=series)
-    args = ['deploy', '--repository', repo]
+        series = os.getenv('SERIES', '').strip() or 'xenial'
+    logging.debug('setting up the charm')
+    path = tempfile.mkdtemp()
+    rsync(charm_source, path)
+    args = ['deploy', '--series', series]
     if service_name is None:
         service_name = charm_name
     if options is not None:
@@ -86,11 +70,10 @@ def juju_deploy(
         args.extend(['--config', config_file.name])
     if force_machine is not None:
         args.extend(['--to', str(force_machine)])
-    charm_url = 'local:{}/{}'.format(series, charm_name)
-    args.append(charm_url)
+    args.append(path)
     args.append(service_name)
-    logging.debug('deploying {} from the repository in {}'.format(
-        charm_url, repo))
+    logging.debug('deploying {} (series: {}) from {}'.format(
+        service_name, series, path))
     juju(*args)
     logging.debug('exposing {}'.format(service_name))
     juju('expose', service_name)

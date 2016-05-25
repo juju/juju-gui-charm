@@ -16,7 +16,6 @@
 
 """Juju GUI test helpers."""
 
-from collections import namedtuple
 from functools import wraps
 import json
 import os
@@ -73,8 +72,6 @@ def command(*base_args):
 
 juju_command = command('juju')
 juju_env = lambda: os.getenv('JUJU_ENV')  # This is propagated by juju-test.
-ssh = command('ssh')
-Version = namedtuple('Version', 'major minor patch')
 
 
 def retry(exception, tries=10, delay=1):
