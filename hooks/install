@@ -46,5 +46,9 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
     python-zope.deprecation \
     python-zope.interface
 
+# Update pip to the latest version. This is done as a workaround to
+# https://github.com/pypa/pip/issues/3687 (occurring on Xenial).
+pip install --upgrade pip
+
 juju-log -- "Completing the installation."
 /usr/bin/env python2 hooks/prepare.py

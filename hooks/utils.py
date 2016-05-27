@@ -253,10 +253,8 @@ def install_builtin_server():
     # been already called in the unit.
     with su('root'):
         cmd_log(run(
-            '/usr/bin/pip2', 'install', '--no-index', '--no-dependencies',
-            '--find-links', 'file:///{}'.format(deps),
-            '-r', requirements
-        ))
+            'pip2', 'install', '--no-index', '--no-dependencies',
+            '--find-links', 'file:///{}'.format(deps), '-r', requirements))
     log('Installing the builtin server.')
     setup_cmd = os.path.join(SERVER_DIR, 'setup.py')
     with su('root'):
@@ -415,10 +413,8 @@ def setup_gui():
     release_tarball_path = get_release_file_path()
     log('Installing Juju GUI from {}.'.format(release_tarball_path))
     cmd = (
-        '/usr/bin/pip2',  'install', '--no-index',
-        '--find-links', 'file:///{}'.format(jujugui_deps),
-        release_tarball_path,
-    )
+        'pip2',  'install', '--no-index', '--find-links',
+        'file:///{}'.format(jujugui_deps), release_tarball_path)
     with su('root'):
         cmd_log(run(*cmd))
 
