@@ -28,10 +28,15 @@ from charmhelpers.contrib.charmhelpers import make_charm_config_file
 
 from helpers import (
     command,
+    get_password,
     juju,
     wait_for_unit,
 )
 
+
+# Define the default series to use when deploying the Juju GUI charm.
+DEFAULT_SERIES = 'xenial'
+# Define the rsync command.
 rsync = command('rsync', '-a',
                 '--exclude', '.git',
                 '--exclude', '.bzr',
@@ -58,7 +63,7 @@ def juju_deploy(
         # Dynamically retrieve the charm source based on the path of this file.
         charm_source = os.path.join(os.path.dirname(__file__), '..')
     if series is None:
-        series = os.getenv('SERIES', '').strip() or 'xenial'
+        series = os.getenv('SERIES', '').strip() or DEFAULT_SERIES
     logging.debug('setting up the charm')
     path = tempfile.mkdtemp()
     rsync(charm_source, path)
@@ -85,3 +90,4 @@ if __name__ == '__main__':
     logging.getLogger().setLevel(logging.DEBUG)
     unit = juju_deploy('juju-gui')
     print(json.dumps(unit, indent=2))
+    print('password: {}'.format(get_password()))

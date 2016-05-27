@@ -673,7 +673,7 @@ class TestInstallBuiltinServer(unittest.TestCase):
         ])
         mock_run.assert_has_calls([
             mock.call(
-                '/usr/bin/pip2', 'install', '--no-index', '--no-dependencies',
+                'pip2', 'install', '--no-index', '--no-dependencies',
                 '--find-links', 'file:///{}/deps'.format(charm_dir),
                 '-r', os.path.join(charm_dir, 'server-requirements.pip')),
             mock.call(

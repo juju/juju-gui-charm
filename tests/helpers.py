@@ -22,8 +22,6 @@ import os
 import subprocess
 import time
 
-import yaml
-
 
 class ProcessError(subprocess.CalledProcessError):
     """Error running a shell command."""
@@ -70,8 +68,8 @@ def command(*base_args):
     return runner
 
 
+# Define the juju command.
 juju_command = command('juju')
-juju_env = lambda: os.getenv('JUJU_ENV')  # This is propagated by juju-test.
 
 
 def retry(exception, tries=10, delay=1):
@@ -100,67 +98,37 @@ def retry(exception, tries=10, delay=1):
     return decorator
 
 
-def get_env_attr(attr):
-    """Return the requested attribute for the current environment.
-
-    The attr argument is the key included in the current environment section
-    in ~/.juju/environments.yaml.
-    The environment name must be present in the JUJU_ENV env variable.
-
-    Raise a ValueError if the environment is not found in the context or the
-    given environment name is not included in ~/.juju/environments.yaml.
-    """
-    # Retrieve the current environment.
-    env = juju_env()
-    if env is None:
-        raise ValueError('Unable to retrieve the current environment name.')
-    # Load and parse the Juju environments file.
-    path = os.path.expanduser('~/.juju/environments.yaml')
-    try:
-        environments_file = open(path)
-    except IOError as err:
-        raise ValueError('Unable to open environments file: {}'.format(err))
-    try:
-        environments = yaml.safe_load(environments_file)
-    except Exception as err:
-        raise ValueError('Unable to parse environments file: {}'.format(err))
-    # Retrieve the admin secret for the current environment.
-    try:
-        environment = environments.get('environments', {}).get(env)
-    except AttributeError as err:
-        raise ValueError('Invalid YAML contents: {}'.format(environments))
-    if environment is None:
-        raise ValueError('Environment {} not found'.format(env))
-    value = environment.get(attr)
-    if value is None:
-        raise ValueError('Attribute {} not found'.format(attr))
-    return value
-
-
 @retry(ProcessError)
 def juju(command, *args):
-    """Call the juju command, passing the environment parameters if required.
+    """Call the juju command, passing the model parameters if required.
 
-    The environment value can be provided in args, or can be found in the
-    context as JUJU_ENV.
+    The model value can be provided in args, or can be found in the
+    context as JUJU_MODEL.
     """
     arguments = [command]
-    if ('-e' not in args) and ('--environment' not in args):
-        env = juju_env()
-        if env is not None:
-            arguments.extend(['-e', env])
+    if ('-m' not in args) and ('--model' not in args):
+        model = os.getenv('JUJU_MODEL')
+        if model is not None:
+            arguments.extend(['-m', model])
     arguments.extend(args)
     return juju_command(*arguments)
 
 
 def juju_status():
-    """Return the Juju status as a dictionary."""
+    """Return the Juju status as a dictionary.
+
+    The model in which to operate can be provided in the JUJU_MODEL environment
+    variable. If not provided, the currently active model is used.
+    """
     status = juju('status', '--format', 'json')
     return json.loads(status)
 
 
 def wait_for_unit(svc_name):
     """Wait for the first unit of the given svc_name to be started.
+
+    The model in which to operate can be provided in the JUJU_MODEL environment
+    variable. If not provided, the currently active model is used.
 
     Also wait for the service to be exposed.
     Raise a RuntimeError if the unit is found in an error state.
@@ -188,3 +156,15 @@ def wait_for_unit(svc_name):
         if 'error' in state:
             raise RuntimeError(
                 'the service unit is in an error state: {}'.format(state))
+
+
+def get_password():
+    """Return the password to be used to connect to the Juju API.
+
+    The model in which to operate can be provided in the JUJU_MODEL environment
+    variable. If not provided, the currently active model is used.
+    """
+    output = juju('show-controller', '--show-passwords', '--format', 'json')
+    data = json.loads(output)
+    account = data.values()[0]['accounts'].values()[0]
+    return account['password']

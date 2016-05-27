@@ -16,21 +16,15 @@
 
 """Juju GUI helpers tests."""
 
-from contextlib import contextmanager
 import json
-import os
-import shutil
-import tempfile
 import unittest
 
 import mock
-import yaml
 
 from helpers import (
     command,
-    get_env_attr,
+    get_password,
     juju,
-    juju_env,
     juju_status,
     ProcessError,
     retry,
@@ -80,35 +74,35 @@ class TestCommand(unittest.TestCase):
 @mock.patch('helpers.juju_command')
 class TestJuju(unittest.TestCase):
 
-    env = 'test-env'
-    patch_environ = mock.patch('os.environ', {'JUJU_ENV': env})
+    model = 'test-model'
+    patch_model = mock.patch('os.environ', {'JUJU_MODEL': model})
     process_error = ProcessError(1, 'an error occurred', 'output', 'error')
 
-    def test_e_in_args(self, mock_juju_command):
-        # The command includes the environment if provided with -e.
-        with self.patch_environ:
-            juju('deploy', '-e', 'another-env', 'test-charm')
+    def test_m_in_args(self, mock_juju_command):
+        # The command includes the model if provided with -m.
+        with self.patch_model:
+            juju('deploy', '-m', 'another-model', 'test-charm')
         mock_juju_command.assert_called_once_with(
-            'deploy', '-e', 'another-env', 'test-charm')
+            'deploy', '-m', 'another-model', 'test-charm')
 
-    def test_environment_in_args(self, mock_juju_command):
-        # The command includes the environment if provided with --environment.
-        with self.patch_environ:
-            juju('deploy', '--environment', 'another-env', 'test-charm')
+    def test_model_in_args(self, mock_juju_command):
+        # The command includes the model if provided with --model.
+        with self.patch_model:
+            juju('deploy', '--model', 'another-model', 'test-charm')
         mock_juju_command.assert_called_once_with(
-            'deploy', '--environment', 'another-env', 'test-charm')
+            'deploy', '--model', 'another-model', 'test-charm')
 
-    def test_environment_in_context(self, mock_juju_command):
-        # The command includes the environment if found in the context as
-        # the environment variable JUJU_ENV.
-        with self.patch_environ:
+    def test_model_in_context(self, mock_juju_command):
+        # The command includes the model if found in the context as the
+        # environment variable JUJU_MODEL.
+        with self.patch_model:
             juju('deploy', 'test-charm')
         mock_juju_command.assert_called_once_with(
-            'deploy', '-e', self.env, 'test-charm')
+            'deploy', '-m', self.model, 'test-charm')
 
-    def test_environment_not_in_context(self, mock_juju_command):
-        # The command does not include the environment if not found in the
-        # context as the environment variable JUJU_ENV.
+    def test_model_not_in_context(self, mock_juju_command):
+        # The command does not include the model if not found in the context as
+        # the environment variable JUJU_MODEL.
         with mock.patch('os.environ', {}):
             juju('deploy', 'test-charm')
         mock_juju_command.assert_called_once_with('deploy', 'test-charm')
@@ -138,19 +132,6 @@ class TestJuju(unittest.TestCase):
         mock_juju_command.assert_called_with('deploy', 'test-charm')
         self.assertEqual(10, mock_sleep.call_count)
         mock_sleep.assert_called_with(1)
-
-
-class TestJujuEnv(unittest.TestCase):
-
-    def test_env_in_context(self):
-        # The function returns the juju env if found in the execution context.
-        with mock.patch('os.environ', {'JUJU_ENV': 'test-env'}):
-            self.assertEqual('test-env', juju_env())
-
-    def test_env_not_in_context(self):
-        # The function returns None if JUJU_ENV is not included in the context.
-        with mock.patch('os.environ', {}):
-            self.assertIsNone(juju_env())
 
 
 class TestJujuStatus(unittest.TestCase):
@@ -243,91 +224,6 @@ class TestRetry(unittest.TestCase):
         self.assertGreater(mock_callable.call_count, 1)
 
 
-class TestGetEnvAttr(unittest.TestCase):
-
-    def mock_environment_file(self, contents, juju_env=None):
-        """Create a mock environment file containing the given contents."""
-        # Create a temporary home that will be used by get_env_attr().
-        home = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, home)
-        # Create a juju home.
-        juju_home = os.path.join(home, '.juju')
-        os.mkdir(juju_home)
-        # Set up an environments file with the given contents.
-        environments_path = os.path.join(juju_home, 'environments.yaml')
-        with open(environments_path, 'w') as environments_file:
-            environments_file.write(contents)
-        # Return a mock object patching the environment context with the
-        # temporary HOME and JUJU_ENV.
-        environ = {'HOME': home}
-        if juju_env is not None:
-            environ['JUJU_ENV'] = juju_env
-        # The returned object can be used as a context manager.
-        return mock.patch('os.environ', environ)
-
-    @contextmanager
-    def assert_error(self, error):
-        """Ensure a ValueError is raised in the context block.
-
-        Also check that the exception includes the expected error message.
-        """
-        with self.assertRaises(ValueError) as context_manager:
-            yield
-        self.assertIn(error, str(context_manager.exception))
-
-    def test_no_env_name(self):
-        # A ValueError is raised if the env name is not included in the
-        # environment context.
-        expected = 'Unable to retrieve the current environment name.'
-        with self.mock_environment_file(''):
-            with self.assert_error(expected):
-                get_env_attr('attr-name')
-
-    def test_no_file(self):
-        # A ValueError is raised if the environments file is not found.
-        home = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, home)
-        expected = 'Unable to open environments file: [Errno 2] No such file'
-        with mock.patch('os.environ', {'HOME': home, 'JUJU_ENV': 'ec2'}):
-            with self.assert_error(expected):
-                get_env_attr('attr-name')
-
-    def test_invalid_yaml(self):
-        # A ValueError is raised if the environments file is not well formed.
-        with self.mock_environment_file(':', juju_env='ec2'):
-            with self.assert_error('Unable to parse environments file:'):
-                get_env_attr('attr-name')
-
-    def test_invalid_yaml_contents(self):
-        # A ValueError is raised if the environments file is not well formed.
-        with self.mock_environment_file('a-string', juju_env='ec2'):
-            with self.assert_error('Invalid YAML contents: a-string'):
-                get_env_attr('attr-name')
-
-    def test_no_env(self):
-        # A ValueError is raised if the environment is not found in the YAML.
-        contents = yaml.safe_dump({'environments': {'local': {}}})
-        with self.mock_environment_file(contents, juju_env='ec2'):
-            with self.assert_error('Environment ec2 not found'):
-                get_env_attr('attr-name')
-
-    def test_attribute_not_found(self):
-        # A ValueError is raised if the requested attribute is not included in
-        # the environment info.
-        contents = yaml.safe_dump({'environments': {'ec2': {}}})
-        with self.mock_environment_file(contents, juju_env='ec2'):
-            with self.assert_error('Attribute attr-name not found'):
-                get_env_attr('attr-name')
-
-    def test_ok(self):
-        # The environment attribute value is correctly returned.
-        contents = yaml.safe_dump({
-            'environments': {'ec2': {'attr-name': 'Value!'}},
-        })
-        with self.mock_environment_file(contents, juju_env='ec2'):
-            self.assertEqual('Value!', get_env_attr('attr-name'))
-
-
 @mock.patch('helpers.juju_status')
 class TestWaitForUnit(unittest.TestCase):
 
@@ -408,3 +304,51 @@ class TestWaitForUnit(unittest.TestCase):
         unit_info = wait_for_unit(self.service)
         self.assertEqual(self.address, unit_info['public-address'])
         self.assertEqual(1, mock_juju_status.call_count)
+
+
+controller_info = """
+{
+  "local.lxd": {
+    "current-account": "admin@local",
+    "bootstrap-config": {
+      "region": "localhost",
+      "cloud-type": "lxd",
+      "cloud": "lxd"
+    },
+    "accounts": {
+      "admin@local": {
+        "user": "admin@local",
+        "password": "d409fc4ae870ab66292007ff9dfdd67f",
+        "current-model": "default",
+        "models": {
+          "admin": {
+            "uuid": "410c3d1b-00a6-4984-809f-09f32ea9c0a4"
+          },
+          "default": {
+            "uuid": "3af96b8e-1f44-45a3-8b8e-9362e1e47119"
+          }
+        }
+      }
+    },
+    "details": {
+      "ca-cert": "my-cert",
+      "uuid": "410c3d1b-00a6-4984-809f-09f32ea9c0a4",
+      "api-endpoints": [
+        "10.0.42.139:17070"
+      ]
+    }
+  }
+}
+"""
+
+
+class TestGetPassword(unittest.TestCase):
+
+    def test_password(self):
+        # The controller admin password is correctly retrieved.
+        with mock.patch('helpers.juju') as mock_juju:
+            mock_juju.return_value = controller_info
+            password = get_password()
+        self.assertEqual('d409fc4ae870ab66292007ff9dfdd67f', password)
+        mock_juju.assert_called_once_with(
+            'show-controller', '--show-passwords', '--format', 'json')
