@@ -124,8 +124,8 @@ def juju_status():
     return json.loads(status)
 
 
-def wait_for_unit(svc_name):
-    """Wait for the first unit of the given svc_name to be started.
+def wait_for_unit(app_name):
+    """Wait for the first unit of the given app_name to be started.
 
     The model in which to operate can be provided in the JUJU_MODEL environment
     variable. If not provided, the currently active model is used.
@@ -137,7 +137,7 @@ def wait_for_unit(svc_name):
     """
     while True:
         status = juju_status()
-        service = status.get('services', {}).get(svc_name)
+        service = status.get('applications', {}).get(app_name)
         if service is None or not service.get('exposed'):
             continue
         units = service.get('units', {})
@@ -164,7 +164,7 @@ def get_password():
     The model in which to operate can be provided in the JUJU_MODEL environment
     variable. If not provided, the currently active model is used.
     """
-    output = juju('show-controller', '--show-passwords', '--format', 'json')
+    output = juju('show-controller', '--show-password', '--format', 'json')
     data = json.loads(output)
-    account = data.values()[0]['accounts'].values()[0]
+    account = data.values()[0]['account']
     return account['password']
