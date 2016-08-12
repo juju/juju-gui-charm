@@ -45,9 +45,11 @@ Ensure the newly packaged charm deploys and behaves. Ensure you can create a
 new environment.
 
 ### Juju 1.25 ###
-     export JUJU_DEV_FEATURE_FLAGS=jes
-     juju bootstrap
-     make deploy
+     # Ensure you have a link from $JUJU_REPOSITORY to the juju-gui-charm you're working on, e.g.
+     # ln -s $HOME/tmp/juju-gui-charm $HOME/charms/trusty/juju-gui
+     juju-1 bootstrap
+     juju-1 deploy local:juju-gui
+     juju-1 expose juju-gui
 
 ### Juju 2 ###
      juju bootstrap <controller> <cloud> --upload-tools

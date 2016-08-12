@@ -234,7 +234,7 @@ class TestWaitForUnit(unittest.TestCase):
         """Return a dict-like Juju status."""
         unit_name = '{}/{}'.format(self.service, unit)
         return {
-            'services': {
+            'applications': {
                 self.service: {
                     'exposed': exposed,
                     'units': {
@@ -308,34 +308,29 @@ class TestWaitForUnit(unittest.TestCase):
 
 controller_info = """
 {
-  "local.lxd": {
-    "current-account": "admin@local",
-    "bootstrap-config": {
-      "region": "localhost",
-      "cloud-type": "lxd",
-      "cloud": "lxd"
-    },
-    "accounts": {
-      "admin@local": {
-        "user": "admin@local",
-        "password": "d409fc4ae870ab66292007ff9dfdd67f",
-        "current-model": "default",
-        "models": {
-          "admin": {
+  "lxd": {
+    "models": {
+      "admin": {
             "uuid": "410c3d1b-00a6-4984-809f-09f32ea9c0a4"
-          },
-          "default": {
+      },
+      "default": {
             "uuid": "3af96b8e-1f44-45a3-8b8e-9362e1e47119"
-          }
-        }
       }
+    },
+    "current-model": "admin@local/default",
+    "account": {
+      "password": "d409fc4ae870ab66292007ff9dfdd67f",
+      "user": "admin@local"
     },
     "details": {
       "ca-cert": "my-cert",
       "uuid": "410c3d1b-00a6-4984-809f-09f32ea9c0a4",
       "api-endpoints": [
         "10.0.42.139:17070"
-      ]
+      ],
+      "cloud": "lxd",
+      "region": "localhost",
+      "uuid": "e4053c3c-b8bd-432b-895b-1099c7d109ea"
     }
   }
 }
@@ -351,4 +346,4 @@ class TestGetPassword(unittest.TestCase):
             password = get_password()
         self.assertEqual('d409fc4ae870ab66292007ff9dfdd67f', password)
         mock_juju.assert_called_once_with(
-            'show-controller', '--show-passwords', '--format', 'json')
+            'show-controller', '--show-password', '--format', 'json')

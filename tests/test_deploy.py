@@ -49,7 +49,7 @@ class TestJujuDeploy(unittest.TestCase):
     @mock.patch('deploy.wait_for_unit')
     def call_deploy(
             self, mock_wait_for_unit, mock_juju,
-            service_name=None, options=None, force_machine=None,
+            app_name=None, options=None, force_machine=None,
             charm_source=None, series='xenial'):
         mock_wait_for_unit.return_value = self.unit_info
         if charm_source is None:
@@ -58,7 +58,7 @@ class TestJujuDeploy(unittest.TestCase):
             expected_source = charm_source
         with mock.patch('deploy.rsync') as mock_rsync:
             unit_info = juju_deploy(
-                self.charm, service_name=service_name, options=options,
+                self.charm, app_name=app_name, options=options,
                 force_machine=force_machine, charm_source=charm_source,
                 series=series)
         mock_rsync.assert_called_once_with(expected_source, REPO_PATH)
@@ -69,7 +69,7 @@ class TestJujuDeploy(unittest.TestCase):
         juju_calls = mock_juju.call_args_list
         self.assertEqual(2, len(juju_calls))
         # We expect a "juju expose" to have been called on the service.
-        expected_expose_call = mock.call('expose', service_name or self.charm)
+        expected_expose_call = mock.call('expose', app_name or self.charm)
         deploy_call, expose_call = juju_calls
         self.assertEqual(expected_expose_call, expose_call)
         self.assertEqual(deploy_call[0][0], 'deploy')
@@ -108,15 +108,15 @@ class TestJujuDeploy(unittest.TestCase):
         command = self.call_deploy(series='raring')
         self.assertTrue(contains(('--series', 'raring'), command))
 
-    def test_no_service_name(self):
+    def test_no_app_name(self):
         # If the service name is not provided, the charm name is used.
         command = self.call_deploy()
-        service_name = command[-1]
-        self.assertEqual(self.charm, service_name)
+        app_name = command[-1]
+        self.assertEqual(self.charm, app_name)
 
-    def test_service_name(self):
+    def test_app_name(self):
         # A customized service name can be provided and it is passed to Juju as
         # the last argument.
-        command = self.call_deploy(service_name='my-service')
-        service_name = command[-1]
-        self.assertEqual('my-service', service_name)
+        command = self.call_deploy(app_name='my-app')
+        app_name = command[-1]
+        self.assertEqual('my-app', app_name)
