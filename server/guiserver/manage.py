@@ -18,6 +18,7 @@
 
 import logging
 import os
+import ssl
 import sys
 
 from tornado.httpclient import AsyncHTTPClient
@@ -35,6 +36,9 @@ from guiserver.apps import (
 )
 
 
+# Define ciphers supported by this server:
+# see <https://www-origin.openssl.org/docs/manmaster/apps/ciphers.html>.
+CIPHERS = 'HIGH:!RC4:!MD5:!aNULL:!eNULL:!EXP:!LOW:!MEDIUM'
 DEFAULT_API_VERSION = 'go'
 DEFAULT_SSL_PATH = '/etc/ssl/juju-gui'
 
@@ -94,6 +98,8 @@ def _get_ssl_options():
     return {
         'certfile': os.path.join(options.sslpath, 'juju.crt'),
         'keyfile': os.path.join(options.sslpath, 'juju.key'),
+        'ssl_version': ssl.PROTOCOL_TLSv1,
+        'ciphers': CIPHERS,
     }
 
 
