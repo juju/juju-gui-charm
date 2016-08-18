@@ -18,6 +18,7 @@
 
 from contextlib import contextmanager
 import logging
+import ssl
 import unittest
 
 import mock
@@ -159,6 +160,8 @@ class TestGetSslOptions(unittest.TestCase):
         expected = {
             'certfile': '/my/path/juju.crt',
             'keyfile': '/my/path/juju.key',
+            'ssl_version': ssl.PROTOCOL_TLSv1,
+            'ciphers': manage.CIPHERS,
         }
         with mock.patch('guiserver.manage.options', mock_options):
             self.assertEqual(expected, manage._get_ssl_options())
@@ -169,6 +172,8 @@ class TestRun(LogTrapTestCase, unittest.TestCase):
     expected_ssl_options = {
         'certfile': '/my/sslpath/juju.crt',
         'keyfile': '/my/sslpath/juju.key',
+        'ssl_version': ssl.PROTOCOL_TLSv1,
+        'ciphers': manage.CIPHERS,
     }
 
     def mock_and_run(self, **kwargs):
