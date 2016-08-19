@@ -95,15 +95,10 @@ def _get_ssl_options():
     The certificate and key file paths are generated using the base SSL path
     included in the options.
     """
-    ssl_version = ssl.PROTOCOL_SSLv23
-    if sys.version_info < (2, 7, 9):
-        # Older Python versions, as the one that can be found on trusty,
-        # unfortunately don't support just disabling SSLv3.
-        ssl_version = ssl.PROTOCOL_TLSv1
     return {
         'certfile': os.path.join(options.sslpath, 'juju.crt'),
         'keyfile': os.path.join(options.sslpath, 'juju.key'),
-        'ssl_version': ssl_version,
+        'ssl_version': ssl.PROTOCOL_SSLv23,
         'ciphers': CIPHERS,
     }
 
