@@ -154,17 +154,31 @@ class TestValidateRange(ValidatorTestMixin, unittest.TestCase):
 
 class TestGetSslOptions(unittest.TestCase):
 
-    def test_options(self):
-        # The SSL options are correctly returned.
-        mock_options = mock.Mock(sslpath='/my/path')
+    mock_options = mock.Mock(sslpath='/my/path')
+
+    def test_options_new_python(self):
+        # The SSL options are correctly returned on recent Python versions.
+        expected = {
+            'certfile': '/my/path/juju.crt',
+            'keyfile': '/my/path/juju.key',
+            'ssl_version': ssl.PROTOCOL_SSLv23,
+            'ciphers': manage.CIPHERS,
+        }
+        with mock.patch('guiserver.manage.options', self.mock_options):
+            with mock.patch('sys.version_info', (2, 7, 12)):
+                self.assertEqual(expected, manage._get_ssl_options())
+
+    def test_options_old_python(self):
+        # The SSL options are correctly returned on old Python versions.
         expected = {
             'certfile': '/my/path/juju.crt',
             'keyfile': '/my/path/juju.key',
             'ssl_version': ssl.PROTOCOL_TLSv1,
             'ciphers': manage.CIPHERS,
         }
-        with mock.patch('guiserver.manage.options', mock_options):
-            self.assertEqual(expected, manage._get_ssl_options())
+        with mock.patch('guiserver.manage.options', self.mock_options):
+            with mock.patch('sys.version_info', (2, 7, 6)):
+                self.assertEqual(expected, manage._get_ssl_options())
 
 
 class TestRun(LogTrapTestCase, unittest.TestCase):
@@ -172,7 +186,7 @@ class TestRun(LogTrapTestCase, unittest.TestCase):
     expected_ssl_options = {
         'certfile': '/my/sslpath/juju.crt',
         'keyfile': '/my/sslpath/juju.key',
-        'ssl_version': ssl.PROTOCOL_TLSv1,
+        'ssl_version': ssl.PROTOCOL_SSLv23,
         'ciphers': manage.CIPHERS,
     }
 
@@ -191,7 +205,8 @@ class TestRun(LogTrapTestCase, unittest.TestCase):
                 mock.patch('guiserver.manage.IOLoop') as ioloop, \
                 mock.patch('guiserver.manage.options', mock.Mock(**options)), \
                 mock.patch('guiserver.manage.redirector') as redirector, \
-                mock.patch('guiserver.manage.server') as server:
+                mock.patch('guiserver.manage.server') as server, \
+                mock.patch('sys.version_info', (2, 7, 12)):
             manage.run()
         return ioloop.instance().start, redirector().listen, server().listen
 
