@@ -84,7 +84,7 @@ class TestServer(AppsTestMixin, unittest.TestCase):
             'jujuversion': '2.0.0',
             'sandbox': False,
             'charmstoreurl': 'https://api.jujucharms.com/charmstore/',
-            'jemurl': '',
+            'bundleservice_url': '',
         }
         options_dict.update(kwargs)
         options = mock.Mock(**options_dict)
@@ -189,12 +189,15 @@ class TestServer(AppsTestMixin, unittest.TestCase):
         self.assertFalse(config['jujugui.raw'])
         self.assertEqual('', config['jujugui.base_url'])
 
-    def test_gui_jem_connection(self):
-        # The server can be configured to connect the Juju GUI to a JEM.
-        jemurl = 'https://1.2.3.4/jem'
-        app = self.get_app(jemurl=jemurl, interactivelogin=True)
+    def test_gui_bundleservice_connection(self):
+        # The server can be configured to connect the Juju GUI to a
+        # bundleservice.
+        bundleservice_url = 'https://1.2.3.4/bundleservice'
+        app = self.get_app(bundleservice_url=bundleservice_url,
+                           interactivelogin=True)
         config = self.get_gui_config(app)
-        self.assertEqual(jemurl, config['jujugui.jem_url'])
+        self.assertEqual(bundleservice_url,
+                         config['jujugui.bundleservice_url'])
         self.assertTrue(config['jujugui.interactive_login'])
 
     def test_gui_debug_mode(self):

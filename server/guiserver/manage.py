@@ -151,7 +151,7 @@ def setup():
         'charmstoreurl', type=str,
         default='https://api.jujucharms.com/charmstore/',
         help="The URL for the charmstore.")
-    define('jemurl', type=str, help="The URL for a Juju Environment Manager.")
+    define('bundleservice_url', type=str, help="The URL for a bundle service.")
     define(
         'interactivelogin', type=bool, default=False,
         help='Enables interactive login to identity manager, if applicable.')

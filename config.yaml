@@ -166,10 +166,10 @@ options:
       the Juju version is dynamically retrieved.
     type: string
     default:
-  jem-url:
+  bundleservice-url:
     type: string
     default: ''
-    description: Publicly accessible URL of JEM.
+    description: Publicly accessible URL of bundle service.
   interactive-login:
     description: |
       Enables interactive login to an identity-manager, if applicable.

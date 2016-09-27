@@ -55,15 +55,6 @@ soon.
   juju gui
   ```
 
-* JEM
-
-  The details for this scenario need to be worked out. Basically:
-    * Bootstrap an empty environment to an external provider, e.g. ec2
-      * `juju bootstrap -e ec2`
-    * Deploy the GUI charm locally:
-      * `juju bootstrap -e local && make deploy`
-    * ?? Deploy JEM somewhere?  Hook them up?
-
 * Via the horizon-juju-charm (HJC)
 
   See the horizon-juju-charm `HACKING.md` file for instructions on how to

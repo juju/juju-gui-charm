@@ -97,7 +97,7 @@ class TestBackendCommands(unittest.TestCase):
             'hide-login-button': False,
             'juju-core-version': '1.21',
             'ssl-cert-path': self.ssl_cert_path,
-            'jem-url': '',
+            'bundleservice-url': '',
             'interactive-login': False,
             'gzip-compression': True,
             'gtm-enabled': False,
@@ -175,7 +175,7 @@ class TestBackendCommands(unittest.TestCase):
             False,                        # insecure
             config['charmworld-url'],
             charmstore_url='http://charmstore.example.com/',
-            jem_url='',
+            bundleservice_url='',
             env_uuid='model-uuid',
             interactive_login=False,
             juju_version=JUJU_VERSION,
@@ -201,7 +201,7 @@ class TestBackendCommands(unittest.TestCase):
             False,                        # insecure
             config['charmworld-url'],
             charmstore_url='http://charmstore.example.com/',
-            jem_url='',
+            bundleservice_url='',
             env_uuid='env-uuid',
             interactive_login=False,
             juju_version=JUJU_VERSION,
@@ -242,7 +242,7 @@ class TestBackendCommands(unittest.TestCase):
             True,                         # insecure
             config['charmworld-url'],
             charmstore_url='http://charmstore.example.com/',
-            jem_url='',
+            bundleservice_url='',
             env_uuid='uuid',
             interactive_login=False,
             juju_version=JUJU_VERSION,
@@ -267,7 +267,7 @@ class TestBackendCommands(unittest.TestCase):
             False,                        # insecure
             config['charmworld-url'],
             charmstore_url='http://charmstore.example.com/',
-            jem_url='',
+            bundleservice_url='',
             env_uuid='uuid',
             interactive_login=False,
             juju_version=JUJU_VERSION,
