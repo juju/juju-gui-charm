@@ -108,7 +108,7 @@ def server():
         'jujugui.gzip': options.gzip,
         'jujugui.insecure': options.insecure,
         'jujugui.interactive_login': options.interactivelogin,
-        'jujugui.jem_url': options.jemurl,
+        'jujugui.bundleservice_url': options.bundleservice_url,
         'jujugui.charmstore_url': options.charmstoreurl,
         'jujugui.jujuCoreVersion': options.jujuversion,
         'jujugui.raw': options.jujuguidebug,

@@ -47,8 +47,8 @@ exec /usr/bin/python /usr/local/bin/runserver.py \
     {{if charmstore_url}}
         --charmstoreurl="{{charmstore_url}}" \
     {{endif}}
-    {{if jem_url}}
-        --jemurl="{{jem_url}}" \
+    {{if bundleservice_url}}
+        --bundleservice_url="{{bundleservice_url}}" \
     {{endif}}
     {{if interactive_login}}
         --interactivelogin="{{interactive_login}}" \
