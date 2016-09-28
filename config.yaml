@@ -168,7 +168,7 @@ options:
     default:
   bundleservice-url:
     type: string
-    default: ''
+    default: 'https://api.jujucharms.com/bundleservice'
     description: Publicly accessible URL of bundle service.
   interactive-login:
     description: |
