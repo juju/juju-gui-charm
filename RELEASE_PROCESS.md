@@ -11,11 +11,9 @@ Commons, 171 Second Street, Suite 300, San Francisco, California, 94105, USA.
 
 ## Updating the GUI ##
 
-If the new release of the charm is to include a new version of Juju GUI then
-that version should be released and tagged in the master branch of the GUI. It
-is ill-advised that the charm is released with a novel, unreleased version of
-the GUI.  If, however, that is the goal, ensure you follow the instructions in
-the `juju-gui/RELEASE_PROCESS.rst` file.
+If a new version of the GUI is to be released, it should be done in
+conjunction with updating the charm. Doing comprehensive QA of the GUI build
+and the charm together will eliminate any duplication of effort.
 
 ## Work from a freshly fetched repo ##
 
@@ -65,43 +63,6 @@ You'll need the `charm` package from the juju/devel PPA:
 
 ## The juju-gui charm versions in the charmstore ##
 
-We have multiple versions of the juju-gui charm in the charmstore.
-
-| Release | Intent / Audience | URL | CS reference |
-| ------- | ----------------- | --- | ------------ |
-| Alphas | Dev team testing only | https://jujucharms.com/u/yellow/juju-gui | cs:~yellow/juju-gui |
-| Betas  | Wider testing. Only via Juju > 2.0 | hhttps://jujucharms.com/juju-gui/?channel=development | cs:juju-gui --channel development |
-| Released | GA | https://jujucharms.com/juju-gui | cs:juju-gui |
-
-The betas and released versions are owned by ~juju-gui-charmers.
-
-Before the release of Juju v2.0 the betas will be of limited utility as they
-can only be tested using Juju 1.26 alphas.
-
-## Uploading an alpha version ##
-
-Our alphas are development versions of the charm and are published to the
-cs:~yellow namespace for thorough testing before making a more general
-release.
-
-Before uploading, check to see the currently available versions:
-
-    charm show cs:~yellow/juju-gui id perm
-
-Next, to upload the charm, go to the charm source directory and do:
-
-    make clean
-    charm push . cs:~yellow/juju-gui
-
-The `charm push` command above will output the fully qualified URL of the
-charm, for instance "cs:~yellow/juju-gui-42". Use that to publish the charm:
-
-    charm publish cs:~yellow/juju-gui-42
-
-And check the information to ensure it changed:
-
-    charm show cs:~yellow/juju-gui id perm
-
 ## Uploading a beta version ##
 
 Our betas are development versions of the charm and are published to the
@@ -113,27 +74,11 @@ Before uploading, check to see the currently available versions:
 
 Next, to upload and publish the charm, go to the charm source directory and do:
 
-    make publish-development
+    make publish-edge
 
 Check the information to ensure it changed:
 
-    charm show --channel development cs:~juju-gui-charmers/juju-gui id perm published
-
-Done.
-If you want to perform the same operation manually, do the following:
-
-    make clean
-    charm push . cs:~juju-gui-charmers/juju-gui
-
-The `charm push` command above will output the fully qualified URL of the
-charm, for instance "cs:~juju-gui-charmers/juju-gui-42". Use that to publish
-the charm:
-
-    charm publish --channel development cs:~juju-gui-charmers/juju-gui-42
-
-And check the information to ensure it changed:
-
-    charm show --channel development cs:~juju-gui-charmers/juju-gui id perm published
+    charm show --channel edge cs:~juju-gui-charmers/juju-gui id perm published
 
 # QA Process #
 
@@ -141,21 +86,15 @@ Before publishing the new juju-gui charm to the stable channel, both manual and
 automatic QA must be performed. Refer to the `QA.md` doc for details on doing
 pre-release testing of the charm.
 
+Note many of these QA steps are also listed in the release process for
+juju-gui. There is no need to repeat them again.
+
 ## Publishing the released version ##
 
 Once the charm has been QAed and proved to be solid and reliable, make it
 stable by executing the following command:
 
     make publish-stable
-
-Assuming the current development charm has revision 42, the above can be also
-done by manually running the charm command:
-
-    charm publish cs:~juju-gui-charmers/juju-gui-42
-
-Finally, check the information to ensure it changed:
-
-    charm show cs:~juju-gui-charmers/juju-gui id perm published
 
 ## Tagging the charm code ##
 
