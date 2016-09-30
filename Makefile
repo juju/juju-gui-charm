@@ -75,13 +75,13 @@ releases:
 .PHONY: package
 package: clean releases
 
-.PHONY: publish-edge
-publish-edge: push-to-charmstore
-	$(CHARMCMD) publish --channel edge $(fullurl)
+.PHONY: release-edge
+release-edge: push-to-charmstore
+	$(CHARMCMD) release --channel edge $(fullurl)
 
-.PHONY: publish-stable
-publish-stable: push-to-charmstore
-	$(CHARMCMD) publish --channel stable $(fullurl)
+.PHONY: release-stable
+release-stable: push-to-charmstore
+	$(CHARMCMD) release --channel stable $(fullurl)
 
 .PHONY: push-to-charmstore
 push-to-charmstore: clean
@@ -110,8 +110,8 @@ help:
 	@echo '  started. If JUJU_MODEL is not passed, the charm will be deployed'
 	@echo '  in the currently active Juju model. If SERIES is not passed,'
 	@echo -e '  "xenial" is used. Possible values are "trusty" and "xenial".\n'
-	@echo 'make publish-edge - Push and publish the charm to the'
+	@echo 'make release-edge - Push and release the charm to the'
 	@echo -e '  edge channel.\n'
-	@echo 'make publish-stable - Push and publish the charm to the'
+	@echo 'make release-stable - Push and release the charm to the'
 	@echo -e '  stable channel.\n'
 	@echo -e 'make sync - Update the version of charmhelpers.\n'
