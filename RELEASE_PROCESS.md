@@ -72,9 +72,9 @@ Before uploading, check to see the currently available versions:
 
     charm show cs:~juju-gui-charmers/juju-gui id perm published
 
-Next, to upload and publish the charm, go to the charm source directory and do:
+Next, to upload and release the charm, go to the charm source directory and do:
 
-    make publish-edge
+    make release-edge
 
 Check the information to ensure it changed:
 
@@ -82,7 +82,7 @@ Check the information to ensure it changed:
 
 # QA Process #
 
-Before publishing the new juju-gui charm to the stable channel, both manual and
+Before releasing the new juju-gui charm to the stable channel, both manual and
 automatic QA must be performed. Refer to the `QA.md` doc for details on doing
 pre-release testing of the charm.
 
