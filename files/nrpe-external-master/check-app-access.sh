@@ -1,8 +1,8 @@
 #!/bin/bash
-ADDRESS='http://127.0.0.1/juju-ui/version.js'
-LIFE_SIGN='jujuGuiVersionInfo'
+ADDRESS='https://127.0.0.1/static/gui/build/app/version.json'
+LIFE_SIGN='version'
 
-match=$(curl -s $ADDRESS | grep "$LIFE_SIGN")
+match=$(curl -sk $ADDRESS | grep "$LIFE_SIGN")
 
 if [[ -z $match ]]; then
     echo juju-gui did not return content indicating it was loading.
