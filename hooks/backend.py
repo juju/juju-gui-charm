@@ -112,7 +112,12 @@ class GuiServerMixin(object):
         env_uuid = os.getenv('JUJU_MODEL_UUID') or os.getenv('JUJU_ENV_UUID')
         if env_uuid is None:
             raise ValueError('cannot retrieve model UUID from hook context')
-        juju_version = run('jujud', '--version').strip()
+        if config['sandbox']:
+            # If sandbox mode, force the use of Juju 2 since that is what it
+            # simulates.
+            juju_version = '2.0.0'
+        else:
+            juju_version = run('jujud', '--version').strip()
         utils.start_builtin_server(
             config['ssl-cert-path'],
             config['serve-tests'],
