@@ -160,12 +160,6 @@ options:
       fonts will let the GUI load much faster and render properly.
     type: boolean
     default: false
-  juju-core-version:
-    description: |
-      The version of Juju tools used for the charm deployment. If left empty,
-      the Juju version is dynamically retrieved.
-    type: string
-    default:
   bundleservice-url:
     type: string
     default: 'https://api.jujucharms.com/bundleservice'

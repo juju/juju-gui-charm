@@ -95,7 +95,6 @@ class TestBackendCommands(unittest.TestCase):
             'secure': True,
             'serve-tests': False,
             'hide-login-button': False,
-            'juju-core-version': '1.21',
             'ssl-cert-path': self.ssl_cert_path,
             'bundleservice-url': '',
             'interactive-login': False,
@@ -274,6 +273,32 @@ class TestBackendCommands(unittest.TestCase):
             debug=False,
             gtm_enabled=False,
             gisf_enabled=True,
+            gzip=True,
+            port=None,
+            env_password=None)
+
+    def test_sandbox_mode_forces_juju_2(self):
+        # Start the GUI server.
+        config = self.make_config(options=dict(sandbox=True))
+        test_backend = backend.Backend(config=config)
+        with self.mock_all() as mocks:
+            with patch_environ(JUJU_MODEL_UUID='model-uuid'):
+                test_backend.start()
+        mocks.start_builtin_server.assert_called_once_with(
+            self.ssl_cert_path,
+            config['serve-tests'],
+            config['sandbox'],
+            config['builtin-server-logging'],
+            False,                        # insecure
+            config['charmworld-url'],
+            charmstore_url='http://charmstore.example.com/',
+            bundleservice_url='',
+            env_uuid='model-uuid',
+            interactive_login=False,
+            juju_version='2.0.0',
+            debug=False,
+            gtm_enabled=False,
+            gisf_enabled=False,
             gzip=True,
             port=None,
             env_password=None)
