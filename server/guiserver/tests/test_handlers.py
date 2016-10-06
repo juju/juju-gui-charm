@@ -81,8 +81,8 @@ class WebSocketHandlerTestMixin(object):
             'deployer': self.deployer,
             'io_loop': self.io_loop,
             'tokens': self.tokens,
-            'ws_source_template': apps.WEBSOCKET_SOURCE_TEMPLATE,
-            'ws_target_template': apps.WEBSOCKET_TARGET_TEMPLATE,
+            'ws_source_template': apps.WEBSOCKET_MODEL_SOURCE_TEMPLATE,
+            'ws_target_template': apps.WEBSOCKET_MODEL_TARGET_TEMPLATE,
         }
         return web.Application([
             (r'/echo', helpers.EchoWebSocketHandler, echo_options),
@@ -111,15 +111,21 @@ class WebSocketHandlerTestMixin(object):
 
     @gen.coroutine
     def make_initialized_handler(
-            self, apiurl=None, headers=None, mock_protocol=False, path=None):
+            self, apiurl=None, headers=None, mock_protocol=False, path=None,
+            source_template=apps.WEBSOCKET_MODEL_SOURCE_TEMPLATE,
+            target_template=apps.WEBSOCKET_MODEL_TARGET_TEMPLATE):
         """Create and return an initialized WebSocketHandler instance."""
         if apiurl is None:
             apiurl = self.apiurl
         handler = self.make_handler(
             headers=headers, mock_protocol=mock_protocol, path=path)
         yield handler.initialize(
-            apiurl, self.auth_backend, self.deployer, self.tokens,
-            apps.WEBSOCKET_SOURCE_TEMPLATE, apps.WEBSOCKET_TARGET_TEMPLATE,
+            apiurl,
+            self.auth_backend,
+            self.deployer,
+            self.tokens,
+            source_template,
+            target_template,
             self.io_loop)
         raise gen.Return(handler)
 
@@ -149,11 +155,25 @@ class TestWebSocketHandlerConnection(
             self.get_url('/echo'), handler.juju_connection.request.url)
 
     @gen_test
-    def test_initialize_api_path(self):
-        # Make sure that it will initialize with a supplied path.
+    def test_initialize_api_path_controller(self):
+        # Make sure that it will initialize with a supplied path when handling
+        # controller connections.
         with self.mock_websocket_connect() as mock_websocket_connect:
             yield self.make_initialized_handler(
-                path='/ws/api/1.2.3.4/17070/1234-1234-1234')
+                path='/ws/controller-api/1.2.3.4/17070',
+                source_template=apps.WEBSOCKET_CONTROLLER_SOURCE_TEMPLATE,
+                target_template=apps.WEBSOCKET_CONTROLLER_TARGET_TEMPLATE)
+        self.assertEqual(1, mock_websocket_connect.call_count)
+        call_args = mock_websocket_connect.call_args[0]
+        self.assertEqual(call_args[1], 'wss://1.2.3.4:17070/api')
+
+    @gen_test
+    def test_initialize_api_path_model(self):
+        # Make sure that it will initialize with a supplied path when handling
+        # model connections.
+        with self.mock_websocket_connect() as mock_websocket_connect:
+            yield self.make_initialized_handler(
+                path='/ws/model-api/1.2.3.4/17070/1234-1234-1234')
         self.assertEqual(1, mock_websocket_connect.call_count)
         call_args = mock_websocket_connect.call_args[0]
         self.assertEqual(
@@ -260,8 +280,12 @@ class TestWebSocketHandlerProxy(
         mock_path = 'guiserver.clients.WebSocketClientConnection.write_message'
         with mock.patch(mock_path) as mock_write_message:
             initialization = handler.initialize(
-                self.apiurl, self.auth_backend, self.deployer, self.tokens,
-                apps.WEBSOCKET_SOURCE_TEMPLATE, apps.WEBSOCKET_TARGET_TEMPLATE,
+                self.apiurl,
+                self.auth_backend,
+                self.deployer,
+                self.tokens,
+                apps.WEBSOCKET_MODEL_SOURCE_TEMPLATE,
+                apps.WEBSOCKET_MODEL_TARGET_TEMPLATE,
                 io_loop=self.io_loop)
             handler.on_message(self.hello_message)
             self.assertFalse(mock_write_message.called)
@@ -314,8 +338,12 @@ class TestWebSocketHandlerAuthentication(
         super(TestWebSocketHandlerAuthentication, self).setUp()
         self.handler = self.make_handler(mock_protocol=True)
         self.handler.initialize(
-            self.apiurl, self.auth_backend, self.deployer, self.tokens,
-            apps.WEBSOCKET_SOURCE_TEMPLATE, apps.WEBSOCKET_TARGET_TEMPLATE,
+            self.apiurl,
+            self.auth_backend,
+            self.deployer,
+            self.tokens,
+            apps.WEBSOCKET_MODEL_SOURCE_TEMPLATE,
+            apps.WEBSOCKET_MODEL_TARGET_TEMPLATE,
             io_loop=self.io_loop)
 
     def send_login_request(self):

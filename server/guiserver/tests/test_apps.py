@@ -99,26 +99,42 @@ class TestServer(AppsTestMixin, unittest.TestCase):
 
     def test_auth_backend(self):
         # The authentication backend instance is correctly passed to the
-        # WebSocket handler.
+        # WebSocket handlers.
         app = self.get_app()
-        spec = self.get_url_spec(app, r'^/ws(?:/.*)?$')
-        auth_backend = self.assert_in_spec(spec, 'auth_backend')
         expected = auth.get_backend(manage.DEFAULT_API_VERSION)
+        # The auth backend is registered for the controller connection.
+        spec = self.get_url_spec(app, r'^/ws/model-api(?:/.*)?$')
+        auth_backend = self.assert_in_spec(spec, 'auth_backend')
+        self.assertIsInstance(auth_backend, type(expected))
+        # The auth backend is registered for the model connection.
+        spec = self.get_url_spec(app, r'^/ws/controller-api(?:/.*)?$')
+        auth_backend = self.assert_in_spec(spec, 'auth_backend')
         self.assertIsInstance(auth_backend, type(expected))
 
     def test_deployer(self):
         # The deployer instance is correctly passed to the WebSocket handler.
         app = self.get_app()
-        spec = self.get_url_spec(app, r'^/ws(?:/.*)?$')
+        spec = self.get_url_spec(app, r'^/ws/model-api(?:/.*)?$')
         deployer = self.assert_in_spec(spec, 'deployer')
         self.assertIsInstance(deployer, base.Deployer)
 
-    def test_ws_templates(self):
-        # The WebSocket templates are properly passed to the WebSocket handler.
+    def test_ws_templates_controller(self):
+        # The WebSocket templates are properly passed to the WebSocket handler
+        # managing connections to the controller.
         app = self.get_app()
-        spec = self.get_url_spec(app, r'^/ws(?:/.*)?$')
+        spec = self.get_url_spec(app, r'^/ws/controller-api(?:/.*)?$')
         source = self.assert_in_spec(spec, 'ws_source_template')
-        self.assertEqual('/ws/api/$server/$port/$uuid', source)
+        self.assertEqual('/ws/controller-api/$server/$port', source)
+        target = self.assert_in_spec(spec, 'ws_target_template')
+        self.assertEqual('wss://{server}:{port}/api', target)
+
+    def test_ws_templates_model(self):
+        # The WebSocket templates are properly passed to the WebSocket handler
+        # managing connections to the model.
+        app = self.get_app()
+        spec = self.get_url_spec(app, r'^/ws/model-api(?:/.*)?$')
+        source = self.assert_in_spec(spec, 'ws_source_template')
+        self.assertEqual('/ws/model-api/$server/$port/$uuid', source)
         target = self.assert_in_spec(spec, 'ws_target_template')
         self.assertEqual('wss://{server}:{port}/model/{uuid}/api', target)
 
@@ -126,9 +142,9 @@ class TestServer(AppsTestMixin, unittest.TestCase):
         # The WebSocket templates are properly passed to the WebSocket handler
         # and the correct target template is used for Juju 1.x.
         app = self.get_app(jujuversion='1.25.42')
-        spec = self.get_url_spec(app, r'^/ws(?:/.*)?$')
+        spec = self.get_url_spec(app, r'^/ws/model-api(?:/.*)?$')
         source = self.assert_in_spec(spec, 'ws_source_template')
-        self.assertEqual('/ws/api/$server/$port/$uuid', source)
+        self.assertEqual('/ws/model-api/$server/$port/$uuid', source)
         target = self.assert_in_spec(spec, 'ws_target_template')
         self.assertEqual(
             'wss://{server}:{port}/environment/{uuid}/api', target)
@@ -136,7 +152,10 @@ class TestServer(AppsTestMixin, unittest.TestCase):
     def test_tokens(self):
         # The tokens instance is correctly passed to the WebSocket handler.
         app = self.get_app()
-        spec = self.get_url_spec(app, r'^/ws(?:/.*)?$')
+        spec = self.get_url_spec(app, r'^/ws/controller-api(?:/.*)?$')
+        tokens = self.assert_in_spec(spec, 'tokens')
+        self.assertIsInstance(tokens, auth.AuthenticationTokenHandler)
+        spec = self.get_url_spec(app, r'^/ws/model-api(?:/.*)?$')
         tokens = self.assert_in_spec(spec, 'tokens')
         self.assertIsInstance(tokens, auth.AuthenticationTokenHandler)
 
@@ -182,7 +201,11 @@ class TestServer(AppsTestMixin, unittest.TestCase):
             'https://api.jujucharms.com/charmstore/',
             config['jujugui.charmstore_url'])
         self.assertEqual(
-            apps.WEBSOCKET_SOURCE_TEMPLATE, config['jujugui.socketTemplate'])
+            apps.WEBSOCKET_CONTROLLER_SOURCE_TEMPLATE,
+            config['jujugui.controllerSocketTemplate'])
+        self.assertEqual(
+            apps.WEBSOCKET_MODEL_SOURCE_TEMPLATE,
+            config['jujugui.socketTemplate'])
         self.assertTrue(config['jujugui.combine'])
         self.assertFalse(config['jujugui.interactive_login'])
         self.assertFalse(config['jujugui.sandbox'])
