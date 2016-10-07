@@ -167,4 +167,4 @@ def get_password():
     output = juju('show-controller', '--show-password', '--format', 'json')
     data = json.loads(output)
     account = data.values()[0]['account']
-    return account['password']
+    return account.get('password', 'not available')

@@ -33,9 +33,11 @@ from guiserver.bundles.base import Deployer
 from jujugui import make_application
 
 
-# Define the templates to use for building the WebSocket URL.
-WEBSOCKET_SOURCE_TEMPLATE = '/ws/api/$server/$port/$uuid'
-WEBSOCKET_TARGET_TEMPLATE = 'wss://{server}:{port}/model/{uuid}/api'
+# Define the templates to use for building the WebSocket URLs.
+WEBSOCKET_CONTROLLER_SOURCE_TEMPLATE = '/ws/controller-api/$server/$port'
+WEBSOCKET_CONTROLLER_TARGET_TEMPLATE = 'wss://{server}:{port}/api'
+WEBSOCKET_MODEL_SOURCE_TEMPLATE = '/ws/model-api/$server/$port/$uuid'
+WEBSOCKET_MODEL_TARGET_TEMPLATE = 'wss://{server}:{port}/model/{uuid}/api'
 WEBSOCKET_TARGET_TEMPLATE_PRE2 = 'wss://{server}:{port}/environment/{uuid}/api'
 
 
@@ -56,32 +58,53 @@ def server():
             (r'^/ws(?:/.*)?$', handlers.SandboxHandler, {}))
     else:
         # Real environment.
-        ws_target_template = WEBSOCKET_TARGET_TEMPLATE
-        if LooseVersion(options.jujuversion) < LooseVersion('2'):
-            ws_target_template = WEBSOCKET_TARGET_TEMPLATE_PRE2
+        is_legacy_juju = LooseVersion(options.jujuversion) < LooseVersion('2')
         tokens = auth.AuthenticationTokenHandler()
-        websocket_handler_options = {
+        auth_backend = auth.get_backend(options.apiversion)
+        ws_model_target_template = WEBSOCKET_MODEL_TARGET_TEMPLATE
+        if is_legacy_juju:
+            ws_model_target_template = WEBSOCKET_TARGET_TEMPLATE_PRE2
+        else:
+            # Register the WebSocket handler for the controller connection.
+            websocket_controller_handler_options = {
+                # The Juju API backend url.
+                'apiurl': options.apiurl,
+                # The backend to use for user authentication.
+                'auth_backend': auth_backend,
+                # The Juju deployer to use for importing bundles.
+                'deployer': deployer,
+                # The tokens collection for authentication token requests.
+                'tokens': tokens,
+                # The WebSocket URL template the browser uses for connecting.
+                'ws_source_template': WEBSOCKET_CONTROLLER_SOURCE_TEMPLATE,
+                # The WebSocket URL template used for connecting to Juju.
+                'ws_target_template': WEBSOCKET_CONTROLLER_TARGET_TEMPLATE,
+            }
+            server_handlers.append(
+                (r'^/ws/controller-api(?:/.*)?$', handlers.WebSocketHandler,
+                    websocket_controller_handler_options))
+        websocket_model_handler_options = {
             # The Juju API backend url.
             'apiurl': options.apiurl,
             # The backend to use for user authentication.
-            'auth_backend': auth.get_backend(options.apiversion),
+            'auth_backend': auth_backend,
             # The Juju deployer to use for importing bundles.
             'deployer': deployer,
             # The tokens collection for authentication token requests.
             'tokens': tokens,
             # The WebSocket URL template the browser uses for the connection.
-            'ws_source_template': WEBSOCKET_SOURCE_TEMPLATE,
+            'ws_source_template': WEBSOCKET_MODEL_SOURCE_TEMPLATE,
             # The WebSocket URL template used for connecting to Juju.
-            'ws_target_template': ws_target_template,
+            'ws_target_template': ws_model_target_template,
         }
         juju_proxy_handler_options = {
             'target_url': utils.ws_to_http(options.apiurl),
             'charmworld_url': options.charmworldurl,
         }
         server_handlers.extend([
-            # Handle WebSocket connections.
-            (r'^/ws(?:/.*)?$', handlers.WebSocketHandler,
-                websocket_handler_options),
+            # Handle WebSocket connections to the Juju model.
+            (r'^/ws/model-api(?:/.*)?$', handlers.WebSocketHandler,
+                websocket_model_handler_options),
             # Handle connections to the juju-core HTTPS server.
             # The juju-core HTTPS and WebSocket servers share the same URL.
             (r'^/juju-core/(.*)', handlers.JujuProxyHandler,
@@ -113,7 +136,9 @@ def server():
         'jujugui.jujuCoreVersion': options.jujuversion,
         'jujugui.raw': options.jujuguidebug,
         'jujugui.sandbox': options.sandbox,
-        'jujugui.socketTemplate': WEBSOCKET_SOURCE_TEMPLATE,
+        'jujugui.controllerSocketTemplate': (
+            WEBSOCKET_CONTROLLER_SOURCE_TEMPLATE),
+        'jujugui.socketTemplate': WEBSOCKET_MODEL_SOURCE_TEMPLATE,
         'jujugui.uuid': options.uuid,
     }
     if options.password:
