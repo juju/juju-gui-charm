@@ -94,7 +94,7 @@ juju-gui. There is no need to repeat them again.
 Once the charm has been QAed and proved to be solid and reliable, make it
 stable by executing the following command:
 
-    make publish-stable
+    make release-stable
 
 ## Tagging the charm code ##
 
