@@ -10,7 +10,7 @@ def update_nrpe_checks():
     # value is false, which is the scenario for our deployment on
     # staging and production. If testing this functionality on a
     # free-standing GUI charm deployment be sure to change the secure
-    # setting.  
+    # setting.
     port = 80
     ip_address = '127.0.0.1'
     uri = '/static/gui/build/app/version.json'
@@ -18,10 +18,11 @@ def update_nrpe_checks():
     check_cmd = 'check_http -I {} -p {} -r {} -u {}'.format(
         ip_address, port, success, uri)
     nrpe_compat.add_check(
-        shortname='gui-is-accessible',
+        shortname='gui_is_accessible',
         description='Check_the_GUI_responds',
         check_cmd=check_cmd)
     nrpe_compat.write()
+
 
 def remove_nrpe_check():
     nrpe_compat = nrpe.NRPE()
