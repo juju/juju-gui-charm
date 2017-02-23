@@ -45,13 +45,18 @@ new environment.
 ### Juju 1.25 ###
      # Ensure you have a link from $JUJU_REPOSITORY to the juju-gui-charm you're working on, e.g.
      # ln -s $HOME/tmp/juju-gui-charm $HOME/charms/trusty/juju-gui
-     juju-1 bootstrap
+     juju-1 bootstrap # See below
      juju-1 deploy local:juju-gui
      juju-1 expose juju-gui
 
+     # If the bootstrap fails because port 37017 is in use you may need to:
+     sudo systemctl stop juju-db
+
 ### Juju 2 ###
-     juju bootstrap <controller> <cloud> --upload-tools
+     export SSO_ID=<your SSO id>
+     juju bootstrap <controller> <cloud> --config identity-url=https://api.jujucharms.com/identity
      make deploy
+     juju grant $SSO_ID@external login && juju grant $SSO_ID@external admin default
 
 ## Get the charm publishing tools ##
 
